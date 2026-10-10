@@ -1,0 +1,23 @@
+/* Use installed Gilroy without redistributing desktop font files. */
+@font-face {
+  font-family: 'GOStore Gilroy';
+  src: local('Gilroy-Regular'), local('Gilroy Regular'), local('☞Gilroy-Regular');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GOStore Gilroy';
+  src: local('Gilroy-Bold'), local('Gilroy Bold'), local('☞Gilroy-Bold');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+/* Arimo by Google Fonts, SIL OFL 1.1; license: OFL-Arimo.txt. */
+@font-face {
+  font-family: 'GOStore Sans';
+  src: url('./arimo-variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}

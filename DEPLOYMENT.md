@@ -80,7 +80,7 @@ Taobao/1688 бараа автоматаар татах, карго явц хол
 powershell -ExecutionPolicy Bypass -File scripts/package-coming-soon.ps1
 ```
 
-`output/gostore-coming-soon.zip` нь зөвхөн `index.html`, `.htaccess`, `assets/logo.png` файлуудтай.
+`output/gostore-coming-soon.zip` нь `index.html`, `.htaccess`, `assets/logo.png`, мөн `assets/fonts/` доторх фонт, CSS, лицензийг агуулна. Фонтыг зөв ачаалахын тулд ZIP-ийг бүтнээр нь задлана.
 
 1. cPanel → Domains дотроос `gostore.mn`-ийн Document Root-ийг харна (ихэвчлэн `public_html`).
 2. File Manager дотор тухайн хавтасны одоогийн `index.html` болон `.htaccess` файлуудыг компьютертоо нөөцөлнө. `.htaccess` харагдахгүй бол Settings → Show Hidden Files идэвхжүүлнэ.

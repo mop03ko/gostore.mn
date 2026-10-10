@@ -1,3 +1,8 @@
+AddDefaultCharset UTF-8
+<IfModule mod_mime.c>
+AddCharset UTF-8 .html .css .js
+AddType font/ttf .ttf
+</IfModule>
 Options -Indexes
 DirectoryIndex index.html
 <FilesMatch "^(config.*|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
