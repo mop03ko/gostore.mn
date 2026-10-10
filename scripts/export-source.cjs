@@ -1,0 +1,5 @@
+// Explicit allowlist for source backup; never exports config.local.php or runtime data.
+const fs=require('node:fs');
+const textFiles=['.gitignore','.htaccess','README.md','DEPLOYMENT.md','index.html','styles.css','script.js','store-server.js','admin/index.html','admin/admin.css','admin/admin.js','api/index.php','server/.htaccess','server/bootstrap.php','server/config.example.php','server/qpay.php','server/seed.json','assets/uploads/.htaccess','scripts/password.php','scripts/configure-admin.ps1','scripts/dev.ps1','scripts/router.php','scripts/preview.mjs','scripts/package.ps1','scripts/export-source.cjs','tests/api.mjs','tests/qpay.php'];
+if(process.argv[2]==='text') process.stdout.write(JSON.stringify(textFiles.map(path=>({path,mode:'100644',type:'blob',content:fs.readFileSync(path,'utf8')}))));
+else {const allowed=['backpack.jpg','chair.jpg','headphones.jpg','lamp.jpg','living.jpg','logo.png','skincare.jpg','sneakers.jpg','watch.jpg'];if(!allowed.includes(process.argv[2]))throw Error('Not an allowed asset');process.stdout.write(fs.readFileSync('assets/'+process.argv[2]).toString('base64'));}

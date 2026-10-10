@@ -1,0 +1,9 @@
+Options -Indexes
+DirectoryIndex index.html
+<FilesMatch "^(config.*|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
+Require all denied
+</FilesMatch>
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
+</IfModule>

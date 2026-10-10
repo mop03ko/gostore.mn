@@ -1,0 +1,38 @@
+// Uses only a loopback development server and disposable test records.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const base=process.env.TEST_BASE||'http://127.0.0.1:3000';
+if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base))throw Error('Tests are restricted to loopback.');
+function client(){let cookie='',csrf='';return async(action,body)=>{const multipart=body instanceof FormData;const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{...(cookie?{Cookie:cookie}:{}),...(body?{'X-CSRF-Token':csrf,...(multipart?{}:{'Content-Type':'application/json'})}:{})},body:body?(multipart?body:JSON.stringify(body)):undefined});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];const j=await r.json();if(j.csrf)csrf=j.csrf;return {status:r.status,...j};};}
+const shop=client(),admin=client(),anonymous=client();
+assert.equal((await anonymous('dashboard')).status,401);
+let catalog=await shop('catalog');assert.equal(catalog.status,200);assert.ok(catalog.products.length>=8);
+assert.equal((await fetch(base+'/server/config.example.php')).status,404);
+assert.equal((await fetch(base+'/tmp/admin-preview.json')).status,404);
+let denied=await fetch(base+'/api/index.php?action=product-save',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(denied.status,403);
+await admin('session');assert.equal((await admin('login',{email:'admin@gostore.mn',password:'wrong-test-password'})).status,401);
+assert.equal((await admin('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')))).status,200);
+const fakeImage=new FormData();fakeImage.append('image',new Blob(['<?php echo 1; ?>'],{type:'image/jpeg'}),'bad.jpg');assert.equal((await admin('image-upload',fakeImage)).status,400);
+const realImage=new FormData();realImage.append('image',new Blob([fs.readFileSync('assets/chair.jpg')],{type:'image/jpeg'}),'chair.jpg');const uploaded=await admin('image-upload',realImage);assert.equal(uploaded.status,200);assert.match(uploaded.image,/^uploads\/[a-f0-9]{32}$/);
+const product={id:'qa-product',name:'QA <b>аюулгүй</b> бараа',description:'Туршилтын бүтээгдэхүүн',category:'home',type:'local',image:'chair',price:12000,stock:10,active:true,demo:false,variants:['Стандарт']};
+assert.equal((await admin('product-save',{...product,price:-1})).status,400);
+assert.equal((await admin('product-save',product)).status,200);
+assert.equal((await admin('product-save',{...product,image:uploaded.image})).status,200);
+assert.equal((await shop('catalog')).products.find(p=>p.id===product.id).price,12000);
+const token=crypto.getRandomValues(new Uint8Array(32)).reduce((s,v)=>s+v.toString(16).padStart(2,'0'),'');
+const request={type:'cart',token,title:'QA сагсны хүсэлт',customer:'Тест хэрэглэгч',phone:'00000000',notes:'Автомат API шалгалт',items:[{id:'qa-product',variant:'Стандарт',qty:2,price:1}]};
+const created=await shop('order-create',request);assert.equal(created.status,201);assert.equal(created.order.subtotal,24000);assert.equal(created.order.customer,undefined);
+assert.equal((await shop('order-create',request)).order.id,created.order.id);
+assert.equal((await shop('order-get',{id:created.order.id,token:'0'.repeat(64)})).status,403);
+assert.equal((await admin('order-update',{id:created.order.id,status:'quoted',amount:27000,internal_note:'Дотоод тэмдэглэл'})).status,200);
+const viewed=await shop('order-get',{id:created.order.id,token});assert.equal(viewed.order.amount,27000);assert.equal(viewed.order.internal_note,undefined);
+assert.equal((await shop('invoice',{id:created.order.id,token})).status,503);
+const linkRequest={type:'link',token:'b'.repeat(64),title:'QA линк хүсэлт',customer:'Тест',phone:'00000000',notes:'',url:'https://taobao.com.evil.example/item',variant:'Хар',qty:1};
+assert.equal((await shop('order-create',linkRequest)).status,400);
+linkRequest.token=crypto.randomUUID().replaceAll('-','').repeat(2);linkRequest.url='https://item.taobao.com/item.htm?id=123';assert.equal((await shop('order-create',linkRequest)).status,201);
+assert.equal((await admin('product-save',{...product,active:false})).status,200);
+assert.equal((await shop('catalog')).products.some(p=>p.id==='qa-product'),false);
+assert.equal((await admin('order-update',{id:created.order.id,status:'cancelled',amount:27000,internal_note:'QA дууссан'})).status,200);
+assert.equal((await admin('logout',{})).status,200);assert.equal((await admin('dashboard')).status,401);
+fs.unlinkSync('assets/'+uploaded.image+'.jpg');
+console.log('PASS: auth, CSRF, private paths, catalog CRUD, server prices, idempotent requests, order access, quoting, disabled QPay, supplier URL validation, logout.');

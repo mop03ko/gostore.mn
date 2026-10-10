@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1646d8">
+  <meta name="description" content="GOStore — өөрийн дэлгүүрийн бараа болон Хятадаас линкээр захиалах сонголтыг нэг дор.">
+  <title>gostore.mn — Сонголт нэг дор.</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script><script src="store-server.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm-9 5 9 5 9-5M12 12v10M7.5 4.5l9 5V14"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 3 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0" transform="translate(1 0)"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2 4h12v13H2V4Zm12 5h4l4 4v4h-8"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m2 10 10-8 10 8M5 8v13h14V8M9 21v-8h6v8"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 2 8 3v7c0 5-8 10-8 10S4 17 4 12V5l8-3Z"/><path d="m8 11 3 3 5-5"/></symbol>
+  </svg>
+  <div class="announcement"><div class="container"><span>Сонголт нэг дор. <span class="announcement-separator">/</span> GOStore-д тавтай морил</span><button data-action="help">Хэрхэн захиалах вэ? <span aria-hidden="true">↗</span></button></div></div>
+  <header class="header">
+    <div class="container header-main">
+      <a href="./" class="brand" aria-label="GOStore нүүр хуудас"><img src="assets/logo.png" alt="gostore.mn" width="200" height="35"></a>
+      <form id="search-form" class="search-form" role="search"><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" placeholder="Юу хайж байна вэ?" autocomplete="off"><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
+      <div class="header-actions">
+        <button class="header-action" data-action="orders"><svg class="icon"><use href="#i-box"/></svg><span>Миний захиалга</span></button>
+        <button class="header-action" data-action="favorites" aria-label="Хадгалсан бараа"><span class="icon-wrap"><svg class="icon"><use href="#i-heart"/></svg><b class="count" id="favorite-count" hidden>0</b></span><span>Хадгалсан</span></button>
+        <button class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></button>
+      </div>
+    </div>
+    <div class="nav-wrap"><nav class="container main-nav" aria-label="Үндсэн цэс">
+      <a href="#categories" class="nav-categories"><svg class="icon"><use href="#i-grid"/></svg>Бүх ангилал</a>
+      <a class="nav-link" href="#main">Нүүр</a><button class="nav-link" data-filter="local">Бэлэн бараа <span class="nav-dot"></span></button><button class="nav-link" data-filter="china">Хятадаас захиалах</button><button class="nav-link" data-action="link">Линкээр захиалах</button>
+      <button class="nav-link nav-end" data-action="orders"><svg class="icon"><use href="#i-truck"/></svg>Захиалгын явц</button>
+    </nav></div>
+  </header>
+  <main id="main">
+    <section class="container hero-grid" aria-label="GOStore танилцуулга">
+      <div class="hero-banner">
+        <img class="hero-photo" src="assets/living.jpg" alt="Гэрэлтэй, тухтай зочны өрөө" fetchpriority="high">
+        <div class="hero-copy"><span class="eyebrow"><span></span>ӨДӨР ТУТМЫН ШИНЭ СОНГОЛТ</span><h1>Хүссэн бүхэн.<br><em>Нэг дор.</em></h1><p>Гэрээ, өөрийгөө, өдөр тутмаа<br>шинэчлэх сонголтоо эндээс олоорой.</p><a class="button yellow" href="#catalog">Бараа үзэх <svg class="icon"><use href="#i-arrow"/></svg></a><div class="hero-caption">GOSTORE COLLECTION <span>2026</span></div></div>
+        <div class="hero-note"><span class="note-dot"></span><span>Таны орон зайд<br><strong>таны хэв маяг.</strong></span></div>
+      </div>
+      <aside class="link-card"><div class="link-card-top"><span class="icon-tile"><svg class="icon"><use href="#i-link"/></svg></span><span class="small-label">ХИЛ ХЯЗГААРГҮЙ СОНГОЛТ</span></div><h2>Та линкээ өг.<br>Бид захиалгыг<br>тань бэлдье.</h2><p>Таалагдсан барааныхаа линкээр захиалгын хүсэлт бэлдээрэй.</p><div class="platforms"><span>taobao</span><span>1688<span class="com">.com</span></span><span>TMALL</span></div><form id="quick-link-form"><label class="sr-only" for="quick-link">Хятад сайтын барааны холбоос</label><div class="link-input"><svg class="icon"><use href="#i-link"/></svg><input id="quick-link" type="url" placeholder="Барааны линкээ оруулах" required></div><button class="button dark" type="submit">Линкээр захиалах <svg class="icon"><use href="#i-arrow"/></svg></button></form></aside>
+    </section>
+    <div class="container benefits"><div><svg class="icon"><use href="#i-grid"/></svg><span><strong>Хоёр төрлийн сонголт</strong><small>Бэлэн бараа + Хятад захиалга</small></span></div><div><svg class="icon"><use href="#i-link"/></svg><span><strong>Линкээр хялбар захиал</strong><small>Taobao, Tmall, 1688</small></span></div><div><svg class="icon"><use href="#i-bag"/></svg><span><strong>Төгрөгөөр ойлгомжтой үнэ</strong><small>Зардлаа урьдчилан харах</small></span></div><div><svg class="icon"><use href="#i-box"/></svg><span><strong>Захиалгаа нэг дор</strong><small>Сонголт бүрээ хадгалаарай</small></span></div></div>
+    <section class="container section" id="categories"><div class="section-heading"><div><span class="section-kicker">ЮУ ХАЙЖ БАЙНА ВЭ?</span><h2>Өөрт хэрэгтэйгээ олоорой</h2></div><button class="text-button" data-category="all">Бүх бараа <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="category-grid" id="category-grid"></div></section>
+    <section class="container section catalog-section" id="catalog"><div class="section-heading"><div><span class="section-kicker">GOSTORE COLLECTION</span><h2 id="catalog-title">Танд санал болгох</h2></div><span class="sample-label">Жишээ каталог</span></div>
+      <div class="catalog-toolbar"><div class="filter-tabs" role="group" aria-label="Барааны төрөл"><button class="active" data-filter="all" aria-pressed="true">Бүгд</button><button data-filter="local" aria-pressed="false">Бэлэн бараа</button><button data-filter="china" aria-pressed="false">Хятадаас захиалах</button><button data-filter="saved" aria-pressed="false">Хадгалсан</button></div><label class="sort-label"><span class="sr-only">Бараа эрэмбэлэх</span><select id="sort"><option value="featured">Санал болгох</option><option value="price-asc">Үнэ: багаас их</option><option value="price-desc">Үнэ: ихээс бага</option></select></label></div>
+      <div class="catalog-summary"><span id="result-count" role="status"></span><button id="reset-filters" class="text-button" hidden>Шүүлтүүр арилгах ×</button></div><div class="product-grid" id="product-grid"></div>
+    </section>
+    <section class="container how-section" id="how-it-works"><div class="how-intro"><span class="section-kicker">ХОЛЫН СОНГОЛТЫГ ОЙРТУУЛНА</span><h2>Линкээс эхлээд<br>таны гарт хүртэл.</h2><button class="text-button" data-action="help">Захиалах заавар <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="steps"><article><span class="step-number">01</span><h3>Сонгох</h3><p>Бэлэн бараанаас сонгох эсвэл Хятад сайтын линкээ оруулах.</p></article><article><span class="step-number">02</span><h3>Баталгаажуулах</h3><p>Барааны хувилбар, үнэ, хүргэлтийн нөхцөлөө нягтлах.</p></article><article><span class="step-number">03</span><h3>Хүлээн авах</h3><p>Захиалгын явцаа хянаж, тохирсон хэлбэрээр бараагаа авах.</p></article></div></section>
+    <section class="container editorial"><img src="assets/living.jpg" alt="Байгалийн өнгө хосолсон гэрийн интерьер" loading="lazy"><div><span class="section-kicker">ЖИЖИГ ӨӨРЧЛӨЛТ. ШИНЭ МЭДРЭМЖ.</span><h2>Тухтай гэрийн<br>таны гэсэн булан.</h2><p>Өдөр бүр хэрэглэдэг зүйлсээс<br>онцгой мэдрэмж эхэлдэг.</p><button class="button blue" data-category="home">Гэр ахуйн бараа <svg class="icon"><use href="#i-arrow"/></svg></button></div></section>
+    <div class="container preview-notice"><svg class="icon"><use href="#i-shield"/></svg><p><strong>Туршилтын хувилбар.</strong> Бараа, үнэ нь загварын жишээ. Сагс болон захиалгын ноорог энэ хөтөчид хадгалагдана. Одоогоор бодит захиалга илгээх, төлбөр төлөх боломжгүй.</p></div>
+  </main>
+  <footer><div class="container footer-main"><div class="footer-brand"><a href="./" class="brand"><img src="assets/logo.png" alt="gostore.mn" width="200" height="35" loading="lazy"></a><p>Сонголт нэг дор.<br>Таны өдөр тутмын шинэ боломж.</p></div><div><h3>GOStore</h3><button data-filter="local">Бэлэн бараа</button><button data-filter="china">Хятадаас захиалах</button><button data-action="link">Линкээр захиалах</button></div><div><h3>Танд тусалъя</h3><button data-action="help">Хэрхэн захиалах вэ?</button><button data-action="shipping">Хүргэлтийн тухай</button><button data-action="privacy">Мэдээллийн хадгалалт</button></div><div class="footer-message"><span>СОНГОЛТ ТАНЬ ЭНДЭЭС ЭХЭЛНЭ</span><strong>Бага хай.<br>Илүүг ол.</strong></div></div><div class="container footer-bottom"><span>© <span id="year"></span> GOStore. Сонголт нэг дор.</span><span>Монгол хэл <span aria-hidden="true">·</span> MNT ₮</span></div></footer>
+  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="#main"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><a href="#catalog"><svg class="icon"><use href="#i-grid"/></svg>Бараа</a><button data-action="link"><svg class="icon"><use href="#i-link"/></svg>Линк</button><button data-action="cart"><svg class="icon"><use href="#i-bag"/></svg>Сагс <span id="mobile-cart-count">0</span></button><button data-action="orders"><svg class="icon"><use href="#i-box"/></svg>Захиалга</button></nav>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="Цонх хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="modal-body"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

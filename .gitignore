@@ -1,0 +1,16 @@
+.vscode/sftp.json
+.env
+.env.*
+!.env.example
+tmp/
+output/
+node_modules/
+debug.log
+server/config.local.php
+*.sqlite*
+*.zip
+*.ai
+*.pdf
+.vscode/
+assets/uploads/*
+!assets/uploads/.htaccess
