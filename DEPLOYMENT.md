@@ -71,3 +71,20 @@ Taobao/1688 бараа автоматаар татах, карго явц хол
 - Админ самбар сүүлийн 1000 хүсэлтийг харуулна. Томруулбал pagination, audit log, roles, хэрэглэгчийн бүртгэл, inventory reservation нэмнэ.
 - Захиалга харах түлхүүр тухайн хөтөчид хадгалагдана. Хөтчийн мэдээллийг устгавал хэрэглэгч админтай холбогдож захиалгаа лавлана.
 - Хөгжүүлэлтийн `tmp/`, тестийн өгөгдөл, лог, `.vscode`, brand source болон ZIP файлууд repository/production-д орохгүй.
+
+## Үндсэн сайтад “Тун удахгүй” хуудас тавих
+
+`coming-soon/index.html` нь хөгжүүлж буй дэлгүүрээс тусдаа түр нүүр хуудас. ZIP бэлтгэх:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package-coming-soon.ps1
+```
+
+`output/gostore-coming-soon.zip` нь зөвхөн `index.html`, `.htaccess`, `assets/logo.png` файлуудтай.
+
+1. cPanel → Domains дотроос `gostore.mn`-ийн Document Root-ийг харна (ихэвчлэн `public_html`).
+2. File Manager дотор тухайн хавтасны одоогийн `index.html` болон `.htaccess` файлуудыг компьютертоо нөөцөлнө. `.htaccess` харагдахгүй бол Settings → Show Hidden Files идэвхжүүлнэ.
+3. ZIP-ийг Document Root-д Upload → Extract хийнэ. `index.html` нь уг хавтасны шууд дотор байрлах ёстой.
+4. `https://gostore.mn`-ийг Ctrl+F5 дарж шалгана. Шаардлагатай бол хостинг/CDN кэшийг цэвэрлэнэ.
+
+Энэ ZIP нь зөвхөн нүүр хуудсыг солино; серверт өмнө нь байрласан бусад URL-ийг хаахгүй. Дэлгүүр нээх үед бүрэн аппын ZIP-ээр сольж, серверийн тохиргоог тусад нь хийнэ.

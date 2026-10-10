@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1646d8">
+  <meta name="description" content="GOStore тун удахгүй. Хятадаас бараа захиалах болон бэлэн барааны дэлгүүр — сонголт нэг дор.">
+  <title>GOStore — Тун удахгүй</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f7fb; color: #132344; font-family: Arial, Helvetica, sans-serif; }
+    .page { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; max-width: 1600px; margin: auto; padding: 40px 6vw 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .logo { display: block; width: 200px; height: auto; }
+    .slogan { font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+    main { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 48px; padding: 70px 0; }
+    .status { display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid #dbe2f3; border-radius: 30px; font-size: 12px; font-weight: bold; letter-spacing: .07em; }
+    .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #1646d8; }
+    h1 { font-size: clamp(64px, 7.5vw, 112px); line-height: .98; letter-spacing: -.065em; margin: 28px 0; font-weight: 800; }
+    h1 span { color: #1646d8; }
+    .intro { max-width: 430px; font-size: 19px; line-height: 1.7; color: #566179; margin: 0; }
+    .services { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .services span { border-bottom: 2px solid #ffc400; padding: 0 0 8px; font-size: 13px; font-weight: 600; }
+    .services i { font-style: normal; color: #a9b1c2; padding: 0 3px; }
+    .art { position: relative; overflow: hidden; background: #1646d8; border-radius: 28px; aspect-ratio: 1; max-width: 540px; width: 100%; justify-self: end; }
+    .art svg { display: block; width: 100%; height: 100%; }
+    .art-label { position: absolute; bottom: 28px; left: 32px; right: 32px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 12px; letter-spacing: .14em; }
+    .art-label b { color: #ffc400; font-size: 24px; font-weight: 400; }
+    footer { border-top: 1px solid #dde2ec; padding-top: 22px; display: flex; justify-content: space-between; gap: 16px; font-size: 12px; color: #657088; line-height: 1.5; }
+    @media (min-width: 1600px) { .page { padding-left: 96px; padding-right: 96px; } }
+    @media (max-width: 760px) {
+      .page { padding: 26px 24px 20px; }
+      .logo { width: 162px; }
+      .slogan { font-size: 11px; max-width: 70px; text-align: right; line-height: 1.5; }
+      main { grid-template-columns: 1fr; gap: 36px; padding: 54px 0 32px; }
+      h1 { font-size: clamp(58px, 14vw, 86px); margin: 22px 0; }
+      .intro { font-size: 16px; }
+      .services { margin-top: 26px; gap: 8px; }
+      .services span { font-size: 12px; }
+      .art { max-width: none; aspect-ratio: 1.2; border-radius: 20px; }
+      .art-label { bottom: 20px; left: 24px; right: 24px; font-size: 10px; }
+      footer { flex-wrap: wrap; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header><img class="logo" src="assets/logo.png" alt="gostore.mn" width="200" height="35"><span class="slogan">Сонголт нэг дор.</span></header>
+    <main>
+      <section aria-labelledby="title">
+        <span class="status">НЭЭЛТЭД БЭЛДЭЖ БАЙНА</span>
+        <h1 id="title">Тун<br><span>удахгүй.</span></h1>
+        <p class="intro">Таны дараагийн дуртай сонголт эндээс эхэлнэ. Бид шинэ дэлгүүрээ нээхээр бэлдэж байна.</p>
+        <div class="services" aria-label="Бидний үйлчилгээ"><span>Хятадаас бараа захиалах</span><i aria-hidden="true">/</i><span>Бэлэн барааны дэлгүүр</span></div>
+      </section>
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 540 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="270" cy="260" r="208" stroke="white" stroke-opacity=".12"/>
+          <circle cx="270" cy="260" r="160" stroke="white" stroke-opacity=".12"/>
+          <path d="M54 123H92M73 104V142M438 355H466M452 341V369" stroke="#ffc400" stroke-width="2"/>
+          <circle cx="444" cy="104" r="5" fill="#ffc400"/>
+          <circle cx="83" cy="361" r="4" fill="white"/>
+          <ellipse cx="280" cy="430" rx="145" ry="18" fill="#0e31a0" fill-opacity=".5"/>
+          <path d="M139 215L277 147L411 215L274 285Z" fill="#ffda4c"/>
+          <path d="M139 215L274 285V428L139 357Z" fill="#ffc400"/>
+          <path d="M274 285L411 215V357L274 428Z" fill="#e6ac00"/>
+          <path d="M221 175L359 241L328 258L192 190Z" fill="#fff0ad"/>
+          <path d="M328 258L359 241V293L328 310Z" fill="#f6d46b"/>
+          <path d="M170 305L228 335V376L170 346Z" fill="#fff"/>
+          <path d="M180 321L216 340M180 331L205 344" stroke="#1646d8" stroke-width="3"/>
+          <rect x="322" y="87" width="104" height="104" rx="26" fill="#fff" transform="rotate(12 322 87)"/>
+          <path d="M338 139L354 158L386 128" stroke="#1646d8" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="art-label"><span>СОНГОЛТ НЭГ ДОР.</span><b>↗</b></div>
+      </div>
+    </main>
+    <footer><span>© GOStore. Бүх эрх хуулиар хамгаалагдсан.</span><span>gostore.mn</span></footer>
+  </div>
+</body>
+</html>
