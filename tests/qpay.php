@@ -11,4 +11,14 @@ expect(paid_amount(['rows'=>[array_replace($row,['payment_amount'=>'-100'])]])==
 expect(product_link('https://item.taobao.com/item.htm?id=1'),'Supplier URL accepted.');
 expect(!product_link('https://taobao.com.attacker.test/'),'Spoofed domain rejected.');
 expect(!product_link('https://user:pass@taobao.com/'),'Credentials in URLs rejected.');
-echo "PASS: payment amount/currency/status/deduplication and supplier URL validation.\n";
+
+$now = 1791600000;
+expect(qpay_token_expiry(['expires_in'=>$now+3600], $now)===$now+3600, 'Absolute expiry must be preserved.');
+expect(qpay_token_expiry(['expires_in'=>(string)($now+3600)], $now)===$now+3600, 'Integer timestamp strings accepted.');
+foreach ([[], ['expires_in'=>$now-1], ['expires_in'=>$now], ['expires_in'=>3600], ['expires_in'=>null], ['expires_in'=>true], ['expires_in'=>'invalid'], ['expires_in'=>'999999999999999999999999']] as $invalid) {
+    $rejected = false;
+    try { qpay_token_expiry($invalid, $now); } catch (ApiError $e) { $rejected = $e->getCode()===502; }
+    expect($rejected, 'Expired or malformed timestamp must not gain a new lifetime.');
+}
+
+echo "PASS: token expiry, payment amount/currency/status/deduplication and supplier URL validation.\n";

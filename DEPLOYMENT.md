@@ -37,6 +37,10 @@ Linux CLI дээр `php scripts/password.php`-д нууц үгийг stdin-ээ�
 
 Эрх аваагүй тул анхдагчаар унтраалттай. [QPay-ийн албан ёсны баримт](https://developer.qpay.mn/mn/docs/merchant?version=2.0.0)-ын дагуу token, invoice, callback → payment/check урсгал бэлтгэсэн.
 
+2026-10-10-нд [API жагсаалт](https://developer.qpay.mn/mn/docs/apis) болон Merchant V2-ийн token, invoice, payment/check лавлахтай тулгасан. Token авахад Basic, invoice/payment шалгахад Bearer ашиглана. `expires_in` нь Unix timestamp; хугацаа дууссан эсвэл буруу утгатай token-ийг хадгалахгүй. Хүчинтэй token-ийг серверийн private cache-д дахин ашиглана. Refresh endpoint одоогоор холбогдоогүй; хугацаа дуусахад Basic auth-аар шинэ token авна.
+
+QPay-ээс GOStore-ийн sandbox болон production орчны `client_id`, `client_secret`, `invoice_code` авна. Бүртгэлийн холбоо барих мэйл: `shop@gostore.mn`; сайт: `https://gostore.mn`. Эдгээр мэйл/домэйн нь API эрхийг орлохгүй.
+
 `server/config.local.php` дотор дараах тохиргоог өөрийн утгаар нэм:
 
 ```php

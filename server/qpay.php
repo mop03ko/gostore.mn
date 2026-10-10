@@ -12,6 +12,18 @@ function qpay_http(string $path, array $payload, string $auth): array {
     if ($raw===false || $status<200 || $status>=300) fail('QPay холболтын алдаа. Дахин нэхэмжлэл үүсгэхээс өмнө админ шалгана уу.',502);
     $data=json_decode($raw,true); if (!is_array($data)) fail('QPay хариу буруу байна.',502); return $data;
 }
+// QPay returns an absolute Unix timestamp, not a duration in seconds.
+function qpay_token_expiry(array $data, ?int $now = null): int {
+    $value = $data['expires_in'] ?? null;
+    if ((!is_int($value) && !is_string($value)) || !preg_match('/^\d+$/', (string)$value)) {
+        fail('QPay token-ий хугацаа буруу ирлээ.', 502);
+    }
+    $expires = filter_var($value, FILTER_VALIDATE_INT);
+    if ($expires === false || $expires <= ($now ?? time())) {
+        fail('QPay token-ий хугацаа дууссан байна. Серверийн цаг болон QPay тохиргоог шалгана уу.', 502);
+    }
+    return $expires;
+}
 function qpay_token(): string {
     if (!qpay_ready()) fail('QPay merchant тохиргоо хараахан хийгдээгүй.',503);
     $q=config()['qpay']; $key=hash('sha256',$q['environment'].$q['client_id'].$q['client_secret']);
@@ -23,7 +35,7 @@ function qpay_token(): string {
         $data=qpay_http('/v2/auth/token',[],'Basic '.base64_encode($q['client_id'].':'.$q['client_secret']));
         if (empty($data['access_token'])) fail('QPay token ирсэнгүй.',502);
         // QPay access token expiration is an absolute Unix timestamp.
-        $expires=(int)($data['expires_in']??0); if ($expires<time()) $expires=time()+min(max($expires,60),300);
+        $expires=qpay_token_expiry($data);
         ftruncate($lock,0); rewind($lock); fwrite($lock,json_encode(['key'=>$key,'token'=>$data['access_token'],'expires'=>$expires]));
         return $data['access_token'];
     } finally { flock($lock,LOCK_UN); fclose($lock); }
