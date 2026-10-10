@@ -13,6 +13,19 @@
 
 ## Ажиллуулах
 
+Үндсэн кодыг `D:\Gostore.mn` хавтаст засаж хадгална. GitHub нь энэ локал төслийн хувилбарын нөөц юм: [mop03ko/gostore.mn](https://github.com/mop03ko/gostore.mn).
+
+Өөрчлөлтөө шалгасны дараа VS Code → Source Control → Commit → Sync Changes ашиглах эсвэл терминалд:
+
+```powershell
+git status
+git add <өөрчилсөн-файлууд>
+git commit -m "Өөрчлөлтийн тайлбар"
+git push origin main
+```
+
+Save нь локал файлыг хадгална; Commit/Sync Changes нь GitHub руу хувилбарыг илгээнэ.
+
 Эхлээд өөрийн админ эрхийг локал дээр тохируул:
 
 ```powershell
