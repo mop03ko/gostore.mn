@@ -16,7 +16,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/configure-admin.ps1
 ```
 
-Имэйл, 14+ тэмдэгт нууц үгийг зөвхөн өөрийн компьютерт оруулна. Скрипт password hash бүхий `server/config.local.php` үүсгэнэ. Нууц үгийг GitHub эсвэл чатад оруулахгүй. Энэ файл ZIP/Git-д орохгүй.
+Имэйл, 14+ тэмдэгт нууц үгийг зөвхөн өөрийн компьютерт оруулна. Скрипт password hash бүхий `server/config.local.php` үүсгэнэ. Нууц үгийг GitHub эсвэл чатад оруулахгүй. Энэ файл ZIP/Git-д орохгүй. QPay тохиргоо аль хэдийн байвал скрипт түүнийг хадгалж, зөвхөн анхны админ эрхийг нэмнэ; үүссэн админы нууц үгийг дарж бичихгүй.
 
 Linux CLI дээр `php scripts/password.php`-д нууц үгийг stdin-ээр дамжуулж hash гарган `config.local.php`-д тавьж болно. Жишээ бүтэц `server/config.example.php`-д бий. Browser setup endpoint зориуд байхгүй.
 
@@ -35,7 +35,7 @@ Linux CLI дээр `php scripts/password.php`-д нууц үгийг stdin-ээ�
 
 ## QPay Merchant V2
 
-Эрх аваагүй тул анхдагчаар унтраалттай. [QPay-ийн албан ёсны баримт](https://developer.qpay.mn/mn/docs/merchant?version=2.0.0)-ын дагуу token, invoice, callback → payment/check урсгал бэлтгэсэн.
+Production merchant эрх ирсэн; 2026-10-12-нд token авах нэвтрэлт амжилттай шалгагдсан. Локал `server/config.local.php`-д production утгууд хадгалагдсан, `enabled=false`. Нэхэмжлэл, төлбөр, callback урсгалыг бодитоор хараахан шалгаагүй. [QPay-ийн албан ёсны баримт](https://developer.qpay.mn/mn/docs/merchant?version=2.0.0)-ын дагуу token, invoice, callback → payment/check урсгал бэлтгэсэн.
 
 2026-10-10-нд [API жагсаалт](https://developer.qpay.mn/mn/docs/apis) болон Merchant V2-ийн token, invoice, payment/check лавлахтай тулгасан. Token авахад Basic, invoice/payment шалгахад Bearer ашиглана. `expires_in` нь Unix timestamp; хугацаа дууссан эсвэл буруу утгатай token-ийг хадгалахгүй. Хүчинтэй token-ийг серверийн private cache-д дахин ашиглана. Refresh endpoint одоогоор холбогдоогүй; хугацаа дуусахад Basic auth-аар шинэ token авна.
 
@@ -63,7 +63,7 @@ QPay-ээс GOStore-ийн sandbox болон production орчны `client_id`,
 - Invoice үүсгэх оролдлогын хариу тодорхойгүй бол `review` төлөвт түгжинэ. QPay merchant portal/support-оор sender_invoice_no-г тулгаж, давхар invoice үүсгээгүйг шийдсэний дараа хөгжүүлэгч өгөгдлийг засна. Автомат дахин invoice үүсгэхгүй.
 - Нэхэмжлэлтэй хүсэлтийн дүнг өөрчлөх, шууд цуцлахыг хаасан. Refund, eBarimt, reconciliation dashboard одоогоор хэрэгжээгүй.
 
-**Sandbox эрхгүй тул бодит QPay invoice/callback урсгал баталгаажаагүй.** Merchant эрх авсны дараа төлөөгүй, дутуу төлсөн, төлсөн, давхар callback, timeout урсгалуудаар acceptance test хийж байж production нээнэ.
+**Production token авах шалгалт нь төлбөрийн урсгалын баталгаа биш.** QPay-ээс sandbox эрх авч, төлөөгүй, дутуу төлсөн, төлсөн, давхар callback, timeout урсгалуудаар acceptance test хийж байж production нээнэ.
 
 ## Бусад API
 
