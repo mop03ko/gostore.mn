@@ -82,7 +82,14 @@ try {
         if (!in_array($p['image'],['chair','headphones','backpack','sneakers','watch','lamp','skincare','living'],true) && !(preg_match('#^uploads/[a-f0-9]{32}$#',$p['image']) && is_file(__DIR__.'/../assets/'.$p['image'].'.jpg'))) fail('Зураг буруу.');
         $variants=$b['variants']??null; if (!is_array($variants)||count($variants)<1||count($variants)>30) fail('Хувилбар оруулна уу.');
         $p['variants']=array_values(array_unique(array_map(fn($v)=>str_field(['v'=>$v],'v',100),$variants)));$p['source']=$p['type']==='local'?'GOStore сонголт':'Хятад захиалга';
-        db()->prepare('INSERT INTO products VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated=excluded.updated')->execute([$id,json_encode($p,JSON_UNESCAPED_UNICODE),gmdate('c')]);json_out(['product'=>$p]);
+        $db=db();$db->beginTransaction();
+        try {
+            $data=json_encode($p,JSON_UNESCAPED_UNICODE);$updated=gmdate('c');
+            $db->prepare('INSERT OR IGNORE INTO products VALUES (?,?,?)')->execute([$id,$data,$updated]);
+            $db->prepare('UPDATE products SET data=?,updated=? WHERE id=?')->execute([$data,$updated,$id]);
+            $db->commit();
+        } catch(Throwable $e){$db->rollBack();throw $e;}
+        json_out(['product'=>$p]);
     }
     if ($action==='order-update') {
         $db=db();$db->exec('BEGIN IMMEDIATE');

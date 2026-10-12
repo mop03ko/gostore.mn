@@ -45,7 +45,9 @@ function db(): PDO {
 function limit_attempts(string $key, int $max, int $seconds): void {
     $db=db(); $key=hash('sha256',$key); $now=time();
     $db->prepare('DELETE FROM limits WHERE expires < ?')->execute([$now]);
-    $db->prepare('INSERT INTO limits VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET hits=hits+1')->execute([$key,$now+$seconds]);
+    // cPanel can expose SQLite 3.7.x, which predates UPSERT syntax.
+    $db->prepare('INSERT OR IGNORE INTO limits VALUES (?,0,?)')->execute([$key,$now+$seconds]);
+    $db->prepare('UPDATE limits SET hits=hits+1 WHERE key=?')->execute([$key]);
     $s=$db->prepare('SELECT hits FROM limits WHERE key=?'); $s->execute([$key]);
     if ((int)$s->fetchColumn()>$max) fail('Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу.',429);
 }
