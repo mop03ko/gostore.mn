@@ -4,7 +4,7 @@ declare(strict_types=1);
 function supplier_ready(): bool { return !empty(config()['otcommerce']['api_key']) && shipping_settings()['supplier_enabled']; }
 function supplier_cache_key(string $path,array $query): string { ksort($query);return hash('sha256',$path.'?'.http_build_query($query)); }
 function supplier_request(string $path,array $query): array {
-    if(!supplier_ready())fail('1688 каталог түр идэвхгүй байна. Линкээр үнийн санал хүсэж болно.',503);
+    if(!supplier_ready())fail('1688 каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
     $read=static function()use($file){return is_file($file)?json_decode(file_get_contents($file),true):null;};
@@ -68,7 +68,7 @@ function supplier_detail(string $id): array {
 }
 function supplier_order(array $b): array {
     $d=supplier_detail(str_field($b,'product_id',50));$p=$d['product'];
-    if($d['stale']||!$p['sellable'])fail('Барааны худалдаалах нөхцөлийг шинэчилж чадсангүй. Линкээр үнийн санал хүснэ үү.',409);
+    if($d['stale']||!$p['sellable'])fail('Барааны худалдаалах нөхцөлийг шинэчилж чадсангүй. Дараа дахин оролдоно уу.',409);
     $sku=str_field($b,'sku',150);$variant=null;foreach($p['variants'] as $v)if($v['id']===$sku)$variant=$v;
     if(!$variant||$variant['cny']===null)fail('Барааны хувилбар эсвэл үнэ тодорхойгүй байна.',409);
     $qty=int_field($b,'qty',1,9999);if($qty<$p['min_qty']||($qty-$p['min_qty'])%$p['step']!==0||($variant['stock']!==null&&$qty>$variant['stock']))fail('Багцын тоо эсвэл үлдэгдлийг шалгана уу.');

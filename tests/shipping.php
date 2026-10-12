@@ -11,4 +11,8 @@ $fixture=['Id'=>'abb-123456789','Title'=>'Өнгө Үүргэвч','MainPictureU
 $p=supplier_normalize($fixture,true);check($p['mnt']===6875&&$p['image']==='','Conversion and unsafe URL');check($p['variants'][0]['label']==='Өнгө: Улаан'&&$p['variants'][0]['stock']===3,'Variant mapping');
 check(supplier_cny(['OriginalPrice'=>20,'OriginalCurrencyCode'=>'USD'])===null,'Currency isolation');
 $before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>0.5]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===7000,'Snapshot preserved');
-echo "Shipping rounding, volume thresholds, validation, rate snapshots and supplier normalization passed.\n";
+$destination=warehouse_destination(['id'=>'GS-TEST-123'],['family_name'=>'Бат','customer'=>'Тамир','warehouse'=>['recipient'=>'Wrong','address'=>'Wrong']]);
+check($destination['recipient']==='Бат Тамир / GS-TEST-123','Server recipient and code');
+check($destination['address']==='内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号'&&$destination['phone']==='18047981132'&&$destination['contact_phone']==='99889815','Warehouse destination');
+foreach([['family_name'=>'','customer'=>'Тамир'],['family_name'=>"Бат\nOther",'customer'=>'Тамир']] as $invalid){try{warehouse_destination(['id'=>'GS-TEST-123'],$invalid);throw new RuntimeException('Invalid recipient accepted');}catch(ApiError){}}
+echo "Shipping rounding, volume thresholds, validation, rate snapshots, supplier normalization and warehouse recipient passed.\n";

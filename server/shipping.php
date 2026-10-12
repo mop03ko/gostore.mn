@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 function shipping_settings(): array {
-    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'','warehouse_phone'=>'','supplier_enabled'=>true,'api_daily_limit'=>40];
+    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40];
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['shipping_settings']);
     return array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true));
 }
@@ -14,6 +14,7 @@ function shipping_save(array $b): array {
     $s=[];
     foreach(['cny_rate'=>[1,100000],'weight_step_kg'=>[0.01,1000],'weight_step_mnt'=>[0,10000000],'volume_small_cny'=>[0,1000000],'volume_large_cny'=>[0,1000000],'volume_threshold'=>[0.001,1000],'service_percent'=>[0,100]] as $k=>$range)$s[$k]=decimal_field($b,$k,...$range);
     $s['warehouse_address']=str_field($b,'warehouse_address',1000,false);$s['warehouse_phone']=str_field($b,'warehouse_phone',80,false);
+    $s['warehouse_contact_phone']=str_field($b,'warehouse_contact_phone',80,false);
     $s['supplier_enabled']=($b['supplier_enabled']??false)===true;$s['api_daily_limit']=int_field($b,'api_daily_limit',1,10000);$s['updated']=gmdate('c');
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);return $s;
 }
@@ -28,4 +29,12 @@ function shipping_calculate(array $b,?array $s=null): array {
 }
 function shipping_public(): array {
     $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled']);return $s;
+}
+function warehouse_destination(array $order,array $input): array {
+    $family=str_field($input,'family_name',100);$given=str_field($input,'customer',100);
+    foreach([$family,$given] as $name)if(preg_match('/[\x00-\x1F\x7F]/u',$name))fail('Овог, нэр нэг мөрөнд байна.');
+    $s=shipping_settings();if(trim($s['warehouse_address'])===''||trim($s['warehouse_phone'])==='')fail('Эрээн агуулахын мэдээллийг админ тохируулах шаардлагатай.',503);
+    $recipient=$family.' '.$given.' / '.$order['id'];
+    return ['family_name'=>$family,'given_name'=>$given,'recipient'=>$recipient,'order_code'=>$order['id'],'address'=>$s['warehouse_address'],'phone'=>$s['warehouse_phone'],'contact_phone'=>$s['warehouse_contact_phone'],
+        'label'=>"收件人: ".$recipient."\n手机号: ".$s['warehouse_phone']."\n地址: ".$s['warehouse_address']."\n联系电话: ".$s['warehouse_contact_phone']."\n订单号: ".$order['id']];
 }

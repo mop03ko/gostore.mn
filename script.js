@@ -117,18 +117,6 @@ function showCheckout() {
   openModal('Захиалгын ноорог',`<p class="modal-intro">Сонгосон бараануудаа нэг ноорогт хадгалаарай. Энэ мэдээлэл сервер рүү илгээгдэхгүй, зөвхөн энэ хөтөчид үлдэнэ.</p><form id="checkout-form"><div class="form-grid"><label class="field full">Нооргийн нэр<input name="title" placeholder="Жишээ: Гэрийн шинэ сонголт" maxlength="80" required></label><label class="field full">Хүлээн авах хүсэлт<select name="delivery"><option>Хүргэлтээр авах</option><option>Өөрөө очиж авах</option><option>Дараа шийдэх</option></select></label><label class="field full">Нэмэлт тэмдэглэл<textarea name="notes" maxlength="500" placeholder="Өнгө, хэмжээ болон бусад хүсэлт"></textarea></label></div><div class="cart-totals"><div class="total"><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">Хүргэлтийн төлбөр баталгаажаагүй. Ноорог хадгалахад төлбөр төлөгдөхгүй, сагс тань хэвээр үлдэнэ.</div><div class="form-actions"><button type="button" class="button outline" data-action="cart">Сагс руу буцах</button><button class="button blue" type="submit">Ноорог хадгалах ${icon('check')}</button></div></form>`);
 }
 
-function parseProductLink(value) {
-  try {
-    const url=new URL(value.trim());
-    const allowed=['taobao.com','tmall.com','1688.com','tb.cn'];
-    if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.port||!allowed.some(host=>url.hostname===host||url.hostname.endsWith('.'+host)))return null;
-    return url.href;
-  }catch{return null;}
-}
-function showLinkOrder(value='') {
-  if(window.storeServer?.ready)return window.storeServer.link(value);
-  openModal('Линкээр захиалах',`<p class="modal-intro">Taobao, Tmall эсвэл 1688-аас сонгосон барааны холбоосоо оруулаарай. Үнийн санал авах хүсэлтийн ноорог бэлдэнэ.</p><form id="link-order-form"><div class="form-grid"><label class="field full">Барааны холбоос<input type="url" name="url" value="${esc(value)}" placeholder="https://item.taobao.com/item.htm?id=…" maxlength="2000" required></label><label class="field full">Барааны нэр<input name="title" maxlength="100" placeholder="Ямар бараа захиалах вэ?" required></label><label class="field">Өнгө / хэмжээ<input name="variant" maxlength="100" placeholder="Жишээ: Хар, L" required></label><label class="field">Тоо ширхэг<input type="number" name="qty" value="1" min="1" max="99" step="1" required></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="500" placeholder="Сонголтын тухай нэмэлт мэдээлэл"></textarea></label></div><p id="link-error" class="form-error" role="alert"></p><div class="info-box">Барааны мэдээлэл автоматаар татагдахгүй. Үнэ, үлдэгдэл, тээвэр баталгаажаагүй. Хадгалсан ноорог энэ хөтөчид үлдэх бөгөөд GOStore-д илгээгдэхгүй.</div><div class="form-actions"><button class="button blue" type="submit">Хүсэлтийн ноорог хадгалах ${icon('arrow')}</button></div></form>`);
-}
 function saveDraft(type,title,text) {
   if(state.drafts.length>=100){toast('100 ноорог хадгалсан байна. Хэрэггүй нооргоо устгаад дахин оролдоорой.');return false;}
   const id='GS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
@@ -137,7 +125,7 @@ function saveDraft(type,title,text) {
 }
 function showOrders() {
   if(window.storeServer?.ready)return window.storeServer.orders();
-  openModal('Миний захиалгын ноорог',`<p class="modal-intro">Энд зөвхөн энэ хөтөчид бэлдсэн нооргууд харагдана. Серверт баталгаажсан захиалга болон ачааны бодит хяналт хараахан холбогдоогүй.</p>`+(state.drafts.length?state.drafts.map(d=>`<article class="draft-card"><div class="draft-top"><h3>${esc(d.title)}</h3><span class="draft-tag">Ноорог · илгээгээгүй</span></div><p>${esc(d.id)} · ${Number.isNaN(Date.parse(d.created))?'Огноо тодорхойгүй':new Date(d.created).toLocaleDateString('mn-MN')}</p><p>${d.type==='link'?'Линкээр захиалах хүсэлт':'GOStore сагсны ноорог'}</p><div class="draft-buttons"><button class="text-button" data-view-draft="${esc(d.id)}">Дэлгэрэнгүй</button><button class="text-button" data-download="${esc(d.id)}">Татах ↓</button><button class="text-button" data-delete-draft="${esc(d.id)}">Устгах</button></div></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>Ноорог хараахан алга</h3><p>Сагснаасаа эсвэл барааны линкээр ноорог үүсгээрэй.</p><button class="button blue" data-action="link">Линкээр захиалах</button></div>`));
+  openModal('Миний захиалгын ноорог',`<p class="modal-intro">Энд зөвхөн энэ хөтөчид бэлдсэн нооргууд харагдана. Серверт баталгаажсан захиалга болон ачааны бодит хяналт хараахан холбогдоогүй.</p>`+(state.drafts.length?state.drafts.map(d=>`<article class="draft-card"><div class="draft-top"><h3>${esc(d.title)}</h3><span class="draft-tag">Ноорог · илгээгээгүй</span></div><p>${esc(d.id)} · ${Number.isNaN(Date.parse(d.created))?'Огноо тодорхойгүй':new Date(d.created).toLocaleDateString('mn-MN')}</p><p>${d.type==='link'?'Хуучин хүсэлтийн ноорог':'GOStore сагсны ноорог'}</p><div class="draft-buttons"><button class="text-button" data-view-draft="${esc(d.id)}">Дэлгэрэнгүй</button><button class="text-button" data-download="${esc(d.id)}">Татах ↓</button><button class="text-button" data-delete-draft="${esc(d.id)}">Устгах</button></div></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>Ноорог хараахан алга</h3><p>Сагснаасаа ноорог үүсгээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`));
 }
 function downloadDraft(id) {
   const d=state.drafts.find(d=>d.id===id);if(!d)return;
@@ -146,13 +134,13 @@ function downloadDraft(id) {
   const a=document.createElement('a');a.href=url;a.download=`${d.id.replace(/[^a-z0-9-]/gi,'')}.txt`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 const helpContent = {
-  help:{title:'Хэрхэн захиалах вэ?',html:`<p class="modal-intro">GOStore нь өөрийн дэлгүүр болон Хятадаас линкээр захиалах хоёр төрлийн сонголттой.</p><ol class="help-list"><li><strong>Бэлэн бараанаас сонгох</strong>Бараагаа нээгээд хувилбар, тоо ширхэгээ сонгон сагсанд нэмнэ.</li><li><strong>Линкээр хүсэлт бэлдэх</strong>Taobao, Tmall, 1688-ийн барааны линк, өнгө, хэмжээ, тоо ширхэгийг оруулна.</li><li><strong>Нооргоо хадгалах</strong>“Миний захиалга” хэсгээс нооргоо харах, текст файлаар татах боломжтой.</li></ol><div class="info-box">Туршилтын хувилбар тул бодит худалдан авалт, төлбөр, нийлүүлэгчийн захиалга хийгдэхгүй.</div>`},
+  help:{title:'Хэрхэн захиалах вэ?',html:`<p class="modal-intro">Бэлэн бараа болон 1688 каталогоос бараагаа сонгоно. Өнгө, хэмжээ, тоо, овог нэр, утсаа оруулж захиалгын хүсэлт илгээнэ.</p><p>Хятадаас ирэх ачаа Эрээн → Замын-Үүд → Улаанбаатар чиглэлээр явна. Агуулахад овог нэр, захиалгын кодоор ялган хүлээн авна.</p>`},
   shipping:{title:'Хүргэлтийн тухай',html:`<p class="modal-intro">Бэлэн бараа болон Хятадаас захиалах барааны хүргэлтийн нөхцөл тусдаа баталгаажна.</p><ol class="help-list"><li><strong>Бэлэн бараа</strong>Хүлээн авах байршил, хүргэх хаягаас төлбөр, хугацаа хамаарна.</li><li><strong>Хятад захиалга</strong>Нийлүүлэгчийн хүргэлт, агуулахад ирэх хугацаа, барааны жин ба овор хэмжээгээр тээврийн нөхцөлийг тогтооно.</li></ol><div class="info-box">Одоогоор тариф, хугацаа баталгаажаагүй. Каталогийн жишээ үнэд тээврийн төлбөр ороогүй.</div>`},
   privacy:{title:'Мэдээллийн хадгалалт',html:`<p class="modal-intro">Энэ загварын сагс, хадгалсан бараа, захиалгын ноорог зөвхөн таны хөтөчийн localStorage-д хадгалагдана. Сервер рүү мэдээлэл дамжуулахгүй.</p><p class="detail-copy">Хөтөчийн өгөгдлийг цэвэрлэхэд эдгээр мэдээлэл устах тул хэрэгтэй нооргоо татаж аваарай. Нууц үг, картын дугаар, регистр зэрэг мэдээллийг тэмдэглэлд оруулахгүй байхыг зөвлөж байна.</p><button class="button outline" data-action="clear-data-confirm">Энэ хөтөчийн GOStore мэдээллийг цэвэрлэх</button>`}
 };
 function runAction(action) {
   if(action==='account')return window.customerAccount?customerAccount.open():toast('Серверийн холболт хүлээгдэж байна.');
-  if(action==='cart')return showCart();if(action==='orders')return showOrders();if(action==='link')return showLinkOrder();if(action==='checkout')return showCheckout();
+  if(action==='cart')return showCart();if(action==='orders')return showOrders();if(action==='checkout')return showCheckout();
   if(action==='favorites'){if($('#modal').open)closeModal();return filterType('saved');}
   if(action==='browse'){closeModal();resetFilters();return scrollCatalog();}
   if(helpContent[action])return openModal(helpContent[action].title,helpContent[action].html);
@@ -174,11 +162,10 @@ document.addEventListener('click',event=>{
   if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="orders">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
   if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showOrders();return;}
 });
-$('#search-form').addEventListener('submit',e=>{e.preventDefault();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return showLinkOrder(value);filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
+$('#search-form').addEventListener('submit',e=>{e.preventDefault();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return toast('Барааны нэрээр хайж, каталогоос сонгоно уу.');filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
 $('#search').addEventListener('search',()=>{if(!$('#search').value){filters.query='';renderProducts();}});
 $('#sort').addEventListener('change',e=>{filters.sort=e.target.value;renderProducts();});
 $('#reset-filters').addEventListener('click',resetFilters);
-$('#quick-link-form').addEventListener('submit',e=>{e.preventDefault();showLinkOrder($('#quick-link').value.trim());});
 document.addEventListener('submit',event=>{
   const form=event.target;
   if(form.id==='product-form'){event.preventDefault();const data=new FormData(form);addToCart(form.dataset.product,String(data.get('variant')),Number(data.get('qty')));return;}
@@ -187,15 +174,7 @@ document.addEventListener('submit',event=>{
     const text=state.cart.map(item=>{const p=productById(item.id);return `${esc(p.name)} / ${item.variant} / ${item.qty} ширхэг / ${money(p.price*item.qty)}`;}).join('\n')+`\n\nБарааны жишээ дүн: ${money(cartTotal())}\nХүлээн авах: ${data.get('delivery')}\nТэмдэглэл: ${data.get('notes')||'—'}`;
     saveDraft('cart',title,text);return;
   }
-  if(form.id==='link-order-form'){
-    event.preventDefault();const data=new FormData(form),url=parseProductLink(String(data.get('url'))),qty=Number(data.get('qty'));
-    if(!url){$('#link-error').textContent='Taobao, Tmall, 1688 эсвэл tb.cn-ийн зөв http/https холбоос оруулна уу.';return;}
-    if(!Number.isInteger(qty)||qty<1||qty>99){$('#link-error').textContent='Тоо ширхэг 1–99 хооронд бүхэл тоо байна.';return;}
-    const title=String(data.get('title')).trim(),variant=String(data.get('variant')).trim();
-    if(!title||!variant){$('#link-error').textContent='Барааны нэр, хувилбарыг бөглөнө үү.';return;}
-    const text=`Бараа: ${title}\nХолбоос: ${url}\nӨнгө / хэмжээ: ${variant}\nТоо ширхэг: ${qty}\nТэмдэглэл: ${data.get('notes')||'—'}\nҮнэ: баталгаажаагүй\nТээвэр: баталгаажаагүй`;
-    if(saveDraft('link',title,text))$('#quick-link').value='';
-  }
+
 });
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){Object.assign(state,readState());updateCounts();renderProducts();if($('#modal').open)closeModal();}});
 $('#year').textContent=new Date().getFullYear();renderCategories();renderProducts();updateCounts();

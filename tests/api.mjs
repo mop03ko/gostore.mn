@@ -29,11 +29,11 @@ assert.equal((await admin('order-update',{id:created.order.id,status:'quoted',am
 const viewed=await shop('order-get',{id:created.order.id,token});assert.equal(viewed.order.amount,27000);assert.equal(viewed.order.internal_note,undefined);
 assert.equal((await shop('invoice',{id:created.order.id,token})).status,503);
 const linkRequest={type:'link',token:'b'.repeat(64),title:'QA линк хүсэлт',customer:'Тест',phone:'00000000',notes:'',url:'https://taobao.com.evil.example/item',variant:'Хар',qty:1};
-assert.equal((await shop('order-create',linkRequest)).status,400);
-linkRequest.token=crypto.randomUUID().replaceAll('-','').repeat(2);linkRequest.url='https://item.taobao.com/item.htm?id=123';assert.equal((await shop('order-create',linkRequest)).status,201);
+assert.equal((await shop('order-create',linkRequest)).status,410);
+linkRequest.token=crypto.randomUUID().replaceAll('-','').repeat(2);linkRequest.url='https://item.taobao.com/item.htm?id=123';assert.equal((await shop('order-create',linkRequest)).status,410);
 assert.equal((await admin('product-save',{...product,active:false})).status,200);
 assert.equal((await shop('catalog')).products.some(p=>p.id==='qa-product'),false);
 assert.equal((await admin('order-update',{id:created.order.id,status:'cancelled',amount:27000,internal_note:'QA дууссан'})).status,200);
 assert.equal((await admin('logout',{})).status,200);assert.equal((await admin('dashboard')).status,401);
 fs.unlinkSync('assets/'+uploaded.image+'.jpg');
-console.log('PASS: auth, CSRF, private paths, catalog CRUD, server prices, idempotent requests, order access, quoting, disabled QPay, supplier URL validation, logout.');
+console.log('PASS: auth, CSRF, private paths, catalog CRUD, server prices, idempotent requests, order access, quoting, disabled QPay, retired link ordering rejected, logout.');

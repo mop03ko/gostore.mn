@@ -54,21 +54,19 @@ try {
     }
     if ($action==='logout') { $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
+        if(($b['type']??'')==='link')fail('Линкээр захиалах үйлчилгээ зогссон. Каталогоос бараагаа сонгоно уу.',410);
         if(($b['require_account']??false)===true)customer_required();
         limit_attempts('order:'.($_SERVER['REMOTE_ADDR']??''),15,3600);
         $token=str_field($b,'token',100); if (!preg_match('/^[a-f0-9]{64}$/',$token)) fail('Хүсэлтийн түлхүүр буруу.');
         $key=hash('sha256',$token); $s=db()->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);
         if ($existing=$s->fetchColumn()) { $r=order_row($existing);customer_order_access($r,$b);json_out(['order'=>public_order($r['order'])]); }
-        $type=str_field($b,'type',10); if (!in_array($type,['cart','link','supplier'],true)) fail('Захиалгын төрөл буруу.');
+        $type=str_field($b,'type',10); if (!in_array($type,['cart','supplier'],true)) fail('Захиалгын төрөл буруу.');
         $o=['id'=>'GS-'.gmdate('ymd').'-'.strtoupper(bin2hex(random_bytes(4))),'type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
         $address=str_field($b,'address',500,false);
         if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
         if ($type==='supplier') {
             $o['supplier']=supplier_order($b);$o['title']=mb_substr($o['supplier']['name'],0,120);$o['url']=$o['supplier']['url'];$o['variant']=$o['supplier']['variant'];$o['qty']=$o['supplier']['qty'];$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
-        } elseif ($type==='link') {
-            $o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];$o['url']=str_field($b,'url',2000); if (!product_link($o['url'])) fail('Taobao, Tmall, 1688 эсвэл tb.cn холбоос оруулна уу.');
-            $o['variant']=str_field($b,'variant',100);$o['qty']=int_field($b,'qty',1,99);
         } else {
             $items=$b['items']??[];if (!is_array($items)||count($items)<1||count($items)>100) fail('Сагс буруу байна.');
             $catalog=array_column(products(),null,'id');$o['items']=[];$o['subtotal']=0;
@@ -82,6 +80,8 @@ try {
                 $o['subtotal']+=$p['price']*$qty;$o['demo']=$o['demo']||$p['demo'];
             }
         }
+        if(isset($o['route'])){$o['warehouse']=warehouse_destination($o,$b);$o['customer']=$o['warehouse']['family_name'].' '.$o['warehouse']['given_name'];}
+        if(!isset($o['route'])&&($b['family_name']??'')!=='')$o['customer']=str_field($b,'family_name',100).' '.$o['customer'];
         $customer=current_customer();$db=db();$db->beginTransaction();
         try {
             $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],hash('sha256',$token),$key,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);
