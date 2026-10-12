@@ -4,20 +4,22 @@ require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
+require __DIR__.'/../server/shipping.php';
+require __DIR__.'/../server/supplier.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
-    session_boot(in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update'],true)?'admin':'customer');
+    session_boot(in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate'],true)?'admin':'customer');
     if ($method==='GET') {
-        if ($action==='catalog') json_out(['products'=>products(),'qpay'=>qpay_ready(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
+        if ($action==='catalog') json_out(['products'=>products(),'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
         if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>!empty($_SESSION['admin']),'csrf'=>$_SESSION['csrf'],'configured'=>config()['admin_password_hash']!=='']);
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -38,6 +40,10 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if($action==='supplier-search')json_out(supplier_search($b));
+    if($action==='supplier-product')json_out(supplier_detail(str_field($b,'id',50)));
+    if($action==='shipping-calculate'){admin_required();json_out(['quote'=>shipping_calculate($b)]);}
+    if($action==='shipping-save'){admin_required();json_out(['shipping'=>shipping_save($b)]);}
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') {
         limit_attempts('login:'.($_SERVER['REMOTE_ADDR']??''),8,900);
@@ -53,13 +59,15 @@ try {
         $token=str_field($b,'token',100); if (!preg_match('/^[a-f0-9]{64}$/',$token)) fail('Хүсэлтийн түлхүүр буруу.');
         $key=hash('sha256',$token); $s=db()->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);
         if ($existing=$s->fetchColumn()) { $r=order_row($existing);customer_order_access($r,$b);json_out(['order'=>public_order($r['order'])]); }
-        $type=str_field($b,'type',10); if (!in_array($type,['cart','link'],true)) fail('Захиалгын төрөл буруу.');
+        $type=str_field($b,'type',10); if (!in_array($type,['cart','link','supplier'],true)) fail('Захиалгын төрөл буруу.');
         $o=['id'=>'GS-'.gmdate('ymd').'-'.strtoupper(bin2hex(random_bytes(4))),'type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
         $address=str_field($b,'address',500,false);
         if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
-        if ($type==='link') {
-            $o['url']=str_field($b,'url',2000); if (!product_link($o['url'])) fail('Taobao, Tmall, 1688 эсвэл tb.cn холбоос оруулна уу.');
+        if ($type==='supplier') {
+            $o['supplier']=supplier_order($b);$o['title']=mb_substr($o['supplier']['name'],0,120);$o['url']=$o['supplier']['url'];$o['variant']=$o['supplier']['variant'];$o['qty']=$o['supplier']['qty'];$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
+        } elseif ($type==='link') {
+            $o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];$o['url']=str_field($b,'url',2000); if (!product_link($o['url'])) fail('Taobao, Tmall, 1688 эсвэл tb.cn холбоос оруулна уу.');
             $o['variant']=str_field($b,'variant',100);$o['qty']=int_field($b,'qty',1,99);
         } else {
             $items=$b['items']??[];if (!is_array($items)||count($items)<1||count($items)>100) fail('Сагс буруу байна.');
@@ -69,6 +77,7 @@ try {
                 $qty=int_field($item,'qty',1,99);$variant=str_field($item,'variant',100);
                 if (!$p['demo'] && $p['type']==='local' && $qty>$p['stock']) fail('Барааны үлдэгдэл хүрэлцэхгүй байна.');
                 if (!in_array($variant,$p['variants'],true)) fail('Барааны хувилбар өөрчлөгдсөн байна.');
+                if($p['type']==='china')$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
                 $o['items'][]=['id'=>$p['id'],'name'=>$p['name'],'qty'=>$qty,'variant'=>$variant,'price'=>$p['price']];
                 $o['subtotal']+=$p['price']*$qty;$o['demo']=$o['demo']||$p['demo'];
             }
@@ -106,10 +115,14 @@ try {
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
             $o=order_row(str_field($b,'id',50))['order'];$status=str_field($b,'status',30);
-            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','completed','cancelled'],true)) fail('Төлөв буруу.');
+            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','zamyn_uud','ulaanbaatar','completed','cancelled'],true)) fail('Төлөв буруу.');
             $amount=int_field($b,'amount',0,100000000);
             if (isset($o['invoice']) && ($amount!==$o['amount']||$status==='cancelled')) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
+
+            if(isset($b['quote_inputs'])){if(isset($o['invoice']))fail('Нэхэмжлэлтэй захиалгын тооцоог өөрчлөхгүй.',409);if(!is_array($b['quote_inputs']))fail('Тооцоо буруу.');$o['quote']=shipping_calculate($b['quote_inputs']);$amount=$o['quote']['total'];}
             if ($status==='quoted'&&$amount<1) fail('Хүргэлт орсон нийт үнийн санал оруулна уу.');
+            if(isset($o['quote'])&&$amount!==$o['quote']['total'])unset($o['quote']);
+            if($o['status']!==$status){$o['history'][]=['status'=>$status,'at'=>gmdate('c')];}
             $o['status']=$status;$o['amount']=$amount;$o['internal_note']=str_field($b,'internal_note',2000,false);save_order($o);$db->exec('COMMIT');
         } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}json_out(['order'=>$o]);
     }

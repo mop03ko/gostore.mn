@@ -6,7 +6,7 @@ return [
     'data_dir' => dirname(__DIR__, 2) . '/gostore-data', // MUST be outside public_html.
     'site_url' => 'https://gostore.mn',
     'otcommerce' => [
-        'enabled' => false, // Reserved for the storefront integration; not implemented yet.
+        // Catalog enabled/disabled and daily request budget are managed in the admin shipping settings.
         'api_key' => '', // OT Commerce X-Api-Key; keep the real value in config.local.php.
     ],
     'qpay' => [

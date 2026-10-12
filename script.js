@@ -92,7 +92,7 @@ function renderProducts() {
 }
 function scrollCatalog() { $('#catalog').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 function resetFilters() { filters={type:'all',category:'all',query:'',sort:'featured'};$('#search').value='';$('#sort').value='featured';renderCategories();renderProducts(); }
-function filterType(type) { filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
+function filterType(type) { if(type==='china'&&window.storeServer?.ready){$('#supplier-catalog').scrollIntoView({behavior:'smooth'});return;} filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 function filterCategory(category) { filters.category=category;filters.type='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 
 function showProduct(id) {
