@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/../server/bootstrap.php';
+require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);

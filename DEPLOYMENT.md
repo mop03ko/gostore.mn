@@ -8,7 +8,7 @@
 - Өгөгдөл `/home/gostorem/gostore-data` хавтаст (0700), админ тохиргоо `server/config.local.php` файлд (0600). Анхны админы нэвтрэх мэдээлэл зөвхөн локал `output/gostore-admin-login.txt` дотор; Git болон ZIP-д орохгүй.
 - Өмнөх “Тун удахгүй” хуудасны солигдсон файлуудын нөөц: `/home/gostorem/gostore-backups/20261012-61f26f0609`; SQLite нийцлийн засварын өмнөх хувилбар: `/home/gostorem/gostore-backups/20261012-2a5c207bbf`. Локал хуулбар `tmp/deploy-backups/` дотор бий. Эдгээр нь солигдсон файлын нөөц бөгөөд өгөгдлийн сангийн snapshot биш.
 - Нээх үеийн каталог 8 жишээ бараатай, захиалга 0. Бодит бараа, үнэ, үлдэгдлийг админаар оруулна.
-- Хэрэглэгчийн тусгай зөвшөөрлөөр QPay/OT Commerce түлхүүрүүдийг серверийн хамгаалсан `server/config.local.php` файлд байрлуулсан; Git/ZIP-д оруулаагүй. QPay төлбөр авах горим унтраалттай; OT Commerce бараа хайлт/импорт хараахан хэрэгжээгүй.
+- Хэрэглэгчийн тусгай зөвшөөрлөөр QPay/OT Commerce түлхүүрүүдийг серверийн хамгаалсан `server/config.local.php` файлд байрлуулсан; Git/ZIP-д оруулаагүй. QPay production идэвхтэй; OT Commerce бараа хайлт/импорт хараахан хэрэгжээгүй.
 
 ## Шаардлага
 
@@ -45,13 +45,13 @@ Linux CLI дээр `php scripts/password.php`-д нууц үгийг stdin-ээ�
 
 ## QPay Merchant V2
 
-Production merchant эрх ирсэн; 2026-10-12-нд token авах нэвтрэлт амжилттай шалгагдсан. Локал `server/config.local.php`-д production утгууд хадгалагдсан, `enabled=false`. Нэхэмжлэл, төлбөр, callback урсгалыг бодитоор хараахан шалгаагүй. [QPay-ийн албан ёсны баримт](https://developer.qpay.mn/mn/docs/merchant?version=2.0.0)-ын дагуу token, invoice, callback → payment/check урсгал бэлтгэсэн.
+2026-10-12-нд production QPay-г локал болон live `server/config.local.php` дотор `enabled=true` болгосон. Хүчинтэй token-ийг дахин ашиглаж, хостингийн PHP cURL-аас 1₮-ийн техникийн invoice үүсгэн QR болон 23 банк/аппын deeplink ирэхийг шалгасан. Давтан invoice хүсэлт ижил нэхэмжлэл буцаасан. Буруу callback түлхүүр 403 өгсөн; зөв callback-ийг нэг удаа дуурайлган дуудахад QPay payment/check нь төлөөгүйг баталсан. Туршилтын invoice-ийг QPay DELETE endpoint-оор амжилттай цуцалж, GOStore хүсэлтийг цуцалсан төлөвт хадгалсан. Бодит мөнгө шилжүүлээгүй. [QPay-ийн албан ёсны баримт](https://developer.qpay.mn/mn/docs/merchant?version=2.0.0)-ын дагуу token, invoice, callback → payment/check урсгал бэлтгэсэн.
 
 2026-10-10-нд [API жагсаалт](https://developer.qpay.mn/mn/docs/apis) болон Merchant V2-ийн token, invoice, payment/check лавлахтай тулгасан. Token авахад Basic, invoice/payment шалгахад Bearer ашиглана. `expires_in` нь Unix timestamp; хугацаа дууссан эсвэл буруу утгатай token-ийг хадгалахгүй. Хүчинтэй token-ийг серверийн private cache-д дахин ашиглана. Refresh endpoint одоогоор холбогдоогүй; хугацаа дуусахад Basic auth-аар шинэ token авна.
 
 QPay-ээс GOStore-ийн sandbox болон production орчны `client_id`, `client_secret`, `invoice_code` авна. Бүртгэлийн холбоо барих мэйл: `shop@gostore.mn`; сайт: `https://gostore.mn`. Эдгээр мэйл/домэйн нь API эрхийг орлохгүй.
 
-`server/config.local.php` дотор дараах тохиргоог өөрийн утгаар нэм:
+Шинэ орчинд тохируулах идэвхгүй sandbox загвар (live production тохиргоог үүгээр бүү дарж бич):
 
 ```php
 'site_url' => 'https://gostore.mn',
@@ -73,7 +73,9 @@ QPay-ээс GOStore-ийн sandbox болон production орчны `client_id`,
 - Invoice үүсгэх оролдлогын хариу тодорхойгүй бол `review` төлөвт түгжинэ. QPay merchant portal/support-оор sender_invoice_no-г тулгаж, давхар invoice үүсгээгүйг шийдсэний дараа хөгжүүлэгч өгөгдлийг засна. Автомат дахин invoice үүсгэхгүй.
 - Нэхэмжлэлтэй хүсэлтийн дүнг өөрчлөх, шууд цуцлахыг хаасан. Refund, eBarimt, reconciliation dashboard одоогоор хэрэгжээгүй.
 
-**Production token авах шалгалт нь төлбөрийн урсгалын баталгаа биш.** QPay-ээс sandbox эрх авч, төлөөгүй, дутуу төлсөн, төлсөн, давхар callback, timeout урсгалуудаар acceptance test хийж байж production нээнэ.
+**Бодит төлсөн гүйлгээний эцсийн шалгалт үлдсэн.** Төлсөн/дутуу төлсөн/давхар callback/timeout урсгалууд `tests/qpay-flow.php` дотор тусгаарласан SQLite болон хуурамч QPay хариугаар шалгагдсан. Банкны апп-аас бодит төлбөр орж, QPay өөрөө callback илгээн GOStore дээр “Баталгаажсан” болохыг хараахан туршаагүй. Эхний бодит захиалгын төлбөрийг merchant portal дахь гүйлгээтэй тулгаж хянана.
+
+Локал API тестийн серверийг `GOSTORE_DISABLE_QPAY=1`-тэй ажиллуулна. `scripts/dev.ps1` үүнийг автоматаар тохируулдаг; production config-ийг өөрчлөхгүй.
 
 ## Бусад API
 

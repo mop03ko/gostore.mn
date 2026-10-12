@@ -7,6 +7,7 @@ function client(){let cookie='',csrf='';return async(action,body)=>{const multip
 const shop=client(),admin=client(),anonymous=client();
 assert.equal((await anonymous('dashboard')).status,401);
 let catalog=await shop('catalog');assert.equal(catalog.status,200);assert.ok(catalog.products.length>=8);
+assert.equal(catalog.qpay,false,'Run the test server with GOSTORE_DISABLE_QPAY=1; integration tests must not create real invoices.');
 assert.equal((await fetch(base+'/server/config.example.php')).status,404);
 assert.equal((await fetch(base+'/tmp/admin-preview.json')).status,404);
 let denied=await fetch(base+'/api/index.php?action=product-save',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});assert.equal(denied.status,403);

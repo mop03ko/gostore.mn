@@ -8,6 +8,7 @@ function config(): array {
     if (is_file(__DIR__ . '/config.local.php')) $value = array_replace_recursive($value, require __DIR__ . '/config.local.php');
     if (getenv('GOSTORE_DATA_DIR')) $value['data_dir'] = getenv('GOSTORE_DATA_DIR');
     if (getenv('GOSTORE_ADMIN_HASH')) $value['admin_password_hash'] = getenv('GOSTORE_ADMIN_HASH');
+    if (getenv('GOSTORE_DISABLE_QPAY') === '1') $value['qpay']['enabled'] = false;
     return $value;
 }
 function fail(string $message, int $status = 400): never { throw new ApiError($message, $status); }
