@@ -9,7 +9,7 @@ const server=http.createServer(async(req,res)=>{
   const route=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname);
   const name=route==='/'?'index.html':route.slice(1);
   const file=path.resolve(root,name);
-  if(!['index.html','styles.css','script.js','store-server.js','assets/fonts/fonts.css','assets/fonts/arimo-variable.ttf'].includes(name)&&!(name.startsWith('assets/')&&/\.(jpg|png|webp|svg)$/.test(name)&&file.startsWith(path.join(root,'assets')+path.sep))){res.writeHead(404);res.end('Not found');return;}
+  if(!['index.html','styles.css','script.js','store-server.js','account.js','assets/fonts/fonts.css','assets/fonts/arimo-variable.ttf'].includes(name)&&!(name.startsWith('assets/')&&/\.(jpg|png|webp|svg)$/.test(name)&&file.startsWith(path.join(root,'assets')+path.sep))){res.writeHead(404);res.end('Not found');return;}
   const data=await fs.readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data);
  }catch{res.writeHead(404);res.end('Not found');}
 });

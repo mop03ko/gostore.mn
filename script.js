@@ -151,6 +151,7 @@ const helpContent = {
   privacy:{title:'Мэдээллийн хадгалалт',html:`<p class="modal-intro">Энэ загварын сагс, хадгалсан бараа, захиалгын ноорог зөвхөн таны хөтөчийн localStorage-д хадгалагдана. Сервер рүү мэдээлэл дамжуулахгүй.</p><p class="detail-copy">Хөтөчийн өгөгдлийг цэвэрлэхэд эдгээр мэдээлэл устах тул хэрэгтэй нооргоо татаж аваарай. Нууц үг, картын дугаар, регистр зэрэг мэдээллийг тэмдэглэлд оруулахгүй байхыг зөвлөж байна.</p><button class="button outline" data-action="clear-data-confirm">Энэ хөтөчийн GOStore мэдээллийг цэвэрлэх</button>`}
 };
 function runAction(action) {
+  if(action==='account')return window.customerAccount?customerAccount.open():toast('Серверийн холболт хүлээгдэж байна.');
   if(action==='cart')return showCart();if(action==='orders')return showOrders();if(action==='link')return showLinkOrder();if(action==='checkout')return showCheckout();
   if(action==='favorites'){if($('#modal').open)closeModal();return filterType('saved');}
   if(action==='browse'){closeModal();resetFilters();return scrollCatalog();}

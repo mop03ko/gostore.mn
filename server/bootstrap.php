@@ -30,7 +30,10 @@ function db(): PDO {
     $db->exec('CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL, updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, hits INTEGER NOT NULL, expires INTEGER NOT NULL);
-        CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+        CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, password_hash TEXT NOT NULL, auth_version INTEGER NOT NULL DEFAULT 1, created TEXT NOT NULL, updated TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS customer_orders (order_id TEXT PRIMARY KEY REFERENCES orders(id), customer_id TEXT NOT NULL REFERENCES customers(id), created TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS customer_orders_owner ON customer_orders(customer_id, created);');
     if (!$db->query("SELECT value FROM meta WHERE key='seeded'")->fetchColumn()) {
         $db->beginTransaction();
         try {
@@ -52,9 +55,9 @@ function limit_attempts(string $key, int $max, int $seconds): void {
     $s=$db->prepare('SELECT hits FROM limits WHERE key=?'); $s->execute([$key]);
     if ((int)$s->fetchColumn()>$max) fail('Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу.',429);
 }
-function session_boot(): void {
+function session_boot(string $realm = 'admin'): void {
     if (session_status()===PHP_SESSION_ACTIVE) return;
-    session_name('gostore_session');
+    session_name($realm === 'customer' ? 'gostore_customer' : 'gostore_session');
     ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);
     session_start();

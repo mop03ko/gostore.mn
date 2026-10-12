@@ -3,14 +3,16 @@ declare(strict_types=1);
 require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
+require __DIR__.'/../server/customers.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
-    session_boot();
+    session_boot(in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update'],true)?'admin':'customer');
     if ($method==='GET') {
-        if ($action==='catalog') json_out(['products'=>products(),'qpay'=>qpay_ready(),'csrf'=>$_SESSION['csrf']]);
+        if ($action==='catalog') json_out(['products'=>products(),'qpay'=>qpay_ready(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
+        if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>!empty($_SESSION['admin']),'csrf'=>$_SESSION['csrf'],'configured'=>config()['admin_password_hash']!=='']);
         admin_required();
         if ($action==='dashboard') {
@@ -36,6 +38,7 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') {
         limit_attempts('login:'.($_SERVER['REMOTE_ADDR']??''),8,900);
         $email=str_field($b,'email',200); $password=str_field($b,'password',500);
@@ -45,13 +48,16 @@ try {
     }
     if ($action==='logout') { $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
+        if(($b['require_account']??false)===true)customer_required();
         limit_attempts('order:'.($_SERVER['REMOTE_ADDR']??''),15,3600);
         $token=str_field($b,'token',100); if (!preg_match('/^[a-f0-9]{64}$/',$token)) fail('Хүсэлтийн түлхүүр буруу.');
         $key=hash('sha256',$token); $s=db()->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);
-        if ($existing=$s->fetchColumn()) json_out(['order'=>public_order(order_row($existing)['order'])]);
+        if ($existing=$s->fetchColumn()) { $r=order_row($existing);customer_order_access($r,$b);json_out(['order'=>public_order($r['order'])]); }
         $type=str_field($b,'type',10); if (!in_array($type,['cart','link'],true)) fail('Захиалгын төрөл буруу.');
         $o=['id'=>'GS-'.gmdate('ymd').'-'.strtoupper(bin2hex(random_bytes(4))),'type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
+        $address=str_field($b,'address',500,false);
+        if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
         if ($type==='link') {
             $o['url']=str_field($b,'url',2000); if (!product_link($o['url'])) fail('Taobao, Tmall, 1688 эсвэл tb.cn холбоос оруулна уу.');
             $o['variant']=str_field($b,'variant',100);$o['qty']=int_field($b,'qty',1,99);
@@ -67,12 +73,16 @@ try {
                 $o['subtotal']+=$p['price']*$qty;$o['demo']=$o['demo']||$p['demo'];
             }
         }
-        db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],hash('sha256',$token),$key,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);
+        $customer=current_customer();$db=db();$db->beginTransaction();
+        try {
+            $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],hash('sha256',$token),$key,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);
+            if($customer)$db->prepare('INSERT INTO customer_orders VALUES (?,?,?)')->execute([$o['id'],$customer['id'],$o['created']]);
+            $db->commit();
+        } catch(Throwable $e){$db->rollBack();throw $e;}
         json_out(['order'=>public_order($o)],201);
     }
     if (in_array($action,['order-get','invoice'],true)) {
-        $r=order_row(str_field($b,'id',50)); $token=str_field($b,'token',100);
-        if (!hash_equals($r['token_hash'],hash('sha256',$token))) fail('Захиалга харах эрхгүй.',403);
+        $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):$r['order'])]);
     }
     admin_required();

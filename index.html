@@ -6,14 +6,15 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — өөрийн дэлгүүрийн бараа болон Хятадаас линкээр захиалах сонголтыг нэг дор.">
   <title>gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="styles.css?v=20261010-gilroy">
-  <script src="script.js" defer></script><script src="store-server.js?v=20261012-qpay" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261012-accounts">
+  <script src="script.js?v=20261012-accounts" defer></script><script src="store-server.js?v=20261012-accounts" defer></script><script src="account.js?v=20261012-accounts" defer></script>
 <link rel="preload" href="assets/fonts/arimo-variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="assets/fonts/fonts.css?v=20261010-gilroy">
 </head>
 <body>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
@@ -34,6 +35,7 @@
       <a href="./" class="brand" aria-label="GOStore нүүр хуудас"><img src="assets/logo.png" alt="gostore.mn" width="200" height="35"></a>
       <form id="search-form" class="search-form" role="search"><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" placeholder="Юу хайж байна вэ?" autocomplete="off"><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
       <div class="header-actions">
+        <button class="header-action" data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button>
         <button class="header-action" data-action="orders"><svg class="icon"><use href="#i-box"/></svg><span>Миний захиалга</span></button>
         <button class="header-action" data-action="favorites" aria-label="Хадгалсан бараа"><span class="icon-wrap"><svg class="icon"><use href="#i-heart"/></svg><b class="count" id="favorite-count" hidden>0</b></span><span>Хадгалсан</span></button>
         <button class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></button>
@@ -65,7 +67,7 @@
     <div class="container preview-notice"><svg class="icon"><use href="#i-shield"/></svg><p><strong>Туршилтын хувилбар.</strong> Бараа, үнэ нь загварын жишээ. Сагс болон захиалгын ноорог энэ хөтөчид хадгалагдана. Одоогоор бодит захиалга илгээх, төлбөр төлөх боломжгүй.</p></div>
   </main>
   <footer><div class="container footer-main"><div class="footer-brand"><a href="./" class="brand"><img src="assets/logo.png" alt="gostore.mn" width="200" height="35" loading="lazy"></a><p>Сонголт нэг дор.<br>Таны өдөр тутмын шинэ боломж.</p><a class="contact-email" href="mailto:shop@gostore.mn" aria-label="GOStore-т имэйл бичих: shop@gostore.mn">shop@gostore.mn</a></div><div><h3>GOStore</h3><button data-filter="local">Бэлэн бараа</button><button data-filter="china">Хятадаас захиалах</button><button data-action="link">Линкээр захиалах</button></div><div><h3>Танд тусалъя</h3><button data-action="help">Хэрхэн захиалах вэ?</button><button data-action="shipping">Хүргэлтийн тухай</button><button data-action="privacy">Мэдээллийн хадгалалт</button></div><div class="footer-message"><span>СОНГОЛТ ТАНЬ ЭНДЭЭС ЭХЭЛНЭ</span><strong>Бага хай.<br>Илүүг ол.</strong></div></div><div class="container footer-bottom"><span>© <span id="year"></span> GOStore. Сонголт нэг дор.</span><span>Монгол хэл <span aria-hidden="true">·</span> MNT ₮</span></div></footer>
-  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="#main"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><a href="#catalog"><svg class="icon"><use href="#i-grid"/></svg>Бараа</a><button data-action="link"><svg class="icon"><use href="#i-link"/></svg>Линк</button><button data-action="cart"><svg class="icon"><use href="#i-bag"/></svg>Сагс <span id="mobile-cart-count">0</span></button><button data-action="orders"><svg class="icon"><use href="#i-box"/></svg>Захиалга</button></nav>
+  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="#main"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><a href="#catalog"><svg class="icon"><use href="#i-grid"/></svg>Бараа</a><button data-action="link"><svg class="icon"><use href="#i-link"/></svg>Линк</button><button data-action="cart"><svg class="icon"><use href="#i-bag"/></svg>Сагс <span id="mobile-cart-count">0</span></button><button data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button></nav>
   <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="Цонх хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="modal-body"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
