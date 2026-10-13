@@ -6,6 +6,8 @@ require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
 require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
+require __DIR__.'/../server/ot-operator-http.php';
+require __DIR__.'/../server/ot-operator.php';
 require __DIR__.'/../server/warehouse.php';
 require __DIR__.'/../server/warehouse-batches.php';
 require __DIR__.'/../server/logistics.php';
@@ -16,7 +18,7 @@ try {
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
-    $adminAction=in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if ($method==='GET') {
@@ -27,7 +29,7 @@ try {
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>['erenhot'=>warehouse_account_public('erenhot'),'ulaanbaatar'=>warehouse_account_public('ulaanbaatar')],'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>['erenhot'=>warehouse_account_public('erenhot'),'ulaanbaatar'=>warehouse_account_public('ulaanbaatar')],'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -50,6 +52,7 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);
     if(in_array($action,['order-photo','freight-invoice','payment-check'],true)){
         $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);
         if($action==='order-photo')logistics_photo_read($r['order'],str_field($b,'photo',32));
