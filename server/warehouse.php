@@ -66,6 +66,16 @@ function warehouse_order_public(array $o,string $location='erenhot'): array {
         : match($o['status']){'confirmed','shipping'=>'erenhot',default=>null});
     return $result;
 }
+// Read-only totals for UB planning; these do not grant access to early-stage orders.
+function warehouse_overview_add(array &$overview,array $order): void {
+    if(($order['status']??'')==='cancelled')return;
+    $items=isset($order['supplier'])?[$order['supplier']]:($order['items']??[]);
+    $quantity=array_sum(array_map(fn($item)=>max(0,(int)($item['qty']??0)),$items));
+    $groups=['ordered'];
+    if(in_array('Эрээн',$order['route']??[],true)&&in_array($order['status'],['erenhot','erenhot_ready'],true))$groups[]='erenhot';
+    if(in_array('Улаанбаатар',$order['route']??[],true)&&in_array($order['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))$groups[]='ulaanbaatar';
+    foreach($groups as $group){$overview[$group]['orders']++;$overview[$group]['quantity']+=$quantity;}
+}
 function warehouse_get(string $action): never {
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
@@ -80,10 +90,13 @@ function warehouse_get(string $action): never {
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
     $rows=[];$matched=0;$counts=['waiting'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
+    $overview=array_fill_keys(['ordered','erenhot','ulaanbaatar'],['orders'=>0,'quantity'=>0]);
     $waiting=$location==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
     $received=$location==='ulaanbaatar'?'ulaanbaatar':'erenhot';
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
-        $o=json_decode($r['data'],true);if(!warehouse_order_visible($o,$location))continue;
+        $o=json_decode($r['data'],true);
+        if($location==='ulaanbaatar')warehouse_overview_add($overview,$o);
+        if(!warehouse_order_visible($o,$location))continue;
         if(in_array($o['status'],$waiting,true))$counts['waiting']++;
         if($o['status']===$received)$counts['received']++;
         if($o['status']==='erenhot_ready')$counts['ready']++;
@@ -98,7 +111,7 @@ function warehouse_get(string $action): never {
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location);
     }
-    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
+    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...($location==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
 }
 function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-login'){

@@ -8,7 +8,7 @@ const date=v=>new Date(v).toLocaleString(locale==='zh'?'zh-CN':'mn-MN',{timeZone
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),v=>v.toString(16).padStart(2,'0')).join('');
 const codes=value=>value.trim()?value.trim().toUpperCase().split(/[\s,，;；]+/).filter(Boolean):[];
 function language(location){
-  city=location;locale=city==='erenhot'?'zh':'mn';document.documentElement.lang=locale==='zh'?'zh-CN':'mn';
+  city=location;locale=city==='erenhot'?'zh':'mn';$('#ub-overview').hidden=city!=='ulaanbaatar';document.documentElement.lang=locale==='zh'?'zh-CN':'mn';
   document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));document.querySelectorAll('[data-placeholder]').forEach(e=>e.placeholder=t(e.dataset.placeholder));
   $('#close-editor').setAttribute('aria-label',t('close'));$('#warehouse-title').textContent=t(city);$('#warehouse-city').textContent=t(city);document.title='GOStore · '+t(city);
   $('#login-location').value=city;$('#received-stat').dataset.status=city==='erenhot'?'erenhot':'pending_sort';$('#third-stat').dataset.status=city==='erenhot'?'erenhot_dispatched':'completed';$('#create-batch').hidden=city!=='erenhot';$('#ready-stat').hidden=city!=='erenhot';filters();
@@ -18,7 +18,7 @@ function filters(){
   if(!options.includes(status))status='all';$('#status-filter').innerHTML=options.map(s=>`<option value="${s}">${esc(s==='all'?t('all'):s==='waiting'?t('waiting'):s==='pending_sort'?t('received'):tab==='batches'?batchText(s):statusText(s))}</option>`).join('');$('#status-filter').value=status;$('#list-title').textContent=t(tab);document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
 }
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),4000);}
-function loggedOut(){window.stopBatchScanner?.();$('#qr-scanner').close();++sequence;records=[];selected.clear();currentBatch=null;$('#records').replaceChildren();$('#editor').close();$('#print-area').replaceChildren();$('#app').hidden=true;$('#login-screen').hidden=false;}
+function loggedOut(){window.stopBatchScanner?.();$('#qr-scanner').close();++sequence;records=[];selected.clear();currentBatch=null;$('#records').replaceChildren();$('#editor').close();$('#print-area').replaceChildren();document.querySelectorAll('#ub-overview strong,#ub-overview .overview-orders span').forEach(e=>e.textContent='—');$('#app').hidden=true;$('#login-screen').hidden=false;}
 async function api(action,body){
   const response=await fetch('../api/index.php?action='+action+'&lang='+locale,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{},body:body?JSON.stringify(body):undefined});
   let data;try{data=await response.json();}catch{throw Error(t('network'));}if(data.csrf)csrf=data.csrf;if(!response.ok){if(response.status===401&&action!=='warehouse-login')loggedOut();throw Error(data.error||t('error'));}return data;
@@ -33,7 +33,12 @@ async function refresh(){
     $('#records').innerHTML=records.length?records.map(tab==='orders'?orderCard:batchCard).join(''):`<div class="empty"><h3>${t('empty')}</h3><p>${t('emptyHint')}</p></div>`;$('#result-count').textContent=t('count',data.total);$('#previous').hidden=offset===0;$('#next').hidden=!data.more;$('#page-label').textContent=records.length?`${offset+1}–${offset+records.length} / ${data.total}`:'';$('#login-screen').hidden=true;$('#app').hidden=false;selectionBar();
   }catch(e){$('#list-error').textContent=e.message;throw e;}finally{if(request===sequence)$('#refresh').disabled=false;}
 }
-function setCounts(d){$('#ready-count').textContent=d.counts.ready||0;$('#waiting-count').textContent=d.counts.waiting;$('#received-count').textContent=city==='erenhot'?d.counts.received:d.counts.unsorted+d.counts.received;$('#third-count').textContent=city==='erenhot'?d.counts.dispatched:d.counts.completed;}
+function setCounts(d){
+  for(const group of ['ordered','erenhot','ulaanbaatar'])for(const metric of ['orders','quantity']){
+    const value=d.overview?.[group]?.[metric];
+    $('#overview-'+group+'-'+metric).textContent=Number.isFinite(value)?value.toLocaleString('mn-MN'):'—';
+  }
+  $('#ready-count').textContent=d.counts.ready||0;$('#waiting-count').textContent=d.counts.waiting;$('#received-count').textContent=city==='erenhot'?d.counts.received:d.counts.unsorted+d.counts.received;$('#third-count').textContent=city==='erenhot'?d.counts.dispatched:d.counts.completed;}
 function modal(title,html){$('#editor-title').textContent=title;$('#editor-body').innerHTML=html;if(!$('#editor').open)$('#editor').showModal();$('#editor').scrollTop=0;}
 const errorBox=()=>'<p class="error" role="alert"></p>',checked=()=>`<label class="check"><input type="checkbox" name="checked" required><span>${t('checked')}</span></label>`;
 function sortForm(o){const f=o.fulfillment||{};return `<form data-operation="sort" data-id="${esc(o.id)}" data-expected="${o.status}" class="warehouse-confirm"><h3>${t('sort')}</h3><p>${t('contactHint')}</p><div class="form-grid"><label>${t('method')}<select name="method"><option value="pickup" ${f.method!=='delivery'?'selected':''}>${t('pickup')}</option><option value="delivery" ${f.method==='delivery'?'selected':''}>${t('delivery')}</option></select></label><label>${t('phone')}<input name="contact_phone" type="tel" maxlength="30" value="${esc(o.contact?.phone)}" required></label><label class="full">${t('address')}<textarea name="address" maxlength="500" ${f.method==='delivery'?'required':''}>${esc(o.contact?.address)}</textarea></label></div>${checked()}${errorBox()}<button class="primary" type="submit">${t('sortConfirm')}</button></form>`;}
