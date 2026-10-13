@@ -4,7 +4,7 @@ $outputDirectory = Join-Path $projectRoot 'output'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$publicFiles = @('index.html', 'styles.css', 'script.js', 'store-server.js', 'account.js', 'supplier.js', 'cargo.js', 'barcode.js', '.htaccess') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot $_) }
+$publicFiles = @('index.html', 'styles.css', 'script.js', 'store-server.js', 'account.js', 'supplier.js', 'cargo.js', 'barcode.js', 'product-page.js', 'product-page.css', '.htaccess') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot $_) }
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets') -File -Recurse | Where-Object { $_.FullName -notlike '*\assets\uploads\*' -or $_.Name -eq '.htaccess' }
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'admin') -File
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'warehouse') -File

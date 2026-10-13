@@ -9,6 +9,10 @@ foreach([[0.5,164725],[1,219450],[1.1,241395]] as [$m,$expected]){ $q=shipping_c
 foreach([-1,'0.5',INF] as $invalid){try{shipping_calculate(['goods_cny'=>0,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>$invalid]);throw new RuntimeException('Invalid accepted');}catch(ApiError){}}
 $fixture=['Id'=>'abb-123456789','Title'=>'Өнгө Үүргэвч','MainPictureUrl'=>'javascript:alert(1)','IsSellAllowed'=>true,'Price'=>['OriginalPrice'=>12.5,'OriginalCurrencyCode'=>'CNY'],'FirstLotQuantity'=>2,'Attributes'=>[['Pid'=>'color','Vid'=>'red','PropertyName'=>'Өнгө','Value'=>'Улаан']],'ConfiguredItems'=>[['Id'=>'sku1','Quantity'=>3,'Configurators'=>[['Pid'=>'color','Vid'=>'red']],'Price'=>['OriginalPrice'=>15,'OriginalCurrencyCode'=>'CNY']]]];
 $p=supplier_normalize($fixture,true);check($p['mnt']===6875&&$p['image']==='','Conversion and unsafe URL');check($p['variants'][0]['label']==='Өнгө: Улаан'&&$p['variants'][0]['stock']===3,'Variant mapping');
+$fixture['Pictures']=[['Url'=>'https://img.alicdn.com/first.jpg'],['Url'=>'https://img.alicdn.com/first.jpg'],['Url'=>'javascript:alert(1)'],['Url'=>'https://untrusted.example/image.jpg']];
+$fixture['VendorName']='Нийлүүлэгч';$p=supplier_normalize($fixture,true);
+check($p['images']===['https://img.alicdn.com/first.jpg'],'Gallery deduplicates and allows safe image hosts only');
+check($p['vendor_name']==='Нийлүүлэгч'&&$p['attributes']===[['name'=>'Өнгө','value'=>'Улаан']],'Detail vendor and attributes');
 check(supplier_cny(['OriginalPrice'=>20,'OriginalCurrencyCode'=>'USD'])===null,'Currency isolation');
 $before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>0.5]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===7000,'Snapshot preserved');
 $destination=warehouse_destination(['id'=>'GS-TEST-123'],['family_name'=>'Бат','customer'=>'Тамир','warehouse'=>['recipient'=>'Wrong','address'=>'Wrong']]);

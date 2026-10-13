@@ -45,6 +45,10 @@ function supplier_normalize(array $p,bool $detail=false): array {
     $price=supplier_cny($p['Price']??[]);$rate=shipping_settings()['cny_rate'];
     $r=['id'=>$id,'name'=>mb_substr((string)($p['Title']??$p['OriginalTitle']??$id),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>'https://detail.1688.com/offer/'.substr($id,4).'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>($p['IsSellAllowed']??false)===true&&!($p['IsFiltered']??false),'variants'=>[]];
     if($detail){
+        $pictures=[$r['image']];foreach($p['Pictures']??[] as $picture){if(is_array($picture))$pictures[]=supplier_image((string)($picture['Url']??''));}
+        $r['images']=array_slice(array_values(array_unique(array_filter($pictures))),0,20);
+        $r['vendor_name']=mb_substr((string)($p['VendorName']??''),0,200);
+        $r['attributes']=[];foreach(array_slice($p['Attributes']??[],0,60) as $attribute){$name=mb_substr((string)($attribute['PropertyName']??''),0,120);$value=mb_substr((string)($attribute['Value']??''),0,300);if($name!==''&&$value!=='')$r['attributes'][]=['name'=>$name,'value'=>$value];}
         $attrs=[];foreach($p['Attributes']??[] as $a)$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]=($a['PropertyName']??$a['Pid']??'').': '.($a['Value']??$a['Vid']??'');
         foreach($p['ConfiguredItems']??[] as $v){$labels=[];foreach($v['Configurators']??[] as $a)$labels[]=$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]??($a['Vid']??'');$vp=supplier_cny($v['Price']??[]);$r['variants'][]=['id'=>(string)$v['Id'],'label'=>mb_substr(implode(' / ',$labels)?:'Стандарт',0,300),'cny'=>$vp,'stock'=>isset($v['Quantity'])?(int)$v['Quantity']:null];}
         if(!$r['variants'])$r['variants'][]=['id'=>'standard','label'=>'Стандарт · админ баталгаажуулна','cny'=>$price,'stock'=>isset($p['MasterQuantity'])?(int)$p['MasterQuantity']:null];

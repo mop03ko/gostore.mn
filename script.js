@@ -41,6 +41,9 @@ function readState() {
 }
 const state = readState();
 let filters = {type:'all',category:'all',query:'',sort:'featured'};
+const initialFilters=new URLSearchParams(location.search);
+if(initialFilters.get('filter')==='saved')filters.type='saved';
+if(categories.some(c=>c.id===initialFilters.get('category')))filters.category=initialFilters.get('category');
 let toastTimer;
 let lastFocus;
 function toast(message) { $('#toast').textContent=message; $('#toast').classList.add('visible'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500); }
@@ -71,7 +74,7 @@ $('#close-modal').addEventListener('click',closeModal);
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
 
 function renderCategories() {
-  $('#category-grid').innerHTML=categories.map(c=>`<button class="category-card ${filters.category===c.id?'active':''}" data-category="${c.id}" aria-pressed="${filters.category===c.id}"><div class="category-image"><img src="assets/${c.image}.jpg" alt="" loading="lazy"></div><strong>${c.name}</strong><small>${c.subtitle}</small></button>`).join('');
+  $('#category-grid').innerHTML=categories.map(c=>`<button class="category-card ${filters.category===c.id?'active':''}" data-category="${c.id}" aria-pressed="${filters.category===c.id}"><div class="category-image"><img src="/assets/${c.image}.jpg" alt="" loading="lazy"></div><strong>${c.name}</strong><small>${c.subtitle}</small></button>`).join('');
 }
 function visibleProducts() {
   const query=filters.query.toLocaleLowerCase('mn').trim();
@@ -87,20 +90,17 @@ function renderProducts() {
   $('#reset-filters').hidden=filters.type==='all'&&filters.category==='all'&&!filters.query;
   document.querySelectorAll('.filter-tabs [data-filter]').forEach(el=>{const active=el.dataset.filter===filters.type;el.classList.toggle('active',active);el.setAttribute('aria-pressed',active);});
   $('#product-grid').innerHTML=found.length?found.map(p=>`<article class="product-card" data-product="${p.id}">
-    <button class="product-image-button" data-detail="${p.id}" aria-label="${esc(p.name)} — дэлгэрэнгүй"><img src="assets/${p.image}.jpg" alt="${esc(p.name)}" loading="lazy"></button>
+    <a class="product-image-button" href="/p/${encodeURIComponent(p.id)}" aria-label="${esc(p.name)} — дэлгэрэнгүй"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}" loading="lazy"></a>
     <span class="product-type ${p.type}">${icon(p.type==='local'?'check':'box')}${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</span>
     <button class="favorite-button ${state.favorites.includes(p.id)?'saved':''}" data-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${state.favorites.includes(p.id)}">${icon('heart')}</button>
-    <div class="product-info"><span class="product-source">${esc(p.source)}</span><button class="product-name" data-detail="${p.id}">${esc(p.name)}</button><div class="product-meta"><span class="product-price">${money(p.price)}</span><button class="quick-add" data-add="${p.id}" aria-label="${esc(p.name)} — сагсанд нэмэх">${icon('plus')}</button></div><p class="product-sub">${p.demo!==false?'Жишээ үнэ':'Үнэ'} · хүргэлт ороогүй</p></div></article>`).join(''):`<div class="empty-state">${icon(filters.type==='saved'?'heart':'search')}<h3>${filters.type==='saved'?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${filters.type==='saved'?'Таалагдсан барааныхаа зүрхэн тэмдгийг дараарай.':'Өөр түлхүүр үг эсвэл ангилал сонгож үзээрэй.'}</p><button class="button blue" data-reset>Бүх барааг үзэх</button></div>`;
+    <div class="product-info"><span class="product-source">${esc(p.source)}</span><a class="product-name" href="/p/${encodeURIComponent(p.id)}">${esc(p.name)}</a><div class="product-meta"><span class="product-price">${money(p.price)}</span><button class="quick-add" data-add="${p.id}" aria-label="${esc(p.name)} — сагсанд нэмэх">${icon('plus')}</button></div><p class="product-sub">${p.demo!==false?'Жишээ үнэ':'Үнэ'} · хүргэлт ороогүй</p></div></article>`).join(''):`<div class="empty-state">${icon(filters.type==='saved'?'heart':'search')}<h3>${filters.type==='saved'?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${filters.type==='saved'?'Таалагдсан барааныхаа зүрхэн тэмдгийг дараарай.':'Өөр түлхүүр үг эсвэл ангилал сонгож үзээрэй.'}</p><button class="button blue" data-reset>Бүх барааг үзэх</button></div>`;
 }
 function scrollCatalog() { $('#catalog').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 function resetFilters() { filters={type:'all',category:'all',query:'',sort:'featured'};$('#search').value='';$('#sort').value='featured';renderCategories();renderProducts(); }
 function filterType(type) { if(type==='local'&&!localProductsEnabled)return toast('Бэлэн барааны худалдаа түр зогссон.');if(type==='china'&&window.storeServer?.ready){$('#supplier-catalog').scrollIntoView({behavior:'smooth'});return;} filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 function filterCategory(category) { filters.category=category;filters.type='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 
-function showProduct(id) {
-  const p=productById(id);if(!p)return;
-  openModal(p.name,`<img class="detail-photo" src="assets/${p.image}.jpg" alt="${esc(p.name)}"><div class="detail-heading"><span class="product-source">${esc(p.source)}</span><strong class="product-price">${money(p.price)}</strong></div><p class="detail-copy">${esc(p.description)}</p><form id="product-form" data-product="${p.id}"><div class="form-grid"><label class="field">${p.id==='sneakers'?'Хэмжээ':'Хувилбар'}<select name="variant">${p.variants.map(v=>`<option>${esc(v)}</option>`).join('')}</select></label><label class="field">Тоо ширхэг<input name="qty" type="number" value="1" min="1" max="99" step="1" required></label></div><div class="detail-specs"><div>Захиалгын төрөл<strong>${p.type==='local'?'Бэлэн бараа':'Хятадаас захиалах'}</strong></div><div>Хүргэлт<strong>Үнэ, хугацаа баталгаажаагүй</strong></div></div><div class="info-box">${p.demo!==false?'Жишээ бараа. Бодит худалдааны санал биш.':'Үнэ, үлдэгдэл, хүргэлтийг хүсэлт илгээсний дараа баталгаажуулна.'} Сагсанд нэмэхэд төлбөр төлөгдөхгүй.</div><div class="form-actions"><button class="button outline" type="button" data-action="cart">Сагс харах</button><button class="button blue" type="submit">${icon('bag')} Сагсанд нэмэх</button></div></form>`);
-}
+function showProduct(id) { location.assign('/p/'+encodeURIComponent(id)); }
 function addToCart(id,variant,qty=1) {
   const p=productById(id);if(!p||!p.variants.includes(variant)||!Number.isInteger(qty)||qty<1||qty>99)return;
   const existing=state.cart.find(item=>item.id===id&&item.variant===variant);
@@ -111,7 +111,7 @@ function addToCart(id,variant,qty=1) {
 function cartTotal() {return state.cart.reduce((sum,item)=>sum+productById(item.id).price*item.qty,0);}
 function showCart() {
   if(!state.cart.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Өөрт таалагдсан бараагаа сонгоорой.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-  openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);
+  openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);
 }
 function showCheckout() {
   if(window.storeServer?.ready)return window.storeServer.checkout();

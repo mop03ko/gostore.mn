@@ -11,4 +11,6 @@ Require all denied
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
+RewriteRule ^v/[0-9]{5,20}/?$ index.html [L]
+RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 </IfModule>
