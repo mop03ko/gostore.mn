@@ -44,7 +44,7 @@ try {
         if (!$info || !in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true) || $info[0]*$info[1]>12000000) fail('JPEG, PNG, WebP зураг (12 MP хүртэл) оруулна уу.');
         if (!function_exists('imagecreatefromstring')) fail('Серверт GD өргөтгөл шаардлагатай.',503);
         $image=@imagecreatefromstring(file_get_contents($file['tmp_name'])); if (!$image) fail('Зураг уншигдсангүй.');
-        $width=min(1600,imagesx($image));$height=(int)round(imagesy($image)*$width/imagesx($image));
+        $width=min(1600,imagesx($image));$height=max(1,(int)round(imagesy($image)*$width/imagesx($image)));
         $canvas=imagecreatetruecolor($width,$height);imagefill($canvas,0,0,imagecolorallocate($canvas,255,255,255));
         imagecopyresampled($canvas,$image,0,0,0,0,$width,$height,imagesx($image),imagesy($image));
         $name='uploads/'.bin2hex(random_bytes(16));$path=__DIR__.'/../assets/'.$name.'.jpg';
@@ -95,12 +95,14 @@ try {
         if ($type==='supplier') {
             $o['supplier']=supplier_order($b);$o['title']=mb_substr($o['supplier']['name'],0,120);$o['url']=$o['supplier']['url'];$o['variant']=$o['supplier']['variant'];$o['qty']=$o['supplier']['qty'];$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
         } else {
-            $items=$b['items']??[];if (!is_array($items)||count($items)<1||count($items)>100) fail('Сагс буруу байна.');
-            $catalog=array_column(products(),null,'id');$o['items']=[];$o['subtotal']=0;
+            $items=$b['items']??[];if (!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>100) fail('Сагс буруу байна.');
+            $catalog=array_column(products(),null,'id');$o['items']=[];$o['subtotal']=0;$quantities=[];
             foreach($items as $item) {
-                $p=$catalog[$item['id']??'']??null; if (!$p) fail('Бараа худалдаанд байхгүй байна.');
+                if(!is_array($item))fail('Сагсны барааны мэдээлэл буруу байна.');
+                $p=$catalog[str_field($item,'id',60)]??null; if (!$p) fail('Бараа худалдаанд байхгүй байна.');
                 $qty=int_field($item,'qty',1,99);$variant=str_field($item,'variant',100);
-                if (!$p['demo'] && $p['type']==='local' && $qty>$p['stock']) fail('Барааны үлдэгдэл хүрэлцэхгүй байна.');
+                $quantities[$p['id']]=($quantities[$p['id']]??0)+$qty;
+                if (!$p['demo'] && $p['type']==='local' && $quantities[$p['id']]>$p['stock']) fail('Барааны үлдэгдэл хүрэлцэхгүй байна.');
                 if (!in_array($variant,$p['variants'],true)) fail('Барааны хувилбар өөрчлөгдсөн байна.');
                 if($p['type']==='china')$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
                 $o['items'][]=['id'=>$p['id'],'name'=>$p['name'],'qty'=>$qty,'variant'=>$variant,'price'=>$p['price']];
@@ -109,6 +111,9 @@ try {
         }
         $customer=current_customer();$db=db();$db->exec('BEGIN IMMEDIATE');
         try {
+            // Another session may have saved this request while supplier validation was running.
+            $s=$db->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);$existing=$s->fetchColumn();$s->closeCursor();
+            if($existing){$r=order_row($existing);customer_order_access($r,$b);$db->exec('COMMIT');json_out(['order'=>public_order($r['order'])]);}
             // Hold the write lock so another request cannot claim the same short code.
             $exists=$db->prepare('SELECT 1 FROM orders WHERE id=?');
             for($attempt=0;$attempt<20;$attempt++){

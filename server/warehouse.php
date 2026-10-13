@@ -26,7 +26,7 @@ function warehouse_account_save(array $b): array {
     $email=strtolower(str_field($b,'email',200));
     if(!filter_var($email,FILTER_VALIDATE_EMAIL))fail('Имэйл хаягаа шалгана уу.');
     $password=$b['password']??'';
-    if(!is_string($password)||($password!==''&&(strlen($password)<12||strlen($password)>72)))fail('Нууц үг 12–72 байт урттай байна.');
+    if(!is_string($password)||str_contains($password,"\0")||($password!==''&&(strlen($password)<12||strlen($password)>72)))fail('Нууц үг 12–72 байт урттай байна.');
     if(!is_bool($b['enabled']??null))fail('Эрхийн төлөв буруу.');
     $a=warehouse_account($location);
     if($a['password_hash']===''&&$password==='')fail('Менежерийн анхны нууц үгийг оруулна уу.');

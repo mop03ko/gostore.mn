@@ -83,7 +83,7 @@ function admin_required(): void { session_boot(); if (!admin_authenticated()) fa
 function admin_password_change(array $b): array {
     admin_required();limit_attempts('admin-password:'.($_SERVER['REMOTE_ADDR']??'cli'),8,900);
     $current=$b['current_password']??null;$next=$b['new_password']??null;$confirm=$b['password_confirm']??null;
-    if(!is_string($current)||strlen($current)>1000||!is_string($next)||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
+    if(!is_string($current)||strlen($current)>1000||!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
     if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try {

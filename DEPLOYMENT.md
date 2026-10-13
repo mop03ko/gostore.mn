@@ -114,6 +114,10 @@ QPay-ээс GOStore-ийн sandbox болон production орчны `client_id`,
 
 ## Нөөц ба хязгаар
 
+2026-10-13-ны ажиллагааны шалгалт: үндсэн домэйны HTTP хүсэлтийг HTTPS руу 308-аар шилжүүлнэ. `.htaccess` нь зөвхөн `gostore.mn` / `www.gostore.mn` хостод энэ дүрмийг хэрэглэнэ; path болон query хадгална. Байршуулсны дараа HTTP нүүр, админ, барааны deep URL болон HTTPS API-г шалгана. [Apache RewriteRule redirect заавар](https://httpd.apache.org/docs/2.4/rewrite/flags.html#flag_r).
+
+OT операторын live төлөв `configured=false`, `purchasing_enabled=false` байсан. Энэ нь каталогоос бараа харах API-аас тусдаа: QPay төлөгдсөнөөс хойш 1688-д автоматаар худалдан авах урсгал одоогоор хэрэгжээгүй. Бодит QPay гүйлгээ, банкны аппын callback болон нийлүүлэгчийн бодит худалдан авалтыг автомат локал тест батлахгүй.
+
 - `gostore-data` хавтсыг hosting-ийн private backup-д хамруул. SQLite WAL ашигладаг тул ажиллаж байгаа DB-г дан файлаар хуулж болохгүй; SQLite backup хэрэгсэл эсвэл hosting snapshot хэрэглэ.
 - Админ самбар сүүлийн 1000 хүсэлтийг харуулна. Томруулбал pagination, audit log, roles, хэрэглэгчийн бүртгэл, inventory reservation нэмнэ.
 - Зочны захиалга харах түлхүүр тухайн хөтөчид хадгалагдана. Бүртгэлтэй холбогдсон захиалга нэвтрэх эрхээр бүх төхөөрөмжөөс харагдана.
