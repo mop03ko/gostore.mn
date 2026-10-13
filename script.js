@@ -157,7 +157,7 @@ document.addEventListener('click',event=>{
   if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="orders">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
   if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showOrders();return;}
 });
-$('#search-form').addEventListener('submit',e=>{e.preventDefault();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return toast('Барааны нэрээр хайж, каталогоос сонгоно уу.');if(window.supplierBrowse){window.supplierBrowse(value||'bag');scrollCatalog();return;}filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
+$('#search-form').addEventListener('submit',e=>{e.preventDefault();if(matchMedia('(max-width:760px)').matches)$('#search').blur();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return toast('Барааны нэрээр хайж, каталогоос сонгоно уу.');if(window.supplierBrowse){window.supplierBrowse(value||'bag');scrollCatalog();return;}filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
 $('#search').addEventListener('search',()=>{if(!$('#search').value){if(window.supplierBrowse)window.supplierBrowse('bag');else{filters.query='';renderProducts();}}});
 $('#sort')?.addEventListener('change',e=>{filters.sort=e.target.value;renderProducts();});
 $('#reset-filters')?.addEventListener('click',resetFilters);
@@ -173,3 +173,17 @@ document.addEventListener('submit',event=>{
 });
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){Object.assign(state,readState());updateCounts();renderProducts();if($('#modal').open)closeModal();}});
 $('#year').textContent=new Date().getFullYear();renderCategories();renderProducts();updateCounts();
+
+// Keep the mobile location indicator aligned with the visible catalog or dialog.
+(()=>{
+ const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal');let scheduled=false;
+ window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
+   const bounds=document.querySelector('#catalog').getBoundingClientRect();
+   let tab=bounds.top<innerHeight*.65&&bounds.bottom>140?(document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true'?'saved':'catalog'):'home';
+   if(modal.open){if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
+   nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+ });};
+ nav.addEventListener('click',e=>{if(e.target.closest('[data-mobile-tab=catalog]')&&document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true')window.supplierBrowse?.(document.querySelector('#supplier-query').value||'bag');});
+ addEventListener('scroll',syncMobileNav,{passive:true});addEventListener('resize',syncMobileNav);addEventListener('hashchange',syncMobileNav);
+ new MutationObserver(syncMobileNav).observe(modal,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
+})();
