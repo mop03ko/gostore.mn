@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — 1688 каталогоос Хятад бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="styles.css?v=20261013-warehouse">
-  <script src="script.js?v=20261013-warehouse" defer></script><script src="store-server.js?v=20261013-order-tracking" defer></script><script src="account.js?v=20261013-warehouse" defer></script><script src="supplier.js?v=20261013-order-tracking" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261013-logistics">
+  <script src="script.js?v=20261013-logistics" defer></script><script src="store-server.js?v=20261013-logistics" defer></script><script src="account.js?v=20261013-logistics" defer></script><script src="supplier.js?v=20261013-logistics" defer></script>
 <link rel="preload" href="assets/fonts/arimo-variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="assets/fonts/fonts.css?v=20261010-gilroy">
-</head>
+<script src="barcode.js?v=20261013-logistics" defer></script><script src="cargo.js?v=20261013-logistics" defer></script></head>
 <body>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -36,15 +36,15 @@
       <form id="search-form" class="search-form" role="search"><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" placeholder="Юу хайж байна вэ?" autocomplete="off"><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
       <div class="header-actions">
         <button class="header-action" data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button>
-        <button class="header-action" data-action="orders"><svg class="icon"><use href="#i-box"/></svg><span>Миний захиалга</span></button>
+        <button class="header-action" data-action="orders" aria-label="Миний ачаа"><svg class="icon"><use href="#i-box"/></svg><span>Миний ачаа</span></button>
         <button class="header-action" data-action="favorites" aria-label="Хадгалсан бараа"><span class="icon-wrap"><svg class="icon"><use href="#i-heart"/></svg><b class="count" id="favorite-count" hidden>0</b></span><span>Хадгалсан</span></button>
         <button class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></button>
       </div>
     </div>
-    <div class="nav-wrap"><nav class="container main-nav" aria-label="Үндсэн цэс">
+    <div class="container cargo-mobile-actions"><button data-action="orders">Миний ачаа</button><button data-notifications>Мэдэгдэл <span data-notification-count></span></button></div><div class="nav-wrap"><nav class="container main-nav" aria-label="Үндсэн цэс">
       <a href="#categories" class="nav-categories"><svg class="icon"><use href="#i-grid"/></svg>Бүх ангилал</a>
       <a class="nav-link" href="#main">Нүүр</a><button class="nav-link" data-filter="local" hidden>Бэлэн бараа <span class="nav-dot"></span></button><button class="nav-link" data-filter="china">Хятадаас захиалах</button>
-      <button class="nav-link nav-end" data-action="orders"><svg class="icon"><use href="#i-truck"/></svg>Захиалгын явц</button>
+      <button class="nav-link" data-notifications>Мэдэгдэл <span data-notification-count></span></button><button class="nav-link nav-end" data-action="orders"><svg class="icon"><use href="#i-truck"/></svg>Захиалгын явц</button>
     </nav></div>
   </header>
   <main id="main">

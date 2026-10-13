@@ -14,6 +14,8 @@ async function checkTracking(status){const response=await guest('order-get',{id:
 for(const id of ids)assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
 assert.equal((await cn('warehouse-order-update',{id:ids[0],status:'erenhot_dispatched',expected_status:'erenhot'})).status,403,'Dispatch must use a batch');
 assert.equal((await admin('order-update',{id:ids[3],status:'ready_delivery',amount:99000,internal_note:''})).status,409,'Admin cannot create fulfillment state without sorting');
+for(const id of ids){const m=await cn('warehouse-measure',{id,expected_version:0,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2});assert.equal(m.status,200);}
+async function scanAll(c,b){for(const o of b.orders){const r=await c('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:o.id});assert.equal(r.status,200);b=r.batch;}return b;}
 const create={token:token(),order_ids:[ids[0]],note:'Batch test'};
 assert.equal((await ub('warehouse-batch-create',create)).status,403);
 let r=await cn('warehouse-batch-create',create);assert.equal(r.status,201);let batch=r.batch;assert.match(batch.id,/^GB-[A-F0-9]{6}$/);assert.equal(batch.order_count,1);assert.equal(batch.piece_count,2);
@@ -33,6 +35,8 @@ batch=(await cn('warehouse-batch-add',{id:batch.id,expected_version:batch.versio
 const empty=(await cn('warehouse-batch-create',{token:token(),order_ids:[],note:'Empty'})).batch;
 assert.equal((await cn('warehouse-batch-dispatch',{id:empty.id,expected_version:empty.version})).status,409);
 assert.equal((await ub('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version})).status,403);
+assert.equal((await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version})).status,409,'Unscanned batch blocked');
+batch=await scanAll(cn,batch);
 const dispatch=await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version});assert.equal(dispatch.status,200);batch=dispatch.batch;assert.equal(batch.status,'dispatched');assert.ok(batch.orders.every(o=>o.status==='erenhot_dispatched'));
 await checkTracking('erenhot_dispatched');
 for(const action of ['add','remove','cancel'])assert.equal((await cn('warehouse-batch-'+action,{id:batch.id,expected_version:batch.version,order_ids:[ids[2]],order_id:ids[0]})).status,409,'Dispatched manifest locked');
@@ -41,6 +45,8 @@ assert.equal((await ub('warehouse-order-update',{id:ids[0],status:'ulaanbaatar',
 const sort={id:ids[0],operation:'sort',expected_status:'ulaanbaatar_unsorted',method:'pickup',checked:true,contact_phone:'99112233',address:''};
 assert.equal((await ub('warehouse-fulfillment-update',sort)).status,409,'Cannot sort before batch receipt');
 assert.equal((await cn('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,403);
+assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'Unscanned receipt blocked');
+batch=await scanAll(ub,batch);
 const receiveVersion=batch.version;const receive=await ub('warehouse-batch-receive',{id:batch.id,expected_version:receiveVersion});assert.equal(receive.status,200);batch=receive.batch;assert.equal(batch.status,'received');assert.equal(batch.unsorted_count,2);assert.ok(batch.orders.every(o=>o.status==='ulaanbaatar_unsorted'));
 await checkTracking('ulaanbaatar_unsorted');
 assert.equal(batch.orders[0].contact.address,'Legacy appended address');assert.equal(batch.orders[1].contact.address,'Legacy address only');assert.ok(!JSON.stringify(batch.orders[0].contact).includes('PRIVATE'));assert.equal((await ub('warehouse-orders&status=pending_sort')).total,2);
@@ -54,10 +60,12 @@ assert.equal((await ub('warehouse-batch&id='+batch.id)).batch.status,'received',
 const deliverySort={...sort,id:ids[1],method:'delivery',address:'СБД, 1 хороо, 10 байр'};assert.equal((await ub('warehouse-fulfillment-update',deliverySort)).status,200);
 batch=(await ub('warehouse-batch&id='+batch.id)).batch;assert.equal(batch.status,'sorted');assert.equal(batch.unsorted_count,0);
 assert.equal((await ub('warehouse-fulfillment-update',{id:ids[0],operation:'dispatch_delivery',expected_status:'ready_pickup',courier_name:'Driver',courier_phone:'99110022'})).status,409);
-assert.equal((await ub('warehouse-fulfillment-update',{id:ids[0],operation:'complete',expected_status:'ready_pickup',received_by:'Бат Тамир'})).status,200);
+const pickupCodes={};
+for(const id of ids.slice(0,2)){const o=(await ub('warehouse-order&id='+id)).order;const f=await ub('warehouse-settlement',{id,expected_version:o.logistics.version,goods_mnt:96000,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'weight',note:'Verified test total'});assert.equal(f.status,200,JSON.stringify(f));const token=crypto.createHash('sha256').update('warehouse-fixture-'+Number(id.slice(-3))).digest('hex');pickupCodes[id]=(await guest('order-get',{id,token})).order.cargo.pickup_code;}
+assert.equal((await ub('warehouse-fulfillment-update',{id:ids[0],operation:'complete',expected_status:'ready_pickup',received_by:'Бат Тамир',pickup_code:pickupCodes[ids[0]]})).status,200);
 assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'complete',expected_status:'ready_delivery',received_by:'Бат Тамир'})).status,409,'Delivery must leave warehouse before completion');
 assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'dispatch_delivery',expected_status:'ready_delivery',courier_name:'Дорж',courier_phone:'99110022'})).status,200);
-assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'complete',expected_status:'out_for_delivery',received_by:'Тамир'})).status,200);
+const deliveryToken=crypto.createHash('sha256').update('warehouse-fixture-2').digest('hex');const deliveryCode=(await guest('order-get',{id:ids[1],token:deliveryToken})).order.cargo.pickup_code;assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'complete',expected_status:'out_for_delivery',received_by:'Тамир',pickup_code:deliveryCode})).status,200);
 const customerToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
 const own=(await guest('order-get',{id:ids[0],token:customerToken})).order;assert.equal(own.status,'completed');assert.equal(own.id,ids[0]);assert.equal(own.batch_id,undefined);assert.ok(!JSON.stringify(own).includes(batch.id),'Internal batch code stays private');assert.deepEqual(own.fulfillment,{method:'pickup'});assert.equal(own.history.at(-1).actor_email,undefined);assert.ok(!JSON.stringify(own).includes(ids[1]),'Customer cannot see other batch members');
 const erenhotCopy=(await cn('warehouse-batch&id='+batch.id)).batch;assert.equal(erenhotCopy.orders[0].contact,undefined);assert.equal(erenhotCopy.orders[0].fulfillment,undefined);

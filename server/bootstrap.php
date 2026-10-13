@@ -37,7 +37,11 @@ function db(): PDO {
         CREATE INDEX IF NOT EXISTS customer_orders_owner ON customer_orders(customer_id, created);
         CREATE TABLE IF NOT EXISTS shipment_batches (id TEXT PRIMARY KEY, request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS shipment_batch_orders (order_id TEXT PRIMARY KEY REFERENCES orders(id), batch_id TEXT NOT NULL REFERENCES shipment_batches(id));
-        CREATE INDEX IF NOT EXISTS shipment_batch_members ON shipment_batch_orders(batch_id);');
+        CREATE INDEX IF NOT EXISTS shipment_batch_members ON shipment_batch_orders(batch_id);
+        CREATE TABLE IF NOT EXISTS order_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,order_id TEXT NOT NULL REFERENCES orders(id),kind TEXT NOT NULL,message TEXT NOT NULL,created TEXT NOT NULL,read_at TEXT);
+        CREATE INDEX IF NOT EXISTS order_notifications_order ON order_notifications(order_id,id);
+        CREATE TABLE IF NOT EXISTS warehouse_exceptions (id INTEGER PRIMARY KEY AUTOINCREMENT,location TEXT NOT NULL,code TEXT NOT NULL,kind TEXT NOT NULL,note TEXT NOT NULL,state TEXT NOT NULL,created TEXT NOT NULL,resolution TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS warehouse_exception_photos (id TEXT PRIMARY KEY,exception_id INTEGER NOT NULL REFERENCES warehouse_exceptions(id),created TEXT NOT NULL);');
     if (!$db->query("SELECT value FROM meta WHERE key='seeded'")->fetchColumn()) {
         $db->beginTransaction();
         try {
@@ -95,9 +99,14 @@ function order_row(string $id): array {
     $s=db()->prepare('SELECT * FROM orders WHERE id=?'); $s->execute([$id]); $r=$s->fetch();
     if (!$r) fail('Захиалга олдсонгүй.',404); $r['order']=json_decode($r['data'],true); return $r;
 }
-function save_order(array $o): void { db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]); }
+function save_order(array $o): void {
+    $old=function_exists('logistics_notify')?order_row($o['id'])['order']:null;
+    db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]);
+    if(function_exists('logistics_notify'))logistics_notify($o,$old);
+}
 function public_order(array $o): array {
-    unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id']);
+    if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
+    unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;

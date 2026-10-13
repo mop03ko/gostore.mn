@@ -8,11 +8,14 @@ require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
 require __DIR__.'/../server/warehouse.php';
 require __DIR__.'/../server/warehouse-batches.php';
+require __DIR__.'/../server/logistics.php';
+require __DIR__.'/../server/freight-payment.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
+    if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     $adminAction=in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
@@ -30,6 +33,8 @@ try {
     }
     if ($method!=='POST') fail('Зөвшөөрөөгүй хүсэлт.',405);
     csrf_required();
+    if($action==='warehouse-photo-upload')logistics_photo_upload();
+    if($action==='warehouse-exception-photo-upload')logistics_photo_upload(true);
     if ($action==='image-upload') {
         admin_required(); $file=$_FILES['image']??null;
         if (!$file || $file['error']!==UPLOAD_ERR_OK || $file['size']>5*1024*1024) fail('5 MB хүртэл зураг сонгоно уу.');
@@ -45,6 +50,14 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if(in_array($action,['order-photo','freight-invoice','payment-check'],true)){
+        $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);
+        if($action==='order-photo')logistics_photo_read($r['order'],str_field($b,'photo',32));
+        if($action==='freight-invoice')json_out(['order'=>public_order(freight_invoice($r['id']))]);
+        if(isset($r['order']['callback_token'])&&!$r['order']['paid'])qpay_callback($r['id'],$r['order']['callback_token']);
+        if(isset($r['order']['freight']['callback_token']))freight_callback($r['id'],$r['order']['freight']['callback_token']);
+        json_out(['order'=>public_order(order_row($r['id'])['order'])]);
+    }
     if($warehouseAction)warehouse_post($action,$b);
     if($action==='warehouse-account-save')json_out(['account'=>warehouse_account_save($b)]);
     if($action==='supplier-search')json_out(supplier_search($b));
@@ -134,6 +147,7 @@ try {
             if((isset($o['batch_id'])||isset($o['fulfillment'])||in_array($status,['ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true))&&$status!==$o['status'])fail('Багцтай болон ангилсан захиалгын явцыг агуулахын панелаас шинэчилнэ.',409);
             if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_dispatched','zamyn_uud','ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled'],true)) fail('Төлөв буруу.');
             $amount=int_field($b,'amount',0,100000000);
+            if(isset($o['settlement'])&&($amount!==$o['amount']||isset($b['quote_inputs'])))fail('Эцсийн тооцоотой захиалгын эхний дүнг өөрчлөхгүй.',409);
             if (isset($o['invoice']) && ($amount!==$o['amount']||$status==='cancelled')) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
 
             if(isset($b['quote_inputs'])){if(isset($o['invoice']))fail('Нэхэмжлэлтэй захиалгын тооцоог өөрчлөхгүй.',409);if(!is_array($b['quote_inputs']))fail('Тооцоо буруу.');$o['quote']=shipping_calculate($b['quote_inputs']);$amount=$o['quote']['total'];}

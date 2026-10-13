@@ -55,6 +55,8 @@ function warehouse_order_public(array $o,string $location='erenhot'): array {
     $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
     $result['items']=array_map(fn($item)=>array_intersect_key($item,array_flip(['name','variant','qty'])),$items);
     $result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])), $o['history']??[]);
+    $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
+    if($location==='ulaanbaatar'){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
     if($location==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
         if(isset($o['fulfillment']))$result['fulfillment']=$o['fulfillment'];
@@ -68,6 +70,10 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
     $location=warehouse_session_location();
+    if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
+    if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
+    if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
+    if($action==='warehouse-exception-photo'){$id=str_field($_GET,'id',50);logistics_exception($id,$location);logistics_photo_read(['logistics'=>['photos'=>logistics_exception_photos($id)]],str_field($_GET,'photo',32));}
     if(str_starts_with($action,'warehouse-batch'))warehouse_batch_get($action,$location);
     if($action!=='warehouse-orders')fail('Үйлдэл олдсонгүй.',404);
     $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
@@ -87,7 +93,7 @@ function warehouse_get(string $action): never {
         if($status==='waiting'){if(!in_array($o['status'],$waiting,true))continue;}
         elseif($status==='pending_sort'){if(!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar'],true))continue;}
         elseif($status!==''&&$status!=='all'&&$o['status']!==$status)continue;
-        if($query!==''&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'')),$query))continue;
+        if($query!==''&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf'])),$query))continue;
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location);
     }
@@ -106,6 +112,7 @@ function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-logout'){$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
     warehouse_required();
     $location=warehouse_session_location();
+    if(in_array($action,['warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);
     if($action==='warehouse-fulfillment-update')warehouse_fulfillment($b,$location);
     if($action!=='warehouse-order-update')fail('Үйлдэл олдсонгүй.',404);

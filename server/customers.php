@@ -40,12 +40,16 @@ function customer_order_access(array $r,array $b): void {
 function customer_get(string $action): never {
     if($action==='customer-me')json_out(['customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
     $c=customer_required();
+    if($action==='customer-notifications'){
+        $s=db()->prepare('SELECT n.* FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? ORDER BY n.id DESC LIMIT 100');$s->execute([$c['id']]);
+        $count=db()->prepare('SELECT COUNT(*) FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? AND n.read_at IS NULL');$count->execute([$c['id']]);json_out(['notifications'=>$s->fetchAll(),'unread'=>(int)$count->fetchColumn()]);
+    }
     if($action==='customer-orders'){
         $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>100000]]);
         if($offset===false)fail('Хуудасны дугаар буруу.');
         $s=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders co ON co.order_id=o.id WHERE co.customer_id=? ORDER BY o.created DESC,o.id DESC LIMIT 21 OFFSET ?');
         $s->bindValue(1,$c['id']);$s->bindValue(2,$offset,PDO::PARAM_INT);$s->execute();$rows=$s->fetchAll();
-        $orders=array_map(fn($r)=>array_intersect_key(json_decode($r['data'],true),array_flip(['id','title','created','status','amount','paid','demo'])),array_slice($rows,0,20));
+        $orders=array_map(fn($r)=>public_order(json_decode($r['data'],true)),array_slice($rows,0,20));
         json_out(['orders'=>$orders,'more'=>count($rows)>20]);
     }
     fail('Үйлдэл олдсонгүй.',404);
@@ -72,6 +76,9 @@ function customer_post(string $action,array $b): never {
         $_SESSION=[];session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
     }
     $c=customer_required();
+    if($action==='customer-notifications-read'){
+        $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);json_out(['ok'=>true]);
+    }
     if($action==='customer-profile'){
         $name=str_field($b,'name',100);$phone=customer_phone($b);$address=str_field($b,'address',500,false);
         db()->prepare('UPDATE customers SET name=?,phone=?,address=?,updated=? WHERE id=?')->execute([$name,$phone,$address,gmdate('c'),$c['id']]);

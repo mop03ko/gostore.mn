@@ -62,10 +62,10 @@ function qpay_invoice(string $id): array {
             'callback_url'=>rtrim(config()['site_url'],'/').'/api/index.php?action=qpay-callback&id='.rawurlencode($id).'&key='.$o['callback_token'],
         ],'Bearer '.qpay_token());
         if (empty($data['invoice_id']) || empty($data['qr_image'])) fail('Нэхэмжлэлийн мэдээлэл дутуу ирлээ.',502);
-        $o['invoice']+=['id'=>$data['invoice_id'],'qr_image'=>$data['qr_image'],'qr_text'=>$data['qr_text']??'','urls'=>$data['urls']??[]];
-        $o['invoice']['state']='ready'; save_order($o); return $o;
+        $db->exec('BEGIN IMMEDIATE');
+        try{$o=order_row($id)['order'];$o['invoice']+=['id'=>$data['invoice_id'],'qr_image'=>$data['qr_image'],'qr_text'=>$data['qr_text']??'','urls'=>$data['urls']??[]];$o['invoice']['state']='ready';save_order($o);$db->exec('COMMIT');}catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}return $o;
     } catch (Throwable $e) {
-        $o['invoice']['state']='review'; save_order($o); throw $e;
+        $db->exec('BEGIN IMMEDIATE');try{$o=order_row($id)['order'];if(($o['invoice']['state']??'')==='creating'){$o['invoice']['state']='review';save_order($o);}$db->exec('COMMIT');}catch(Throwable $saveError){$db->exec('ROLLBACK');throw $saveError;}throw $e;
     }
 }
 function qpay_callback(string $id,string $key): array {
@@ -77,7 +77,7 @@ function qpay_callback(string $id,string $key): array {
     $result=qpay_http('/v2/payment/check',['object_type'=>'INVOICE','object_id'=>$o['invoice']['id'],'offset'=>['page_number'=>1,'page_limit'=>100]],'Bearer '.qpay_token());
     if (paid_amount($result)>=$o['amount']) {
         $db=db(); $db->exec('BEGIN IMMEDIATE');
-        try { $fresh=order_row($id)['order']; $fresh['paid']=true; $fresh['paid_at']=gmdate('c'); if ($fresh['status']==='quoted') $fresh['status']='confirmed'; save_order($fresh); $db->exec('COMMIT'); }
+        try { $fresh=order_row($id)['order']; if(!$fresh['paid']){$fresh['paid']=true;$fresh['paid_at']=gmdate('c');if($fresh['status']==='quoted'){$fresh['status']='confirmed';$fresh['history'][]=['status'=>'confirmed','at'=>gmdate('c')];}save_order($fresh);} $db->exec('COMMIT'); }
         catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     }
     return ['ok'=>true];

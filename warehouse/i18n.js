@@ -11,3 +11,6 @@ statuses:{new:'Шинэ хүсэлт',reviewing:'Шалгаж байна',quoted
 batchStatuses:{draft:'Багцлаж байна',dispatched:'Илгээсэн',received:'Ирсэн · ангилж байна',sorted:'Бүгдийг ангилсан',cancelled:'Цуцалсан'},events:{created:'Багц үүсгэсэн',add:'Захиалга нэмсэн',remove:'Захиалга хассан',dispatch:'Улаанбаатар руу илгээсэн',receive:'Улаанбаатарт хүлээн авсан',sorted:'Бүх захиалгыг ангилсан',cancel:'Багц цуцалсан'}
 }
 };
+
+Object.assign(warehouseText.zh,{scanLabel:"扫描 GS / GB 标签（扫描枪或手动输入）",scanOpen:"打开",exceptions:"待认领 / 多余货物"});
+Object.assign(warehouseText.mn,{scanLabel:"GS / GB шошго уншуулах (сканнер эсвэл гараар)",scanOpen:"Нээх",exceptions:"Эзэн / багц тодорхойгүй ачаа"});
