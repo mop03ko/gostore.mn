@@ -24,6 +24,8 @@
     document.querySelector('#pd-total').textContent=value.valid?money(supplier?Math.ceil(value.price*value.qty*rate):value.price*value.qty):'Сонголтоо шалгана уу';
     document.querySelector('#pd-stock').textContent=value.stock==null?'Үлдэгдлийг захиалгын үед баталгаажуулна':`Үлдэгдэл: ${value.stock} ширхэг`;
     document.querySelector('#pd-selection-error').textContent=value.valid?'':`Хувилбар, доод тоо болон үлдэгдлээ шалгана уу. Доод тоо ${supplier?product.min_qty:1}, алхам ${supplier?product.step:1}.`;
+    root.querySelector('[data-pd-delta="-1"]').disabled=value.qty<=Number(root.querySelector('#pd-qty').min);
+    root.querySelector('[data-pd-delta="1"]').disabled=value.qty+Number(root.querySelector('#pd-qty').step)>Math.min(Number(root.querySelector('#pd-qty').max),value.stock??Infinity);
     root.querySelectorAll('[data-pd-submit]').forEach(b=>b.disabled=!value.valid||(supplier&&(details.stale||!product.sellable)));
   }
   function gallery(index){
@@ -49,8 +51,8 @@
     ${!supplier&&p.demo?'<p class="pd-warning">Жишээ бараа · Бодит худалдааны санал биш.</p>':''}
     ${supplier&&(details.stale||!p.sellable)?'<p class="pd-warning" role="alert">Барааны үнэ, худалдаалах нөхцөлийг шинэчилж чадсангүй. Захиалга түр боломжгүй.</p>':''}
     <form id="pd-options"><label class="field">Өнгө / хэмжээ / загвар<select name="variant" required>${variants.map(v=>supplier?`<option value="${esc(v.id)}" ${v.id===available?'selected':''} ${v.stock===0||v.cny===null?'disabled':''}>${esc(v.label)}${v.stock===0?' · Дууссан':''}</option>`:`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>
-    <div class="pd-quantity-row"><label for="pd-qty">Тоо ширхэг</label><div class="pd-quantity"><button type="button" data-pd-delta="-1" aria-label="Тоо бууруулах">−</button><input id="pd-qty" name="qty" type="number" min="${supplier?p.min_qty:1}" step="${supplier?p.step:1}" max="${supplier?9999:99}" value="${supplier?p.min_qty:1}" required><button type="button" data-pd-delta="1" aria-label="Тоо нэмэх">+</button></div></div><p class="pd-muted" id="pd-stock"></p><p class="form-error" id="pd-selection-error" role="alert"></p>
-    <div class="pd-buybar"><div><small>Барааны нийт дүн</small><strong id="pd-total"></strong></div><button class="button blue" type="submit" data-pd-submit>${supplier?'Захиалах':'Сагсанд нэмэх'} ${icon('arrow')}</button></div></form>
+    <div class="pd-quantity-row"><label for="pd-qty">Тоо ширхэг</label><div class="pd-quantity"><button type="button" data-pd-delta="-1" aria-label="Тоо бууруулах">−</button><input id="pd-qty" name="qty" type="number" inputmode="numeric" min="${supplier?p.min_qty:1}" step="${supplier?p.step:1}" max="${supplier?9999:99}" value="${supplier?p.min_qty:1}" required><button type="button" data-pd-delta="1" aria-label="Тоо нэмэх">+</button></div></div><p class="pd-muted" id="pd-stock"></p><p class="form-error" id="pd-selection-error" role="alert"></p>
+    <div class="pd-buybar"><div><small>Барааны дүн · хүргэлт нэмэгдэнэ</small><strong id="pd-total"></strong></div><button class="button blue" type="submit" data-pd-submit>${supplier?'Үргэлжлүүлэх':'Сагсанд нэмэх'} ${icon('arrow')}</button></div></form>
     <div class="pd-delivery">${icon('truck')}<div><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Хятад доторх хүргэлт, каргоны дүнг баталгаажуулсны дараа төлнө. Одоо төлбөр суутгахгүй.</p></div></div>
     ${supplier&&p.tiers?.length?`<div class="pd-tiers"><strong>Тоо ширхгээс хамаарах лавлах үнэ</strong>${p.tiers.map(t=>`<span>${t.qty}+ ширхэг <b>${esc(t.cny)} ¥</b></span>`).join('')}<small>Сонгосон хувилбарын эцсийн үнийг баталгаажуулна.</small></div>`:''}
     ${supplier?`<a class="text-button" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">1688 дээр харах ↗</a>`:''}</div></div>

@@ -47,7 +47,7 @@ function persist() {
 function updateCounts() {
   const count=state.cart.reduce((sum,item)=>sum+item.qty,0);
   $('#cart-count').textContent=count;
-  $('#mobile-cart-count').textContent=count;
+  if($('#mobile-cart-count'))$('#mobile-cart-count').textContent=count;
   const favorites=window.supplierFavoriteCount?window.supplierFavoriteCount():state.favorites.length;
   $('#favorite-count').textContent=favorites;
   $('#favorite-count').hidden=!favorites;
