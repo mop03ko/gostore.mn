@@ -5,6 +5,42 @@ let shopCsrf='',qpayEnabled=false;
 const REQUESTS_KEY='gostore-server-requests-v1';
 function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY)||'[]').filter(x=>typeof x.id==='string'&&/^[a-f0-9]{64}$/.test(x.token)).slice(0,100);}catch{return [];}}
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok)throw Error(result.error||'Сервертэй холбогдсонгүй.');if(result.csrf)shopCsrf=result.csrf;return result;}
+// Only public supplier data is cached; sessions, orders and payments always use shopApi.
+window.supplierApi=(()=>{
+  const key='gostore-supplier-cache-v1',pending=new Map(),maxEntries=40,maxBytes=1500000;
+  let entries=[];
+  const clone=value=>JSON.parse(JSON.stringify(value));
+  const valid=e=>e&&typeof e.key==='string'&&Number.isFinite(e.expires)&&e.expires>Date.now()&&e.expires<=Date.now()+600000&&e.data&&e.data.stale===false;
+  try{const saved=JSON.parse(sessionStorage.getItem(key)||'[]');if(Array.isArray(saved))entries=saved.filter(valid).slice(-maxEntries);}catch{/* Storage is optional. */}
+  function persist(){
+    entries=entries.filter(valid).slice(-maxEntries);
+    let json=JSON.stringify(entries);while(json.length*2>maxBytes&&entries.length){entries.shift();json=JSON.stringify(entries);}
+    try{sessionStorage.setItem(key,json);}catch{/* Memory cache still works if storage is full or unavailable. */}
+  }
+  return async(action,payload)=>{
+    if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
+    const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
+    const found=entries.find(e=>e.key===request&&valid(e));
+    if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
+    if(!pending.has(request)){
+      const work=(async()=>{
+        await window.catalogReady;
+        if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
+        const started=Date.now(),result=await shopApi(action,payload);
+        // Whitelist fields: never persist an API response's CSRF token or customer data.
+        const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
+        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more});
+        else data.product=result.product;
+        const ttl=Math.min(action==='supplier-search'?600:300,Number(result.cache_ttl)||0);
+        const shaped=action==='supplier-search'?Array.isArray(data.products):data.product?.id===payload.id;
+        if(shaped&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:started+ttl*1000,data:clone(data)});persist();}
+        return data;
+      })();
+      pending.set(request,work);work.finally(()=>pending.delete(request)).catch(()=>{});
+    }
+    return clone(await pending.get(request));
+  };
+})();
 function requestFields(){const user=window.customerAccount?.user;return `<label class="field">Овог<input name="family_name" maxlength="100" autocomplete="family-name" required></label><label class="field">Нэр<input name="customer" value="${esc(user?.name||'')}" maxlength="100" autocomplete="given-name" required></label><label class="field">Холбогдох утас<input name="phone" value="${esc(user?.phone||'')}" type="tel" inputmode="tel" maxlength="25" autocomplete="tel" required></label><label class="field full">Хүргэлтийн хаяг<input name="address" value="${esc(user?.address||'')}" maxlength="500" autocomplete="street-address" placeholder="Өөрөө авах бол хоосон үлдээнэ"></label>`;}
 function requestNotice(){return `<div class="info-box">Хүсэлт болон холбогдох мэдээлэл GOStore-ийн серверт хадгалагдана. Админ үнэ, хүргэлт, үлдэгдлийг баталгаажуулсны дараа төлбөрийн санал ирнэ. Одоо төлбөр суутгахгүй.</div><p id="request-error" class="form-error" role="alert"></p>`;}
 storeServer.checkout=()=>{if(!state.cart.length)return showCart();openModal('Захиалгын хүсэлт',`<form id="server-cart-form"><div class="form-grid">${requestFields()}<label class="field full">Хүсэлтийн нэр<input name="title" value="GOStore барааны хүсэлт" maxlength="120" required></label><label class="field full">Хүргэлт, нэмэлт хүсэлт<textarea name="notes" maxlength="1000" placeholder="Өөрөө авах / хүргүүлэх дүүрэг, нэмэлт хүсэлт"></textarea></label></div><p class="product-price">Барааны дүн: ${money(cartTotal())}</p>${requestNotice()}<div class="form-actions"><button class="button blue" type="submit">Хүсэлт илгээх</button></div></form>`);};

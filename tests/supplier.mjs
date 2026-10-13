@@ -12,7 +12,7 @@ const settings=(await admin('dashboard')).shipping;
 assert.equal((await shop('shipping-save',settings)).status,403);
 await shop('catalog');assert.equal((await shop('supplier-product',{id:'https://evil.test'})).status,400);
 const search=await shop('supplier-search',{q:'bag',page:1,sort:'default'});assert.equal(search.status,200);assert.ok(search.products.length>0);assert.equal(search.shipping.cny_rate,550);
-const d=await shop('supplier-product',{id:search.products[0].id});assert.equal(d.status,200);
+const d=await shop('supplier-product',{id:search.products[0].id});assert.equal(d.status,200);assert.ok(d.cache_ttl>0&&d.cache_ttl<=3600);assert.ok(search.cache_ttl>0&&search.cache_ttl<=3600);
 const p=d.product,v=p.variants.find(v=>v.cny&&v.stock>=p.min_qty);
 const b={type:'supplier',token:crypto.randomBytes(32).toString('hex'),product_id:p.id,sku:v.id,qty:p.min_qty,title:'Tampered title',customer:'Тамир',family_name:'Бат',phone:'99112233',notes:'',price:1,amount:1,unit_cny:1};
 assert.equal((await shop('order-create',{...b,sku:'fake'})).status,409);

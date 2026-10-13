@@ -62,13 +62,13 @@ function supplier_search(array $b): array {
     if(!in_array($sort,['default','price','-price','-volume'],true))fail('Эрэмбэ буруу.');
     $c=supplier_request('/v1/alibaba1688/search',['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort]);
     $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_normalize($p);}catch(ApiError){}}
-    return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'shipping'=>shipping_public()];
+    return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id): array {
     if(!preg_match('/^abb-\d{5,20}$/',$id))fail('1688 барааны дугаар буруу.');
     $c=supplier_request('/v1/alibaba1688/product/'.substr($id,4),['language'=>'mn']);
     $p=supplier_normalize($c['data']['Item']??[],true);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
-    return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'shipping'=>shipping_public()];
+    return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_order(array $b): array {
     $d=supplier_detail(str_field($b,'product_id',50));$p=$d['product'];
