@@ -2,6 +2,7 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await require('./customer-ui-helper.cjs')(page,base);
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  for(const width of [320,390,430,760]){
@@ -24,8 +25,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.setViewportSize({width:390,height:844});await page.locator('.mobile-nav [data-action=favorites]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=saved]').getAttribute('aria-current')==='page');
  await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.locator('.supplier-card').first().waitFor();assert.equal(await page.locator('#catalog [data-filter=all]').getAttribute('aria-pressed'),'true','Catalog tab exits saved filter');
  await page.locator('.mobile-nav [data-mobile-tab=home]').click();await page.screenshot({path:'tmp/mobile-redesign-home.png'});
- await page.locator('.mobile-notifications').click();await page.locator('#customer-login-form').waitFor();await page.screenshot({path:'tmp/mobile-redesign-account.png'});
- await page.setViewportSize({width:320,height:460});await page.locator('#customer-login-form [name=password]').focus();await page.locator('#customer-login-form [type=submit]').scrollIntoViewIfNeeded();assert.equal(await page.locator('#close-modal').isVisible(),true);assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth),'Short viewport form fits');await page.keyboard.press('Escape');
+ await page.locator('.mobile-nav [data-action=account]').click();await page.locator('#customer-profile-form').waitFor();await page.screenshot({path:'tmp/mobile-redesign-account.png'});
+ await page.setViewportSize({width:320,height:460});await page.locator('#customer-profile-form [name=phone]').focus();await page.locator('#customer-profile-form [type=submit]').scrollIntoViewIfNeeded();assert.equal(await page.locator('#close-modal').isVisible(),true);assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth),'Short viewport form fits');await page.keyboard.press('Escape');
  await page.goto(base+'/v/123456789');await page.locator('#pd-options').waitFor();assert.equal(await page.locator('#search-form').isVisible(),false);
  const bar=await page.locator('.pd-buybar').boundingBox();assert.ok(bar.x>=0&&bar.x+bar.width<=320&&bar.y+bar.height<=461,'Buy bar stays inside narrow screen');
  await page.locator('[data-pd-submit]').click();await page.locator('#supplier-order-form').waitFor();assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth));await page.locator('#close-modal').click();

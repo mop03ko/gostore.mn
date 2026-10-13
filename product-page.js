@@ -52,7 +52,7 @@
     ${supplier&&(details.stale||!p.sellable)?'<p class="pd-warning" role="alert">Барааны үнэ, худалдаалах нөхцөлийг шинэчилж чадсангүй. Захиалга түр боломжгүй.</p>':''}
     <form id="pd-options"><label class="field">Өнгө / хэмжээ / загвар<select name="variant" required>${variants.map(v=>supplier?`<option value="${esc(v.id)}" ${v.id===available?'selected':''} ${v.stock===0||v.cny===null?'disabled':''}>${esc(v.label)}${v.stock===0?' · Дууссан':''}</option>`:`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>
     <div class="pd-quantity-row"><label for="pd-qty">Тоо ширхэг</label><div class="pd-quantity"><button type="button" data-pd-delta="-1" aria-label="Тоо бууруулах">−</button><input id="pd-qty" name="qty" type="number" inputmode="numeric" min="${supplier?p.min_qty:1}" step="${supplier?p.step:1}" max="${supplier?9999:99}" value="${supplier?p.min_qty:1}" required><button type="button" data-pd-delta="1" aria-label="Тоо нэмэх">+</button></div></div><p class="pd-muted" id="pd-stock"></p><p class="form-error" id="pd-selection-error" role="alert"></p>
-    <div class="pd-buybar"><div><small>Барааны дүн · хүргэлт нэмэгдэнэ</small><strong id="pd-total"></strong></div><button class="button blue" type="submit" data-pd-submit>${supplier?'Үргэлжлүүлэх':'Сагсанд нэмэх'} ${icon('arrow')}</button></div></form>
+    <div class="pd-buybar"><div><small>Барааны дүн · хүргэлт нэмэгдэнэ</small><strong id="pd-total"></strong></div><button class="button blue" type="submit" data-pd-submit>${supplier?'Үргэлжлүүлэх':'Сагсанд нэмэх'} ${icon('arrow')}</button><button type="button" class="button blue" data-action="account" data-guest-only>Нэвтэрч захиалах</button></div></form>
     <div class="pd-delivery">${icon('truck')}<div><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Хятад доторх хүргэлт, каргоны дүнг баталгаажуулсны дараа төлнө. Одоо төлбөр суутгахгүй.</p></div></div>
     ${supplier&&p.tiers?.length?`<div class="pd-tiers"><strong>Тоо ширхгээс хамаарах лавлах үнэ</strong>${p.tiers.map(t=>`<span>${t.qty}+ ширхэг <b>${esc(t.cny)} ¥</b></span>`).join('')}<small>Сонгосон хувилбарын эцсийн үнийг баталгаажуулна.</small></div>`:''}
     ${supplier?`<a class="text-button" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">1688 дээр харах ↗</a>`:''}</div></div>
@@ -72,7 +72,7 @@
   }
   root.addEventListener('input',e=>{if(e.target.closest('#pd-options'))update();});
   root.addEventListener('change',e=>{if(e.target.closest('#pd-options'))update();});
-  root.addEventListener('submit',e=>{if(e.target.id!=='pd-options')return;e.preventDefault();const value=selection();if(!value?.valid)return; if(supplier){if(details.stale||!product.sellable)return;openSupplierOrder(product,value.variant.id,value.qty);}else addToCart(id,value.variant,value.qty);});
+  root.addEventListener('submit',e=>{if(e.target.id!=='pd-options')return;e.preventDefault();if(!customerAccount.require())return;const value=selection();if(!value?.valid)return; if(supplier){if(details.stale||!product.sellable)return;openSupplierOrder(product,value.variant.id,value.qty);}else addToCart(id,value.variant,value.qty);});
   root.addEventListener('click',async e=>{
     const b=e.target.closest('button');if(!b)return;
     if(b.hasAttribute('data-pd-retry'))return storeServer.ready?load():location.reload();

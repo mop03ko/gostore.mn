@@ -112,3 +112,9 @@ html{scroll-padding-top:190px}
  .toast{bottom:calc(80px + env(safe-area-inset-bottom))}.how-section{padding:20px}.steps{gap:18px}.steps article{padding-left:52px;position:relative}.step-number{position:absolute;left:0;top:0}.steps h3{font-size:18px}.steps p{font-size:14px}.footer-main h3{font-size:18px}
 }
 @media(max-width:350px){.header-main .brand{width:145px}.hero-copy{padding:20px 16px}.hero-copy h1{font-size:27px}.hero-actions .button{font-size:13px;padding-inline:12px}.supplier-card-copy strong{font-size:15px}.mobile-nav a,.mobile-nav button{font-size:9px}}
+
+/* Guest storefront exposes browsing; account actions appear after sign-in. */
+html:not(.customer-signed-in) :is([data-action="orders"],[data-action="cart"],[data-action="checkout"],[data-notifications],[data-pd-submit],[data-add],[data-customer-only]){display:none!important}
+html.customer-signed-in [data-guest-only]{display:none!important}
+.account-shortcuts{justify-content:stretch}.account-shortcuts .button{flex:1}
+@media(max-width:760px){html:not(.customer-signed-in) .header-actions [data-action=account]{display:flex}.pd-buybar [data-guest-only]{width:100%;min-width:0;padding-inline:10px;font-size:13px}}

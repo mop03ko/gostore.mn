@@ -95,6 +95,7 @@ function filterCategory(category) { if(window.supplierBrowse){filters.category=c
 
 function showProduct(id) { location.assign('/p/'+encodeURIComponent(id)); }
 function addToCart(id,variant,qty=1) {
+  if(!window.customerAccount?.require())return;
   const p=productById(id);if(!p||!p.variants.includes(variant)||!Number.isInteger(qty)||qty<1||qty>99)return;
   const existing=state.cart.find(item=>item.id===id&&item.variant===variant);
   if(existing&&existing.qty+qty>99){toast('Нэг хувилбараас 99 хүртэл ширхэг сонгоно.');return;}
@@ -103,10 +104,12 @@ function addToCart(id,variant,qty=1) {
 }
 function cartTotal() {return state.cart.reduce((sum,item)=>sum+productById(item.id).price*item.qty,0);}
 function showCart() {
+  if(!window.customerAccount?.require())return;
   if(!state.cart.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Өөрт таалагдсан бараагаа сонгоорой.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
   openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);
 }
 function showCheckout() {
+  if(!window.customerAccount?.require())return;
   if(window.storeServer?.ready)return window.storeServer.checkout();
   if(!state.cart.length)return showCart();
   openModal('Захиалгын ноорог',`<p class="modal-intro">Сонгосон бараануудаа нэг ноорогт хадгалаарай. Энэ мэдээлэл сервер рүү илгээгдэхгүй, зөвхөн энэ хөтөчид үлдэнэ.</p><form id="checkout-form"><div class="form-grid"><label class="field full">Нооргийн нэр<input name="title" placeholder="Жишээ: Гэрийн шинэ сонголт" maxlength="80" required></label><label class="field full">Хүлээн авах хүсэлт<select name="delivery"><option>Хүргэлтээр авах</option><option>Өөрөө очиж авах</option><option>Дараа шийдэх</option></select></label><label class="field full">Нэмэлт тэмдэглэл<textarea name="notes" maxlength="500" placeholder="Өнгө, хэмжээ болон бусад хүсэлт"></textarea></label></div><div class="cart-totals"><div class="total"><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">Хүргэлтийн төлбөр баталгаажаагүй. Ноорог хадгалахад төлбөр төлөгдөхгүй, сагс тань хэвээр үлдэнэ.</div><div class="form-actions"><button type="button" class="button outline" data-action="cart">Сагс руу буцах</button><button class="button blue" type="submit">Ноорог хадгалах ${icon('check')}</button></div></form>`);
@@ -119,6 +122,7 @@ function saveDraft(type,title,text) {
   toast(storageAvailable?'Ноорог энэ хөтөчид хадгалагдлаа':'Нооргоо алдахгүйн тулд одоо татаж аваарай.');return true;
 }
 function showOrders() {
+  if(!window.customerAccount?.require())return;
   if(window.storeServer?.ready)return window.storeServer.orders();
   openModal('Миний захиалгын ноорог',`<p class="modal-intro">Энд зөвхөн энэ хөтөчид бэлдсэн нооргууд харагдана. Серверт баталгаажсан захиалга болон ачааны бодит хяналт хараахан холбогдоогүй.</p>`+(state.drafts.length?state.drafts.map(d=>`<article class="draft-card"><div class="draft-top"><h3>${esc(d.title)}</h3><span class="draft-tag">Ноорог · илгээгээгүй</span></div><p>${esc(d.id)} · ${Number.isNaN(Date.parse(d.created))?'Огноо тодорхойгүй':new Date(d.created).toLocaleDateString('mn-MN')}</p><p>${d.type==='link'?'Хуучин хүсэлтийн ноорог':'GOStore сагсны ноорог'}</p><div class="draft-buttons"><button class="text-button" data-view-draft="${esc(d.id)}">Дэлгэрэнгүй</button><button class="text-button" data-download="${esc(d.id)}">Татах ↓</button><button class="text-button" data-delete-draft="${esc(d.id)}">Устгах</button></div></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>Ноорог хараахан алга</h3><p>Сагснаасаа ноорог үүсгээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`));
 }

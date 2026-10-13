@@ -28,7 +28,7 @@ function cargoCards(){
 storeServer.orders=async(offset=0)=>{
   const request=++cargoRequest;
   try{
-    await customerAccount.refresh();const user=customerAccount.user;
+    await customerAccount.refresh();const user=customerAccount.user;if(!user)return accountForm();
     const r=user?await shopApi('customer-orders&offset='+offset):{orders:[],more:false};
     const own=new Set(r.orders.map(o=>o.id)),guest=savedRequests().filter(g=>!own.has(g.id));
     const fetched=offset===0?await Promise.allSettled(guest.map(g=>shopApi('order-get',g))):[];
@@ -41,6 +41,7 @@ function cargoPaymentHtml(invoice){return invoice?.state==='ready'?`<div class="
 viewServerOrder=async(id,requestInvoice=false,action=null)=>{
   const request=++cargoRequest,r=savedRequests().find(x=>x.id===id)||{id,token:''};
   try{
+    if(!await customerAccount.refresh())return accountForm();
     const {order:o}=await shopApi(action||(requestInvoice?'invoice':'order-get'),r);if(request!==cargoRequest)return;
     const c=o.cargo||{},bill=c.billing||{finalized:false,total:o.amount,paid:o.paid?o.amount:0,due:o.paid?0:o.amount,breakdown:{}},m=c.measurement;
     const labels={goods_mnt:'Бараа',domestic_mnt:'Хятад доторх хүргэлт',service_mnt:'Үйлчилгээ',cargo_mnt:'Карго',delivery_mnt:'УБ хүргэлт'};
@@ -57,6 +58,6 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
 setInterval(()=>{if(!document.hidden&&window.customerAccount?.user)refreshCargoNotifications().catch(()=>{});},60000);
 setTimeout(()=>refreshCargoNotifications().catch(()=>{}),2000);
 
-const cargoSetUser=customerAccount.setUser;customerAccount.setUser=user=>{cargoSetUser(user);if(!user){cargoList=[];document.querySelectorAll("[data-notification-count]").forEach(n=>n.textContent="");}else refreshCargoNotifications().catch(()=>{});};
+const cargoSetUser=customerAccount.setUser;customerAccount.setUser=user=>{if(customerAccount.user?.id!==user?.id)++cargoRequest;cargoSetUser(user);if(!user){cargoList=[];document.querySelectorAll("[data-notification-count]").forEach(n=>n.textContent="");}else refreshCargoNotifications().catch(()=>{});};
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cargo-photo-toggle]');if(!b)return;const expanded=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',expanded?'Зургийг хураах':'Зургийг томруулах');b.closest('figure').classList.toggle('expanded',expanded);});

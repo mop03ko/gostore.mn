@@ -6,6 +6,7 @@ function cached(key,data){fs.writeFileSync(path.join(cache,crypto.createHash('sh
 cached('/v1/alibaba1688/product/123456789?language=mn',{Item:raw});cached('/v1/alibaba1688/search?item_title=bag&language=mn&limit=12&page=1&sort=default',{Items:{Items:{Content:[raw],TotalCount:1},MaximumPageCount:1}});
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],failed=[];page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()===404)failed.push(r.url());});
+ await require('./customer-ui-helper.cjs')(page,base);
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  let searches=0;page.on('request',r=>{if(r.url().includes('action=supplier-search'))searches++;});
  assert.equal((await page.goto(base+'/v/123456789?cat=1166&from=sc')).status(),200);await page.locator('#pd-options').waitFor();assert.equal(searches,0,'Direct product does not spend a search call');assert.equal(await page.locator('[data-pd-delta="-1"]').isDisabled(),true,'Cannot reduce below supplier minimum');assert.equal(await page.locator('#pd-unit-price').innerText(),'5,500 ₮');assert.equal(await page.locator('[data-pd-photo]').count(),2,'Unsafe images removed');
