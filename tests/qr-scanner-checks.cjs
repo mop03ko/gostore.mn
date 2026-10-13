@@ -20,7 +20,7 @@ module.exports=async function checkQrFallback(page,qrImage,batch){
   await page.locator('#qr-file').setInputFiles({name:'batch-qr.png',mimeType:'image/png',buffer:Buffer.from(qrImage.png,'base64')});
   await page.locator('#editor').waitFor({state:'visible'});
   assert.equal(await page.locator('#editor-title').innerText(),batch);
-  assert.equal(await page.locator('[data-operation=batch-dispatch]').count(),1,'Reading a draft QR does not dispatch it');
+  assert.equal(await page.locator('[data-operation=batch-ready]').count(),1,'Reading a draft QR does not dispatch it');
   await page.locator('#close-editor').click();
   // Permission can resolve after the user has already closed the scanner.
   await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>{window.finishCameraPermission=resolve;});});

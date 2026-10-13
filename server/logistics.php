@@ -131,7 +131,7 @@ function logistics_photo_upload(bool $exception=false): never {
         $o=order_row($id)['order'];$l=logistics_state($o);
         if(!warehouse_order_visible($o,$location)||in_array($o['status'],['completed','cancelled'],true))fail('Зураг нэмэх боломжгүй.',409);
         if((string)$l['version']!==($_POST['expected_version']??''))fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
-        $allowed=$location==='erenhot'?['confirmed','shipping','erenhot']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
+        $allowed=$location==='erenhot'?['confirmed','shipping','erenhot','erenhot_ready']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
         if(!in_array($o['status'],$allowed,true))fail('Энэ төлөвт агуулахын зураг нэмэх боломжгүй.',409);
         if(count(array_filter($l['photos'],fn($p)=>($p['location']??'')===$location))>=12)fail('Нэг агуулахад 12 хүртэл зураг хадгална.');
         if(!imagejpeg($canvas,$path,85))fail('Зураг хадгалагдсангүй.',503);

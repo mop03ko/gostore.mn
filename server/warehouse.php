@@ -79,13 +79,14 @@ function warehouse_get(string $action): never {
     $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
-    $rows=[];$matched=0;$counts=['waiting'=>0,'received'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
+    $rows=[];$matched=0;$counts=['waiting'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
     $waiting=$location==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
     $received=$location==='ulaanbaatar'?'ulaanbaatar':'erenhot';
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
         $o=json_decode($r['data'],true);if(!warehouse_order_visible($o,$location))continue;
         if(in_array($o['status'],$waiting,true))$counts['waiting']++;
         if($o['status']===$received)$counts['received']++;
+        if($o['status']==='erenhot_ready')$counts['ready']++;
         if($o['status']==='erenhot_dispatched')$counts['dispatched']++;
         if($o['status']==='completed')$counts['completed']++;
         if($o['status']==='ulaanbaatar_unsorted')$counts['unsorted']++;
@@ -133,6 +134,7 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Багц агуулахаас бодитоор гарсныг батална уу.'=>'请确认包裹已实际离开二连仓库。',
         'Энэ агуулахын хүлээн авах зургийг эхлээд оруулна уу.'=>'请先上传本仓库的收货照片。',
         'Энэ төлөвт агуулахын зураг нэмэх боломжгүй.'=>'当前订单状态无法上传本仓库照片。',
         'Нэг агуулахад 12 хүртэл зураг хадгална.'=>'每个仓库最多上传12张照片。',
