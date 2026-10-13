@@ -18,18 +18,18 @@ try {
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
-    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if ($method==='GET') {
         if($warehouseAction)warehouse_get($action);
         if ($action==='catalog') json_out(['products'=>products(),'local_products_enabled'=>config()['local_products_enabled'],'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
         if (str_starts_with($action,'customer-')) customer_get($action);
-        if ($action==='session') json_out(['authenticated'=>!empty($_SESSION['admin']),'csrf'=>$_SESSION['csrf'],'configured'=>config()['admin_password_hash']!=='']);
+        if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>['erenhot'=>warehouse_account_public('erenhot'),'ulaanbaatar'=>warehouse_account_public('ulaanbaatar')],'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>['erenhot'=>warehouse_profile('erenhot'),'ulaanbaatar'=>warehouse_profile('ulaanbaatar')],'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>['erenhot'=>warehouse_account_public('erenhot'),'ulaanbaatar'=>warehouse_account_public('ulaanbaatar')],'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -62,6 +62,8 @@ try {
         json_out(['order'=>public_order(order_row($r['id'])['order'])]);
     }
     if($warehouseAction)warehouse_post($action,$b);
+    if($action==='admin-password-change')json_out(admin_password_change($b));
+    if($action==='warehouse-profile-save')json_out(['profile'=>warehouse_profile_save($b)]);
     if($action==='warehouse-account-save')json_out(['account'=>warehouse_account_save($b)]);
     if($action==='supplier-search')json_out(supplier_search($b));
     if($action==='supplier-product')json_out(supplier_detail(str_field($b,'id',50)));
@@ -70,10 +72,11 @@ try {
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') {
         limit_attempts('login:'.($_SERVER['REMOTE_ADDR']??''),8,900);
-        $email=str_field($b,'email',200); $password=str_field($b,'password',500);
-        $hash=config()['admin_password_hash'];
+        $email=str_field($b,'email',200); $password=$b['password']??'';
+        if(!is_string($password)||$password===''||strlen($password)>1000)fail('Имэйл эсвэл нууц үг буруу байна.',401);
+        $hash=admin_password_hash();
         if (!$hash || !hash_equals(strtolower(config()['admin_email']),strtolower($email)) || !password_verify($password,$hash)) fail('Имэйл эсвэл нууц үг буруу байна.',401);
-        session_regenerate_id(true); $_SESSION['admin']=true; $_SESSION['csrf']=bin2hex(random_bytes(32)); json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
+        session_regenerate_id(true); $_SESSION['admin']=true; $_SESSION['admin_version']=hash('sha256',$hash); $_SESSION['csrf']=bin2hex(random_bytes(32)); json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
     }
     if ($action==='logout') { $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
@@ -127,6 +130,19 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):$r['order'])]);
     }
     admin_required();
+    if ($action==='product-delete') {
+        $id=str_field($b,'id',60);
+        if(($b['confirm_id']??'')!==$id)fail('Устгах барааг баталгаажуулна уу.');
+        $db=db();$db->exec('BEGIN IMMEDIATE');
+        try {
+            $s=$db->prepare('SELECT data FROM products WHERE id=?');$s->execute([$id]);$raw=$s->fetchColumn();
+            if(!$raw)fail('Бараа олдсонгүй.',404);
+            $p=json_decode($raw,true);$p['active']=false;$p['deleted_at']=$p['deleted_at']??gmdate('c');
+            $db->prepare('UPDATE products SET data=?,updated=? WHERE id=?')->execute([json_encode($p,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$id]);
+            $db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        json_out(['ok'=>true]);
+    }
     if ($action==='product-save') {
         $id=str_field($b,'id',60,false)?:'p-'.bin2hex(random_bytes(8)); if (!preg_match('/^[a-z0-9-]+$/',$id)) fail('Барааны код буруу.');
         $p=['id'=>$id,'name'=>str_field($b,'name',150),'description'=>str_field($b,'description',3000),'category'=>str_field($b,'category',30),'type'=>str_field($b,'type',10),'image'=>str_field($b,'image',100),'price'=>int_field($b,'price',0,100000000),'stock'=>int_field($b,'stock',0,1000000),'active'=>($b['active']??false)===true,'demo'=>($b['demo']??true)===true];
@@ -134,13 +150,15 @@ try {
         if (!in_array($p['image'],['chair','headphones','backpack','sneakers','watch','lamp','skincare','living'],true) && !(preg_match('#^uploads/[a-f0-9]{32}$#',$p['image']) && is_file(__DIR__.'/../assets/'.$p['image'].'.jpg'))) fail('Зураг буруу.');
         $variants=$b['variants']??null; if (!is_array($variants)||count($variants)<1||count($variants)>30) fail('Хувилбар оруулна уу.');
         $p['variants']=array_values(array_unique(array_map(fn($v)=>str_field(['v'=>$v],'v',100),$variants)));$p['source']=$p['type']==='local'?'GOStore сонголт':'Хятад захиалга';
-        $db=db();$db->beginTransaction();
+        $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
+            $s=$db->prepare('SELECT data FROM products WHERE id=?');$s->execute([$id]);$existing=json_decode($s->fetchColumn()?:'{}',true);
+            if(!empty($existing['deleted_at']))fail('Энэ бараа устгагдсан. Жагсаалтаа шинэчилнэ үү.',409);
             $data=json_encode($p,JSON_UNESCAPED_UNICODE);$updated=gmdate('c');
             $db->prepare('INSERT OR IGNORE INTO products VALUES (?,?,?)')->execute([$id,$data,$updated]);
             $db->prepare('UPDATE products SET data=?,updated=? WHERE id=?')->execute([$data,$updated,$id]);
-            $db->commit();
-        } catch(Throwable $e){$db->rollBack();throw $e;}
+            $db->exec('COMMIT');
+        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         json_out(['product'=>$p]);
     }
     if ($action==='order-update') {

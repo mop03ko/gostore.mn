@@ -10,3 +10,4 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .login-brand>a{display:inline-block;margin-bottom:48px}.login-brand img{display:block;margin:0}.login-brand>span{display:block}@media(max-width:760px){.login-screen{grid-template-rows:auto 1fr}.login-brand>a{margin:0}.login-brand>span{display:none}}
 
 .warehouse-account-card>p{margin:16px 0}.warehouse-account-card .quiet{display:inline-flex;align-items:center}.warehouse-account-card form{margin-top:24px}.warehouse-account-card form>.muted{margin:20px 0}.warehouse-account-card .error:not(:empty){margin:16px 0}
+.quiet.danger{color:#b42318;border-color:#f3b4ad}.primary.danger{background:#b42318;color:#fff}

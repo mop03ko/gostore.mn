@@ -72,7 +72,31 @@ function session_boot(string $realm = 'admin'): void {
     if (isset($_SESSION['last']) && time()-$_SESSION['last']>1800) { $_SESSION=[]; session_regenerate_id(true); }
     $_SESSION['last']=time(); $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 }
-function admin_required(): void { session_boot(); if (empty($_SESSION['admin'])) fail('Админаар нэвтэрнэ үү.',401); }
+function admin_password_hash(): string {
+    $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['admin_password_hash']);
+    return $s->fetchColumn() ?: config()['admin_password_hash'];
+}
+function admin_authenticated(): bool {
+    return !empty($_SESSION['admin']) && hash_equals(hash('sha256',admin_password_hash()),(string)($_SESSION['admin_version']??''));
+}
+function admin_required(): void { session_boot(); if (!admin_authenticated()) fail('Админаар нэвтэрнэ үү.',401); }
+function admin_password_change(array $b): array {
+    admin_required();limit_attempts('admin-password:'.($_SERVER['REMOTE_ADDR']??'cli'),8,900);
+    $current=$b['current_password']??null;$next=$b['new_password']??null;$confirm=$b['password_confirm']??null;
+    if(!is_string($current)||strlen($current)>1000||!is_string($next)||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
+    if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try {
+        admin_required();$hash=admin_password_hash();
+        if(!password_verify($current,$hash))fail('Одоогийн нууц үг буруу байна.',422);
+        if(password_verify($next,$hash))fail('Өмнөхөөс өөр шинэ нууц үг сонгоно уу.');
+        $newHash=password_hash($next,PASSWORD_BCRYPT,['cost'=>12]);
+        $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['admin_password_hash',$newHash]);
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    session_regenerate_id(true);$_SESSION['admin_version']=hash('sha256',$newHash);$_SESSION['csrf']=bin2hex(random_bytes(32));
+    return ['ok'=>true,'csrf'=>$_SESSION['csrf']];
+}
 function csrf_required(): void {
     session_boot();
     if (!hash_equals($_SESSION['csrf'], $_SERVER['HTTP_X_CSRF_TOKEN']??'')) fail('Хуудас шинэчлээд дахин оролдоно уу.',403);
@@ -93,7 +117,7 @@ function int_field(array $b,string $key,int $min,int $max): int {
 function products(bool $all=false): array {
     $rows=db()->query('SELECT data FROM products ORDER BY rowid')->fetchAll();
     $items=array_map(fn($r)=>json_decode($r['data'],true),$rows);
-    return array_values(array_filter($items,fn($p)=>$all || ($p['active']&&($p['type']!=='local'||config()['local_products_enabled']))));
+    return array_values(array_filter($items,fn($p)=>empty($p['deleted_at']) && ($all || ($p['active']&&($p['type']!=='local'||config()['local_products_enabled'])))));
 }
 function order_row(string $id): array {
     $s=db()->prepare('SELECT * FROM orders WHERE id=?'); $s->execute([$id]); $r=$s->fetch();
@@ -106,6 +130,7 @@ function save_order(array $o): void {
 }
 function public_order(array $o): array {
     if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
+    if(function_exists('warehouse_profile')&&($o['fulfillment']['method']??'')==='pickup')$o['pickup_warehouse']=warehouse_profile('ulaanbaatar');
     unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
