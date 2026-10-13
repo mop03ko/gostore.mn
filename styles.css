@@ -59,3 +59,5 @@ dialog{border-radius:16px}.modal-header{padding:24px}.modal-header h2{font-size:
 .cargo-mobile-actions{display:none}@media(max-width:760px){.cargo-mobile-actions{display:flex;gap:12px;padding-bottom:14px}.cargo-mobile-actions button{flex:1;padding:10px 14px;background:#f0f4fa;border-radius:9px;font-weight:700}}
 
 .cargo-photo-section h4{margin:18px 0 8px}.cargo-photos{flex-wrap:wrap}.cargo-photos figure{margin:0;max-width:100%}.cargo-photos button{display:block;padding:0;border:0;background:none;cursor:zoom-in;max-width:100%;border-radius:12px}.cargo-photos button:focus-visible{outline:3px solid #173054;outline-offset:3px}.cargo-photos figcaption{font-size:12px;color:#64748b;margin:6px 0 12px}.cargo-photos figure.expanded{width:100%}.cargo-photos figure.expanded button{width:100%;cursor:zoom-out}.cargo-photos figure.expanded img{width:100%;height:auto;max-height:70vh;object-fit:contain}
+
+.catalog-anchor{display:block;scroll-margin-top:24px}.supplier-card{position:relative}.supplier-section>.filter-tabs{margin-bottom:18px}#supplier-grid[aria-busy="true"]{min-height:120px}
