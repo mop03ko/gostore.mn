@@ -4,6 +4,9 @@ declare(strict_types=1);
 $dir=getenv('GOSTORE_DATA_DIR');
 if(!$dir||!str_contains(str_replace('\\','/',$dir),'/tmp/warehouse-test-'))throw new RuntimeException('Isolated warehouse test data required.');
 require __DIR__.'/../server/bootstrap.php';
+// Example products belong only to isolated test data, never to the production seed.
+$fixtureDb=db();
+foreach(json_decode(file_get_contents(__DIR__.'/catalog-fixture.json'),true,512,JSON_THROW_ON_ERROR) as $p)$fixtureDb->prepare('INSERT INTO products VALUES (?,?,?)')->execute([$p['id'],json_encode($p,JSON_UNESCAPED_UNICODE),gmdate('c')]);
 $base=['title'=>'Тест ачаа','customer'=>'Бат Тамир','phone'=>'99112233','notes'=>'PRIVATE ADDRESS','internal_note'=>'PRIVATE NOTE','callback_token'=>'PRIVATE CALLBACK','status'=>'confirmed','amount'=>99000,'paid'=>true,'created'=>'2026-01-01T00:00:00+00:00','type'=>'supplier','route'=>['Эрээн','Замын-Үүд','Улаанбаатар'],'supplier'=>['name'=>'Тест үүргэвч','variant'=>'Хар','qty'=>2,'goods_cny'=>100],'invoice'=>['raw'=>['secret'=>'PRIVATE INVOICE']]];
 $insert=db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)');
 foreach(range(0,54) as $i){$o=$base;$o['id']=$i===0?'GS-261013-ABCDEF12':'GS-TEST-'.str_pad((string)$i,3,'0',STR_PAD_LEFT);$o['notes'].=$i===1?"\nХүргэлтийн хаяг: Legacy appended address":'';if($i===2)$o['notes']='Хүргэлтийн хаяг: Legacy address only';$token=hash('sha256','warehouse-fixture-'.$i);$hash=hash('sha256',$token);$insert->execute([$o['id'],$hash,$hash,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);}

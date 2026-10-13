@@ -52,6 +52,22 @@ function db(): PDO {
             $db->exec("INSERT OR IGNORE INTO meta VALUES ('seeded','1')"); $db->commit();
         } catch (Throwable $e) { $db->rollBack(); throw $e; }
     }
+    if (!$db->query("SELECT value FROM meta WHERE key='demo_catalog_removed_v1'")->fetchColumn()) {
+        $db->exec('BEGIN IMMEDIATE');
+        try {
+            if (!$db->query("SELECT value FROM meta WHERE key='demo_catalog_removed_v1'")->fetchColumn()) {
+                $removed=0;$now=gmdate('c');
+                foreach($db->query('SELECT id,data FROM products')->fetchAll() as $row){
+                    $p=json_decode($row['data'],true,512,JSON_THROW_ON_ERROR);
+                    if(($p['demo']??false)!==true||!empty($p['deleted_at']))continue;
+                    $p['active']=false;$p['deleted_at']=$now;
+                    $db->prepare('UPDATE products SET data=?,updated=? WHERE id=?')->execute([json_encode($p,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$now,$row['id']]);$removed++;
+                }
+                $db->prepare('INSERT OR IGNORE INTO meta VALUES (?,?)')->execute(['demo_catalog_removed_v1',json_encode(['at'=>$now,'removed'=>$removed],JSON_THROW_ON_ERROR)]);
+            }
+            $db->exec('COMMIT');
+        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    }
     return $db;
 }
 function limit_attempts(string $key, int $max, int $seconds): void {

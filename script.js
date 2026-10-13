@@ -1,16 +1,7 @@
 'use strict';
 
-// Demo catalog only. Replace with a verified server-side catalog before launch.
-const products = [
-  {id:'chair',name:'Nordic загварын зөөлөн сандал',category:'home',price:189000,type:'china',source:'Хятад захиалга',image:'chair',variants:['Зураг дээрх өнгө'],description:'Гэрийн амралтын булан, ажлын өрөөнд зориулсан сандлын жишээ загвар. Бодит материал, хэмжээ, үлдэгдлийг нийлүүлэгчтэй баталгаажуулна.'},
-  {id:'headphones',name:'Өдөр тутмын утасгүй чихэвч',category:'tech',price:129000,type:'local',source:'GOStore сонголт',image:'headphones',variants:['Зураг дээрх өнгө'],description:'Хөгжим сонсох, ажиллах, хичээллэхэд зориулсан чихэвчийн жишээ загвар. Батарей, холболт, баталгааны бодит үзүүлэлтийг каталогт оруулахдаа тодорхойлно.'},
-  {id:'backpack',name:'Хотын хэмнэлд тохирох үүргэвч',category:'bags',price:79000,type:'china',source:'Хятад захиалга',image:'backpack',variants:['Стандарт'],description:'Ажил, аялал, өдөр тутмын хэрэгцээнд зориулсан үүргэвчийн жишээ. Багтаамж, материал, өнгөний сонголтыг бодит барааны мэдээллээр баталгаажуулна.'},
-  {id:'sneakers',name:'Спорт загварын өдөр тутмын пүүз',category:'shoes',price:159000,type:'local',source:'GOStore сонголт',image:'sneakers',variants:['38','39','40','41','42'],description:'Өдөр тутмын хувцастай хослуулах пүүзний жишээ. Хэмжээний хүснэгт болон бодит үлдэгдлийг захиалга авахаас өмнө оруулна.'},
-  {id:'watch',name:'Минимал загварын бугуйн цаг',category:'accessories',price:89000,type:'local',source:'GOStore сонголт',image:'watch',variants:['Стандарт'],description:'Цэвэрхэн нүүр, энгийн хийцтэй цагийн жишээ загвар. Механизм, оосрын материал, баталгааны нөхцөл хараахан баталгаажаагүй.'},
-  {id:'lamp',name:'Тухтай орчны ширээний гэрэл',category:'lighting',price:65000,type:'china',source:'Хятад захиалга',image:'lamp',variants:['Зураг дээрх загвар'],description:'Гэрийн орчинд дулаан мэдрэмж нэмэх гэрлийн жишээ. Залгуур, хүчдэл, гэрлийн чадлыг бодит бүтээгдэхүүнтэй тулган баталгаажуулна.'},
-  {id:'skincare',name:'Өдөр тутмын арьс арчилгааны багц',category:'beauty',price:59000,type:'local',source:'GOStore сонголт',image:'skincare',variants:['Жишээ багц'],description:'Арьс арчилгааны багцын жишээ зураг. Найрлага, үйлдвэрлэгч, хугацаа болон хэрэглэх заавар нь бодит каталогт заавал орно.'},
-  {id:'home-set',name:'Гэрийн интерьерийн сонголт',category:'home',price:249000,type:'china',source:'Хятад захиалга',image:'living',variants:['Үнийн санал авах'],description:'Гэрийн интерьерийн жишээ сонголт. Зурагт харагдах бүх эд зүйл энэ үнэд багтсан гэсэн үг биш; багцын бүрдэл, үнэ нь бодит захиалгаас өмнө баталгаажна.'}
-];
+// Products are loaded exclusively from the server catalog.
+const products = [];
 const categories = [
   {id:'home',name:'Гэр ахуй',image:'chair',subtitle:'Тухтай орон зай'},
   {id:'tech',name:'Электроник',image:'headphones',subtitle:'Өдөр тутмын технологи'},

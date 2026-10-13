@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import fs from 'node:fs';
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+function php(code){const r=spawnSync('tmp/tooling/php/php.exe',['-d','extension_dir=D:/Gostore.mn/tmp/tooling/php/ext','-d','extension=pdo_sqlite','-d','extension=mbstring'],{input:'<?php require "server/bootstrap.php";'+code,encoding:'utf8',env:process.env});assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout);}
+const before=php(`$db=db();$p=json_decode($db->query("SELECT data FROM products WHERE id='chair'")->fetchColumn(),true);$p['demo']=false;$p['name']='Verified real chair';$db->prepare('UPDATE products SET data=? WHERE id=?')->execute([json_encode($p,JSON_UNESCAPED_UNICODE),'chair']);$db->exec("DELETE FROM meta WHERE key='demo_catalog_removed_v1'");echo json_encode(['orders'=>hash('sha256',json_encode($db->query('SELECT * FROM orders ORDER BY id')->fetchAll())),'real'=>$db->query("SELECT data FROM products WHERE id='chair'")->fetchColumn()]);`);
+const catalog=await(await fetch(base+'/api/index.php?action=catalog')).json();assert.deepEqual(catalog.products.map(p=>p.id),['chair']);assert.equal(catalog.products[0].demo,false);
+const after=php(`$db=db();$all=$db->query('SELECT data FROM products')->fetchAll();$removed=0;foreach($all as $row){$p=json_decode($row['data'],true);if(!empty($p['deleted_at'])&&$p['demo']===true)$removed++;}echo json_encode(['removed'=>$removed,'orders'=>hash('sha256',json_encode($db->query('SELECT * FROM orders ORDER BY id')->fetchAll())),'real'=>$db->query("SELECT data FROM products WHERE id='chair'")->fetchColumn(),'admin_count'=>count(products(true)),'marker'=>$db->query("SELECT value FROM meta WHERE key='demo_catalog_removed_v1'")->fetchColumn()]);`);
+assert.equal(after.removed,7);assert.equal(after.admin_count,1);assert.equal(after.orders,before.orders);assert.equal(after.real,before.real);assert.equal(JSON.parse(after.marker).removed,7);
+const again=php(`echo json_encode(['marker'=>db()->query("SELECT value FROM meta WHERE key='demo_catalog_removed_v1'")->fetchColumn()]);`);assert.equal(again.marker,after.marker);
+assert.deepEqual(JSON.parse(fs.readFileSync('server/seed.json','utf8')),[]);assert.match(fs.readFileSync('script.js','utf8'),/const products = \[\];/);
+console.log('PASS: demo products removed from storefront/admin; converted real product and all historical orders unchanged; migration runs once; production seed and JS fallback empty.');
