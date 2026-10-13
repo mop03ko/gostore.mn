@@ -40,6 +40,7 @@ assert.equal((await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:
 batch=await scanAll(cn,batch);
 const dispatch=await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version});assert.equal(dispatch.status,200);batch=dispatch.batch;assert.equal(batch.status,'dispatched');assert.ok(batch.orders.every(o=>o.status==='erenhot_dispatched'));
 await checkTracking('erenhot_dispatched');
+assert.equal((await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version})).status,409,'Repeated dispatch cannot duplicate notifications');
 for(const action of ['add','remove','cancel'])assert.equal((await cn('warehouse-batch-'+action,{id:batch.id,expected_version:batch.version,order_ids:[ids[2]],order_id:ids[0]})).status,409,'Dispatched manifest locked');
 assert.equal((await ub('warehouse-batches&q='+batch.id)).batches[0].id,batch.id);
 assert.equal((await ub('warehouse-order-update',{id:ids[0],status:'ulaanbaatar',expected_status:'erenhot_dispatched'})).status,409,'Cannot bypass batch receiving');
@@ -81,4 +82,12 @@ assert.equal((await cn('warehouse-batch-cancel',{id:cancel.id,expected_version:c
 assert.equal((await cn('warehouse-batch-create',{token:token(),order_ids:[ids[2]],note:'Repack'})).status,201,'Cancelled draft releases membership');
 const zh=await cn('warehouse-batch-add&lang=zh',{id:empty.id,expected_version:empty.version,order_ids:['GS-NOTFOUND']});assert.equal(zh.status,404);assert.match(zh.error,/[\u4e00-\u9fff]/);assert.doesNotMatch(zh.error,/[\u0400-\u04ff]/);
 assert.equal((await fetch(base+'/api/index.php?action=warehouse-batch-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(create)})).status,403);
+for(const [index,id] of ids.slice(0,3).entries()){
+ const customer=client(),password='Batch-customer-tests-2026';await customer('catalog');
+ assert.equal((await customer('customer-register',{email:'batch-owner-'+index+'@example.test',name:'Batch customer',phone:'99112233',password,password_confirm:password})).status,201);
+ const token=crypto.createHash('sha256').update('warehouse-fixture-'+Number(id.slice(-3))).digest('hex');await customer('customer-claim-order',{id,token});
+ const notices=(await customer('customer-notifications')).notifications;
+ assert.ok(notices.every(n=>n.order_id===id),'Customers only see their own notifications');
+ assert.equal(notices.filter(n=>n.kind==='status'&&n.message==='erenhot_dispatched').length,index<2?1:0,'Dispatch notifies every member exactly once and no unrelated customer');
+}
 console.log('PASS: batch identity/membership, atomic rollback, locked manifests, roles, receive/sort, pickup/delivery completion, privacy, audit, idempotency, Chinese errors and CSRF.');
