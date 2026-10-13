@@ -24,7 +24,9 @@ const $ = (selector, root=document) => root.querySelector(selector);
 const icon = name => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = value => new Intl.NumberFormat('en-US').format(value) + ' ₮';
-const productById = id => products.find(p => p.id === id);
+let localProductsEnabled = false;
+const productAvailable = p => p && (p.type !== 'local' || localProductsEnabled);
+const productById = id => products.find(p => p.id === id && productAvailable(p));
 const STORAGE_KEY = 'gostore-demo-v1';
 let storageAvailable = true;
 function readState() {
@@ -73,7 +75,7 @@ function renderCategories() {
 }
 function visibleProducts() {
   const query=filters.query.toLocaleLowerCase('mn').trim();
-  const found=products.filter(p=>(filters.type==='all'||(filters.type==='saved'?state.favorites.includes(p.id):p.type===filters.type))&&(filters.category==='all'||p.category===filters.category)&&(!query||`${esc(p.name)} ${esc(p.source)} ${categories.find(c=>c.id===p.category)?.name}`.toLocaleLowerCase('mn').includes(query)));
+  const found=products.filter(p=>productAvailable(p)&&(filters.type==='all'||(filters.type==='saved'?state.favorites.includes(p.id):p.type===filters.type))&&(filters.category==='all'||p.category===filters.category)&&(!query||`${esc(p.name)} ${esc(p.source)} ${categories.find(c=>c.id===p.category)?.name}`.toLocaleLowerCase('mn').includes(query)));
   if(filters.sort==='price-asc')found.sort((a,b)=>a.price-b.price);
   if(filters.sort==='price-desc')found.sort((a,b)=>b.price-a.price);
   return found;
@@ -92,7 +94,7 @@ function renderProducts() {
 }
 function scrollCatalog() { $('#catalog').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 function resetFilters() { filters={type:'all',category:'all',query:'',sort:'featured'};$('#search').value='';$('#sort').value='featured';renderCategories();renderProducts(); }
-function filterType(type) { if(type==='china'&&window.storeServer?.ready){$('#supplier-catalog').scrollIntoView({behavior:'smooth'});return;} filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
+function filterType(type) { if(type==='local'&&!localProductsEnabled)return toast('Бэлэн барааны худалдаа түр зогссон.');if(type==='china'&&window.storeServer?.ready){$('#supplier-catalog').scrollIntoView({behavior:'smooth'});return;} filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 function filterCategory(category) { filters.category=category;filters.type='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 
 function showProduct(id) {
@@ -134,8 +136,8 @@ function downloadDraft(id) {
   const a=document.createElement('a');a.href=url;a.download=`${d.id.replace(/[^a-z0-9-]/gi,'')}.txt`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 const helpContent = {
-  help:{title:'Хэрхэн захиалах вэ?',html:`<p class="modal-intro">Бэлэн бараа болон 1688 каталогоос бараагаа сонгоно. Өнгө, хэмжээ, тоо, овог нэр, утсаа оруулж захиалгын хүсэлт илгээнэ.</p><p>Хятадаас ирэх ачаа Эрээн → Замын-Үүд → Улаанбаатар чиглэлээр явна. Агуулахад овог нэр, захиалгын кодоор ялган хүлээн авна.</p>`},
-  shipping:{title:'Хүргэлтийн тухай',html:`<p class="modal-intro">Бэлэн бараа болон Хятадаас захиалах барааны хүргэлтийн нөхцөл тусдаа баталгаажна.</p><ol class="help-list"><li><strong>Бэлэн бараа</strong>Хүлээн авах байршил, хүргэх хаягаас төлбөр, хугацаа хамаарна.</li><li><strong>Хятад захиалга</strong>Нийлүүлэгчийн хүргэлт, агуулахад ирэх хугацаа, барааны жин ба овор хэмжээгээр тээврийн нөхцөлийг тогтооно.</li></ol><div class="info-box">Одоогоор тариф, хугацаа баталгаажаагүй. Каталогийн жишээ үнэд тээврийн төлбөр ороогүй.</div>`},
+  help:{title:'Хэрхэн захиалах вэ?',html:`<p class="modal-intro">1688 болон Хятад захиалгын каталогоос бараагаа сонгоно. Өнгө, хэмжээ, тоо, овог нэр, утсаа оруулж захиалгын хүсэлт илгээнэ.</p><p>Хятадаас ирэх ачаа Эрээн → Замын-Үүд → Улаанбаатар чиглэлээр явна. Агуулахад овог нэр, захиалгын кодоор ялган хүлээн авна.</p>`},
+  shipping:{title:'Хүргэлтийн тухай',html:`<p class="modal-intro">Хятадаас захиалах барааны хүргэлтийн нөхцөлийг баталгаажуулна.</p><ol class="help-list"><li><strong>Хятад захиалга</strong>Нийлүүлэгчийн хүргэлт, агуулахад ирэх хугацаа, барааны жин ба овор хэмжээгээр тээврийн нөхцөлийг тогтооно.</li></ol><div class="info-box">Одоогоор тариф, хугацаа баталгаажаагүй. Каталогийн жишээ үнэд тээврийн төлбөр ороогүй.</div>`},
   privacy:{title:'Мэдээллийн хадгалалт',html:`<p class="modal-intro">Энэ загварын сагс, хадгалсан бараа, захиалгын ноорог зөвхөн таны хөтөчийн localStorage-д хадгалагдана. Сервер рүү мэдээлэл дамжуулахгүй.</p><p class="detail-copy">Хөтөчийн өгөгдлийг цэвэрлэхэд эдгээр мэдээлэл устах тул хэрэгтэй нооргоо татаж аваарай. Нууц үг, картын дугаар, регистр зэрэг мэдээллийг тэмдэглэлд оруулахгүй байхыг зөвлөж байна.</p><button class="button outline" data-action="clear-data-confirm">Энэ хөтөчийн GOStore мэдээллийг цэвэрлэх</button>`}
 };
 function runAction(action) {
@@ -154,7 +156,7 @@ document.addEventListener('click',event=>{
   if(b.hasAttribute('data-category'))return filterCategory(b.dataset.category);
   if(b.hasAttribute('data-reset')){resetFilters();return;}
   if(b.dataset.detail)return showProduct(b.dataset.detail);
-  if(b.dataset.add){const p=productById(b.dataset.add);if(p.variants.length>1)return showProduct(p.id);return addToCart(p.id,p.variants[0]);}
+  if(b.dataset.add){const p=productById(b.dataset.add);if(!p)return;if(p.variants.length>1)return showProduct(p.id);return addToCart(p.id,p.variants[0]);}
   if(b.dataset.favorite){const id=b.dataset.favorite;if(state.favorites.includes(id))state.favorites=state.favorites.filter(x=>x!==id);else state.favorites.push(id);persist();renderProducts();$(`[data-favorite="${id}"]`)?.focus({preventScroll:true});return;}
   if(b.hasAttribute('data-quantity')){const i=Number(b.dataset.quantity),item=state.cart[i];if(item){item.qty=Math.max(1,Math.min(99,item.qty+Number(b.dataset.delta)));persist();showCart();}return;}
   if(b.hasAttribute('data-remove')){state.cart.splice(Number(b.dataset.remove),1);persist();showCart();return;}

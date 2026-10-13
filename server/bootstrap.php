@@ -9,6 +9,7 @@ function config(): array {
     if (getenv('GOSTORE_DATA_DIR')) $value['data_dir'] = getenv('GOSTORE_DATA_DIR');
     if (getenv('GOSTORE_ADMIN_HASH')) $value['admin_password_hash'] = getenv('GOSTORE_ADMIN_HASH');
     if (getenv('GOSTORE_DISABLE_QPAY') === '1') $value['qpay']['enabled'] = false;
+    if (getenv('GOSTORE_LOCAL_PRODUCTS_ENABLED') === '1') $value['local_products_enabled'] = true;
     return $value;
 }
 function fail(string $message, int $status = 400): never { throw new ApiError($message, $status); }
@@ -57,7 +58,7 @@ function limit_attempts(string $key, int $max, int $seconds): void {
 }
 function session_boot(string $realm = 'admin'): void {
     if (session_status()===PHP_SESSION_ACTIVE) return;
-    session_name($realm === 'customer' ? 'gostore_customer' : 'gostore_session');
+    session_name(match($realm){'customer'=>'gostore_customer','warehouse'=>'gostore_warehouse',default=>'gostore_session'});
     ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);
     session_start();
@@ -85,7 +86,7 @@ function int_field(array $b,string $key,int $min,int $max): int {
 function products(bool $all=false): array {
     $rows=db()->query('SELECT data FROM products ORDER BY rowid')->fetchAll();
     $items=array_map(fn($r)=>json_decode($r['data'],true),$rows);
-    return array_values(array_filter($items,fn($p)=>$all || $p['active']));
+    return array_values(array_filter($items,fn($p)=>$all || ($p['active']&&($p['type']!=='local'||config()['local_products_enabled']))));
 }
 function order_row(string $id): array {
     $s=db()->prepare('SELECT * FROM orders WHERE id=?'); $s->execute([$id]); $r=$s->fetch();
@@ -94,6 +95,7 @@ function order_row(string $id): array {
 function save_order(array $o): void { db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]); }
 function public_order(array $o): array {
     unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone']);
+    if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;
 }
 function product_link(string $url): bool {

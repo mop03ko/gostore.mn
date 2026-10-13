@@ -1,6 +1,7 @@
 <?php
 // Copy to config.local.php. Never commit config.local.php.
 return [
+    'local_products_enabled' => false, // Temporarily paused; existing products and orders are preserved.
     'admin_email' => 'admin@gostore.mn',
     'admin_password_hash' => '', // Generate with scripts/password.php; never use plaintext here.
     'data_dir' => dirname(__DIR__, 2) . '/gostore-data', // MUST be outside public_html.

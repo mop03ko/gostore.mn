@@ -6,20 +6,24 @@ require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
 require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
+require __DIR__.'/../server/warehouse.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
-    session_boot(in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate'],true)?'admin':'customer');
+    $adminAction=in_array($action,['session','dashboard','login','logout','image-upload','product-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
+    session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if ($method==='GET') {
-        if ($action==='catalog') json_out(['products'=>products(),'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
+        if($warehouseAction)warehouse_get($action);
+        if ($action==='catalog') json_out(['products'=>products(),'local_products_enabled'=>config()['local_products_enabled'],'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
         if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>!empty($_SESSION['admin']),'csrf'=>$_SESSION['csrf'],'configured'=>config()['admin_password_hash']!=='']);
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_account'=>warehouse_account_public(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -40,6 +44,8 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if($warehouseAction)warehouse_post($action,$b);
+    if($action==='warehouse-account-save')json_out(['account'=>warehouse_account_save($b)]);
     if($action==='supplier-search')json_out(supplier_search($b));
     if($action==='supplier-product')json_out(supplier_detail(str_field($b,'id',50)));
     if($action==='shipping-calculate'){admin_required();json_out(['quote'=>shipping_calculate($b)]);}
@@ -123,7 +129,7 @@ try {
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
             $o=order_row(str_field($b,'id',50))['order'];$status=str_field($b,'status',30);
-            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','zamyn_uud','ulaanbaatar','completed','cancelled'],true)) fail('Төлөв буруу.');
+            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_dispatched','zamyn_uud','ulaanbaatar','completed','cancelled'],true)) fail('Төлөв буруу.');
             $amount=int_field($b,'amount',0,100000000);
             if (isset($o['invoice']) && ($amount!==$o['amount']||$status==='cancelled')) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
 

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="mn"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>GOStore · Эрээн агуулах</title>
+<link rel="stylesheet" href="../assets/fonts/fonts.css?v=20261010-gilroy">
+<link rel="stylesheet" href="../admin/admin.css?v=20261013-warehouse">
+<link rel="stylesheet" href="warehouse.css?v=20261013-warehouse">
+<script src="warehouse.js?v=20261013-warehouse" defer></script>
+</head><body>
+<section id="login-screen" class="login-screen">
+  <div class="login-brand"><a href="../"><img src="../assets/logo.png" alt="GOStore"></a><span>ЭРЭЭН АГУУЛАХ</span><h1>Ачаа бүрийг<br>нэг дороос.</h1><p>Захиалгаа хайх. Ирсэн ачааг бүртгэх.<br>Замын-Үүд рүү илгээх.</p><div class="brand-shape" aria-hidden="true"></div></div>
+  <div class="login-wrap"><form id="login-form" class="login-card"><span class="eyebrow">АГУУЛАХЫН МЕНЕЖЕР</span><h2>Тавтай морил</h2><p>Эрээн агуулахын эрхээрээ нэвтэрнэ үү.</p>
+    <label>Имэйл<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
+    <label>Нууц үг<input name="password" type="password" autocomplete="current-password" required></label>
+    <p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Нэвтрэх →</button>
+    <a href="../">← Дэлгүүр рүү буцах</a><small>Нэвтрэх эрхээ GOStore-ийн үндсэн админаас авна.</small>
+  </form></div>
+</section>
+<div id="app" hidden>
+  <header class="warehouse-header"><a href="../" class="warehouse-logo"><img src="../assets/logo.png" alt="GOStore"></a><div><span class="eyebrow">АГУУЛАХЫН УДИРДЛАГА</span><h1>Эрээн агуулах</h1></div><div class="account"><div><strong>Агуулахын менежер</strong><small id="manager-email"></small></div><button id="logout" class="quiet">Гарах</button></div></header>
+  <main class="warehouse-main">
+    <section class="welcome"><div><span class="eyebrow">ЭРЭЭН → ЗАМЫН-ҮҮД → УЛААНБААТАР</span><h2>Өнөөдрийн ачаагаа бүртгэе.</h2><p>Шошго дээрх захиалгын кодоор хайж, барааг тулган шалгаарай.</p></div><button class="primary yellow" id="refresh">↻ Шинэчлэх</button></section>
+    <div class="stats warehouse-stats" aria-label="Агуулахын тойм"><button class="stat" data-status="shipping"><span>Ирэхийг хүлээж буй</span><strong id="waiting-count">0</strong><small>Баталгаажсан, хүргэлтэд</small></button><button class="stat" data-status="erenhot"><span>Эрээн агуулахад</span><strong id="received-count">0</strong><small>Илгээхэд бэлдэх</small></button><button class="stat" data-status="erenhot_dispatched"><span>Замын-Үүд рүү илгээсэн</span><strong id="dispatched-count">0</strong><small>Замд яваа ачаа</small></button></div>
+    <section class="panel orders-panel"><div class="panel-heading"><div><h2>Захиалгууд</h2><p id="result-count" role="status">Жагсаалтыг ачаалж байна…</p></div><span class="tag">Эрээн</span></div>
+      <form id="search-form" class="warehouse-search"><label for="search">Код, нэрээр хайх<input id="search" name="q" type="search" placeholder="GS-A1B2C3 эсвэл хүлээн авагч" maxlength="100" autocomplete="off"></label><label for="status-filter">Төлөв<select id="status-filter"><option value="all">Бүх төлөв</option><option value="waiting">Ирэхийг хүлээж буй</option><option value="erenhot">Эрээн агуулахад</option><option value="erenhot_dispatched">Замын-Үүд рүү илгээсэн</option><option value="zamyn_uud">Замын-Үүдэд ирсэн</option><option value="ulaanbaatar">Улаанбаатарт</option><option value="completed">Дууссан</option><option value="cancelled">Цуцалсан</option></select></label><button class="primary" type="submit">Хайх</button></form>
+      <p id="list-error" class="error" role="alert"></p><div id="orders" aria-live="polite"></div><div class="paging"><button id="previous" class="quiet" hidden>← Өмнөх</button><span id="page-label"></span><button id="next" class="quiet" hidden>Дараах →</button></div>
+    </section>
+  </main><footer class="warehouse-footer">GOStore · Агуулахын бүртгэл, хүргэлтийн явц</footer>
+</div>
+<dialog id="editor" aria-labelledby="editor-title"><div class="dialog-header"><h2 id="editor-title"></h2><button id="close-editor" aria-label="Цонх хаах">×</button></div><div id="editor-body"></div></dialog>
+<div id="toast" role="status"></div>
+</body></html>
