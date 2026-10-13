@@ -4,6 +4,13 @@ declare(strict_types=1);
 function logistics_state(array $o): array {
     return array_replace(['version'=>0,'photos'=>[],'issues'=>[],'shelf'=>''], $o['logistics']??[]);
 }
+function logistics_has_receipt_photo(array $o,string $location): bool {
+    foreach(logistics_state($o)['photos'] as $p)if(($p['location']??'')===$location&&preg_match('/^[a-f0-9]{32}$/D',$p['id']??'')&&is_file(config()['data_dir'].'/warehouse-photos/'.$p['id'].'.jpg'))return true;
+    return false;
+}
+function logistics_receipt_photo_required(array $o,string $location): void {
+    if(!logistics_has_receipt_photo($o,$location))fail('Энэ агуулахын хүлээн авах зургийг эхлээд оруулна уу.',409);
+}
 function logistics_open_issues(array $o): bool {
     return (bool)array_filter(logistics_state($o)['issues'],fn($i)=>$i['state']==='open');
 }
@@ -29,6 +36,8 @@ function logistics_notify(array $o,?array $old): void {
     if(($old['settlement']??null)!==($o['settlement']??null))$events[]=['settlement','Эцсийн тооцоо баталгаажлаа'];
     if(!($old['paid']??false)&&($o['paid']??false))$events[]=['payment','Төлбөр баталгаажлаа'];
     if(($old['freight']['paid_amount']??0)!==($o['freight']['paid_amount']??0))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
+    $oldPhotos=array_column(logistics_state($old)['photos'],'id');
+    foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',($p['location']==='erenhot'?'Эрээн':'Улаанбаатар').' агуулахын зураг нэмэгдлээ'];
     foreach($events as [$kind,$message])db()->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],$kind,$message,gmdate('c')]);
 }
 function logistics_public(array $o): array {
@@ -122,7 +131,9 @@ function logistics_photo_upload(bool $exception=false): never {
         $o=order_row($id)['order'];$l=logistics_state($o);
         if(!warehouse_order_visible($o,$location)||in_array($o['status'],['completed','cancelled'],true))fail('Зураг нэмэх боломжгүй.',409);
         if((string)$l['version']!==($_POST['expected_version']??''))fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
-        if(count($l['photos'])>=12)fail('12 хүртэл зураг хадгална.');
+        $allowed=$location==='erenhot'?['confirmed','shipping','erenhot']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
+        if(!in_array($o['status'],$allowed,true))fail('Энэ төлөвт агуулахын зураг нэмэх боломжгүй.',409);
+        if(count(array_filter($l['photos'],fn($p)=>($p['location']??'')===$location))>=12)fail('Нэг агуулахад 12 хүртэл зураг хадгална.');
         if(!imagejpeg($canvas,$path,85))fail('Зураг хадгалагдсангүй.',503);
         $l['photos'][]=['id'=>$photo,'at'=>gmdate('c'),'location'=>$location];$o['logistics']=$l;logistics_touch($o,'photo');
         }$db->exec('COMMIT');

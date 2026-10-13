@@ -111,6 +111,7 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                     if($action==='warehouse-batch-dispatch'&&!isset($o['logistics']['measurement']))fail('Бодит хэмжилт шаардлагатай.',409);
                     $orderExpected=$action==='warehouse-batch-dispatch'?'erenhot':'erenhot_dispatched';
                     if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
+                    if($action==='warehouse-batch-receive')logistics_receipt_photo_required($o,$location);
                     warehouse_change_order($o,$action==='warehouse-batch-dispatch'?'erenhot_dispatched':'ulaanbaatar_unsorted');
                 }
                 $batch['status']=$action==='warehouse-batch-dispatch'?'dispatched':'received';$batch[$batch['status'].'_at']=gmdate('c');

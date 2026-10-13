@@ -1,9 +1,10 @@
+import {uploadReceipt} from './warehouse-photo.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 const base=process.env.TEST_BASE||'http://127.0.0.1:3088';
 if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base))throw Error('Isolated loopback server required.');
-function client(){const jar=new Map();let csrf='';return async(action,body)=>{const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{})},body:body?JSON.stringify(body):undefined});for(const c of r.headers.getSetCookie()){const p=c.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));}const d=await r.json();if(d.csrf)csrf=d.csrf;return{status:r.status,...d};};}
+function client(){const jar=new Map();let csrf='';return async(action,body)=>{const form=body instanceof FormData;const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'X-CSRF-Token':csrf,...(!form?{'Content-Type':'application/json'}:{})}:{})},body:body?(form?body:JSON.stringify(body)):undefined});for(const c of r.headers.getSetCookie()){const p=c.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));}const d=await r.json();if(d.csrf)csrf=d.csrf;return{status:r.status,...d};};}
 const admin=client(),cn=client(),ub=client(),guest=client(),other=client();const token=()=>crypto.randomBytes(32).toString('hex');
 await admin('session');assert.equal((await admin('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')))).status,200);
 for(const [location,c] of [['erenhot',cn],['ulaanbaatar',ub]]){const b={location,email:location+'-batch@example.test',password:'Warehouse-batch-tests-2026',enabled:true};assert.equal((await admin('warehouse-account-save',b)).status,200);await c('warehouse-session');assert.equal((await c('warehouse-login',b)).status,200);}
@@ -11,10 +12,10 @@ assert.equal((await other('warehouse-batches')).status,401);await guest('catalog
 const ids=['GS-TEST-001','GS-TEST-002','GS-TEST-003','GS-TEST-004'];
 const trackingToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
 async function checkTracking(status){const response=await guest('order-get',{id:ids[0],token:trackingToken});assert.equal(response.status,200);assert.equal(response.order.id,ids[0]);assert.equal(response.order.status,status);assert.equal(response.order.batch_id,undefined);assert.ok(!JSON.stringify(response.order).includes('GB-'),'Tracking never exposes a batch code');}
-for(const id of ids)assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
+for(const id of ids){await uploadReceipt(cn,id);assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);}
 assert.equal((await cn('warehouse-order-update',{id:ids[0],status:'erenhot_dispatched',expected_status:'erenhot'})).status,403,'Dispatch must use a batch');
 assert.equal((await admin('order-update',{id:ids[3],status:'ready_delivery',amount:99000,internal_note:''})).status,409,'Admin cannot create fulfillment state without sorting');
-for(const id of ids){const m=await cn('warehouse-measure',{id,expected_version:0,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2});assert.equal(m.status,200);}
+for(const id of ids){const m=await cn('warehouse-measure',{id,expected_version:(await cn('warehouse-order&id='+id)).order.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2});assert.equal(m.status,200);}
 async function scanAll(c,b){for(const o of b.orders){const r=await c('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:o.id});assert.equal(r.status,200);b=r.batch;}return b;}
 const create={token:token(),order_ids:[ids[0]],note:'Batch test'};
 assert.equal((await ub('warehouse-batch-create',create)).status,403);
@@ -47,6 +48,11 @@ assert.equal((await ub('warehouse-fulfillment-update',sort)).status,409,'Cannot 
 assert.equal((await cn('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,403);
 assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'Unscanned receipt blocked');
 batch=await scanAll(ub,batch);
+assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'Batch requires UB photos for every order');
+await uploadReceipt(ub,ids[0]);
+assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'One photographed member cannot receive whole batch');
+assert.ok((await ub('warehouse-batch&id='+batch.id)).batch.orders.every(o=>o.status==='erenhot_dispatched'),'Missing photo rolls back all earlier member changes');
+await uploadReceipt(ub,ids[1]);
 const receiveVersion=batch.version;const receive=await ub('warehouse-batch-receive',{id:batch.id,expected_version:receiveVersion});assert.equal(receive.status,200);batch=receive.batch;assert.equal(batch.status,'received');assert.equal(batch.unsorted_count,2);assert.ok(batch.orders.every(o=>o.status==='ulaanbaatar_unsorted'));
 await checkTracking('ulaanbaatar_unsorted');
 assert.equal(batch.orders[0].contact.address,'Legacy appended address');assert.equal(batch.orders[1].contact.address,'Legacy address only');assert.ok(!JSON.stringify(batch.orders[0].contact).includes('PRIVATE'));assert.equal((await ub('warehouse-orders&status=pending_sort')).total,2);

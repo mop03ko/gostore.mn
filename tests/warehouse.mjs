@@ -1,11 +1,12 @@
+import {uploadReceipt} from './warehouse-photo.mjs';
 // Run on an isolated PHP loopback server with warehouse-fixtures.php data.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 const base=process.env.TEST_BASE||'http://127.0.0.1:3088';
 if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base))throw Error('Loopback only.');
-function client(){const jar=new Map();let csrf='';return async(action,body)=>{
-  const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{})},body:body?JSON.stringify(body):undefined});
+function client(){const jar=new Map();let csrf='';return async(action,body)=>{const form=body instanceof FormData;
+  const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'X-CSRF-Token':csrf,...(!form?{'Content-Type':'application/json'}:{})}:{})},body:body?(form?body:JSON.stringify(body)):undefined});
   for(const cookie of r.headers.getSetCookie()){const p=cookie.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));}
   const d=await r.json();if(d.csrf)csrf=d.csrf;return{status:r.status,...d};
 };}
@@ -58,6 +59,8 @@ assert.equal((await admin('order-update',{id,status:'confirmed',amount:55000,int
 assert.equal((await ub('warehouse-order-update',{id,status:'ulaanbaatar',expected_status:'confirmed'})).status,404,'UB cannot receive before Zamyn-Uud');
 assert.equal((await update('erenhot_dispatched','confirmed')).status,403,'Dispatch must use a batch');
 assert.equal((await fetch(base+'/api/index.php?action=warehouse-order-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:'erenhot'})})).status,403,'CSRF enforced');
+assert.equal((await update('erenhot','confirmed')).status,409,'Erenhot receipt requires a photo');
+await uploadReceipt(manager,id);
 assert.equal((await update('erenhot','confirmed')).status,200);
 assert.equal((await update('erenhot','confirmed')).status,409,'Stale/repeated update is rejected');
 assert.equal((await manager('warehouse-orders&status=erenhot')).orders[0].id,id);
@@ -74,6 +77,8 @@ const inbound=await ub('warehouse-orders&status=waiting');assert.equal(inbound.l
 for(const key of ['phone','amount','paid','internal_note','notes','invoice'])assert.equal(inbound.orders[0][key],undefined);
 assert.equal((await ub('warehouse-order-update',{id,status:'ulaanbaatar',expected_status:'erenhot_dispatched'})).status,409,'Stale UB confirmation is rejected');
 const ubReceipt={id,status:'ulaanbaatar',expected_status:'zamyn_uud',amount:1,paid:true,location:'erenhot'};
+assert.equal((await ub('warehouse-order-update',ubReceipt)).status,409,'Erenhot photo cannot satisfy UB receipt');
+await uploadReceipt(ub,id);
 assert.equal((await ub('warehouse-order-update',ubReceipt)).status,200);
 assert.equal((await ub('warehouse-order-update',ubReceipt)).status,409,'UB receipt cannot be duplicated');
 assert.equal((await ub('warehouse-order-update',{id,status:'completed',expected_status:'ulaanbaatar'})).status,403,'UB receiving does not complete customer delivery');

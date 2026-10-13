@@ -125,6 +125,7 @@ function warehouse_post(string $action,array $b): never {
         $o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);
         if($o['status']!==$expected)fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
         if(warehouse_order_public($o,$location)['next_status']!==$status)fail('Энэ захиалгыг сонгосон төлөвт шилжүүлэх боломжгүй.',409);
+        logistics_receipt_photo_required($o,$location);
         $o['history'][]=['status'=>$status,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_account($location)['email']];
         $o['status']=$status;save_order($o);$db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
@@ -132,6 +133,9 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Энэ агуулахын хүлээн авах зургийг эхлээд оруулна уу.'=>'请先上传本仓库的收货照片。',
+        'Энэ төлөвт агуулахын зураг нэмэх боломжгүй.'=>'当前订单状态无法上传本仓库照片。',
+        'Нэг агуулахад 12 хүртэл зураг хадгална.'=>'每个仓库最多上传12张照片。',
         'Имэйл эсвэл нууц үг буруу байна.'=>'邮箱或密码错误。',
         'Агуулахын эрхээр нэвтэрнэ үү.'=>'请使用仓库账号登录。',
         'Хуудас шинэчлээд дахин оролдоно уу.'=>'会话已更新，请刷新页面后重试。',

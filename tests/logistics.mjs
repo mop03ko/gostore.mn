@@ -1,3 +1,4 @@
+import {uploadReceipt} from './warehouse-photo.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -11,7 +12,7 @@ for(const [location,c] of [['erenhot',cn],['ulaanbaatar',ub]]){const b={location
 for(const c of [owner,other]){await c('catalog');const password='Logistics-test-password-2026';assert.equal((await c('customer-register',{email:crypto.randomBytes(5).toString('hex')+'@example.test',name:'Test customer',phone:'99112233',password,password_confirm:password})).status,201);}
 assert.equal((await owner('customer-claim-order',{id,token:tracking})).status,200);
 assert.equal((await other('order-get',{id,token:tracking})).status,403,'Claimed token cannot bypass owner');
-for(const oid of [id,second])assert.equal((await cn('warehouse-order-update',{id:oid,status:'erenhot',expected_status:'confirmed'})).status,200);
+for(const oid of [id,second]){await uploadReceipt(cn,oid);assert.equal((await cn('warehouse-order-update',{id:oid,status:'erenhot',expected_status:'confirmed'})).status,200);}
 let o=(await cn('warehouse-order&id='+id)).order;
 const measure={id,expected_version:o.logistics.version,weight_kg:0.5,length_cm:10,width_cm:20,height_cm:30,pieces:2};
 assert.equal((await ub('warehouse-measure',measure)).status,404);
@@ -21,12 +22,14 @@ assert.equal((await cn('warehouse-measure',measure)).status,409,'Stale measureme
 const png=fs.readFileSync('assets/chair.jpg');
 function upload(version,bytes=png){const f=new FormData();f.set('id',id);f.set('expected_version',String(version));f.set('image',new Blob([bytes],{type:'image/png'}),'photo.png');return f;}
 assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version,Buffer.from('<script>bad</script>')))).status,400);
-const photoResponse=await cn('warehouse-photo-upload',upload(o.logistics.version));assert.equal(photoResponse.status,200,JSON.stringify(photoResponse));o=photoResponse.order;const photo=o.logistics.photos[0].id;
+const photoResponse=await cn('warehouse-photo-upload',upload(o.logistics.version));assert.equal(photoResponse.status,200,JSON.stringify(photoResponse));o=photoResponse.order;const photo=o.logistics.photos.at(-1).id;
 assert.equal((await anon('warehouse-photo&id='+id+'&photo='+photo)).status,401);
 assert.equal((await owner('order-photo',{id,photo})).status,200);
 assert.equal((await other('order-photo',{id,photo})).status,403);
 assert.equal((await cn('warehouse-photo&id='+second+'&photo='+photo)).status,404,'Photo bound to its own order');
 assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version-1))).status,409);
+while(o.logistics.photos.length<12)o=await uploadReceipt(cn,id);
+assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version))).status,400,'Each warehouse is limited to 12 photos');
 o=(await cn('warehouse-issue',{id,expected_version:o.logistics.version,kind:'damaged',note:'PRIVATE damage assessment'})).order;const issue=o.logistics.issues[0].id;
 let b=(await cn('warehouse-batch-create',{token:crypto.randomBytes(32).toString('hex'),order_ids:[id],note:'PRIVATE batch'})).batch;
 assert.equal((await cn('warehouse-batch-dispatch',{id:b.id,expected_version:b.version})).status,409);
@@ -38,6 +41,11 @@ o=(await cn('warehouse-issue-resolve',{id,expected_version:o.logistics.version,i
 b=(await cn('warehouse-batch-dispatch',{id:b.id,expected_version:b.version})).batch;
 assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409);
 b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;
+assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version))).status,409,'Erenhot cannot add receipt photos after dispatch');
+assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409,'UB requires its own photo');
+const ubPhoto=(await uploadReceipt(ub,id)).logistics.photos.at(-1);assert.equal(ubPhoto.location,'ulaanbaatar');
+assert.equal((await owner('order-photo',{id,photo:ubPhoto.id})).status,200);
+assert.equal((await other('order-photo',{id,photo:ubPhoto.id})).status,403);
 b=(await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).batch;
 o=(await ub('warehouse-order&id='+id)).order;
 o=(await ub('warehouse-shelf',{id,expected_version:o.logistics.version,shelf:'A-03-02'})).order;
@@ -49,12 +57,14 @@ assert.equal((await cn('warehouse-settlement',settlement)).status,403);
 assert.equal((await ub('warehouse-settlement',{...settlement,goods_mnt:1})).status,409,'Unresolved refund cannot be silently discarded');
 o=(await ub('warehouse-settlement',settlement)).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1500);assert.equal(o.pickup_code,undefined);
 let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{8}$/);
+assert.deepEqual([...new Set(own.cargo.photos.map(p=>p.location))],['erenhot','ulaanbaatar']);
+assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location'));
 assert.equal(own.logistics,undefined);assert.equal(own.freight,undefined);assert.equal(own.batch_id,undefined);assert.ok(!JSON.stringify(own).includes('PRIVATE damage'));assert.equal(own.internal_note,undefined);assert.equal(own.callback_token,undefined);assert.ok(!JSON.stringify(own).includes(b.id));assert.ok(!JSON.stringify(own).includes('A-03-02'));
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:code==='00000000'?'11111111':'00000000'})).status,403);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:code})).status,200);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:code})).status,409,'Code cannot be reused');
 assert.equal((await owner('order-get',{id})).order.cargo.pickup_code,undefined);
-const notices=await owner('customer-notifications');assert.ok(notices.unread>=5);assert.ok(notices.notifications.every(n=>n.order_id===id));assert.equal((await other('customer-notifications')).unread,0);
+const notices=await owner('customer-notifications');assert.ok(notices.unread>=5);assert.ok(notices.notifications.some(n=>n.kind==='photo'&&n.message.includes('Эрээн')));assert.ok(notices.notifications.some(n=>n.kind==='photo'&&n.message.includes('Улаанбаатар')));assert.ok(notices.notifications.every(n=>n.order_id===id));assert.equal((await other('customer-notifications')).unread,0);
 await other('customer-notifications-read',{through_id:100000});assert.equal((await owner('customer-notifications')).unread,notices.unread);
 await owner('customer-notifications-read',{through_id:notices.notifications[0].id});assert.equal((await owner('customer-notifications')).unread,0);
 assert.equal((await cn('warehouse-issue-unassigned',{code:'UNKNOWN-123',kind:'unknown',note:'Unclaimed bag'})).status,200);
@@ -65,5 +75,5 @@ assert.equal((await cn('warehouse-exception-photo&id='+exception.id+'&photo='+ep
 assert.equal((await ub('warehouse-exception-photo&id='+exception.id+'&photo='+ep)).status,404);
 assert.equal((await cn('warehouse-issue-resolve-unassigned',{issue_id:Number(exception.id),resolution:'Matched to supplier return'})).status,200);
 assert.equal((await admin('order-update',{id:second,status:'ulaanbaatar',amount:99000,internal_note:''})).status,200);
-const legacy=await ub('warehouse-measure',{...measure,id:second,expected_version:0});assert.equal(legacy.status,200,'Legacy arrivals can be measured in UB');
+const legacy=await ub('warehouse-measure',{...measure,id:second,expected_version:(await ub('warehouse-order&id='+second)).order.logistics.version});assert.equal(legacy.status,200,'Legacy arrivals can be measured in UB');
 console.log('PASS: measurements, stale writes, private photo upload/read, wrong-item scans, duplicate scans, issue holds/resolution, shelf search, final bill, paid handover, one-use codes, notification ownership/read state, unassigned exceptions.');
