@@ -59,7 +59,7 @@ assert.equal((await ub('warehouse-settlement',{...settlement,goods_mnt:1})).stat
 o=(await ub('warehouse-settlement',settlement)).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1500);assert.equal(o.pickup_code,undefined);
 let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{8}$/);
 assert.deepEqual([...new Set(own.cargo.photos.map(p=>p.location))],['erenhot','ulaanbaatar']);
-assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location'));
+assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location,warehouse_name'));
 assert.equal(own.logistics,undefined);assert.equal(own.freight,undefined);assert.equal(own.batch_id,undefined);assert.ok(!JSON.stringify(own).includes('PRIVATE damage'));assert.equal(own.internal_note,undefined);assert.equal(own.callback_token,undefined);assert.ok(!JSON.stringify(own).includes(b.id));assert.ok(!JSON.stringify(own).includes('A-03-02'));
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:code==='00000000'?'11111111':'00000000'})).status,403);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:code})).status,200);

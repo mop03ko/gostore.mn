@@ -1,16 +1,71 @@
 <?php
 declare(strict_types=1);
 
+// A warehouse has an immutable operational role and an independent manager session.
+function warehouse_definitions(): array {
+    $rows=['erenhot'=>['location'=>'erenhot','role'=>'erenhot','city'=>'Эрээн','active'=>true], 'ulaanbaatar'=>['location'=>'ulaanbaatar','role'=>'ulaanbaatar','city'=>'Улаанбаатар','active'=>true]];
+    foreach(db()->query("SELECT value FROM meta WHERE key LIKE 'warehouse_definition_%'") as $row){$w=json_decode($row['value'],true);$rows[$w['location']]=$w;}
+    return $rows;
+}
+function warehouse_role(string $location): string {
+    if(in_array($location,['erenhot','ulaanbaatar'],true))return $location;
+    static $roles=[];if(isset($roles[$location]))return $roles[$location];
+    $w=warehouse_definitions()[$location]??null;if(!$w)fail('Агуулах олдсонгүй.',404);return $roles[$location]=$w['role'];
+}
+function warehouse_catalog(): array {
+    return array_map(fn($w)=>array_merge($w,warehouse_profile($w['location'])),warehouse_definitions());
+}
+function warehouse_accounts(): array {return array_map(fn($w)=>warehouse_account_public($w['location']),warehouse_definitions());}
+function warehouse_choices(): array {
+    return array_values(array_map(fn($w)=>array_intersect_key($w,array_flip(['location','role','name','city'])),array_filter(warehouse_catalog(),fn($w)=>$w['active'])));
+}
+function warehouse_order_location(array $o,string $role): string {return $o['warehouse_locations'][$role]??$role;}
+function warehouse_create(array $b): array {
+    admin_required();$role=str_field($b,'role',30);if(!in_array($role,['erenhot','ulaanbaatar'],true))fail('Агуулахын үүрэг буруу.');
+    $city=str_field($b,'city',100);$name=str_field($b,'name',150);
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        foreach(warehouse_catalog() as $w)if(mb_strtolower($w['name'])===mb_strtolower($name))fail('Ижил нэртэй агуулах бүртгэлтэй байна.',409);
+        $id='wh-'.bin2hex(random_bytes(6));$definition=['location'=>$id,'role'=>$role,'city'=>$city,'active'=>true];
+        $db->prepare('INSERT INTO meta VALUES (?,?)')->execute(['warehouse_definition_'.$id,json_encode($definition,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
+        warehouse_profile_save(array_merge($b,['location'=>$id]),true);
+        warehouse_account_save(array_merge($b,['location'=>$id,'enabled'=>true]));
+        $db->exec('COMMIT');return warehouse_catalog()[$id];
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+function warehouse_assign_order(array $b): array {
+    admin_required();$db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $o=order_row(str_field($b,'id',50))['order'];
+        if(isset($o['batch_id'])||!in_array($o['status'],['new','reviewing','quoted','confirmed','shipping','erenhot'],true)||!in_array('Эрээн',$o['route']??[],true))fail('Багцлахаас өмнө агуулах онооно.',409);
+        if(str_field($b,'expected_status',30)!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна.',409);
+        $defs=warehouse_definitions();$old=[];$next=[];
+        foreach(['erenhot','ulaanbaatar'] as $role){
+            $old[$role]=warehouse_order_location($o,$role);$id=str_field($b,$role,30);
+            if(($b['expected_'.$role]??null)!==$old[$role])fail('Агуулахын оноолт өөрчлөгдсөн байна.',409);
+            if(!isset($defs[$id])||$defs[$id]['role']!==$role||!$defs[$id]['active'])fail('Идэвхтэй, тохирох үүрэгтэй агуулах сонгоно уу.');$next[$role]=$id;
+        }
+        if($next['erenhot']!==$old['erenhot']){
+            if(in_array($o['status'],['shipping','erenhot'],true)||logistics_state($o)['photos']||isset($o['logistics']['measurement']))fail('Илгээсэн эсвэл бүртгэж эхэлсэн барааны эхлэх агуулахыг солихгүй.',409);
+            $profile=warehouse_profile($next['erenhot']);$w=$o['warehouse']??[];
+            $recipient=$w['recipient']??($o['customer'].' / '.$o['id']);
+            foreach(['address','phone','contact_phone'] as $key)$w[$key]=$profile[$key];
+            $w['label']="收件人: ".$recipient."\n手机号: ".$w['phone']."\n地址: ".$w['address']."\n联系电话: ".$w['contact_phone']."\n订单号: ".$o['id'];$o['warehouse']=$w;
+        }
+        $o['warehouse_locations']=$next;$o['warehouse_assignment_history'][]=['at'=>gmdate('c'),'from'=>$old,'to'=>$next,'actor'=>'admin'];save_order($o);$db->exec('COMMIT');return $o;
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+
 function warehouse_location(array $input): string {
     $location=$input['location']??'erenhot';
-    if(!in_array($location,['erenhot','ulaanbaatar'],true))fail('Агуулахын байршил буруу.');
+    if(!is_string($location)||!isset(warehouse_definitions()[$location]))fail('Агуулахын байршил буруу.');
     return $location;
 }
 function warehouse_session_location(): string {
     return warehouse_location(['location'=>$_SESSION['warehouse_location']??'erenhot']);
 }
 function warehouse_account_key(string $location): string {
-    return $location==='erenhot'?'warehouse_account':'warehouse_account_ulaanbaatar';
+    return $location==='erenhot'?'warehouse_account':'warehouse_account_'.$location;
 }
 function warehouse_account(string $location='erenhot'): array {
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute([warehouse_account_key($location)]);
@@ -38,13 +93,14 @@ function warehouse_account_save(array $b): array {
 }
 function warehouse_authenticated(): bool {
     $a=warehouse_account(warehouse_session_location());
-    return $a['enabled']&&!empty($_SESSION['warehouse_version'])&&hash_equals($a['version'],$_SESSION['warehouse_version']);
+    return (warehouse_definitions()[warehouse_session_location()]['active']??false)&&$a['enabled']&&!empty($_SESSION['warehouse_version'])&&hash_equals($a['version'],$_SESSION['warehouse_version']);
 }
 function warehouse_required(): void {
     if(!warehouse_authenticated())fail('Агуулахын эрхээр нэвтэрнэ үү.',401);
 }
 function warehouse_order_visible(array $o,string $location='erenhot'): bool {
-    if($location==='erenhot')return in_array('Эрээн',$o['route']??[],true);
+    if(warehouse_order_location($o,warehouse_role($location))!==$location)return false;
+    if(warehouse_role($location)==='erenhot')return in_array('Эрээн',$o['route']??[],true);
     if(!in_array('Улаанбаатар',$o['route']??[],true))return false;
     return (isset($o['batch_id'])&&$o['status']==='erenhot_dispatched')
         || in_array($o['status'],['zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)
@@ -53,15 +109,17 @@ function warehouse_order_visible(array $o,string $location='erenhot'): bool {
 function warehouse_order_public(array $o,string $location='erenhot'): array {
     $result=array_intersect_key($o,array_flip(['id','title','customer','status','created','warehouse','batch_id']));
     $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
+    $result['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
     $result['items']=array_map(fn($item)=>array_intersect_key($item,array_flip(['name','variant','qty'])),$items);
     $result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])), $o['history']??[]);
     $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
-    if($location==='ulaanbaatar'){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
-    if($location==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
+    $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
+    if(warehouse_role($location)==='ulaanbaatar'){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
+    if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
         if(isset($o['fulfillment']))$result['fulfillment']=$o['fulfillment'];
     }
-    $result['next_status']=isset($o['batch_id'])?null:($location==='ulaanbaatar'
+    $result['next_status']=isset($o['batch_id'])?null:(warehouse_role($location)==='ulaanbaatar'
         ? ($o['status']==='zamyn_uud'?'ulaanbaatar':null)
         : match($o['status']){'confirmed','shipping'=>'erenhot',default=>null});
     return $result;
@@ -77,7 +135,7 @@ function warehouse_overview_add(array &$overview,array $order): void {
     foreach($groups as $group){$overview[$group]['orders']++;$overview[$group]['quantity']+=$quantity;}
 }
 function warehouse_get(string $action): never {
-    if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'csrf'=>$_SESSION['csrf']]);
+    if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
     $location=warehouse_session_location();
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
@@ -91,11 +149,11 @@ function warehouse_get(string $action): never {
     if($offset===false)fail('Хуудасны дугаар буруу.');
     $rows=[];$matched=0;$counts=['waiting'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
     $overview=array_fill_keys(['ordered','erenhot','ulaanbaatar'],['orders'=>0,'quantity'=>0]);
-    $waiting=$location==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
-    $received=$location==='ulaanbaatar'?'ulaanbaatar':'erenhot';
+    $waiting=warehouse_role($location)==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
+    $received=warehouse_role($location)==='ulaanbaatar'?'ulaanbaatar':'erenhot';
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
         $o=json_decode($r['data'],true);
-        if($location==='ulaanbaatar')warehouse_overview_add($overview,$o);
+        if(warehouse_role($location)==='ulaanbaatar'&&warehouse_order_location($o,'ulaanbaatar')===$location)warehouse_overview_add($overview,$o);
         if(!warehouse_order_visible($o,$location))continue;
         if(in_array($o['status'],$waiting,true))$counts['waiting']++;
         if($o['status']===$received)$counts['received']++;
@@ -111,7 +169,7 @@ function warehouse_get(string $action): never {
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location);
     }
-    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...($location==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
+    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
 }
 function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-login'){
@@ -119,9 +177,9 @@ function warehouse_post(string $action,array $b): never {
         limit_attempts('warehouse-login:'.$location.':'.($_SERVER['REMOTE_ADDR']??''),8,900);
         $email=strtolower(str_field($b,'email',200));$password=$b['password']??'';$a=warehouse_account($location);
         if(!is_string($password)||strlen($password)>500)fail('Имэйл эсвэл нууц үг буруу байна.',401);
-        if(!$a['enabled']||$a['password_hash']===''||!hash_equals($a['email'],$email)||!password_verify($password,$a['password_hash']))fail('Имэйл эсвэл нууц үг буруу байна.',401);
+        if(!warehouse_definitions()[$location]['active']||!$a['enabled']||$a['password_hash']===''||!hash_equals($a['email'],$email)||!password_verify($password,$a['password_hash']))fail('Имэйл эсвэл нууц үг буруу байна.',401);
         session_regenerate_id(true);$_SESSION['warehouse_version']=$a['version'];$_SESSION['warehouse_location']=$location;$_SESSION['csrf']=bin2hex(random_bytes(32));
-        json_out(['ok'=>true,'location'=>$location,'csrf'=>$_SESSION['csrf']]);
+        json_out(['ok'=>true,'location'=>$location,'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     }
     if($action==='warehouse-logout'){$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
     warehouse_required();
@@ -131,7 +189,7 @@ function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-fulfillment-update')warehouse_fulfillment($b,$location);
     if($action!=='warehouse-order-update')fail('Үйлдэл олдсонгүй.',404);
     $id=str_field($b,'id',50);$status=str_field($b,'status',30);$expected=str_field($b,'expected_status',30);
-    $allowed=$location==='ulaanbaatar'?['ulaanbaatar']:['erenhot'];
+    $allowed=warehouse_role($location)==='ulaanbaatar'?['ulaanbaatar']:['erenhot'];
     if(!in_array($status,$allowed,true))fail('Энэ төлөвийг өөрчлөх эрхгүй.',403);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
@@ -147,6 +205,8 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Нэг багцын захиалгууд ижил хүлээн авах агуулахтай байна.'=>'同一包裹的订单必须属于同一个收货仓库，请检查订单分配。',
+        'Хүлээн авах агуулах буруу.'=>'请选择有效的收货仓库。',
         'Багц агуулахаас бодитоор гарсныг батална уу.'=>'请确认包裹已实际离开二连仓库。',
         'Энэ агуулахын хүлээн авах зургийг эхлээд оруулна уу.'=>'请先上传本仓库的收货照片。',
         'Энэ төлөвт агуулахын зураг нэмэх боломжгүй.'=>'当前订单状态无法上传本仓库照片。',

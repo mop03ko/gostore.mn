@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {uploadReceipt} from './warehouse-photo.mjs';
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+function client(){const jar=new Map();let csrf='';return async(action,body,bad=false)=>{const form=body instanceof FormData;const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'X-CSRF-Token':bad?'bad':csrf,...(!form?{'Content-Type':'application/json'}:{})}:{})},body:body?(form?body:JSON.stringify(body)):undefined});for(const c of r.headers.getSetCookie()){const p=c.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));}const d=await r.json();if(d.csrf)csrf=d.csrf;return{status:r.status,...d};};}
+const admin=client(),cn=client(),ub=client(),oldCn=client(),oldUb=client(),guest=client(),anon=client();
+const password='Branch-manager-2026!',token=()=>crypto.randomBytes(32).toString('hex');
+await admin('session');assert.equal((await admin('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')))).status,200);
+await anon('session');await guest('catalog');
+for(const action of ['warehouse-create','warehouse-assign-order']){assert.equal((await anon(action,{})).status,401);assert.equal((await admin(action,{},true)).status,403);}
+const definitions={};
+for(const role of ['erenhot','ulaanbaatar']){
+ const input={role,city:'Branch city',name:role+' branch',address:role+' branch address',phone:'99112233',hours:'09:00–18:00',email:role+'@branch.test',password};
+ assert.equal((await admin('warehouse-create',{...input,password:'short'})).status,400);
+ assert.equal(Object.keys((await admin('dashboard')).warehouse_profiles).length,Object.keys(definitions).length+2,'Failed creation rolls back definition/profile');
+ const created=await admin('warehouse-create',input);assert.equal(created.status,201,JSON.stringify(created));const id=created.warehouse.location;assert.match(id,/^wh-[a-f0-9]{12}$/);definitions[role]=id;
+ assert.equal((await admin('warehouse-create',input)).status,409,'Duplicate warehouse name blocked');
+ const c=role==='erenhot'?cn:ub;await c('warehouse-session');assert.equal((await c('warehouse-login',{location:id,email:input.email,password})).status,200);
+ assert.equal((await c('warehouse-orders')).total,0,'New manager cannot see existing orders');
+ const old=role==='erenhot'?oldCn:oldUb;const login={location:role,email:role+'@old.test',password,enabled:true};assert.equal((await admin('warehouse-account-save',login)).status,200);await old('warehouse-session');assert.equal((await old('warehouse-login',login)).status,200);
+}
+assert.equal((await cn('warehouse-create',{})).status,403,'Manager cannot create warehouses');
+const id='GS-TEST-001',other='GS-TEST-002',assignment={id,expected_status:'confirmed',expected_erenhot:'erenhot',expected_ulaanbaatar:'ulaanbaatar',...definitions};
+assert.equal((await admin('warehouse-assign-order',{...assignment,ulaanbaatar:definitions.erenhot})).status,400);
+assert.equal((await admin('warehouse-assign-order',assignment)).status,200);
+assert.equal((await admin('warehouse-assign-order',assignment)).status,409,'Stale routing rejected');
+assert.equal((await cn('warehouse-order&id='+other)).status,404);assert.equal((await oldCn('warehouse-order&id='+id)).status,404);
+assert.equal((await ub('warehouse-order&id='+id)).status,404,'Receiving warehouse cannot read early customer data');
+assert.equal((await ub('warehouse-orders')).overview.ordered.orders,1,'Planning counts scoped to assigned branch');
+let profile=(await admin('dashboard')).warehouse_profiles[definitions.ulaanbaatar];
+assert.equal((await admin('warehouse-profile-save',{...profile,active:false})).status,409,'Cannot disable with open orders');
+await uploadReceipt(cn,id);assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
+assert.equal((await admin('warehouse-assign-order',{...assignment,expected_status:'erenhot',expected_erenhot:definitions.erenhot,expected_ulaanbaatar:definitions.ulaanbaatar,erenhot:'erenhot'})).status,409,'Cannot move received source');
+let o=(await cn('warehouse-order&id='+id)).order;
+assert.equal((await cn('warehouse-measure',{id,expected_version:o.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2})).status,200);
+assert.equal((await cn('warehouse-batch-create',{token:token(),order_ids:[id],note:''})).status,409,'Wrong destination rejects batch atomically');
+let result=await cn('warehouse-batch-create',{token:token(),order_ids:[id],destination:definitions.ulaanbaatar,note:'Branch shipment'});assert.equal(result.status,201,JSON.stringify(result));let b=result.batch;
+assert.equal(b.source,definitions.erenhot);assert.equal(b.destination,definitions.ulaanbaatar);
+assert.equal((await admin('warehouse-assign-order',{...assignment,expected_status:'erenhot'})).status,409,'Batched routing locked');
+assert.equal((await oldCn('warehouse-batch&id='+b.id)).status,404);
+for(const action of ['scan','ready','dispatch']){const r=await cn('warehouse-batch-'+action,{id:b.id,expected_version:b.version,order_id:id,checked:true});assert.equal(r.status,200,JSON.stringify(r));b=r.batch;}
+assert.equal((await oldUb('warehouse-batch&id='+b.id)).status,404);assert.equal((await oldUb('warehouse-order&id='+id)).status,404);
+assert.equal((await oldUb('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,404);
+assert.equal((await ub('warehouse-batch&id='+b.id)).status,200);
+b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;
+assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409,'New branch requires its own receipt photo');
+await uploadReceipt(ub,id);assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,200);
+assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'sort',expected_status:'ulaanbaatar_unsorted',method:'pickup',contact_phone:'99112233',address:'',checked:true})).status,200);
+o=(await ub('warehouse-order&id='+id)).order;
+assert.equal((await ub('warehouse-shelf',{id,expected_version:o.logistics.version,shelf:'BR-01'})).status,200);
+o=(await ub('warehouse-order&id='+id)).order;
+assert.equal((await ub('warehouse-settlement',{id,expected_version:o.logistics.version,goods_mnt:96000,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'weight',note:'Verified branch total'})).status,200);
+const trackingToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
+const tracked=(await guest('order-get',{id,token:trackingToken})).order;
+assert.equal(tracked.pickup_warehouse.location,definitions.ulaanbaatar);assert.equal(tracked.pickup_warehouse.address,profile.address);assert.equal(tracked.warehouse_assignment_history,undefined);assert.equal(tracked.warehouse_locations,undefined);assert.ok(!JSON.stringify(tracked).includes(b.id));assert.equal(tracked.cargo.photos.length,2);assert.ok(tracked.cargo.photos.every(p=>p.warehouse_name.includes('branch')));assert.equal(tracked.warehouse_names.erenhot,'erenhot branch');
+assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',pickup_code:tracked.cargo.pickup_code,received_by:'Customer'})).status,200);
+const saved=(await admin('dashboard')).orders.find(o=>o.id===id);assert.equal(saved.history.at(-1).actor_location,definitions.ulaanbaatar);assert.equal(saved.warehouse_assignment_history.length,1);
+assert.equal((await admin('warehouse-profile-save',{...profile,active:false})).status,200);
+assert.equal((await ub('warehouse-orders')).status,401,'Disabling revokes manager');
+assert.equal((await admin('warehouse-profile-save',{...profile,active:true})).status,200);
+assert.equal((await ub('warehouse-orders')).status,401,'Reactivation never restores old sessions');
+assert.equal((await oldUb('warehouse-orders')).status,200,'Other warehouse sessions unaffected');
+const publicSession=await anon('warehouse-session');assert.ok(publicSession.warehouses.some(w=>w.location===definitions.ulaanbaatar));assert.ok(!JSON.stringify(publicSession).includes('@branch.test'));
+console.log('PASS: independent warehouses, atomic create, validation/CSRF, scoped orders/batches/photos/counts, fixed routing, QR receipt/sort/shelf/settlement/handover, customer tracking and session revocation.');

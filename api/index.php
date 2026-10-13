@@ -25,7 +25,7 @@ try {
         if($page===false)fail('Хуудасны дугаар буруу.');
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','page'=>$page,'sort'=>$_GET['sort']??'default'],true));
     }
-    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if ($method==='GET') {
@@ -36,7 +36,7 @@ try {
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>['erenhot'=>warehouse_profile('erenhot'),'ulaanbaatar'=>warehouse_profile('ulaanbaatar')],'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>['erenhot'=>warehouse_account_public('erenhot'),'ulaanbaatar'=>warehouse_account_public('ulaanbaatar')],'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -70,6 +70,8 @@ try {
     }
     if($warehouseAction)warehouse_post($action,$b);
     if($action==='admin-password-change')json_out(admin_password_change($b));
+    if($action==='warehouse-create')json_out(['warehouse'=>warehouse_create($b)],201);
+    if($action==='warehouse-assign-order')json_out(['order'=>warehouse_assign_order($b)]);
     if($action==='warehouse-profile-save')json_out(['profile'=>warehouse_profile_save($b)]);
     if($action==='warehouse-account-save')json_out(['account'=>warehouse_account_save($b)]);
     if($action==='supplier-search')json_out(supplier_search($b));

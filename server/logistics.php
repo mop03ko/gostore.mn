@@ -32,17 +32,22 @@ function logistics_touch(array &$o,string $event): void {
 function logistics_notify(array $o,?array $old): void {
     if(!$old)return;
     $events=[];
-    if($old['status']!==$o['status'])$events[]=['status',$o['status']];
+    if($old['status']!==$o['status']){
+        $message=$o['status'];$kind='status';
+        if(isset($o['warehouse_locations'])&&in_array($o['status'],['erenhot','erenhot_ready','ulaanbaatar','ulaanbaatar_unsorted'],true)){
+            $role=$o['status']==='erenhot'?'erenhot':'ulaanbaatar';$message=warehouse_profile(warehouse_order_location($o,$role))['name'].match($o['status']){'erenhot_ready'=>' руу гарахад бэлэн','ulaanbaatar_unsorted'=>' · ангилж байна',default=>' · бараа ирсэн'};$kind='warehouse_status';
+        }$events[]=[$kind,$message];
+    }
     if(($old['settlement']??null)!==($o['settlement']??null))$events[]=['settlement','Эцсийн тооцоо баталгаажлаа'];
     if(!($old['paid']??false)&&($o['paid']??false))$events[]=['payment','Төлбөр баталгаажлаа'];
     if(($old['freight']['paid_amount']??0)!==($o['freight']['paid_amount']??0))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
     $oldPhotos=array_column(logistics_state($old)['photos'],'id');
-    foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',($p['location']==='erenhot'?'Эрээн':'Улаанбаатар').' агуулахын зураг нэмэгдлээ'];
+    foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',warehouse_profile($p['location'])['name'].' · зураг нэмэгдлээ'];
     foreach($events as [$kind,$message])db()->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],$kind,$message,gmdate('c')]);
 }
 function logistics_public(array $o): array {
     $l=logistics_state($o);
-    $result=['measurement'=>$l['measurement']??null,'photos'=>array_map(fn($p)=>array_intersect_key($p,array_flip(['id','at','location'])),$l['photos']),'issue_count'=>count(array_filter($l['issues'],fn($i)=>$i['state']==='open'))];
+    $result=['measurement'=>$l['measurement']??null,'photos'=>array_map(fn($p)=>array_merge(array_intersect_key($p,array_flip(['id','at','location'])),['warehouse_name'=>warehouse_profile($p['location'])['name']]),$l['photos']),'issue_count'=>count(array_filter($l['issues'],fn($i)=>$i['state']==='open'))];
     $result['billing']=settlement_summary($o);
     if(in_array($o['status'],['ready_pickup','out_for_delivery'],true)&&$result['billing']['finalized']&&!$result['billing']['due']&&!$result['billing']['refund_due']&&!logistics_open_issues($o))$result['pickup_code']=$o['pickup_code']??null;
     if(isset($o['freight']['invoice']))$result['freight_invoice']=array_intersect_key($o['freight']['invoice'],array_flip(['state','qr_image','urls']));
@@ -67,15 +72,15 @@ function logistics_post(string $action,array $b,string $location): never {
         if(int_field($b,'expected_version',0,PHP_INT_MAX)!==$l['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
         if(in_array($o['status'],['completed','cancelled'],true))fail('Дууссан захиалгыг өөрчлөхгүй.',409);
         if($action==='warehouse-measure'){
-            $legacy=$location==='ulaanbaatar'&&!isset($l['measurement'])&&!isset($o['settlement'])&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true);
-            if(!$legacy&&($location!=='erenhot'||$o['status']!=='erenhot'))fail('Эрээнд хүлээн авсны дараа хэмжилт хийнэ.',409);
+            $legacy=warehouse_role($location)==='ulaanbaatar'&&!isset($l['measurement'])&&!isset($o['settlement'])&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true);
+            if(!$legacy&&(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot'))fail('Эрээнд хүлээн авсны дараа хэмжилт хийнэ.',409);
             $m=[];foreach(['weight_kg'=>[0.001,10000],'length_cm'=>[0.1,1000],'width_cm'=>[0.1,1000],'height_cm'=>[0.1,1000]] as $key=>$range)$m[$key]=decimal_field($b,$key,...$range);
             $m['pieces']=int_field($b,'pieces',1,1000000);
             $expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
             if($m['pieces']!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
             $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,6);$m['at']=gmdate('c');$l['measurement']=$m;
         }elseif($action==='warehouse-shelf'){
-            if($location!=='ulaanbaatar'||!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('УБ агуулахад ирсэн барааны байрлалыг бүртгэнэ.',409);
+            if(warehouse_role($location)!=='ulaanbaatar'||!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('УБ агуулахад ирсэн барааны байрлалыг бүртгэнэ.',409);
             $l['shelf']=str_field($b,'shelf',50);
         }elseif($action==='warehouse-issue'){
             $kind=str_field($b,'kind',30);if(!in_array($kind,['missing','damaged','wrong','extra'],true))fail('Зөрчлийн төрөл буруу.');
@@ -85,7 +90,7 @@ function logistics_post(string $action,array $b,string $location): never {
             $found=false;foreach($l['issues'] as &$issue)if($issue['id']===str_field($b,'issue_id',32)&&$issue['state']==='open'){$issue['state']='resolved';$issue['resolution']=str_field($b,'resolution',1000);$issue['resolved_at']=gmdate('c');$issue['resolved_location']=$location;$found=true;}unset($issue);
             if(!$found)fail('Нээлттэй зөрчил олдсонгүй.',404);
         }elseif($action==='warehouse-settlement'){
-            if($location!=='ulaanbaatar')fail('УБ агуулахад эцсийн тооцоог батална.',403);
+            if(warehouse_role($location)!=='ulaanbaatar')fail('УБ агуулахад эцсийн тооцоог батална.',403);
             if(!in_array($o['status'],['ready_pickup','ready_delivery'],true))fail('Эхлээд барааг ангилж авах хэлбэрийг сонгоно уу.',409);
             if(isset($o['freight']['invoice']))fail('Нэхэмжлэл үүссэн тул тооцоог өөрчлөхгүй.',409);
             if(isset($o['invoice'])&&!$o['paid'])fail('Эхний нэхэмжлэлийн төлбөрийг баталгаажуулна уу.',409);
@@ -131,7 +136,7 @@ function logistics_photo_upload(bool $exception=false): never {
         $o=order_row($id)['order'];$l=logistics_state($o);
         if(!warehouse_order_visible($o,$location)||in_array($o['status'],['completed','cancelled'],true))fail('Зураг нэмэх боломжгүй.',409);
         if((string)$l['version']!==($_POST['expected_version']??''))fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
-        $allowed=$location==='erenhot'?['confirmed','shipping','erenhot','erenhot_ready']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
+        $allowed=warehouse_role($location)==='erenhot'?['confirmed','shipping','erenhot','erenhot_ready']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
         if(!in_array($o['status'],$allowed,true))fail('Энэ төлөвт агуулахын зураг нэмэх боломжгүй.',409);
         if(count(array_filter($l['photos'],fn($p)=>($p['location']??'')===$location))>=12)fail('Нэг агуулахад 12 хүртэл зураг хадгална.');
         if(!imagejpeg($canvas,$path,85))fail('Зураг хадгалагдсангүй.',503);

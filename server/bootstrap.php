@@ -146,7 +146,9 @@ function save_order(array $o): void {
 }
 function public_order(array $o): array {
     if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
-    if(function_exists('warehouse_profile')&&($o['fulfillment']['method']??'')==='pickup')$o['pickup_warehouse']=warehouse_profile('ulaanbaatar');
+    if(function_exists('warehouse_profile')&&($o['fulfillment']['method']??'')==='pickup')$o['pickup_warehouse']=warehouse_profile(function_exists('warehouse_order_location')?warehouse_order_location($o,'ulaanbaatar'):'ulaanbaatar');
+    if(function_exists('warehouse_order_location'))$o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
+    unset($o['warehouse_assignment_history'],$o['warehouse_locations']);
     unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));

@@ -22,17 +22,32 @@ function shipping_save(array $b): array {
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);return shipping_settings();
 }
 function warehouse_profile(string $location): array {
-    if(!in_array($location,['erenhot','ulaanbaatar'],true))fail('Агуулахын байршил буруу.');
+    if(!in_array($location,['erenhot','ulaanbaatar'],true)&&(!function_exists('warehouse_definitions')||!isset(warehouse_definitions()[$location])))fail('Агуулахын байршил буруу.');
     $defaults=['name'=>$location==='erenhot'?'Эрээн агуулах':'Улаанбаатар агуулах','address'=>'','phone'=>'','contact_phone'=>'','hours'=>''];
     if($location==='erenhot'){$s=shipping_settings();foreach(['address','phone','contact_phone'] as $key)$defaults[$key]=$s['warehouse_'.$key];}
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['warehouse_profile_'.$location]);
     return array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true),['location'=>$location]);
 }
-function warehouse_profile_save(array $b): array {
+function warehouse_profile_save(array $b,bool $withinTransaction=false): array {
+    if(!$withinTransaction){admin_required();$db=db();$db->exec('BEGIN IMMEDIATE');try{$result=warehouse_profile_save($b,true);$db->exec('COMMIT');return $result;}catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}}
+
     admin_required();$location=str_field($b,'location',30);
-    if(!in_array($location,['erenhot','ulaanbaatar'],true))fail('Агуулахын байршил буруу.');
+    if(!in_array($location,['erenhot','ulaanbaatar'],true)&&(!function_exists('warehouse_definitions')||!isset(warehouse_definitions()[$location])))fail('Агуулахын байршил буруу.');
     $p=['name'=>str_field($b,'name',150),'address'=>str_field($b,'address',1000),'phone'=>str_field($b,'phone',80),'contact_phone'=>str_field($b,'contact_phone',80,false),'hours'=>str_field($b,'hours',300,false)];
+    if(isset($b['city']))$p['city']=str_field($b,'city',100);
+    if(function_exists('warehouse_catalog'))foreach(warehouse_catalog() as $existing)if($existing['location']!==$location&&mb_strtolower($existing['name'])===mb_strtolower($p['name']))fail('Ижил нэртэй агуулах бүртгэлтэй байна.',409);
     foreach(['phone','contact_phone'] as $key)if($p[$key]!==''&&!preg_match('/^[+0-9 ()-]{5,80}$/',$p[$key]))fail('Утасны дугаараа шалгана уу.');
+    if(!in_array($location,['erenhot','ulaanbaatar'],true)){
+        $d=warehouse_definitions()[$location];
+        if(isset($b['city']))$d['city']=str_field($b,'city',100);
+        if(array_key_exists('active',$b)){if(!is_bool($b['active']))fail('Агуулахын төлөв буруу.');$d['active']=$b['active'];}
+        if(!$d['active']){
+            foreach(db()->query('SELECT data FROM orders') as $row){$o=json_decode($row['data'],true);if(warehouse_order_location($o,$d['role'])===$location&&!in_array($o['status'],['completed','cancelled'],true))fail('Дуусаагүй захиалгатай агуулахыг идэвхгүй болгохгүй.',409);}
+            // Rotate sessions even if the warehouse is later reactivated.
+            $a=warehouse_account($location);$a['version']=bin2hex(random_bytes(16));db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute([warehouse_account_key($location),json_encode($a,JSON_THROW_ON_ERROR)]);
+        }
+        db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['warehouse_definition_'.$location,json_encode($d,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
+    }
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['warehouse_profile_'.$location,json_encode($p,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
     return warehouse_profile($location);
 }
