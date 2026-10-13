@@ -10,7 +10,7 @@ function client(){const jar=new Map();let csrf='';return async(action,body)=>{
 const a=client(),b=client(),second=client(),guest=client(),fresh=client();
 const suffix=crypto.randomBytes(6).toString('hex');
 const email='customer-'+suffix+'@example.test',password='A secure test '+suffix,newPassword='Changed test '+suffix;
-await a('customer-me');await b('customer-me');const testProduct=(await guest('catalog')).products.find(p=>p.type==='local');
+await a('customer-me');await b('customer-me');const catalog=(await guest('catalog')).products,testProduct=catalog.find(p=>p.type==='local');
 assert.equal((await guest('customer-orders')).status,401);
 assert.equal((await fetch(base+'/api/index.php?action=customer-register',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,403);
 assert.equal((await a('customer-register',{email,name:'Тест',password:'short',password_confirm:'short'})).status,400);
@@ -25,6 +25,7 @@ await second('customer-me');assert.equal((await second('customer-login',{email:e
 const token=crypto.randomBytes(32).toString('hex');
 const payload={type:'cart',items:[{id:testProduct.id,variant:testProduct.variants[0],qty:1}],token,title:'Customer test',customer:'Тест',phone:'99112233',notes:'',url:'https://www.1688.com/',variant:'Стандарт',qty:1,require_account:true,address:'Saved address'};
 const created=await a('order-create',payload);assert.equal(created.status,201);const id=created.order.id;
+assert.match(id,/^GS-[0-9A-F]{6}$/);
 assert.equal((await a('order-create',payload)).order.id,id);
 assert.ok((await a('customer-orders')).orders.some(o=>o.id===id));assert.equal((await b('customer-orders')).orders.length,0);
 assert.equal((await second('order-get',{id})).status,200);
@@ -39,6 +40,7 @@ assert.equal((await a('customer-logout',{})).status,200);assert.equal((await a('
 assert.equal((await a('order-create',{...payload,token:crypto.randomBytes(32).toString('hex')})).status,401);
 const guestToken=crypto.randomBytes(32).toString('hex');
 const guestOrder=await guest('order-create',{...payload,token:guestToken,require_account:false});assert.equal(guestOrder.status,201);
+assert.match(guestOrder.order.id,/^GS-[0-9A-F]{6}$/);assert.notEqual(guestOrder.order.id,id);
 assert.equal((await guest('order-get',{id:guestOrder.order.id,token:guestToken})).status,200);
 assert.equal((await b('customer-claim-order',{id:guestOrder.order.id,token:'0'.repeat(64)})).status,403);
 assert.equal((await second('customer-claim-order',{id:guestOrder.order.id,token:guestToken})).status,200);
@@ -49,4 +51,13 @@ assert.equal((await second('order-get',{id:guestOrder.order.id})).status,200);
 assert.equal((await second('customer-orders&offset=0')).orders.length,2);
 assert.equal((await second('customer-orders&offset=-1')).status,400);
 assert.equal((await fresh('customer-me')).customer,null);
+const china=catalog.find(p=>p.type==='china');
+const chinaPayload={...payload,require_account:false,token:crypto.randomBytes(32).toString('hex'),family_name:'Бат',items:[{id:china.id,variant:china.variants[0],qty:1}]};
+assert.equal((await guest('order-create',{...chinaPayload,family_name:''})).status,400);
+const chinaOrder=await guest('order-create',chinaPayload);assert.equal(chinaOrder.status,201);
+assert.match(chinaOrder.order.id,/^GS-[0-9A-F]{6}$/);
+assert.equal(chinaOrder.order.warehouse.order_code,chinaOrder.order.id);
+assert.equal(chinaOrder.order.warehouse.recipient,'Бат Тест / '+chinaOrder.order.id);
+assert.ok(chinaOrder.order.warehouse.label.includes(chinaOrder.order.id));
+assert.equal((await guest('order-create',chinaPayload)).order.id,chinaOrder.order.id);
 console.log('PASS: registration, CSRF, duplicate email, isolated admin session, profile, ownership, cross-device orders, password/session revocation, guest claims, pagination.');

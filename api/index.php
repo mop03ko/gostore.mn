@@ -61,7 +61,7 @@ try {
         $key=hash('sha256',$token); $s=db()->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);
         if ($existing=$s->fetchColumn()) { $r=order_row($existing);customer_order_access($r,$b);json_out(['order'=>public_order($r['order'])]); }
         $type=str_field($b,'type',10); if (!in_array($type,['cart','supplier'],true)) fail('Захиалгын төрөл буруу.');
-        $o=['id'=>'GS-'.gmdate('ymd').'-'.strtoupper(bin2hex(random_bytes(4))),'type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
+        $o=['type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
         $address=str_field($b,'address',500,false);
         if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
@@ -80,14 +80,22 @@ try {
                 $o['subtotal']+=$p['price']*$qty;$o['demo']=$o['demo']||$p['demo'];
             }
         }
-        if(isset($o['route'])){$o['warehouse']=warehouse_destination($o,$b);$o['customer']=$o['warehouse']['family_name'].' '.$o['warehouse']['given_name'];}
-        if(!isset($o['route'])&&($b['family_name']??'')!=='')$o['customer']=str_field($b,'family_name',100).' '.$o['customer'];
-        $customer=current_customer();$db=db();$db->beginTransaction();
+        $customer=current_customer();$db=db();$db->exec('BEGIN IMMEDIATE');
         try {
+            // Hold the write lock so another request cannot claim the same short code.
+            $exists=$db->prepare('SELECT 1 FROM orders WHERE id=?');
+            for($attempt=0;$attempt<20;$attempt++){
+                $o['id']='GS-'.strtoupper(bin2hex(random_bytes(3)));
+                $exists->execute([$o['id']]);$taken=(bool)$exists->fetchColumn();$exists->closeCursor();
+                if(!$taken)break;
+            }
+            if($taken)fail('Захиалгын код үүсгэж чадсангүй. Дахин оролдоно уу.',503);
+            if(isset($o['route'])){$o['warehouse']=warehouse_destination($o,$b);$o['customer']=$o['warehouse']['family_name'].' '.$o['warehouse']['given_name'];}
+            if(!isset($o['route'])&&($b['family_name']??'')!=='')$o['customer']=str_field($b,'family_name',100).' '.$o['customer'];
             $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],hash('sha256',$token),$key,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);
             if($customer)$db->prepare('INSERT INTO customer_orders VALUES (?,?,?)')->execute([$o['id'],$customer['id'],$o['created']]);
-            $db->commit();
-        } catch(Throwable $e){$db->rollBack();throw $e;}
+            $db->exec('COMMIT');
+        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         json_out(['order'=>public_order($o)],201);
     }
     if (in_array($action,['order-get','invoice'],true)) {
