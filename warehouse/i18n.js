@@ -26,3 +26,6 @@ Object.assign(warehouseText.zh.batchStatuses,{ready:'已打包 · 待出库',dis
 Object.assign(warehouseText.mn.batchStatuses,{ready:'Улаанбаатар луу гарахад бэлэн',dispatched:'Замын-Үүд рүү явж байна'});
 Object.assign(warehouseText.zh.events,{ready:'完成打包',reopen:'重新编辑包裹',dispatch:'确认出库 · 运往扎门乌德'});
 Object.assign(warehouseText.mn.events,{ready:'Багцалж дууссан',reopen:'Багцыг дахин засахаар нээсэн',dispatch:'Агуулахаас илгээсэн · Замын-Үүд рүү'});
+
+Object.assign(warehouseText.zh,{printLabel:'打印 QR 标签 · 100×150',printManifest:'打印清单 · A4',printerHint:'XP-420B：选择 100×150 mm 标签纸、纵向、缩放 100%、无边距，关闭页眉和页脚。首次使用请安装 Windows 驱动并校准标签间隙。打印不会确认出库。'});
+Object.assign(warehouseText.mn,{printLabel:'QR шошго хэвлэх · 100×150',printManifest:'Жагсаалт хэвлэх · A4',printerHint:'XP-420B: цаас 100×150 мм, босоо, масштаб 100%, захын зайгүй, хуудасны толгой/хөлийг унтраана. Анх ашиглахдаа Windows драйвер суулгаж, шошгоны завсар мэдрэгчийг тохируулна. Хэвлэх нь илгээснийг батлахгүй.'});

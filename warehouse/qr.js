@@ -1,9 +1,13 @@
 'use strict';
 // The QR contains only the internal GB identifier. Reading it never confirms receipt.
-function batchQr(id){
+function batchQr(id,label=false){
   if(!/^GB-[A-Z0-9-]{1,45}$/.test(id))return '';
   const qr=qrcode(0,'M');qr.addData(id,'Alphanumeric');qr.make();
-  return qr.createSvgTag({cellSize:6,margin:24,scalable:true}).replace('<svg ','<svg class="batch-qr-code" role="img" aria-label="'+id+'" ' );
+  // Whole printer dots per module at XP-420B's 203 dpi; retain a four-module quiet zone.
+  const dots=Math.floor(60*203/25.4/(qr.getModuleCount()+8));
+  const mm=((qr.getModuleCount()+8)*dots*25.4/203).toFixed(4);
+  const size=label?'style="width:'+mm+'mm;height:'+mm+'mm" ':'';
+  return qr.createSvgTag({cellSize:6,margin:24,scalable:true}).replace('<svg ','<svg '+size+'class="batch-qr-code" role="img" aria-label="'+id+'" ' );
 }
 let batchCamera=null,batchScanTimer=null,batchScanSequence=0;
 function stopBatchScanner(){
