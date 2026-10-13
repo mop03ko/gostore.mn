@@ -25,7 +25,7 @@ cached('/v1/alibaba1688/product/123456789?language=mn',{Item:raw});cached('/v1/a
  await page.goto(base+'/p/nonexistent-product');await page.getByRole('heading',{name:'Бараа олдсонгүй'}).waitFor();assert.equal(await page.locator('#pd-options').count(),0);
  await page.goto(base+'/p/chair');await page.locator('#pd-options').waitFor();await page.setViewportSize({width:1440,height:1000});await page.locator('.header-actions [data-action=favorites]').click();await page.locator('#product-grid .empty-state').waitFor();assert.match(page.url(),/filter=saved/);
  await page.evaluate(()=>sessionStorage.removeItem('gostore-supplier-cache-v1'));
- await page.route('**/api/index.php?action=supplier-product',async route=>{const response=await route.fetch(),body=await response.json();body.stale=true;await route.fulfill({response,json:body});});
- await page.goto(base+'/v/123456789');await page.locator('#pd-options').waitFor();assert.equal(await page.locator('[data-pd-submit]').isDisabled(),true,'Stale prices cannot be ordered');await page.unroute('**/api/index.php?action=supplier-product');
+ await page.route('**/api/index.php?action=supplier-product*',async route=>{const response=await route.fetch(),body=await response.json();body.stale=true;await route.fulfill({response,json:body});});
+ await page.goto(base+'/v/123456789');await page.locator('#pd-options').waitFor();assert.equal(await page.locator('[data-pd-submit]').isDisabled(),true,'Stale prices cannot be ordered');await page.unroute('**/api/index.php?action=supplier-product*');
  assert.deepEqual(errors,[]);assert.deepEqual(failed,[]);console.log('PASS: direct URLs/query/refresh/back, canonical, no redundant search, safe gallery/zoom, SKU/quantity/total, real cached supplier order, catalog cart, missing product, mobile overflow, no asset 404 or JS errors.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

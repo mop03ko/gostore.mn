@@ -24,16 +24,16 @@ window.supplierApi=(()=>{
     if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
     if(!pending.has(request)){
       const work=(async()=>{
-        await window.catalogReady;
-        if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
-        const started=Date.now(),result=await shopApi(action,payload);
+        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload});
+        const response=await fetch(url,{credentials:'omit'}),result=await response.json();
+        if(!response.ok)throw Error(result.error||'Барааны мэдээлэл авч чадсангүй.');
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
         if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more});
         else data.product=result.product;
         const ttl=Math.min(action==='supplier-search'?600:300,Number(result.cache_ttl)||0);
         const shaped=action==='supplier-search'?Array.isArray(data.products):data.product?.id===payload.id;
-        if(shaped&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:started+ttl*1000,data:clone(data)});persist();}
+        if(shaped&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:Math.min(started+ttl*1000,Number(result.cache_expires)>0?Number(result.cache_expires)*1000:Infinity),data:clone(data)});persist();}
         return data;
       })();
       pending.set(request,work);work.finally(()=>pending.delete(request)).catch(()=>{});

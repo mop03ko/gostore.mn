@@ -3,8 +3,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage(),calls=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
- await page.route('**/api/index.php?action=supplier-search',async r=>{
-   const b=r.request().postDataJSON();calls.push(b);
+ await page.route('**/api/index.php?action=supplier-search*',async r=>{
+   const b=({...Object.fromEntries(new URL(r.request().url()).searchParams),page:Number(new URL(r.request().url()).searchParams.get('page'))});calls.push(b);
    if(b.q==='error')return r.fulfill({status:503,json:{error:'Unavailable'}});
    return r.fulfill({json:{products:[{id:'abb-123456789',name:b.q+' '+b.page+' '+b.sort,image:'https://img.alicdn.com/test.jpg',mnt:5500,cny:10}],page:b.page,more:b.page===1,shipping:{cny_rate:550},stale:b.q==='stale',cache_ttl:b.q==='short'?1:21600,fetched:new Date().toISOString(),csrf:'must-not-persist',customer:{email:'must-not-persist'}}});
  });
@@ -34,5 +34,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  let releaseCatalog;const gate=new Promise(r=>releaseCatalog=r);await detail.route('**/api/index.php?action=catalog',async r=>{await gate;await r.continue();});
  await detail.reload({waitUntil:'domcontentloaded'});await detail.locator('#pd-options').waitFor();assert.equal(productCalls,1,'Product revisit needs no detail API call');assert.equal(await detail.evaluate(()=>storeServer.ready),false,'Cached product paints before slow catalog/session bootstrap');releaseCatalog();await detail.evaluate(()=>window.catalogReady);await detail.unroute('**/api/index.php?action=catalog');
  await detail.evaluate(()=>{const original=Date.now;Date.now=()=>original()+301000;});await detail.evaluate(()=>supplierApi('supplier-product',{id:'abb-123456789'}));assert.equal(productCalls,2,'Detail expires after five minutes');
+ // A new visitor with no browser cache also reads shared server data before login bootstrap.
+ const fresh=await browser.newPage();let releaseFresh;const freshGate=new Promise(r=>releaseFresh=r);await fresh.route('**/api/index.php?action=catalog',async r=>{await freshGate;await r.continue();});
+ await fresh.goto(base+'/v/123456789',{waitUntil:'domcontentloaded'});await fresh.locator('#pd-options').waitFor();assert.equal(await fresh.evaluate(()=>storeServer.ready),false,'First visit no longer waits for session/bootstrap');releaseFresh();await fresh.evaluate(()=>window.catalogReady);
  assert.deepEqual(errors,[]);console.log('PASS: concurrent dedup, navigation/reload/page cache hits, query isolation, TTL and server expiry, stale/error exclusion, field whitelist, bounded/corrupt/disabled storage, product paints before bootstrap. Warm search/detail navigation: 0 repeat supplier API calls.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

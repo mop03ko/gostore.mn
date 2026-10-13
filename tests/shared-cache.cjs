@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
+const base=process.env.TEST_BASE,data=process.env.GOSTORE_DATA_DIR;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);assert.ok(path.resolve(data).startsWith(path.resolve('tmp')+path.sep));
+const dir=path.join(data,'supplier-cache'),key=crypto.createHash('sha256').update('/v1/alibaba1688/search?item_title=bag&language=mn&limit=12&page=1&sort=default').digest('hex'),file=path.join(dir,key+'.json');
+const url=base+'/api/index.php?action=supplier-search&q=bag&page=1&sort=default';
+(async()=>{
+ const before=fs.readFileSync(file,'utf8');
+ for(let i=0;i<2;i++){const r=await fetch(url,{headers:{Cookie:'gostore_customer=unrelated-'+i}}),b=await r.json();assert.equal(r.status,200);assert.equal(r.headers.get('set-cookie'),null,'Public cache does not open a session');assert.match(r.headers.get('cache-control'),/^public, max-age=60/);assert.equal(b.stale,false);assert.ok(b.cache_expires>Math.floor(Date.now()/1000));assert.equal(b.products[0].id,'abb-123456789');for(const name of ['csrf','customer','authenticated','api_key'])assert.ok(!(name in b));}
+ assert.equal(fs.readFileSync(file,'utf8'),before,'Different customers read the same server file without a provider request');
+ const product=await fetch(base+'/api/index.php?action=supplier-product&id=abb-123456789');assert.equal(product.status,200);assert.equal(product.headers.get('set-cookie'),null);
+ for(const suffix of ['&page[]=1','&page=1.5','&sort=invalid','&q[]=bad']){const r=await fetch(url+suffix);assert.equal(r.status,400);assert.equal(r.headers.get('cache-control'),'no-store');}
+ const cached=JSON.parse(before);cached.expires=Math.floor(Date.now()/1000)-60;fs.writeFileSync(file,JSON.stringify(cached));const stale=await fetch(url),old=await stale.json();assert.equal(old.stale,true);assert.equal(old.cache_ttl,0);assert.equal(stale.headers.get('cache-control'),'no-store','Stale data never masquerades as fresh');
+ const php=path.resolve('tmp/tooling/php/php.exe'),args=['-d','extension_dir='+path.resolve('tmp/tooling/php/ext'),'-d','extension=pdo_sqlite','-d','extension=mbstring','tests/shared-cache-worker.php'];
+ const worker=spawnSync(php,args,{env:process.env,encoding:'utf8',windowsHide:true});assert.equal(worker.status,0,worker.stdout+worker.stderr);assert.equal(fs.readFileSync(path.join(data,'finish-marker'),'utf8'),'finished','One background refresh per process/server lock');assert.ok(Number(fs.readFileSync(file+'.retry','utf8'))>Date.now()/1000,'Failed provider refresh enters cooldown');assert.equal(fs.readFileSync(file,'utf8'),JSON.stringify(cached),'Refresh failure preserves the previous cache');
+ fs.unlinkSync(path.join(data,'finish-marker'));const marker=fs.statSync(file+'.retry').mtimeMs;const retried=spawnSync(php,args,{env:process.env,encoding:'utf8',windowsHide:true});assert.equal(retried.status,0,retried.stderr);assert.equal(fs.statSync(file+'.retry').mtimeMs,marker,'Cooldown prevents repeated refresh');
+ cached.expires=Math.floor(Date.now()/1000)-86401;fs.writeFileSync(file,JSON.stringify(cached));assert.equal((await fetch(url)).status,503,'Do not display indefinitely old products');
+ fs.writeFileSync(file,'corrupt');assert.equal((await fetch(url)).status,503,'Corrupt data does not leak or render');
+ console.log('PASS shared cache: cross-customer reuse, cookie/CSRF-free public GET, HTTP freshness, input validation, immediate stale reads, nonblocking refresh scheduling, failure cooldown and hard expiry.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

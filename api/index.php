@@ -18,6 +18,13 @@ try {
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
+    // Public product reads never open or expose a customer/admin session.
+    if($method==='GET'&&in_array($action,['supplier-search','supplier-product'],true)){
+        if($action==='supplier-product')supplier_public_json(supplier_detail(str_field($_GET,'id',50),true));
+        $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);
+        if($page===false)fail('Хуудасны дугаар буруу.');
+        supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','page'=>$page,'sort'=>$_GET['sort']??'default'],true));
+    }
     $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));

@@ -36,7 +36,7 @@ async function loadSupplier(page=1){
   supplierSaved=false;supplierViewState();supplierUrl(page);supplierBusy=true;$('#supplier-status').textContent='1688 бараа ачаалж байна…';$('#supplier-search button').disabled=true;$('#supplier-grid').setAttribute('aria-busy','true');$('#supplier-grid').innerHTML=Array.from({length:4},()=>'<div class="product-skeleton" aria-hidden="true"><span></span><i></i><i></i></div>').join('');$('#supplier-paging').replaceChildren();
   try{const r=await supplierApi('supplier-search',{q:query,page,sort});if(request!==supplierLoadSequence)return;supplierPage=page;
     supplierResults=(r.products||[]).filter(p=>/^abb-[0-9]+$/.test(p.id));renderSupplierCards(supplierResults);
-    $('#supplier-status').textContent=(supplierResults.length?`${page}-р хуудас · ${supplierResults.length} бараа`:'Тохирох бараа олдсонгүй.')+(r.stale?' · Хадгалсан мэдээлэл; шинэчлэх боломжгүй байна.':'');
+    $('#supplier-status').textContent=(supplierResults.length?`${page}-р хуудас · ${supplierResults.length} бараа`:'Тохирох бараа олдсонгүй.')+(r.stale?' · Хадгалсан мэдээлэл · шинэчлэлт хүлээгдэж байна.':'');
     $('#supplier-paging').innerHTML=(page>1?'<button class="button outline" data-supplier-page="'+(page-1)+'">Өмнөх</button>':'')+(r.more?'<button class="button outline" data-supplier-page="'+(page+1)+'">Дараах</button>':'');
     $('#shipping-rates').textContent=supplierRateText(r.shipping)+' Бараа, Хятад доторх хүргэлт, үйлчилгээний шимтгэл тусдаа тооцогдоно.';
   }catch(e){if(request!==supplierLoadSequence)return;supplierResults=[];$('#supplier-grid').replaceChildren();$('#supplier-status').textContent=e.message;$('#supplier-paging').innerHTML='<button class="button outline" data-supplier-page="'+page+'">Дахин оролдох</button>';}

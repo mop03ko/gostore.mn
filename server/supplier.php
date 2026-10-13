@@ -3,15 +3,50 @@ declare(strict_types=1);
 
 function supplier_ready(): bool { return !empty(config()['otcommerce']['api_key']) && shipping_settings()['supplier_enabled']; }
 function supplier_cache_key(string $path,array $query): string { ksort($query);return hash('sha256',$path.'?'.http_build_query($query)); }
-function supplier_request(string $path,array $query): array {
+// At most one post-response refresh runs across all PHP workers.
+function supplier_schedule_refresh(string $path,array $query,string $dir): void {
+    if(!function_exists('fastcgi_finish_request'))return;
+    $retry=$dir.'/'.supplier_cache_key($path,$query).'.json.retry';
+    if(is_file($retry)&&(int)file_get_contents($retry)>time())return;
+    $lock=fopen($dir.'/background.lock','c');if(!$lock)return;
+    if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return;}
+    register_shutdown_function(static function()use($path,$query,$lock){
+        ignore_user_abort(true);
+        if(session_status()===PHP_SESSION_ACTIVE)session_write_close();
+        fastcgi_finish_request();
+        try {supplier_request($path,$query,false,true);}catch(Throwable $e){error_log('GOStore supplier background refresh deferred');}
+        finally {flock($lock,LOCK_UN);fclose($lock);}
+    });
+}
+function supplier_public_json(array $data): never {
+    header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    $ttl=min(60,(int)($data['cache_ttl']??0));
+    header('Cache-Control: '.($ttl>0?'public, max-age='.$ttl.', must-revalidate':'no-store'));
+    echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);exit;
+}
+function supplier_request(string $path,array $query,bool $display=false,bool $force=false): array {
     if(!supplier_ready())fail('1688 каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
-    $read=static function()use($file){return is_file($file)?json_decode(file_get_contents($file),true):null;};
-    $cached=$read();if($cached&&$cached['expires']>time())return $cached;
-    $lock=fopen($dir.'/request.lock','c');if(!$lock||!flock($lock,LOCK_EX))fail('Нийлүүлэгчийн холболт завгүй байна.',503);
+    $read=static function()use($file){$v=is_file($file)?json_decode(file_get_contents($file),true):null;return is_array($v)&&isset($v['data'],$v['fetched'],$v['expires'])&&is_array($v['data'])&&is_numeric($v['expires'])?$v:null;};
+    $cached=$read();
+    if($cached&&$cached['expires']>time()&&!$force){
+        if($display&&$cached['expires']-time()<1800)supplier_schedule_refresh($path,$query,$dir);
+        return $cached;
+    }
+    // Browsing may use one day's stale data; ordering uses the strict path below.
+    if($display&&$cached&&$cached['expires']>time()-86400){supplier_schedule_refresh($path,$query,$dir);$cached['stale']=true;return $cached;}
+    $retry=$file.'.retry';
+    if(is_file($retry)&&(int)file_get_contents($retry)>time()){
+        if($cached&&!$display){$cached['stale']=$cached['expires']<=time();return $cached;}
+        fail('1688 мэдээллийг шинэчилж байна. Түр хүлээгээд дахин оролдоно уу.',503);
+    }
+    $lock=fopen($dir.'/request.lock','c');if(!$lock)fail('Нийлүүлэгчийн холболт завгүй байна.',503);
+    if(!flock($lock,LOCK_EX|(($display||$force)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
     try {
-        $cached=$read();if($cached&&$cached['expires']>time())return $cached;
+        $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||$cached['expires']-time()>=1800))return $cached;
+        if(is_file($retry)&&(int)file_get_contents($retry)>time()){if($cached){$cached['stale']=$cached['expires']<=time();return $cached;}fail('Нийлүүлэгчийн холболтыг түр хүлээнэ үү.',503);}
         // A single lock and daily budget prevent concurrent public searches exhausting the trial.
         try {
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);
@@ -23,10 +58,13 @@ function supplier_request(string $path,array $query): array {
             $response=json_decode($raw,true);
             if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!isset($response['Result']))fail('1688 мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
             $cached=['data'=>$response['Result'],'fetched'=>gmdate('c'),'expires'=>time()+21600,'stale'=>false];
-            file_put_contents($file,json_encode($cached,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),LOCK_EX);chmod($file,0600);
+            $tmp=tempnam($dir,'write-');if($tmp===false)fail('Cache хадгалж чадсангүй.',503);
+            try {if(file_put_contents($tmp,json_encode($cached,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),LOCK_EX)===false)fail('Cache хадгалж чадсангүй.',503);chmod($tmp,0600);if(!rename($tmp,$file))fail('Cache хадгалж чадсангүй.',503);}finally{if(is_file($tmp))unlink($tmp);}
+            if(is_file($retry))unlink($retry);
             return $cached;
         } catch(ApiError $e) {
-            if($cached){$cached['stale']=true;return $cached;}throw $e;
+            file_put_contents($retry,(string)(time()+300),LOCK_EX);chmod($retry,0600);
+            if($cached&&(!$display||$cached['expires']>time()-86400)){$cached['stale']=$cached['expires']<=time();return $cached;}throw $e;
         }
     } finally {flock($lock,LOCK_UN);fclose($lock);}
 }
@@ -57,18 +95,18 @@ function supplier_normalize(array $p,bool $detail=false): array {
     }
     return $r;
 }
-function supplier_search(array $b): array {
+function supplier_search(array $b,bool $display=false): array {
     $q=str_field($b,'q',100,false)?:'bag';$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume'],true))fail('Эрэмбэ буруу.');
-    $c=supplier_request('/v1/alibaba1688/search',['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort]);
+    $c=supplier_request('/v1/alibaba1688/search',['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort],$display);
     $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_normalize($p);}catch(ApiError){}}
-    return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
+    return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
-function supplier_detail(string $id): array {
+function supplier_detail(string $id,bool $display=false): array {
     if(!preg_match('/^abb-\d{5,20}$/',$id))fail('1688 барааны дугаар буруу.');
-    $c=supplier_request('/v1/alibaba1688/product/'.substr($id,4),['language'=>'mn']);
+    $c=supplier_request('/v1/alibaba1688/product/'.substr($id,4),['language'=>'mn'],$display);
     $p=supplier_normalize($c['data']['Item']??[],true);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
-    return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
+    return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_order(array $b): array {
     $d=supplier_detail(str_field($b,'product_id',50));$p=$d['product'];
