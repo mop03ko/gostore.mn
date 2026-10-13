@@ -182,4 +182,6 @@ OT Commerce API нь [албан ёсны REST баримтжуулалт](https
 
 Албан ёсны баримт: [операторын нэвтрэлт](https://docs.otapi.net/en/Documentations/Method/AuthenticateInstanceOperator), [1688 нэвтрэх холбоос](https://docs.otapi.net/en/Documentations/Method/GetProviderOrdersIntegrationSessionAuthenticationInfo), [холбосон аккаунтууд](https://docs.otapi.net/en/Documentations/Method/GetProviderOrdersIntegrationSessionInfoList). Response бүтэц нь албан ёсны `SessionIdAnswer`, `ProviderAuthenticationInfoAnswer`, `ProviderSessionInfoListAnswer` JSON жишээнд тулгуурласан.
 
+Нэвтрэх алдаа OT-ийн `GeneralErrorCode`-оор ялгагдана (`LoginFailed`, `AccessDenied`, `IncorrectKey` гэх мэт). Админд сүүлийн зөвшөөрөгдсөн алдааны код, арга, цагийг харуулна. Provider-ийн raw response, ErrorDescription, password, session болон request ID-г оношилгоонд хадгалахгүй. Нэвтрэлт эсвэл холболт шалгах амжилттай бол өмнөх алдаа арилна.
+
 Тест: `tests/ot-operator.php` fake OT transport ашигладаг; `node tests/run-logistics.cjs ot-operator` нь зөвхөн локал серверт админ/CSRF хамгаалалтыг шалгана. Эдгээр тест OT руу хүсэлт болон бодит захиалга илгээхгүй.

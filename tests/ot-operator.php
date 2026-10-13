@@ -35,7 +35,13 @@ check(!str_contains(json_encode($p),'SECRET'),'No sessions or buyer IDs in statu
 $mode='bad';reject(fn()=>ot_operator_connect($b),422);check(ot_operator_state()['session']==='SECRET-SESSION','Failed login preserves working connection');
 reject(fn()=>ot_operator_check(),422);check(!ot_operator_public()['verified']&&ot_operator_public()['buyer_count']===null,'Failed check clears stale success');
 $mode='invalid';reject(fn()=>ot_operator_check(),502);
+reject(fn()=>ot_operator_answer(['ErrorCode'=>'LoginFailed','ErrorDescription'=>'SECRET-password','RequestId'=>'SECRET-session'],'AuthenticateInstanceOperator'),422);
+$error=ot_operator_public()['last_error'];check($error['code']==='LoginFailed'&&$error['method']==='AuthenticateInstanceOperator','Exact allowed diagnostic persisted');
+check(!str_contains(json_encode($error),'SECRET'),'No provider description, password, or request ID in diagnostics');
+reject(fn()=>ot_operator_answer(['ErrorCode'=>'SECRET-unknown','ErrorDescription'=>'SECRET'],'SECRET-method'),422);
+$error=ot_operator_public()['last_error'];check($error['code']==='UnknownError'&&$error['method']==='UnknownMethod','Unknown diagnostic values redacted');
 $mode='empty';check(ot_operator_check()['buyer_count']===0,'No buyer is not ready');
+check(ot_operator_public()['last_error']===null,'Successful check clears prior error');
 $mode='disabled';$p=ot_operator_check();check(!$p['business_logic']&&!$p['autopurchase'],'Disabled rights represented truthfully');
 $count=count($calls);reject(fn()=>ot_operator_request('RunOrderExportingToProvider'),400);check(count($calls)===$count,'No purchase request reaches transport');
 check(ot_operator_session(['SessionId'=>'scalar'])==='scalar','Scalar session response supported');
