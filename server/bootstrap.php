@@ -34,7 +34,10 @@ function db(): PDO {
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, name TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, password_hash TEXT NOT NULL, auth_version INTEGER NOT NULL DEFAULT 1, created TEXT NOT NULL, updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS customer_orders (order_id TEXT PRIMARY KEY REFERENCES orders(id), customer_id TEXT NOT NULL REFERENCES customers(id), created TEXT NOT NULL);
-        CREATE INDEX IF NOT EXISTS customer_orders_owner ON customer_orders(customer_id, created);');
+        CREATE INDEX IF NOT EXISTS customer_orders_owner ON customer_orders(customer_id, created);
+        CREATE TABLE IF NOT EXISTS shipment_batches (id TEXT PRIMARY KEY, request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS shipment_batch_orders (order_id TEXT PRIMARY KEY REFERENCES orders(id), batch_id TEXT NOT NULL REFERENCES shipment_batches(id));
+        CREATE INDEX IF NOT EXISTS shipment_batch_members ON shipment_batch_orders(batch_id);');
     if (!$db->query("SELECT value FROM meta WHERE key='seeded'")->fetchColumn()) {
         $db->beginTransaction();
         try {
@@ -96,6 +99,7 @@ function save_order(array $o): void { db()->prepare('UPDATE orders SET data=?,up
 function public_order(array $o): array {
     unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
+    if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;
 }
 function product_link(string $url): bool {

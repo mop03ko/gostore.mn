@@ -56,14 +56,15 @@ assert.equal((await update('completed','new')).status,403,'Manager cannot comple
 assert.equal((await manager('warehouse-order-update',{id:'GS-LOCAL-OLD',status:'erenhot',expected_status:'confirmed'})).status,404);
 assert.equal((await admin('order-update',{id,status:'confirmed',amount:55000,internal_note:'PRIVATE ADMIN'})).status,200);
 assert.equal((await ub('warehouse-order-update',{id,status:'ulaanbaatar',expected_status:'confirmed'})).status,404,'UB cannot receive before Zamyn-Uud');
-assert.equal((await update('erenhot_dispatched','confirmed')).status,409,'Cannot skip receiving');
+assert.equal((await update('erenhot_dispatched','confirmed')).status,403,'Dispatch must use a batch');
 assert.equal((await fetch(base+'/api/index.php?action=warehouse-order-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:'erenhot'})})).status,403,'CSRF enforced');
 assert.equal((await update('erenhot','confirmed')).status,200);
 assert.equal((await update('erenhot','confirmed')).status,409,'Stale/repeated update is rejected');
 assert.equal((await manager('warehouse-orders&status=erenhot')).orders[0].id,id);
-assert.equal((await update('erenhot_dispatched','erenhot')).status,200);
+assert.equal((await update('erenhot_dispatched','erenhot')).status,403);
+assert.equal((await admin('order-update',{id,status:'erenhot_dispatched',amount:55000,internal_note:'PRIVATE ADMIN'})).status,200,'Legacy unbatched transport remains supported');
 assert.equal((await update('erenhot','erenhot_dispatched')).status,409,'Cannot roll back dispatch');
-dashboard=await admin('dashboard');let saved=dashboard.orders.find(o=>o.id===id);assert.equal(saved.amount,55000);assert.equal(saved.paid,false);assert.equal(saved.internal_note,'PRIVATE ADMIN');assert.equal(saved.history.at(-1).actor,'warehouse');assert.equal(saved.history.at(-1).actor_email,email);
+dashboard=await admin('dashboard');let saved=dashboard.orders.find(o=>o.id===id);assert.equal(saved.amount,55000);assert.equal(saved.paid,false);assert.equal(saved.internal_note,'PRIVATE ADMIN');const receipt=saved.history.find(h=>h.status==='erenhot');assert.equal(receipt.actor,'warehouse');assert.equal(receipt.actor_email,email);
 const customerView=await shop('order-get',{id,token:orderToken});assert.equal(customerView.status,200);assert.equal(customerView.order.status,'erenhot_dispatched');assert.equal(customerView.order.history.at(-1).actor_email,undefined);
 assert.equal((await update('ulaanbaatar','erenhot_dispatched')).status,403,'Erenhot cannot confirm UB receipt');
 assert.equal((await ub('warehouse-order-update',{id,status:'erenhot',expected_status:'erenhot_dispatched',location:'erenhot'})).status,403,'UB cannot assume Erenhot role');

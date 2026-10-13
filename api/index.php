@@ -7,6 +7,7 @@ require __DIR__.'/../server/customers.php';
 require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
 require __DIR__.'/../server/warehouse.php';
+require __DIR__.'/../server/warehouse-batches.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
@@ -70,6 +71,7 @@ try {
         $o=['type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
         $address=str_field($b,'address',500,false);
+        $o['delivery_address']=$address;
         if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
         if ($type==='supplier') {
             $o['supplier']=supplier_order($b);$o['title']=mb_substr($o['supplier']['name'],0,120);$o['url']=$o['supplier']['url'];$o['variant']=$o['supplier']['variant'];$o['qty']=$o['supplier']['qty'];$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
@@ -129,7 +131,8 @@ try {
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
             $o=order_row(str_field($b,'id',50))['order'];$status=str_field($b,'status',30);
-            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_dispatched','zamyn_uud','ulaanbaatar','completed','cancelled'],true)) fail('Төлөв буруу.');
+            if((isset($o['batch_id'])||isset($o['fulfillment'])||in_array($status,['ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true))&&$status!==$o['status'])fail('Багцтай болон ангилсан захиалгын явцыг агуулахын панелаас шинэчилнэ.',409);
+            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_dispatched','zamyn_uud','ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled'],true)) fail('Төлөв буруу.');
             $amount=int_field($b,'amount',0,100000000);
             if (isset($o['invoice']) && ($amount!==$o['amount']||$status==='cancelled')) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
 
@@ -141,5 +144,5 @@ try {
         } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}json_out(['order'=>$o]);
     }
     fail('Үйлдэл олдсонгүй.',404);
-} catch(ApiError $e) { json_out(['error'=>$e->getMessage()],$e->getCode()?:400); }
-catch(Throwable $e) { error_log('GOStore API: '.get_class($e));json_out(['error'=>'Серверийн тохиргоо эсвэл өгөгдлийн алдаа. Админтай холбогдоно уу.'],503); }
+} catch(ApiError $e) { json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?warehouse_error_zh($e->getMessage()):$e->getMessage()],$e->getCode()?:400); }
+catch(Throwable $e) { error_log('GOStore API: '.get_class($e));json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?'服务器暂时不可用，请联系管理员。':'Серверийн тохиргоо эсвэл өгөгдлийн алдаа. Админтай холбогдоно уу.'],503); }

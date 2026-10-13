@@ -1,32 +1,26 @@
 <!doctype html>
-<html lang="mn"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>GOStore · Агуулахын удирдлага</title>
-<link rel="stylesheet" href="../assets/fonts/fonts.css?v=20261010-gilroy">
-<link rel="stylesheet" href="../admin/admin.css?v=20261013-warehouse">
-<link rel="stylesheet" href="warehouse.css?v=20261013-warehouse">
-<script src="warehouse.js?v=20261013-two-warehouses" defer></script>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>GOStore · 仓库管理</title>
+<link rel="stylesheet" href="../assets/fonts/fonts.css?v=20261010-gilroy"><link rel="stylesheet" href="../admin/admin.css?v=20261013-warehouse"><link rel="stylesheet" href="warehouse.css?v=20261013-batches">
+<script src="i18n.js?v=20261013-batches" defer></script><script src="warehouse.js?v=20261013-batches" defer></script>
 </head><body>
 <section id="login-screen" class="login-screen">
-  <div class="login-brand"><a href="../"><img src="../assets/logo.png" alt="GOStore"></a><span>ЭРЭЭН · УЛААНБААТАР</span><h1>Ачаа бүрийг<br>нэг дороос.</h1><p>Захиалгаа хайх. Бараагаа шалгах.<br>Агуулахад ирснийг баталгаажуулах.</p><div class="brand-shape" aria-hidden="true"></div></div>
-  <div class="login-wrap"><form id="login-form" class="login-card"><span class="eyebrow">АГУУЛАХЫН МЕНЕЖЕР</span><h2>Тавтай морил</h2><p>Агуулахаа сонгоод өөрийн эрхээр нэвтэрнэ үү.</p><label>Агуулах<select id="login-location" name="location"><option value="erenhot">Эрээн агуулах</option><option value="ulaanbaatar">Улаанбаатар агуулах</option></select></label>
-    <label>Имэйл<input name="email" type="email" autocomplete="username" maxlength="200" required></label>
-    <label>Нууц үг<input name="password" type="password" autocomplete="current-password" required></label>
-    <p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Нэвтрэх →</button>
-    <a href="../">← Дэлгүүр рүү буцах</a><small>Нэвтрэх эрхээ GOStore-ийн үндсэн админаас авна.</small>
-  </form></div>
+<div class="login-brand"><a href="../"><img src="../assets/logo.png" alt="GOStore"></a><span data-i18n="brand"></span><h1 data-i18n="loginTitle"></h1><p data-i18n="route"></p><div class="brand-shape" aria-hidden="true"></div></div>
+<div class="login-wrap"><form id="login-form" class="login-card"><span class="eyebrow" data-i18n="manager"></span><h2 data-i18n="welcome"></h2><p data-i18n="loginIntro"></p>
+<label><span data-i18n="warehouse"></span><select id="login-location" name="location"><option value="erenhot" data-i18n="erenhot"></option><option value="ulaanbaatar" data-i18n="ulaanbaatar"></option></select></label>
+<label><span data-i18n="email"></span><input name="email" type="email" autocomplete="username" maxlength="200" required></label><label><span data-i18n="password"></span><input name="password" type="password" autocomplete="current-password" required></label>
+<p id="login-error" class="error" role="alert"></p><button class="primary" type="submit" data-i18n="login"></button><a href="../" data-i18n="back"></a><small data-i18n="loginHelp"></small></form></div>
 </section>
 <div id="app" hidden>
-  <header class="warehouse-header"><a href="../" class="warehouse-logo"><img src="../assets/logo.png" alt="GOStore"></a><div><span class="eyebrow">АГУУЛАХЫН УДИРДЛАГА</span><h1 id="warehouse-title">Агуулахын удирдлага</h1></div><div class="account"><div><strong>Агуулахын менежер</strong><small id="manager-email"></small></div><button id="logout" class="quiet">Гарах</button></div></header>
-  <main class="warehouse-main">
-    <section class="welcome"><div><span class="eyebrow">ЭРЭЭН → ЗАМЫН-ҮҮД → УЛААНБААТАР</span><h2>Өнөөдрийн ачаагаа бүртгэе.</h2><p>Шошго дээрх захиалгын кодоор хайж, барааг тулган шалгаарай.</p></div><button class="primary yellow" id="refresh">↻ Шинэчлэх</button></section>
-    <div class="stats warehouse-stats" aria-label="Агуулахын тойм"><button class="stat" data-status="waiting"><span>Ирэхийг хүлээж буй</span><strong id="waiting-count">0</strong><small id="waiting-hint">Баталгаажсан, хүргэлтэд</small></button><button class="stat" data-status="erenhot"><span id="received-label">Эрээн агуулахад</span><strong id="received-count">0</strong><small id="received-hint">Илгээхэд бэлдэх</small></button><button class="stat" data-status="erenhot_dispatched"><span id="third-label">Замын-Үүд рүү илгээсэн</span><strong id="dispatched-count">0</strong><small id="third-hint">Замд яваа ачаа</small></button></div>
-    <section class="panel orders-panel"><div class="panel-heading"><div><h2>Захиалгууд</h2><p id="result-count" role="status">Жагсаалтыг ачаалж байна…</p></div><span class="tag" id="warehouse-city">Агуулах</span></div>
-      <form id="search-form" class="warehouse-search"><label for="search">Код, нэрээр хайх<input id="search" name="q" type="search" placeholder="GS-A1B2C3 эсвэл хүлээн авагч" maxlength="100" autocomplete="off"></label><label for="status-filter">Төлөв<select id="status-filter"><option value="all">Бүх төлөв</option><option value="waiting">Ирэхийг хүлээж буй</option><option value="erenhot">Эрээн агуулахад</option><option value="erenhot_dispatched">Замын-Үүд рүү илгээсэн</option><option value="zamyn_uud">Замын-Үүдэд ирсэн</option><option value="ulaanbaatar">Улаанбаатарт</option><option value="completed">Дууссан</option><option value="cancelled">Цуцалсан</option></select></label><button class="primary" type="submit">Хайх</button></form>
-      <p id="list-error" class="error" role="alert"></p><div id="orders" aria-live="polite"></div><div class="paging"><button id="previous" class="quiet" hidden>← Өмнөх</button><span id="page-label"></span><button id="next" class="quiet" hidden>Дараах →</button></div>
-    </section>
-  </main><footer class="warehouse-footer">GOStore · Агуулахын бүртгэл, хүргэлтийн явц</footer>
-</div>
-<dialog id="editor" aria-labelledby="editor-title"><div class="dialog-header"><h2 id="editor-title"></h2><button id="close-editor" aria-label="Цонх хаах">×</button></div><div id="editor-body"></div></dialog>
-<div id="toast" role="status"></div>
+<header class="warehouse-header"><a href="../" class="warehouse-logo"><img src="../assets/logo.png" alt="GOStore"></a><div><span class="eyebrow" data-i18n="eyebrow"></span><h1 id="warehouse-title"></h1></div><div class="account"><div><strong data-i18n="manager"></strong><small id="manager-email"></small></div><button id="logout" class="quiet" data-i18n="logout"></button></div></header>
+<main class="warehouse-main">
+<section class="welcome"><div><span class="eyebrow" data-i18n="route"></span><h2 data-i18n="hero"></h2><p data-i18n="heroHint"></p></div><button class="primary yellow" id="refresh" data-i18n="refresh"></button></section>
+<div class="stats warehouse-stats"><button class="stat" data-status="waiting"><span data-i18n="waiting"></span><strong id="waiting-count">0</strong><small data-i18n="waitingHint"></small></button><button class="stat" id="received-stat" data-status="erenhot"><span data-i18n="received"></span><strong id="received-count">0</strong><small data-i18n="receivedHint"></small></button><button class="stat" id="third-stat" data-status="erenhot_dispatched"><span data-i18n="third"></span><strong id="third-count">0</strong><small data-i18n="thirdHint"></small></button></div>
+<div class="warehouse-tabs"><div role="tablist"><button id="orders-tab" role="tab" aria-selected="true" data-tab="orders" data-i18n="orders"></button><button id="batches-tab" role="tab" aria-selected="false" data-tab="batches" data-i18n="batches"></button></div><button id="create-batch" class="primary" data-i18n="createBatch" hidden></button></div>
+<section class="panel orders-panel"><div class="panel-heading"><div><h2 id="list-title"></h2><p id="result-count" role="status"></p></div><span class="tag" id="warehouse-city"></span></div>
+<form id="search-form" class="warehouse-search"><label for="search"><span data-i18n="searchLabel"></span><input id="search" name="q" type="search" data-placeholder="searchPlaceholder" maxlength="100" autocomplete="off"></label><label for="status-filter"><span data-i18n="filter"></span><select id="status-filter"></select></label><button class="primary" type="submit" data-i18n="search"></button></form>
+<div id="selection-bar" class="selection-bar" hidden><span id="selection-count"></span><button id="pack-selected" class="primary" data-i18n="packSelected"></button></div>
+<p id="list-error" class="error" role="alert"></p><div id="records" aria-live="polite"></div><div class="paging"><button id="previous" class="quiet" data-i18n="previous" hidden></button><span id="page-label"></span><button id="next" class="quiet" data-i18n="next" hidden></button></div>
+</section></main><footer class="warehouse-footer" data-i18n="footer"></footer></div>
+<dialog id="editor" aria-labelledby="editor-title"><div class="dialog-header"><h2 id="editor-title"></h2><button id="close-editor">×</button></div><div id="editor-body"></div></dialog><div id="toast" role="status"></div><section id="print-area"></section>
 </body></html>
