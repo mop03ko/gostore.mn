@@ -9,6 +9,8 @@ await admin('session');assert.equal((await admin('login',JSON.parse(fs.readFileS
 for(const [location,c] of [['erenhot',cn],['ulaanbaatar',ub]]){const b={location,email:location+'-batch@example.test',password:'Warehouse-batch-tests-2026',enabled:true};assert.equal((await admin('warehouse-account-save',b)).status,200);await c('warehouse-session');assert.equal((await c('warehouse-login',b)).status,200);}
 assert.equal((await other('warehouse-batches')).status,401);await guest('catalog');
 const ids=['GS-TEST-001','GS-TEST-002','GS-TEST-003','GS-TEST-004'];
+const trackingToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
+async function checkTracking(status){const response=await guest('order-get',{id:ids[0],token:trackingToken});assert.equal(response.status,200);assert.equal(response.order.id,ids[0]);assert.equal(response.order.status,status);assert.equal(response.order.batch_id,undefined);assert.ok(!JSON.stringify(response.order).includes('GB-'),'Tracking never exposes a batch code');}
 for(const id of ids)assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
 assert.equal((await cn('warehouse-order-update',{id:ids[0],status:'erenhot_dispatched',expected_status:'erenhot'})).status,403,'Dispatch must use a batch');
 assert.equal((await admin('order-update',{id:ids[3],status:'ready_delivery',amount:99000,internal_note:''})).status,409,'Admin cannot create fulfillment state without sorting');
@@ -32,6 +34,7 @@ const empty=(await cn('warehouse-batch-create',{token:token(),order_ids:[],note:
 assert.equal((await cn('warehouse-batch-dispatch',{id:empty.id,expected_version:empty.version})).status,409);
 assert.equal((await ub('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version})).status,403);
 const dispatch=await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version});assert.equal(dispatch.status,200);batch=dispatch.batch;assert.equal(batch.status,'dispatched');assert.ok(batch.orders.every(o=>o.status==='erenhot_dispatched'));
+await checkTracking('erenhot_dispatched');
 for(const action of ['add','remove','cancel'])assert.equal((await cn('warehouse-batch-'+action,{id:batch.id,expected_version:batch.version,order_ids:[ids[2]],order_id:ids[0]})).status,409,'Dispatched manifest locked');
 assert.equal((await ub('warehouse-batches&q='+batch.id)).batches[0].id,batch.id);
 assert.equal((await ub('warehouse-order-update',{id:ids[0],status:'ulaanbaatar',expected_status:'erenhot_dispatched'})).status,409,'Cannot bypass batch receiving');
@@ -39,12 +42,13 @@ const sort={id:ids[0],operation:'sort',expected_status:'ulaanbaatar_unsorted',me
 assert.equal((await ub('warehouse-fulfillment-update',sort)).status,409,'Cannot sort before batch receipt');
 assert.equal((await cn('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,403);
 const receiveVersion=batch.version;const receive=await ub('warehouse-batch-receive',{id:batch.id,expected_version:receiveVersion});assert.equal(receive.status,200);batch=receive.batch;assert.equal(batch.status,'received');assert.equal(batch.unsorted_count,2);assert.ok(batch.orders.every(o=>o.status==='ulaanbaatar_unsorted'));
+await checkTracking('ulaanbaatar_unsorted');
 assert.equal(batch.orders[0].contact.address,'Legacy appended address');assert.equal(batch.orders[1].contact.address,'Legacy address only');assert.ok(!JSON.stringify(batch.orders[0].contact).includes('PRIVATE'));assert.equal((await ub('warehouse-orders&status=pending_sort')).total,2);
 assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:receiveVersion})).status,409,'Repeated receipt does not duplicate history');
 assert.equal((await cn('warehouse-fulfillment-update',sort)).status,403);
 assert.equal((await ub('warehouse-fulfillment-update',{...sort,checked:false})).status,400);
 assert.equal((await ub('warehouse-fulfillment-update',{...sort,method:'delivery'})).status,400,'Delivery requires address');
-assert.equal((await ub('warehouse-fulfillment-update',sort)).status,200);
+assert.equal((await ub('warehouse-fulfillment-update',sort)).status,200);await checkTracking('ready_pickup');
 assert.equal((await ub('warehouse-fulfillment-update',sort)).status,409,'Cannot duplicate sort with stale state');
 assert.equal((await ub('warehouse-batch&id='+batch.id)).batch.status,'received','Batch remains unsorted until all members are checked');
 const deliverySort={...sort,id:ids[1],method:'delivery',address:'СБД, 1 хороо, 10 байр'};assert.equal((await ub('warehouse-fulfillment-update',deliverySort)).status,200);
@@ -55,7 +59,7 @@ assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'comp
 assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'dispatch_delivery',expected_status:'ready_delivery',courier_name:'Дорж',courier_phone:'99110022'})).status,200);
 assert.equal((await ub('warehouse-fulfillment-update',{id:ids[1],operation:'complete',expected_status:'out_for_delivery',received_by:'Тамир'})).status,200);
 const customerToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
-const own=(await guest('order-get',{id:ids[0],token:customerToken})).order;assert.equal(own.status,'completed');assert.equal(own.batch_id,batch.id);assert.deepEqual(own.fulfillment,{method:'pickup'});assert.equal(own.history.at(-1).actor_email,undefined);assert.ok(!JSON.stringify(own).includes(ids[1]),'Customer cannot see other batch members');
+const own=(await guest('order-get',{id:ids[0],token:customerToken})).order;assert.equal(own.status,'completed');assert.equal(own.id,ids[0]);assert.equal(own.batch_id,undefined);assert.ok(!JSON.stringify(own).includes(batch.id),'Internal batch code stays private');assert.deepEqual(own.fulfillment,{method:'pickup'});assert.equal(own.history.at(-1).actor_email,undefined);assert.ok(!JSON.stringify(own).includes(ids[1]),'Customer cannot see other batch members');
 const erenhotCopy=(await cn('warehouse-batch&id='+batch.id)).batch;assert.equal(erenhotCopy.orders[0].contact,undefined);assert.equal(erenhotCopy.orders[0].fulfillment,undefined);
 const saved=(await admin('dashboard')).orders.find(o=>o.id===ids[1]);assert.equal(saved.amount,99000);assert.equal(saved.paid,true);assert.equal(saved.internal_note,'PRIVATE NOTE');assert.equal(saved.fulfillment.courier_phone,'99110022');assert.equal(saved.history.at(-1).actor_location,'ulaanbaatar');
 const cancel=(await cn('warehouse-batch-create',{token:token(),order_ids:[ids[2]],note:'Cancel test'})).batch;

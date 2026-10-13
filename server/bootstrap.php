@@ -97,7 +97,7 @@ function order_row(string $id): array {
 }
 function save_order(array $o): void { db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]); }
 function public_order(array $o): array {
-    unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone']);
+    unset($o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;
