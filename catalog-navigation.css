@@ -5,7 +5,7 @@
 .catalog-category-list button{flex:none;min-height:46px;padding:11px 20px;border:0;border-radius:999px;background:transparent;color:#46546b;font:inherit;font-size:16px;line-height:24px;white-space:nowrap;cursor:pointer}
 .catalog-category-list button:hover{background:#f4f5f7;color:#101827}
 .catalog-category-list button[aria-pressed=true]{background:#111827;color:#fff;font-weight:600;box-shadow:0 5px 12px #1118270d}
-.catalog-category-list button:focus-visible,.catalog-category-arrow:focus-visible{outline:2px solid #d9a500;outline-offset:3px}
+.catalog-category-list button:focus-visible,.catalog-category-arrow:focus-visible{outline:2px solid #a53b0b;outline-offset:3px}
 .catalog-category-arrow{position:absolute;z-index:1;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:50px;height:50px;padding:0;border:1px solid #e1e5ec;border-radius:50%;background:#fff;color:#111827;box-shadow:0 2px 4px #11182712;cursor:pointer}
 .catalog-category-arrow[hidden]{display:none}.catalog-category-arrow[data-catalog-scroll="-1"]{left:0}.catalog-category-arrow[data-catalog-scroll="1"]{right:0}.catalog-category-arrow .icon{width:18px;height:18px}.catalog-category-arrow[data-catalog-scroll="-1"] .icon{transform:rotate(180deg)}
 @media(max-width:760px){.catalog-category-nav{margin:12px 0 6px}.catalog-category-list{gap:4px;padding-block:6px;padding-right:48px}.catalog-category-list button{min-height:44px;padding:10px 16px;font-size:14px;line-height:24px}.catalog-category-arrow{width:44px;height:44px}}
