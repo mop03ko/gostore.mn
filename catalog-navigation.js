@@ -18,7 +18,7 @@
     const control=e.target.closest('[data-catalog-scroll]');if(control){row.scrollBy({left:Number(control.dataset.catalogScroll)*row.clientWidth*.75,behavior:reduced()?'instant':'smooth'});return;}
     const button=e.target.closest('[data-catalog-category]');if(!button)return;
     const id=button.dataset.catalogCategory;
-    window.supplierBrowse(id==='all'?'bag':categories.find(c=>c.id===id).query,false,id);
+    window.supplierBrowse(id==='all'?'__all__':categories.find(c=>c.id===id).query,false,id);
   });
   row.addEventListener('keydown',e=>{const index=buttons.indexOf(e.target);if(index<0)return;let next;if(e.key==='ArrowRight')next=Math.min(index+1,buttons.length-1);else if(e.key==='ArrowLeft')next=Math.max(index-1,0);else if(e.key==='Home')next=0;else if(e.key==='End')next=buttons.length-1;else return;e.preventDefault();buttons[next].focus({preventScroll:true});reveal(buttons[next]);});
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();

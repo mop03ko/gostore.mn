@@ -10,7 +10,7 @@ assert.equal(enable.status,0,enable.stderr);
   await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/lamp.jpg',contentType:'image/jpeg'}));
   await page.route('**/api/index.php?action=supplier-search*',r=>{const params=new URL(r.request().url()).searchParams,image=params.get('image');calls.push(image?'image:'+image:'q:'+params.get('q'));return r.fulfill({json:{products:Array.from({length:4},(_,i)=>({id:'tb-'+(223456789+i),name:(image?'Зургаар олдсон ':'Бараа ')+i,image:'https://img.alicdn.com/'+i+'.jpg',mnt:15500+i*5500,cny:30+i*10,sold_count:null})),page:1,more:false,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399}}});});
   await page.goto(base+'/');
-  const camera=page.locator(viewport.width>760?'#search-form [data-image-search]':'#supplier-search [data-image-search]');
+  const camera=page.locator('#search-form [data-image-search]');
   await camera.waitFor({state:'visible'});
   await page.setInputFiles('#image-search-input','assets/chair.jpg');
   await page.waitForFunction(()=>document.querySelector('#catalog-title').textContent==='Зургаар хайсан бараа'&&document.querySelectorAll('#supplier-grid .supplier-card').length===4);

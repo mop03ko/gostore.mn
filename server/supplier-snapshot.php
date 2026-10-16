@@ -35,8 +35,35 @@ function supplier_snapshot_search(string $q,int $page,string $sort): ?array {
     $record['stale']=(int)$record['cache_expires']<=time();
     $record['cache_ttl']=$record['stale']?0:max(0,(int)$record['cache_expires']-time());
     // Currency settings can change independently of the supplier snapshot.
-    $shipping=shipping_public();foreach($record['products'] as &$p)$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*$shipping['cny_rate']);unset($p);
+    $shipping=shipping_public();foreach($record['products'] as &$p)$p=supplier_card_price($p,(int)$record['cache_expires']);unset($p);
     $record['shipping']=$shipping;return $record;
+}
+// Round-robin cached departments so the landing page is not a single bag search.
+function supplier_snapshot_all(int $page,string $sort): array {
+    $snapshot=supplier_snapshot_current();$records=[];
+    foreach(supplier_warm_queries() as $q){
+        $record=$snapshot['records'][$q]??null;
+        if(!$record||(int)$record['cache_expires']<=time()-86400){
+            $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']).'.json';
+            $cache=supplier_snapshot_read($file);
+            $record=is_array($cache)&&($cache['expires']??0)>time()-86400?supplier_search_result($cache,1):null;
+        }
+        if($record)$records[]=$record;
+    }
+    $products=[];$seen=[];$expires=PHP_INT_MAX;$fetched=null;
+    for($i=0;$i<12;$i++)foreach($records as $record){
+        $p=$record['products'][$i]??null;if(!$p||isset($seen[$p['id']]))continue;
+        $seen[$p['id']]=true;$p=supplier_card_price($p,(int)$record['cache_expires']);$p['_position']=count($products);$products[]=$p;
+        $expires=min($expires,(int)$record['cache_expires']);if($fetched===null||strcmp($record['fetched'],$fetched)<0)$fetched=$record['fetched'];
+    }
+    if($sort!=='default')usort($products,static function($a,$b)use($sort){
+        if($sort==='-volume')$cmp=($b['sold_count']??0)<=>($a['sold_count']??0);
+        else{$knownA=($a['price_status']??'')==='available';$knownB=($b['price_status']??'')==='available';if($knownA!==$knownB)return $knownA?-1:1;$cmp=($a['mnt']??0)<=>($b['mnt']??0);if($sort==='-price')$cmp=-$cmp;}
+        return $cmp?:$a['_position']<=>$b['_position'];
+    });
+    $total=count($products);$items=array_slice($products,($page-1)*12,12);foreach($items as &$p)unset($p['_position']);unset($p);
+    if(!$total)$expires=0;
+    return ['products'=>$items,'page'=>$page,'more'=>$page*12<$total,'total'=>$total,'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
 }
 function supplier_snapshot_run(int $maxJobs=26): array {
     if(empty(shipping_settings()['catalog_snapshot_enabled'])||!supplier_ready())return ['status'=>'disabled'];

@@ -9,7 +9,7 @@ $settings=shipping_settings();$settings['catalog_snapshot_enabled']=true;shippin
 $cacheDir=config()['data_dir'].'/supplier-cache';mkdir($cacheDir,0700,true);$files=[];
 foreach(supplier_warm_queries() as $q){
     $key=supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']);
-    $raw=['Id'=>'123456789','ProviderType'=>'Taobao','Title'=>$q,'IsSellAllowed'=>true,'Price'=>['OriginalPrice'=>10,'OriginalCurrencyCode'=>'CNY']];
+    $raw=['Id'=>'123456789','ProviderType'=>'Taobao','Title'=>$q,'IsSellAllowed'=>true,'ConfiguredItems'=>[['Id'=>'standard','Quantity'=>10,'Price'=>['OriginalPrice'=>10,'OriginalCurrencyCode'=>'CNY']]],'Price'=>['OriginalPrice'=>10,'OriginalCurrencyCode'=>'CNY']];
     $cache=['data'=>['Items'=>['Items'=>['Content'=>[$raw],'TotalCount'=>1]],'private'=>'must-not-persist'],'fetched'=>gmdate('c'),'expires'=>time()+21600,'stale'=>false];
     $files[$q]=$cacheDir.'/'.$key.'.json';supplier_snapshot_write($files[$q],$cache);
 }

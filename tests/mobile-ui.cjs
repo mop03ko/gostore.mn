@@ -13,8 +13,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    assert.ok((await page.locator('#search').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16,'Input avoids iOS focus zoom');
    await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=catalog]').getAttribute('aria-current')==='page');
    assert.equal(Math.round((await page.locator('.header').boundingBox()).y),0,'Search header remains reachable');
-   const input=await page.locator('#supplier-query').boundingBox(),button=await page.locator('#supplier-search button[type=submit]').boundingBox();assert.ok(Math.abs(input.y-button.y)<2,'Search action stays beside input');
-   await page.locator('#supplier-query').fill('bag');await page.locator('#supplier-query').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'supplier-query','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
+   const input=await page.locator('#search').boundingBox(),button=await page.locator('#search-form button[type=submit]').boundingBox();assert.ok(Math.abs((input.y+input.height/2)-(button.y+button.height/2))<2,'Search action stays beside input');
+   await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-catalog.png'});
    await page.locator('.mobile-nav [data-action=orders]').click();await page.locator('#cargo-search').waitFor();
    const modal=await page.locator('#modal').boundingBox();assert.ok(Math.abs(modal.width-width)<=1&&modal.y>=0,'Sheet fits screen');

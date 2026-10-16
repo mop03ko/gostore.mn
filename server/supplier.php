@@ -177,6 +177,34 @@ function supplier_sellable(array $p): bool {
     if($p['IsFiltered']??false)return false;
     return ($p['IsSellAllowed']??false)===true||($p['SellDisallowReason']??'')==='IsUnknownQuantity';
 }
+// A search minimum may belong to a sold-out SKU. Advertise only a known purchasable price.
+function supplier_stock_price(array $p,bool $detail=true): array {
+    $min=max(1,(int)($p['FirstLotQuantity']??1));$prices=[];$unknown=false;
+    if(!supplier_sellable($p))return ['cny'=>null,'price_status'=>'unavailable'];
+    $variants=$p['ConfiguredItems']??[];
+    if(!$variants&&!$detail)return ['cny'=>null,'price_status'=>'unverified'];
+    if(!$variants)$variants=[['Price'=>$p['Price']??[],'Quantity'=>$p['MasterQuantity']??null]];
+    foreach($variants as $v){
+        if(($v['IsSellAllowed']??true)!==true)continue;
+        $price=supplier_cny($v['Price']??[]);$stock=supplier_count($v['Quantity']??null);
+        if($stock===null||$price===null){$unknown=true;continue;}
+        if($stock>=$min&&$price>0)$prices[]=$price;
+    }
+    return ['cny'=>$prices?min($prices):null,'price_status'=>$prices?'available':($unknown?'unverified':'unavailable')];
+}
+// Read existing detail cache only: projecting a card never spends an API call.
+function supplier_card_price(array $p,int $expires): array {
+    try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
+    $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn']).'.json';
+    $cache=is_file($file)?json_decode(file_get_contents($file),true):null;
+    if(is_array($cache)&&($cache['expires']??0)>time()&&empty($cache['stale'])&&isset($cache['data']['Item'])&&(string)($cache['data']['Item']['Id']??'')===($identity['provider']==='taobao'?$identity['number']:$p['id'])){
+        $p=array_replace($p,supplier_stock_price($cache['data']['Item']));$expires=(int)$cache['expires'];
+    }elseif(!isset($p['price_status'])||($p['price_expires']??$expires)<=time()){
+        $p['cny']=null;$p['price_status']='unverified';
+    }
+    $p['price_expires']=$expires;$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*shipping_settings()['cny_rate']);
+    return $p;
+}
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
     $rawId=(string)($p['Id']??'');$taobao=$provider==='taobao';
     if(!preg_match($taobao?'/^\d{5,20}$/D':'/^abb-\d{5,20}$/D',$rawId)||!empty($p['HasError'])||(!empty($p['ProviderType'])&&$p['ProviderType']!==($taobao?'Taobao':'Alibaba1688')))fail('Нийлүүлэгчийн барааны мэдээлэл буруу.',503);
@@ -208,16 +236,18 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
         $r['attributes']=[];foreach(array_slice($p['Attributes']??[],0,200) as $attribute){$name=mb_substr((string)($attribute['PropertyName']??''),0,120);$value=mb_substr((string)($attribute['Value']??''),0,300);if($name!==''&&$value!=='')$r['attributes'][]=['name'=>$name,'value'=>$value];}
         $variantImages=[];foreach($p['Attributes']??[] as $a){$url=supplier_image((string)($a['ImageUrl']??''));if($url!=='')$variantImages[($a['Pid']??'').'|'.($a['Vid']??'')]=$url;}
         $attrs=[];foreach($p['Attributes']??[] as $a)$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]=($a['PropertyName']??$a['Pid']??'').': '.($a['Value']??$a['Vid']??'');
-        foreach($p['ConfiguredItems']??[] as $v){$variantImage='';foreach($v['Configurators']??[] as $a){$variantImage=$variantImages[($a['Pid']??'').'|'.($a['Vid']??'')]??$variantImage;}$labels=[];foreach($v['Configurators']??[] as $a)$labels[]=$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]??($a['Vid']??'');$vp=supplier_cny($v['Price']??[]);$r['variants'][]=['id'=>(string)$v['Id'],'label'=>mb_substr(implode(' / ',$labels)?:'Стандарт',0,300),'cny'=>$vp,'image'=>$variantImage,'stock'=>supplier_count($v['Quantity']??null)];}
+        foreach($p['ConfiguredItems']??[] as $v){$variantImage='';foreach($v['Configurators']??[] as $a){$variantImage=$variantImages[($a['Pid']??'').'|'.($a['Vid']??'')]??$variantImage;}$labels=[];foreach($v['Configurators']??[] as $a)$labels[]=$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]??($a['Vid']??'');$vp=($v['IsSellAllowed']??true)===true?supplier_cny($v['Price']??[]):null;$r['variants'][]=['id'=>(string)$v['Id'],'label'=>mb_substr(implode(' / ',$labels)?:'Стандарт',0,300),'cny'=>$vp,'image'=>$variantImage,'stock'=>supplier_count($v['Quantity']??null)];}
         if(!$r['variants'])$r['variants'][]=['id'=>'standard','label'=>'Стандарт · админ баталгаажуулна','cny'=>$price,'image'=>$r['image'],'stock'=>supplier_count($p['MasterQuantity']??null)];
         $r['description']=supplier_text($p['Description']??'',30000);
         $r['tiers']=[];foreach($p['QuantityRanges']??[] as $tier){$v=supplier_cny($tier['Price']??[]);if($v!==null)$r['tiers'][]=['qty'=>(int)$tier['MinQuantity'],'cny'=>$v];}
     }
+    $r=array_replace($r,supplier_stock_price($p,$detail));$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);
     return $r;
 }
 function supplier_search(array $b,bool $display=false): array {
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume'],true))fail('Эрэмбэ буруу.');
+    if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort);}
     if($display){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return $snapshot;}}
     $c=supplier_request('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort],$display);
     if($display)supplier_schedule_warm();
@@ -252,15 +282,16 @@ function supplier_image_search(string $hash,int $page,bool $display=false): arra
     return supplier_search_result($c,$page)+['image'=>$hash];
 }
 function supplier_search_result(array $c,int $page): array {
-    $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_normalize($p,false,'taobao');}catch(ApiError){}}
+    $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_card_price(supplier_normalize($p,false,'taobao'),(int)$c['expires']);}catch(ApiError){}}
     return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id,bool $display=false): array {
     $identity=supplier_identity($id);
     $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn'],$display);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
+    $p['price_expires']=(int)$c['expires'];
     $p['category_path']=[];foreach(array_reverse($c['data']['RootPath']['Content']??[]) as $category){$name=supplier_text($category['Name']??'',150);if($name!=='')$p['category_path'][]=$name;}
-    $p['related']=[];$seen=[$p['id']=>true];foreach(array_merge($c['data']['VendorItems']['Content']??[],$c['data']['RecommendedItems']['Content']??[]) as $item){try{$related=supplier_normalize($item,false,$identity['provider']);if(!isset($seen[$related['id']])){$seen[$related['id']]=true;$p['related'][]=$related;}if(count($p['related'])>=12)break;}catch(ApiError){}}
+    $p['related']=[];$seen=[$p['id']=>true];foreach(array_merge($c['data']['VendorItems']['Content']??[],$c['data']['RecommendedItems']['Content']??[]) as $item){try{$related=supplier_card_price(supplier_normalize($item,false,$identity['provider']),(int)$c['expires']);if(!isset($seen[$related['id']])){$seen[$related['id']]=true;$p['related'][]=$related;}if(count($p['related'])>=12)break;}catch(ApiError){}}
     return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_order(array $b): array {

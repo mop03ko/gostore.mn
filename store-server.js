@@ -7,7 +7,7 @@ function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok){if(response.status===401&&['order-create','customer-orders','customer-me'].includes(action.split('&')[0]))window.customerAccount?.setUser(null);throw Error(result.error||'Сервертэй холбогдсонгүй.');}if(result.csrf)shopCsrf=result.csrf;return result;}
 // Only public supplier data is cached; sessions, orders and payments always use shopApi.
 window.supplierApi=(()=>{
-  const key='gostore-supplier-cache-v3-taobao',pending=new Map(),maxEntries=40,maxBytes=1500000;
+  const key='gostore-supplier-cache-v4-taobao',pending=new Map(),maxEntries=40,maxBytes=1500000;
   let entries=[];
   const clone=value=>JSON.parse(JSON.stringify(value));
   const valid=e=>e&&typeof e.key==='string'&&Number.isFinite(e.expires)&&e.expires>Date.now()&&e.expires<=Date.now()+600000&&e.data&&e.data.stale===false;
@@ -20,13 +20,13 @@ window.supplierApi=(()=>{
   const api=async(action,payload)=>{
     if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
     if(action==='supplier-search'&&payload.image){if(!/^[a-f0-9]{32}$/.test(payload.image))throw Error('Зургийн дугаар буруу.');payload={image:payload.image,page:payload.page};}
-    else if(action==='supplier-search')payload={...payload,q:String(payload.q||'bag').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'bag'};
+    else if(action==='supplier-search')payload={...payload,q:String(payload.q||'__all__').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'__all__'};
     const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
     const found=entries.find(e=>e.key===request&&valid(e));
     if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
     if(!pending.has(request)){
       const work=(async()=>{
-        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v2'});
+        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v3'});
         const response=await fetch(url,{credentials:'omit'}),result=await response.json();
         if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
