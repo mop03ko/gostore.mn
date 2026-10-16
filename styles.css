@@ -142,3 +142,5 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 .supplier-photo{position:relative;flex:none}.supplier-photo img{position:absolute;inset:0}footer a:not(.brand){color:#bbc6d7}@media(max-width:600px){.supplier-section .section-heading{flex-direction:row}}
 
 @media(max-width:760px){.hero-copy{width:78%}.hero-copy h1{font-size:25px}.hero-copy p{max-width:210px}.supplier-section .sample-label{display:none}}
+
+.footer-contact address{font-style:normal;font-size:13px;line-height:1.7;color:#bbc6d7}.footer-contact p{font-size:12px;line-height:1.7;color:#bbc6d7;margin-top:12px}.footer-contact p span{white-space:nowrap}@media(max-width:1100px){.footer-contact{grid-column:1/-1}}
