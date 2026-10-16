@@ -67,6 +67,23 @@ function supplier_response(string $path,bool $ok,int $status,string $raw): array
     if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
     return $response['Result'];
 }
+function supplier_limits(bool $warming): void {
+    if(!$warming){
+        $ip=$_SERVER['REMOTE_ADDR']??'cli';
+        try {
+            limit_attempts('supplier-ip-minute:'.$ip,30,60);
+            limit_attempts('supplier-ip:'.$ip,120,3600);
+        } catch(ApiError $e){
+            if($e->getCode()!==429)throw $e;
+            fail('Богино хугацаанд олон шинэ бараа нээсэн байна. Түр хүлээгээд дахин оролдоно уу. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
+        }
+    }
+    try {limit_attempts('supplier-budget:'.gmdate('Y-m-d'),shipping_settings()['api_daily_limit'],86400);}
+    catch(ApiError $e){
+        if($e->getCode()!==429)throw $e;
+        fail('Сайтын шинэ мэдээлэл авах өдрийн API лимит дууссан байна. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
+    }
+}
 function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
@@ -96,9 +113,8 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
         $slot=null;for($i=0;$i<2;$i++){$candidate=fopen($dir.'/network-'.$i.'.lock','c');if($candidate&&flock($candidate,LOCK_EX|LOCK_NB)){$slot=$candidate;break;}if($candidate)fclose($candidate);}
         if(!$slot)fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);
         try {
+            supplier_limits($warming);
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);
-            if(!$warming)limit_attempts('supplier-ip:'.($_SERVER['REMOTE_ADDR']??'cli'),10,3600);
-            limit_attempts('supplier-budget:'.gmdate('Y-m-d'),shipping_settings()['api_daily_limit'],86400);
             $ch=curl_init('https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
             curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_ENCODING=>'',CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
             $ok=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
@@ -110,6 +126,8 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
             if(is_file($missing))unlink($missing);
             return $cached;
         } catch(ApiError $e) {
+            // A caller's local limit must never poison this product's shared cache.
+            if($e->getCode()===429)throw $e;
             if($e->getCode()===404){
                 file_put_contents($missing,(string)(time()+300),LOCK_EX);chmod($missing,0600);
                 // Confirmed missing items must not be ordered from an earlier cached price.

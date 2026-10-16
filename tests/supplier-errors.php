@@ -24,3 +24,24 @@ foreach([true,false] as $display)for($i=0;$i<2;$i++)expect_error(fn()=>supplier_
 file_put_contents($file.'.missing',(string)(time()-1));
 if(supplier_request($path,['language'=>'mn'],true)['data']!==$result)throw new RuntimeException('Expired missing marker prevents recovery');
 echo "PASS: provider 404 classification, transient/auth failures, negative cache, order protection and recovery.\n";
+function seed_limit(string $key,int $hits):void {
+    db()->prepare('INSERT OR REPLACE INTO limits (key,hits,expires) VALUES (?,?,?)')->execute([hash('sha256',$key),$hits,time()+3600]);
+}
+$_SERVER['REMOTE_ADDR']='192.0.2.1';
+seed_limit('supplier-ip:192.0.2.1',10);
+supplier_limits(false); // The old ten-per-hour restriction no longer blocks normal browsing.
+seed_limit('supplier-ip:192.0.2.1',120);
+$cold='/v1/taobao/product/999999999';$coldFile=$dir.'/'.supplier_cache_key($cold,['language'=>'mn']).'.json';
+expect_error(fn()=>supplier_request($cold,['language'=>'mn'],true),429);
+if(is_file($coldFile.'.retry'))throw new RuntimeException('One visitor blocked the shared product cache');
+// Cached products remain readable even while the visitor is rate-limited.
+if(supplier_request($path,['language'=>'mn'],true)['data']!==$result)throw new RuntimeException('Rate limit blocked cached product');
+$_SERVER['REMOTE_ADDR']='192.0.2.2';supplier_limits(false);
+seed_limit('supplier-ip-minute:192.0.2.2',30);
+expect_error(fn()=>supplier_request($cold,['language'=>'mn'],true),429);
+if(is_file($coldFile.'.retry'))throw new RuntimeException('Burst limit poisoned the shared cache');
+$_SERVER['REMOTE_ADDR']='192.0.2.3';
+seed_limit('supplier-budget:'.gmdate('Y-m-d'),shipping_settings()['api_daily_limit']);
+expect_error(fn()=>supplier_request($cold,['language'=>'mn'],true),429);
+if(is_file($coldFile.'.retry'))throw new RuntimeException('Daily limit disguised as a provider failure');
+echo "PASS: normal browsing, per-minute/hour limits, independent visitors, cached reads and no shared cooldown on local 429.\n";
