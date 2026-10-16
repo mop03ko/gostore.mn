@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 function shipping_settings(): array {
-    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40,'catalog_snapshot_enabled'=>false,'image_search_enabled'=>false,'domestic_default_cny'=>10,'service_fee_mnt'=>0,'payment_window_hours'=>24];
+    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40,'catalog_snapshot_enabled'=>false,'image_search_enabled'=>false,'domestic_default_cny'=>0,'service_fee_mnt'=>0,'payment_window_hours'=>24];
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['shipping_settings']);
     $settings=array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true));
     $s->execute(['warehouse_profile_erenhot']);$profile=json_decode($s->fetchColumn()?:'{}',true);

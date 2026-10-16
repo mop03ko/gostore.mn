@@ -22,10 +22,11 @@ function checkout_quote(array $lines): array {
     $goodsMnt=(int)ceil(round($goods*$s['cny_rate'],8));
     $parts=['goods_mnt'=>$goodsMnt,'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goodsMnt*$s['service_percent']/100,8))+(int)$s['service_fee_mnt'],'cargo_mnt'=>0];
     $total=array_sum($parts);if($total<1||$total>100000000)fail('Захиалгын дүн зөвшөөрөх хязгаараас гарсан.');
-    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true];
+    // OT does not report Taobao domestic shipping; with no admin estimate it is billed at cost in the final settlement.
+    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$domestic<=0];
 }
 function checkout_public_quote(array $q): array {
-    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'cny_rate'=>$q['rates']['cny_rate'],'payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
+    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'cny_rate'=>$q['rates']['cny_rate'],'domestic_later'=>$q['domestic_later']??false,'payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
 }
 function checkout_preview(array $b): array {
     customer_required();limit_attempts('checkout-quote:'.($_SERVER['REMOTE_ADDR']??''),60,3600);

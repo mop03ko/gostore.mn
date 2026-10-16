@@ -52,4 +52,8 @@ check(checkout_expired_or_cancelled('GS-000002')&&!checkout_expired_or_cancelled
 // The final settlement keeps the stored rates and starts from the prepaid breakdown.
 check(settlement_summary(order_row('GS-000001')['order'])['breakdown']['domestic_mnt']===10000,'Settlement lost checkout breakdown');
 check(str_contains(shipping_public()['pickup']['address'],'14б байр, 4 тоот'),'Default Ulaanbaatar pickup address missing');
+// Without an admin estimate, China domestic shipping is not charged upfront and is billed at cost later.
+$s=shipping_settings();$s['domestic_default_cny']=0;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s)]);
+$q0=checkout_quote(checkout_items(['items'=>$cart]));check($q0['breakdown']['domestic_mnt']===0&&$q0['domestic_later']===true&&$q0['total']===81825-10000,'Domestic shipping must be billed later by default');
+check(checkout_public_quote($q0)['domestic_later']===true,'Customer must see that domestic shipping is billed later');
 echo "PASS: checkout pricing (sellers, service, cargo later), stock/duplicate/stale-total checks, 24 h expiry, invoice and paid protection.\n";
