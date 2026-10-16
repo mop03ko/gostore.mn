@@ -89,6 +89,8 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     $id=$taobao?'tb-'.$rawId:$rawId;$identity=supplier_identity($id);
     $price=supplier_cny($p['Price']??[]);$rate=shipping_settings()['cny_rate'];
     $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id)),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>($p['IsSellAllowed']??false)===true&&!($p['IsFiltered']??false),'variants'=>[]];
+    $sold=filter_var($p['Volume']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>9007199254740991]]);
+    $r['sold_count']=$sold===false?null:$sold; // OT uses zero when sales volume is unknown.
     if($detail){
         $pictures=[$r['image']];foreach($p['Pictures']??[] as $picture){if(is_array($picture))$pictures[]=supplier_image((string)($picture['Url']??''));}
         $r['images']=array_slice(array_values(array_unique(array_filter($pictures))),0,20);

@@ -11,7 +11,19 @@ window.supplierFavoriteCount=()=>supplierFavoriteItems().length;
 window.clearSupplierFavorites=()=>{try{localStorage.removeItem(SUPPLIER_FAVORITES_KEY);if(supplierSaved)renderSupplierCards([]);return true;}catch{toast('Хөтөчийн хадгалсан мэдээллийг цэвэрлэж чадсангүй.');return false;}};
 function renderSupplierCards(items){
   const saved=new Set(supplierFavoriteItems().map(p=>p.id));
-  $('#supplier-grid').innerHTML=items.map(p=>`<article class="supplier-card"><a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer">`:'Зураггүй'}</a><button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button><div class="supplier-card-copy"><small>Taobao · Захиалгаар</small><h3><a href="/v/${p.id}">${esc(p.name)}</a></h3><strong>${Number(p.mnt)>0?money(p.mnt)+'-өөс':'Үнэ лавлах'}</strong><p>${Number(p.cny)>0?esc(p.cny)+'¥ · ':''}Хүргэлт нэмэгдэнэ</p><a class="text-button" href="/v/${p.id}">Сонголт харах →</a></div></article>`).join('')||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Taobao барааны зүрхэн тэмдгийг дарж хадгалаарай.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
+  $('#supplier-grid').innerHTML=items.map(p=>{
+    const sold=Number.isSafeInteger(p.sold_count)&&p.sold_count>0?p.sold_count:null;
+    return `<article class="supplier-card">
+      <a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
+      <button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button>
+      <div class="supplier-card-copy">
+        <h3><a href="/v/${p.id}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
+        <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${new Intl.NumberFormat('en-US').format(sold)}</b> зарагдсан</span>`:'<span>Taobao · Захиалгаар</span>'}</div>
+        <p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong>${Number(p.mnt)>0?money(p.mnt):'Үнэ лавлах'}</strong>${Number(p.mnt)>0?'<small>Эхлэх үнэ</small>':''}</div><a class="supplier-card-buy" href="/v/${p.id}" aria-label="${esc(p.name)} — сонголт харах" title="Өнгө, хэмжээ сонгож захиалах">${icon('cart-add')}</a></div>
+      </div>
+    </article>`;
+  }).join('')||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Taobao барааны зүрхэн тэмдгийг дарж хадгалаарай.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
 }
 function supplierUrl(page=1){
   if(document.documentElement.classList.contains('product-view'))return;

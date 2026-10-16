@@ -19,6 +19,8 @@ check($tp['url']==='https://item.taobao.com/item.htm?id=123456789'&&$tp['mnt']==
 foreach([array_replace($taobao,['ProviderType'=>'Alibaba1688']),array_replace($taobao,['Id'=>'abb-123456789']),array_replace($taobao,['HasError'=>true])] as $invalid){try{supplier_normalize($invalid,true,'taobao');throw new RuntimeException('Wrong provider accepted');}catch(ApiError){}}
 check(supplier_cache_key('/v1/taobao/product/123456789',['language'=>'mn'])!==supplier_cache_key('/v1/alibaba1688/product/123456789',['language'=>'mn']),'Provider cache isolation');
 check(supplier_cny(['OriginalPrice'=>20,'OriginalCurrencyCode'=>'USD'])===null,'Currency isolation');
+$sold=supplier_normalize(array_replace($taobao,['Volume'=>1234]),false,'taobao');check($sold['sold_count']===1234,'Real provider sales count');
+foreach([null,0,-1,'unknown',1.5,INF,9007199254740992] as $volume)check(supplier_normalize(array_replace($taobao,['Volume'=>$volume]),false,'taobao')['sold_count']===null,'Unknown or invalid sales never displayed as zero');
 $before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>0.5]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===7000,'Snapshot preserved');
 $destination=warehouse_destination(['id'=>'GS-TEST-123'],['family_name'=>'Бат','customer'=>'Тамир','warehouse'=>['recipient'=>'Wrong','address'=>'Wrong']]);
 check($destination['recipient']==='Бат Тамир / GS-TEST-123','Server recipient and code');
