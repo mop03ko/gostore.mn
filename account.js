@@ -5,7 +5,7 @@ customerAccount.setUser=user=>{
   document.documentElement.classList.toggle('customer-signed-in',!!user);
   window.syncMobileNav?.();
   if(!user&&document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form,#modal .account-summary'))accountForm();
-  document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?'Профайл':'Нэвтрэх');
+  document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?(String(user.name||'').trim().split(/\s+/)[0].slice(0,14)||'Профайл'):'Нэвтрэх');
 };
 customerAccount.require=()=>{if(customerAccount.user)return true;customerAccount.open();return false;};
 function notifyAccountChange(){try{localStorage.setItem('gostore-account-changed-v1',String(Date.now())+Math.random());}catch{}}
@@ -22,7 +22,8 @@ function profileForm(mode='profile'){
   openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email)}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs"><button class="button ${mode==='profile'?'blue':'outline'}" data-account-mode="profile">Профайл</button><button class="button ${mode==='password'?'blue':'outline'}" data-account-mode="password">Нууц үг</button></div>${mode==='password'?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Нууц үг солих</button></form>`:`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
 }
 customerAccount.open=async(mode)=>{
-  try{await customerAccount.refresh();customerAccount.user?profileForm(mode):accountForm(mode==='register'?'register':'login');}
+  // Signed-in customers get the full account page; the modal keeps login and registration.
+  try{await customerAccount.refresh();if(customerAccount.user&&!mode&&window.accountPage){closeModal();accountPage.go('orders');return;}customerAccount.user?profileForm(mode):accountForm(mode==='register'?'register':'login');}
   catch(e){toast(e.message);}
 };
 document.addEventListener('click',async e=>{
@@ -41,7 +42,7 @@ document.addEventListener('submit',async e=>{
     if(payload.password_confirm!==undefined&&payload.password!==payload.password_confirm)throw Error('Нууц үгийн давталт таарахгүй байна.');
     const result=await shopApi(action,payload);if(result.customer){customerAccount.setUser(result.customer);if(['customer-login','customer-register'].includes(action))notifyAccountChange();}
     if(action==='customer-password'){form.reset();toast('Нууц үг шинэчлэгдлээ');}
-    else{if(['customer-login','customer-register'].includes(action)&&document.documentElement.classList.contains('product-view'))closeModal();else profileForm();toast(action==='customer-profile'?'Мэдээлэл хадгалагдлаа':action==='customer-register'?'Таны бүртгэл үүслээ':'Амжилттай нэвтэрлээ');}
+    else{if(['customer-login','customer-register'].includes(action)&&(document.documentElement.classList.contains('product-view')||window.accountPage?.active))closeModal();else profileForm();toast(action==='customer-profile'?'Мэдээлэл хадгалагдлаа':action==='customer-register'?'Таны бүртгэл үүслээ':'Амжилттай нэвтэрлээ');}
   }catch(err){error.textContent=err.message;}finally{button.disabled=false;}
 });
 customerAccount.setUser(customerAccount.user);

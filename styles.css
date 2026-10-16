@@ -227,3 +227,60 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 .search-suggest-item small{color:#8a93a5;font-size:12px;flex-shrink:0}
 .search-suggest-item:hover,.search-suggest-item.active{background:#f4f6fa}
 @media(max-width:760px){#supplier-search .price-filter{min-width:0}#supplier-search .price-filter input{width:0;flex:1 1 0}}
+/* Account page (/account) */
+.account-view #main>:not(#account-page){display:none!important}
+.account-view .nav-wrap{display:none}
+.account-page{padding-top:18px;padding-bottom:48px}
+.account-title{font-size:30px;margin:10px 0 22px}
+.account-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+.account-side{border:1px solid var(--line);border-radius:16px;padding:20px;background:#fff;position:sticky;top:96px}
+.account-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0;padding:14px 0;border-block:1px solid var(--line);text-align:center}
+.account-stats strong{display:block;font-size:20px;color:var(--navy)}
+.account-stats small{color:var(--muted);font-size:11px;line-height:1.3}
+.account-menu{display:grid;gap:4px}
+.account-menu button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:0 14px;border:0;border-radius:10px;background:none;color:var(--navy);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.account-menu button:hover{background:var(--cloud)}
+.account-menu button[aria-current=page]{background:var(--cloud);font-weight:700;color:var(--blue)}
+.account-menu button b{min-width:22px;height:22px;border-radius:11px;background:var(--yellow);color:var(--navy);font-size:12px;display:grid;place-items:center;padding:0 6px}
+.account-menu .account-logout{color:#c0392b;margin-top:6px}
+.account-content{min-width:0;outline:none}
+.account-content>h2{font-size:20px;margin:4px 0 16px}
+.account-subtitle{margin:26px 0 12px;font-size:16px}
+.account-card{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff}
+.account-loading{color:var(--muted)}
+.account-tabs-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:thin}
+.account-tabs-row button{flex:0 0 auto;display:flex;gap:8px;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--navy);font:inherit;font-size:13px;cursor:pointer}
+.account-tabs-row button span{color:var(--muted);font-size:12px}
+.account-tabs-row button[aria-selected=true]{background:var(--navy);border-color:var(--navy);color:#fff}
+.account-tabs-row button[aria-selected=true] span{color:#ffffffc0}
+.account-search{max-width:360px;margin-bottom:14px}
+.account-orders{display:grid;gap:12px}
+.account-order-actions{display:flex;gap:10px;align-items:center}
+.account-order-actions .button{min-height:38px;padding:0 16px}
+.account-empty{border:1px dashed var(--line);border-radius:16px;padding:44px 20px;text-align:center;color:var(--muted)}
+.account-empty .icon{width:34px;height:34px;color:var(--muted)}
+.account-empty h3{color:var(--navy);margin:12px 0 6px}
+.account-empty .form-actions{justify-content:center}
+.account-products{display:grid;gap:10px}
+.account-product{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+.account-product img,.account-product-image{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--cloud);display:grid;place-items:center}
+.account-product h3{font-size:14px;margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.account-product h3 a{color:inherit;text-decoration:none}
+.account-product p{margin:0 0 2px;color:#536078;font-size:13px}
+.account-product small{color:var(--muted);font-size:12px}
+.account-addresses{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+.account-address.default{border-color:var(--blue)}
+.account-address>div:first-child{display:flex;gap:8px;align-items:center}
+.account-address p{margin:8px 0 0;color:#536078;font-size:13px}
+.account-address-text{white-space:pre-line;overflow-wrap:anywhere}
+.account-address-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.account-address-actions .danger{color:#c0392b}
+#account-address-form{margin-top:4px}
+#account-address-form h3{margin:0 0 12px;font-size:16px}
+.account-notices{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.account-notices button{display:grid;gap:4px;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font:inherit;color:var(--navy);cursor:pointer}
+.account-notices .unread button{border-color:var(--blue);background:#f6f8ff}
+.account-notices span{font-size:14px}
+.account-notices small{color:var(--muted);font-size:12px}
+@media(max-width:860px){.account-layout{grid-template-columns:1fr}.account-side{position:static}.account-menu{grid-template-columns:repeat(2,minmax(0,1fr))}.account-title{font-size:24px}}
+@media(max-width:520px){.account-product{grid-template-columns:56px minmax(0,1fr)}.account-product .button{grid-column:1/-1}.account-product img,.account-product-image{width:56px;height:56px}}

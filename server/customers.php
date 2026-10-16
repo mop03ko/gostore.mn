@@ -28,6 +28,67 @@ function customer_password(array $b,string $field='password',bool $new=false): s
 function customer_phone(array $b): string {
     $phone=str_field($b,'phone',30,false);if($phone!==''&&!preg_match('/^[+\d ()-]{8,25}$/',$phone))fail('Утасны дугаараа зөв оруулна уу.');return $phone;
 }
+// Address book: up to 10 delivery addresses; the default one mirrors customers.address for older screens.
+function customer_addresses(array $c): array {
+    $db=db();$s=$db->prepare('SELECT * FROM customer_addresses WHERE customer_id=? ORDER BY is_default DESC,created DESC,rowid DESC');$s->execute([$c['id']]);$rows=$s->fetchAll();
+    if(!$rows&&trim((string)$c['address'])!==''){
+        // Accounts created before the address book keep their saved profile address as the default.
+        $now=gmdate('c');$db->prepare('INSERT INTO customer_addresses VALUES (?,?,?,?,?,?,1,?,?)')->execute([bin2hex(random_bytes(16)),$c['id'],'Үндсэн хаяг',$c['name'],$c['phone'],$c['address'],$now,$now]);
+        $s->execute([$c['id']]);$rows=$s->fetchAll();
+    }
+    return array_map(fn($a)=>['id'=>$a['id'],'label'=>$a['label'],'recipient'=>$a['recipient'],'phone'=>$a['phone'],'address'=>$a['address'],'is_default'=>(bool)$a['is_default']],$rows);
+}
+function customer_address_sync(string $customer): void {
+    $s=db()->prepare('SELECT address FROM customer_addresses WHERE customer_id=? AND is_default=1');$s->execute([$customer]);$address=$s->fetchColumn();
+    db()->prepare('UPDATE customers SET address=?,updated=? WHERE id=?')->execute([$address===false?'':$address,gmdate('c'),$customer]);
+}
+function customer_address_save(array $c,array $b): array {
+    $label=str_field($b,'label',40,false)?:'Хаяг';$recipient=str_field($b,'recipient',100);$phone=customer_phone($b);$address=str_field($b,'address',500);
+    if($phone==='')fail('Холбогдох утасны дугаараа оруулна уу.');
+    foreach([$label,$recipient] as $value)if(preg_match('/[\x00-\x1F\x7F]/u',$value))fail('Нэр, шошгыг нэг мөрөнд бичнэ үү.');
+    if(isset($b['is_default'])&&!is_bool($b['is_default']))fail('Үндсэн хаягийн тохиргоо буруу.');
+    $id=str_field($b,'id',32,false);$default=($b['is_default']??false)===true;$now=gmdate('c');
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $s=$db->prepare('SELECT count(*) FROM customer_addresses WHERE customer_id=?');$s->execute([$c['id']]);$count=(int)$s->fetchColumn();
+        if($id!==''){
+            $s=$db->prepare('UPDATE customer_addresses SET label=?,recipient=?,phone=?,address=?,updated=? WHERE id=? AND customer_id=?');$s->execute([$label,$recipient,$phone,$address,$now,$id,$c['id']]);
+            if($s->rowCount()!==1)fail('Хаяг олдсонгүй.',404);
+        }else{
+            if($count>=10)fail('10 хүртэл хаяг хадгална. Хэрэггүй хаягаа устгана уу.',409);
+            $id=bin2hex(random_bytes(16));$default=$default||$count===0;
+            $db->prepare('INSERT INTO customer_addresses VALUES (?,?,?,?,?,?,0,?,?)')->execute([$id,$c['id'],$label,$recipient,$phone,$address,$now,$now]);
+        }
+        if($default){$db->prepare('UPDATE customer_addresses SET is_default=0 WHERE customer_id=?')->execute([$c['id']]);$db->prepare('UPDATE customer_addresses SET is_default=1 WHERE id=?')->execute([$id]);}
+        customer_address_sync($c['id']);$db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    return customer_addresses(current_customer());
+}
+function customer_address_delete(array $c,string $id): array {
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $s=$db->prepare('DELETE FROM customer_addresses WHERE id=? AND customer_id=?');$s->execute([$id,$c['id']]);if($s->rowCount()!==1)fail('Хаяг олдсонгүй.',404);
+        $s=$db->prepare('SELECT count(*) FROM customer_addresses WHERE customer_id=? AND is_default=1');$s->execute([$c['id']]);
+        if(!(int)$s->fetchColumn())$db->prepare('UPDATE customer_addresses SET is_default=1 WHERE id=(SELECT id FROM customer_addresses WHERE customer_id=? ORDER BY created DESC,rowid DESC LIMIT 1)')->execute([$c['id']]);
+        customer_address_sync($c['id']);$db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    return customer_addresses(current_customer());
+}
+// Products the customer has ordered (newest first, one row per product) for quick re-ordering.
+function customer_products(array $c): array {
+    $s=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders co ON co.order_id=o.id WHERE co.customer_id=? ORDER BY o.created DESC LIMIT 300');$s->execute([$c['id']]);
+    $products=[];
+    foreach($s->fetchAll() as $row){
+        $o=json_decode($row['data'],true);if(!is_array($o)||($o['status']??'')==='cancelled')continue;
+        foreach($o['items']??(isset($o['supplier'])?[$o['supplier']]:[]) as $line){
+            $id=(string)($line['id']??'');if($id==='')continue;
+            if(isset($products[$id])){$products[$id]['times']++;continue;}
+            if(count($products)>=100)continue;
+            $products[$id]=['id'=>$id,'name'=>mb_substr((string)($line['name']??''),0,300),'image'=>is_string($line['image']??null)&&str_starts_with($line['image'],'https://')?$line['image']:'','variant'=>mb_substr((string)($line['variant']??''),0,300),'qty'=>(int)($line['qty']??0),'order_id'=>$o['id'],'ordered_at'=>$o['created'],'paid'=>(bool)($o['paid']??false),'times'=>1,'supplier'=>(bool)preg_match('/^(?:tb|abb)-\d{5,20}$/D',$id)];
+        }
+    }
+    return array_values($products);
+}
 function order_owner(string $id): ?string {
     $s=db()->prepare('SELECT customer_id FROM customer_orders WHERE order_id=?');$s->execute([$id]);return $s->fetchColumn()?:null;
 }
@@ -40,6 +101,8 @@ function customer_order_access(array $r,array $b): void {
 function customer_get(string $action): never {
     if($action==='customer-me')json_out(['customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
     $c=customer_required();
+    if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);
+    if($action==='customer-products')json_out(['products'=>customer_products($c)]);
     if($action==='customer-notifications'){
         $s=db()->prepare('SELECT n.* FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? ORDER BY n.id DESC LIMIT 100');$s->execute([$c['id']]);
         $count=db()->prepare('SELECT COUNT(*) FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? AND n.read_at IS NULL');$count->execute([$c['id']]);json_out(['notifications'=>$s->fetchAll(),'unread'=>(int)$count->fetchColumn()]);
@@ -79,9 +142,13 @@ function customer_post(string $action,array $b): never {
     if($action==='customer-notifications-read'){
         $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);json_out(['ok'=>true]);
     }
+    if($action==='customer-address-save'){limit_attempts('customer-address:'.$c['id'],60,3600);json_out(['addresses'=>customer_address_save($c,$b)]);}
+    if($action==='customer-address-delete')json_out(['addresses'=>customer_address_delete($c,str_field($b,'id',32))]);
     if($action==='customer-profile'){
-        $name=str_field($b,'name',100);$phone=customer_phone($b);$address=str_field($b,'address',500,false);
+        // The account page edits addresses in the address book; older forms may still send one.
+        $name=str_field($b,'name',100);$phone=customer_phone($b);$address=array_key_exists('address',$b)?str_field($b,'address',500,false):$c['address'];
         db()->prepare('UPDATE customers SET name=?,phone=?,address=?,updated=? WHERE id=?')->execute([$name,$phone,$address,gmdate('c'),$c['id']]);
+        if($address!==$c['address']&&$address!=='')db()->prepare('UPDATE customer_addresses SET address=?,updated=? WHERE customer_id=? AND is_default=1')->execute([$address,gmdate('c'),$c['id']]);
         json_out(['customer'=>customer_public(current_customer())]);
     }
     if($action==='customer-password'){

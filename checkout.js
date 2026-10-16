@@ -61,6 +61,8 @@ window.taobaoCart=(()=>{
     if(e.target.name!=='fulfillment'||!e.target.closest('#taobao-checkout-form'))return;
     const f=e.target.form,delivery=f.elements.fulfillment.value==='delivery',address=f.querySelector('[data-delivery-address]');
     address.hidden=!delivery;f.elements.address.required=delivery;f.querySelector('[data-pickup-info]').hidden=delivery;
+    // Saved addresses from the account page can be picked instead of typing again.
+    if(delivery&&!f.dataset.addressesLoaded){f.dataset.addressesLoaded='1';shopApi('customer-addresses').then(({addresses})=>{if(!addresses.length||!f.isConnected)return;const pick=document.createElement('label');pick.className='field full';pick.innerHTML=`Хадгалсан хаяг<select data-address-pick>${addresses.map(a=>`<option value="${esc(a.id)}" ${a.is_default?'selected':''}>${esc(a.label)} · ${esc(a.address.slice(0,60))}</option>`).join('')}<option value="">Шинэ хаяг бичих</option></select>`;address.before(pick);pick.querySelector('select').addEventListener('change',e=>{const a=addresses.find(x=>x.id===e.target.value);f.elements.address.value=a?a.address:'';if(a&&a.phone&&f.elements.phone&&!f.elements.phone.value)f.elements.phone.value=a.phone;});const current=addresses.find(a=>a.is_default)||addresses[0];if(!f.elements.address.value.trim())f.elements.address.value=current.address;}).catch(()=>{});}
   });
   document.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
