@@ -171,12 +171,18 @@ function supplier_video(string $url): string {
     if(($p['scheme']??'')!=='https'||isset($p['user'])||isset($p['port']))return '';
     return $host==='cloud.video.taobao.com'||$host==='video.alicdn.com'||str_ends_with($host,'.video.taobao.com')?$url:'';
 }
+// OT marks items whose stock it cannot read as IsUnknownQuantity; they are still on sale and
+// SKU stock is validated at order time, so only other reasons block ordering.
+function supplier_sellable(array $p): bool {
+    if($p['IsFiltered']??false)return false;
+    return ($p['IsSellAllowed']??false)===true||($p['SellDisallowReason']??'')==='IsUnknownQuantity';
+}
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
     $rawId=(string)($p['Id']??'');$taobao=$provider==='taobao';
     if(!preg_match($taobao?'/^\d{5,20}$/D':'/^abb-\d{5,20}$/D',$rawId)||!empty($p['HasError'])||(!empty($p['ProviderType'])&&$p['ProviderType']!==($taobao?'Taobao':'Alibaba1688')))fail('Нийлүүлэгчийн барааны мэдээлэл буруу.',503);
     $id=$taobao?'tb-'.$rawId:$rawId;$identity=supplier_identity($id);
     $price=supplier_cny($p['Price']??[]);$rate=shipping_settings()['cny_rate'];
-    $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id)),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>($p['IsSellAllowed']??false)===true&&!($p['IsFiltered']??false),'variants'=>[]];
+    $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id)),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>supplier_sellable($p),'variants'=>[]];
     $sold=filter_var($p['Volume']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>9007199254740991]]);
     $r['sold_count']=$sold===false?null:$sold;
     $featured=[];foreach($p['FeaturedValues']??[] as $feature)if(is_array($feature))$featured[(string)($feature['Name']??'')]=$feature['Value']??null;

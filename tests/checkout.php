@@ -14,6 +14,11 @@ $product=fn(string $id,string $vendor,array $variants)=>['Item'=>['Id'=>$id,'Pro
 $variant=fn(string $id,float $cny,int $stock)=>['Id'=>$id,'Quantity'=>$stock,'Price'=>['OriginalPrice'=>$cny,'OriginalCurrencyCode'=>'CNY']];
 foreach(['111111111'=>$product('111111111','shop-a',[$variant('red',12.5,10),$variant('blue',20,0)]),'222222222'=>$product('222222222','shop-a',[$variant('one',8,5)]),'333333333'=>$product('333333333','shop-b',[$variant('one',100,5)])] as $id=>$data)
     file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/product/'.$id,['language'=>'mn']).'.json',json_encode(['data'=>$data,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
+// Unknown stock is still on sale; any other provider reason blocks ordering.
+foreach(['444444444'=>'IsUnknownQuantity','555555555'=>'IsAuction'] as $id=>$reason){$data=$product((string)$id,'shop-c',[$variant('one',5,3)]);$data['Item']['IsSellAllowed']=false;$data['Item']['SellDisallowReason']=$reason;
+    file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/product/'.$id,['language'=>'mn']).'.json',json_encode(['data'=>$data,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));}
+check(count(checkout_items(['items'=>[['id'=>'tb-444444444','sku'=>'one','qty'=>1]]]))===1,'Unknown-quantity item must be orderable');
+expect_error(fn()=>checkout_items(['items'=>[['id'=>'tb-555555555','sku'=>'one','qty'=>1]]]),409);
 $s=shipping_settings();$s['cny_rate']=500;$s['service_percent']=5;$s['service_fee_mnt']=2000;$s['domestic_default_cny']=10;
 db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s)]);
 
