@@ -190,3 +190,9 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 .fulfillment-choice legend{font-weight:700;margin-bottom:6px}
 .fulfillment-choice label{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid #d9dfe8;border-radius:10px;cursor:pointer}
 .fulfillment-choice label:has(input:checked){border-color:var(--blue);background:#f4f7ff}
+
+/* A single header search; compact catalog sorting on every screen. */
+#supplier-search{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:12px 0}#supplier-search label{font-size:13px;color:#657087}#supplier-search select{width:auto;min-width:150px;min-height:44px}#supplier-search input[type=hidden],#supplier-search button[hidden]{display:none} .supplier-card-price small{line-height:1.4}.brand img[src$="logo.svg"]{object-fit:contain;height:auto}
+/* Radios inside the .field fieldset must not inherit text-input sizing. */
+.fulfillment-choice label{justify-content:flex-start;text-align:left;font-weight:600;padding:10px 14px}
+.field.fulfillment-choice input[type=radio]{flex:0 0 20px;width:20px;height:20px;min-width:20px;min-height:0;margin:0;padding:0;border:0;border-radius:50%;accent-color:var(--blue)}
