@@ -30,12 +30,12 @@ function supplierUrl(page=1){
   if(document.documentElement.classList.contains('product-view'))return;
   const url=new URL(location.href);url.searchParams.delete('category');
   for(const [key,value] of Object.entries({q:supplierImage||supplierQuery==='bag'?'':supplierQuery,image:supplierSaved?'':supplierImage,sort:supplierImage||supplierSort==='default'?'':supplierSort,page:page===1?'':String(page),filter:supplierSaved?'saved':''})){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}
-  if(!supplierSaved&&!supplierImage&&supplierCategory&&supplierCategory!=='all')url.searchParams.set('category',supplierCategory);
+  if(!supplierSaved&&!(typeof supplierImage!=='undefined'&&supplierImage)&&supplierCategory&&supplierCategory!=='all')url.searchParams.set('category',supplierCategory);
   history.replaceState(null,'',url.pathname+url.search+url.hash);
   $('#supplier-reset').hidden=!supplierSaved&&!supplierImage&&supplierQuery==='bag'&&supplierSort==='default'&&page===1;
 }
 function supplierViewState(){
-  window.syncSupplierCategories?.(supplierCategory,supplierSaved,!!supplierImage);
+  window.syncSupplierCategories?.(supplierCategory,supplierSaved,typeof supplierImage!=='undefined'&&!!supplierImage);
   document.querySelectorAll('[data-supplier-query]').forEach(b=>b.setAttribute('aria-pressed',String(!supplierSaved&&!supplierImage&&b.dataset.supplierQuery===supplierQuery)));
   window.syncMobileNav?.();
   $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан Taobao бараа':supplierImage?'Зургаар хайсан бараа':'Хятадаас захиалах бараа';
