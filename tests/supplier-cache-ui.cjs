@@ -13,7 +13,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  const get=q=>page.evaluate(p=>supplierApi('supplier-search',p),q);
  await page.evaluate(async p=>{const [a,b]=await Promise.all([supplierApi('supplier-search',p),supplierApi('supplier-search',p)]);a.products[0].name='mutated';if(b.products[0].name==='mutated')throw Error('Shared mutable data');},query);
  assert.equal(calls.length,1,'Concurrent identical searches share one request');
- assert.equal((await get(query)).products[0].name,'bag 1 default');assert.equal(calls.length,1,'Warm request uses memory');
+ assert.equal((await get(query)).products[0].name,'bag 1 default');assert.equal(calls.length,1,'Warm request uses memory');await get({...query,q:'  BAG  '});assert.equal(calls.length,1,'Whitespace/case variants reuse the same request');assert.equal((await page.evaluate(()=>supplierApi.previewProduct('tb-123456789'))).name,'bag 1 default');
  const saved=await page.evaluate(()=>sessionStorage.getItem('gostore-supplier-cache-v3-taobao'));assert.ok(!saved.includes('must-not-persist'),'No CSRF/customer fields persisted');
  await get({...query,page:2});await get({...query,sort:'price'});await get({...query,q:'shoes'});assert.equal(calls.length,4,'Query/page/sort are independent keys');
  await page.goto(base+'/');await page.locator('.supplier-card').waitFor();assert.equal(calls.length,4,'Navigation restores cached search');
@@ -28,6 +28,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.evaluate(()=>sessionStorage.setItem('gostore-supplier-cache-v3-taobao','broken-json'));await page.goto(base+'/?filter=saved');await get(query);assert.equal((await get(query)).products.length,1,'Corrupt storage recovers');
  await page.addInitScript(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(this===sessionStorage)throw new DOMException('Full','QuotaExceededError');return set.call(this,k,v);};});
  await page.evaluate(()=>sessionStorage.removeItem('gostore-supplier-cache-v3-taobao'));await page.goto(base+'/?filter=saved');const before=calls.length;await get(query);await get(query);assert.equal(calls.length,before+1,'Storage disabled still supports memory caching');
+ // A delayed detail endpoint must still show the clicked product immediately, with no order controls.
+ const preview=await browser.newPage();await preview.route('https://img.alicdn.com/**',r=>r.abort());await preview.goto(base+'/');await preview.locator('.supplier-card').waitFor();let releaseDetail;const detailGate=new Promise(r=>releaseDetail=r);await preview.route('**/api/index.php?action=supplier-product*',async r=>{await detailGate;await r.continue();});await preview.locator('.supplier-card h3 a').first().click();await preview.locator('.pd-preview').waitFor();assert.equal(await preview.locator('[data-pd-submit]').count(),0,'Preview cannot place an order');assert.ok((await preview.locator('.pd-preview h1').innerText()).length>0);releaseDetail();await preview.locator('#pd-options').waitFor();assert.equal(await preview.locator('.pd-preview').count(),0);await preview.close();
  // Use a separate page without the storage fault for real product data and slow bootstrap.
  const detail=await browser.newPage();await detail.route('https://img.alicdn.com/**',r=>r.abort());let productCalls=0;detail.on('request',r=>{if(r.url().includes('action=supplier-product'))productCalls++;});
  await detail.goto(base+'/v/123456789');await detail.locator('#pd-options').waitFor();assert.equal(productCalls,1);

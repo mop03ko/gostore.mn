@@ -74,7 +74,9 @@
     update();
   }
   async function load(){
-    stateMessage('Барааны мэдээлэл ачаалж байна…','Үнэ, сонголт, зургуудыг авч байна.');
+    const preview=supplier?window.supplierApi.previewProduct?.(id):null;
+    if(preview){root.innerHTML=`<div class="pd-preview" aria-busy="true">${preview.image&&/^https:\/\//.test(preview.image)?`<img src="${esc(preview.image)}" alt="${esc(preview.name)}" referrerpolicy="no-referrer" fetchpriority="high">`:''}<div><span class="section-kicker">БАРААНЫ МЭДЭЭЛЭЛ</span><h1>${esc(preview.name)}</h1>${preview.mnt?`<p class="product-price">${money(preview.mnt)}</p>`:''}<p role="status">Өнгө, хэмжээ, үнэ, үлдэгдлийг шалгаж байна…</p><p class="pd-muted">Сонголтууд ачаалсны дараа захиалах боломжтой.</p></div></div>`;}
+    else stateMessage('Барааны мэдээлэл ачаалж байна…','Үнэ, сонголт, зургуудыг авч байна.');
     try{
       if(supplier){details=await supplierApi('supplier-product',{id});product=details.product;}
       else{await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');product=products.find(p=>p.id===id);details={};if(!product){stateMessage('Бараа олдсонгүй','Энэ бараа устгагдсан эсвэл худалдаанд байхгүй байна.');return;}}

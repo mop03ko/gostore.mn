@@ -23,6 +23,33 @@ function supplier_schedule_refresh(string $path,array $query,string $dir): void 
         finally {flock($lock,LOCK_UN);fclose($lock);}
     });
 }
+// Warm only fixed storefront departments, after the visitor has received their response.
+function supplier_warm_queries(): array {return ['home storage','electronics','bag','men shoes','accessories','beauty','lamp','men clothing','women clothing','kids clothing','women shoes','kids shoes','kitchen utensils','home appliances','furniture','home decoration','baby products','toys','sports equipment','camping equipment','car accessories','tools','garden supplies','pet supplies','office supplies','personal care'];}
+function supplier_schedule_warm(): void {
+    if(!function_exists('fastcgi_finish_request')||!supplier_ready())return;
+    $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))return;
+    $pause=$dir.'/warm.retry';if(is_file($pause)&&(int)file_get_contents($pause)>time())return;
+    $lock=fopen($dir.'/background.lock','c');if(!$lock)return;
+    if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return;}
+    $next=null;
+    foreach(supplier_warm_queries() as $q){
+        $query=['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'];$file=$dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json';
+        $v=is_file($file)?json_decode(file_get_contents($file),true):null;
+        if(is_array($v)&&is_array($v['data']??null)&&($v['expires']??0)>time())continue;
+        if(is_file($file.'.retry')&&(int)file_get_contents($file.'.retry')>time())continue;
+        $next=$query;break;
+    }
+    if($next===null){flock($lock,LOCK_UN);fclose($lock);return;}
+    register_shutdown_function(static function()use($next,$lock,$pause){
+        ignore_user_abort(true);if(session_status()===PHP_SESSION_ACTIVE)session_write_close();fastcgi_finish_request();
+        try{
+            // Leave at least half the configured daily budget for actual browsing and orders.
+            limit_attempts('supplier-warm:'.gmdate('Y-m-d'),(int)floor(shipping_settings()['api_daily_limit']/2),86400);
+            supplier_request('/v1/taobao/search',$next,false,false,true);
+        }catch(Throwable $e){file_put_contents($pause,(string)(time()+($e->getCode()===429?3600:300)),LOCK_EX);}
+        finally{flock($lock,LOCK_UN);fclose($lock);}
+    });
+}
 function supplier_public_json(array $data): never {
     header('Content-Type: application/json; charset=utf-8');
     header('X-Content-Type-Options: nosniff');
@@ -30,7 +57,7 @@ function supplier_public_json(array $data): never {
     header('Cache-Control: '.($ttl>0?'public, max-age='.$ttl.', must-revalidate':'no-store'));
     echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);exit;
 }
-function supplier_request(string $path,array $query,bool $display=false,bool $force=false): array {
+function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false): array {
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
@@ -47,18 +74,20 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
         if($cached&&!$display){$cached['stale']=$cached['expires']<=time();return $cached;}
         fail('Нийлүүлэгчийн мэдээллийг шинэчилж байна. Түр хүлээгээд дахин оролдоно уу.',503);
     }
-    $lock=fopen($dir.'/request.lock','c');if(!$lock)fail('Нийлүүлэгчийн холболт завгүй байна.',503);
-    if(!flock($lock,LOCK_EX|(($display||$force)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
+    $lock=fopen($dir.'/'.$key.'.lock','c');if(!$lock)fail('Нийлүүлэгчийн холболт завгүй байна.',503);
+    if(!flock($lock,LOCK_EX|(($display||$force||$warming)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
     try {
         $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||$cached['expires']-time()>=1800))return $cached;
         if(is_file($retry)&&(int)file_get_contents($retry)>time()){if($cached){$cached['stale']=$cached['expires']<=time();return $cached;}fail('Нийлүүлэгчийн холболтыг түр хүлээнэ үү.',503);}
-        // A single lock and daily budget prevent concurrent public searches exhausting the trial.
+        // Deduplicate each cache key; at most two independent provider requests run at once.
+        $slot=null;for($i=0;$i<2;$i++){$candidate=fopen($dir.'/network-'.$i.'.lock','c');if($candidate&&flock($candidate,LOCK_EX|LOCK_NB)){$slot=$candidate;break;}if($candidate)fclose($candidate);}
+        if(!$slot)fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);
         try {
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);
-            limit_attempts('supplier-ip:'.($_SERVER['REMOTE_ADDR']??'cli'),10,3600);
+            if(!$warming)limit_attempts('supplier-ip:'.($_SERVER['REMOTE_ADDR']??'cli'),10,3600);
             limit_attempts('supplier-budget:'.gmdate('Y-m-d'),shipping_settings()['api_daily_limit'],86400);
             $ch=curl_init('https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
-            curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
+            curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_ENCODING=>'',CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
             $ok=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
             $response=json_decode($raw,true);
             if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!isset($response['Result']))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
@@ -70,7 +99,7 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
         } catch(ApiError $e) {
             file_put_contents($retry,(string)(time()+300),LOCK_EX);chmod($retry,0600);
             if($cached&&(!$display||$cached['expires']>time()-86400)){$cached['stale']=$cached['expires']<=time();return $cached;}throw $e;
-        }
+        } finally {flock($slot,LOCK_UN);fclose($slot);}
     } finally {flock($lock,LOCK_UN);fclose($lock);}
 }
 function supplier_cny(array $p): ?float {
@@ -142,10 +171,11 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     return $r;
 }
 function supplier_search(array $b,bool $display=false): array {
-    $q=str_field($b,'q',100,false)?:'bag';$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
+    $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume'],true))fail('Эрэмбэ буруу.');
     $c=supplier_request('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort],$display);
     $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_normalize($p,false,'taobao');}catch(ApiError){}}
+    if($display)supplier_schedule_warm();
     return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id,bool $display=false): array {

@@ -17,8 +17,9 @@ window.supplierApi=(()=>{
     let json=JSON.stringify(entries);while(json.length*2>maxBytes&&entries.length){entries.shift();json=JSON.stringify(entries);}
     try{sessionStorage.setItem(key,json);}catch{/* Memory cache still works if storage is full or unavailable. */}
   }
-  return async(action,payload)=>{
+  const api=async(action,payload)=>{
     if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
+    if(action==='supplier-search')payload={...payload,q:String(payload.q||'bag').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'bag'};
     const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
     const found=entries.find(e=>e.key===request&&valid(e));
     if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
@@ -40,6 +41,8 @@ window.supplierApi=(()=>{
     }
     return clone(await pending.get(request));
   };
+  api.previewProduct=id=>{for(const entry of [...entries].reverse()){if(!valid(entry))continue;const product=entry.data.products?.find(p=>p.id===id)||entry.data.product?.related?.find(p=>p.id===id);if(product)return clone({id:product.id,name:product.name,image:product.image,mnt:product.mnt});}return null;};
+  return api;
 })();
 function requestFields(){const user=window.customerAccount?.user;return `<label class="field">Овог<input name="family_name" maxlength="100" autocomplete="family-name" required></label><label class="field">Нэр<input name="customer" value="${esc(user?.name||'')}" maxlength="100" autocomplete="given-name" required></label><label class="field">Холбогдох утас<input name="phone" value="${esc(user?.phone||'')}" type="tel" inputmode="tel" maxlength="25" autocomplete="tel" required></label><label class="field full">Хүргэлтийн хаяг<input name="address" value="${esc(user?.address||'')}" maxlength="500" autocomplete="street-address" placeholder="Өөрөө авах бол хоосон үлдээнэ"></label>`;}
 function requestNotice(){return `<div class="info-box">Хүсэлт болон холбогдох мэдээлэл GOStore-ийн серверт хадгалагдана. Админ үнэ, хүргэлт, үлдэгдлийг баталгаажуулсны дараа төлбөрийн санал ирнэ. Одоо төлбөр суутгахгүй.</div><p id="request-error" class="form-error" role="alert"></p>`;}
