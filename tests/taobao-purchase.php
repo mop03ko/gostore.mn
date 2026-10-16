@@ -49,6 +49,17 @@ $s=taobao_buyer_state();$s['expires_at']=time()+10;taobao_buyer_store($s);
 $next=[$token('a2'),['status'=>200,'body'=>['logistics'=>['tracking_no'=>'SF123']]]];$calls=[];$r=taobao_purchase_track('GS-AAA111');
 check($calls[0]['path']==='/v1/taobao/oauth/refresh'&&$calls[0]['form']===['refresh_token'=>'r-a1'],'Refresh must use the stored refresh token');
 check($calls[1]['path']==='/v1/taobao/order/tracker/3344556677'&&$calls[1]['query']===['access_token'=>'a2']&&str_contains($r['purchase']['tracking'],'SF123'),'Tracking changed');
+check(order_row('GS-AAA111')['order']['inbound']['numbers']===[],'Tracker without a waybill invented a number');
+// Tracker payloads are free-form; numbers and carriers are found at any depth and never duplicated.
+$tracker=['data'=>['packages'=>[['logistics_company'=>'顺丰速运','mail_no'=>'sf1234567890','events'=>[['desc'=>'已揽收']]],['cp_name'=>'中通','waybill_no'=>'ZT9876543210'],['mail_no'=>'<x>']]]];
+$next=[['status'=>200,'body'=>$tracker],['status'=>200,'body'=>$tracker]];taobao_purchase_track('GS-AAA111');$r=taobao_purchase_track('GS-AAA111');
+check(array_map(fn($n)=>[$n['no'],$n['company'],$n['source']],$r['inbound']['numbers'])===[['SF1234567890','顺丰速运','taobao'],['ZT9876543210','中通','taobao']],'Tracking numbers not extracted');
+check($r['inbound']['status']==='已揽收'&&isset($r['inbound']['checked_at']),'Tracking status not stored');
+$r=inbound_add_manual('GS-AAA111',['number'=>'yt-555666777','company'=>'圆通']);check(end($r['inbound']['numbers'])['no']==='YT-555666777'&&end($r['inbound']['numbers'])['source']==='admin','Manual tracking not stored');
+expect_error(fn()=>inbound_add_manual('GS-AAA111',['number'=>'12 34']),400);
+$public=inbound_public($r);check(count($public['numbers'])===3&&$public['trackable']&&!isset($public['numbers'][0]['added_at']),'Inbound public view changed');
+check(inbound_refresh_candidates(5)===[],'Recently checked order refreshed again');
+check(inbound_refresh_candidates(5,time()+10801)===['GS-AAA111'],'Stale purchased order not refreshed');
 $s=taobao_buyer_state();$s['refresh_expires_at']=time()-1;$s['expires_at']=time();taobao_buyer_store($s);
 expect_error(fn()=>taobao_purchase_track('GS-AAA111'),409,'Дахин холбоно');
 
@@ -64,4 +75,4 @@ $calls=[];taobao_purchase_after_payment('GS-BBB222');check($calls===[],'Auto pur
 $mixed=$o;$mixed['id']='GS-CCC333';$mixed['paid']=true;$mixed['items'][]=['id'=>'abb-123456789','sku'=>'x','qty'=>1];
 db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$mixed['id'],'h3','k3',json_encode($mixed),$mixed['created'],$mixed['created']]);
 expect_error(fn()=>taobao_purchase_create('GS-CCC333'),409,'1688');
-echo "PASS: Taobao buyer OAuth (server-side tokens, refresh, expiry), Erenhot receiver, SKU mapping, render, create/reject/retry, ambiguous review, tracking, opt-in auto purchase without duplicates.\n";
+echo "PASS: Taobao buyer OAuth (server-side tokens, refresh, expiry), Erenhot receiver, SKU mapping, render, create/reject/retry, ambiguous review, inbound tracking (extraction, manual numbers, stale refresh), opt-in auto purchase without duplicates.\n";

@@ -37,3 +37,10 @@ html[lang="zh-CN"] body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-s
 }
 
 .warehouse-overview{margin:24px 0}.warehouse-overview[hidden]{display:none}.warehouse-overview h2{font-size:20px;margin-bottom:16px}.overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.overview-card{min-width:0;padding:22px;background:#fff;border:1px solid var(--line);border-radius:16px}.overview-card h3{font-size:16px;line-height:1.5}.overview-card strong{font-size:36px;line-height:1.3;overflow-wrap:anywhere}.overview-card p{margin:10px 0}.overview-orders{font-weight:700}.overview-card small{display:block;color:var(--muted);line-height:1.5}@media(max-width:760px){.overview-grid{grid-template-columns:1fr}.overview-card{padding:18px}.overview-card strong{font-size:30px}}
+.inbound-info ul{margin:8px 0;padding-left:18px}
+.inbound-info b{font-family:ui-monospace,monospace;letter-spacing:.02em}
+.inbound-actions{display:grid;gap:8px;margin-top:10px}
+.inbound-actions form{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px}
+.inbound-actions input{min-width:0;min-height:44px}
+.inbound-nos{display:block;color:#525d70;word-break:break-all}
+@media(max-width:600px){.inbound-actions form{grid-template-columns:1fr}}

@@ -62,6 +62,13 @@ assert.equal((await update('completed','new')).status,403,'Manager cannot comple
 assert.equal((await manager('warehouse-order-update',{id:'GS-LOCAL-OLD',status:'erenhot',expected_status:'confirmed'})).status,404);
 assert.equal((await admin('order-update',{id,status:'confirmed',amount:55000,internal_note:'PRIVATE ADMIN'})).status,200);
 assert.equal((await ub('warehouse-order-update',{id,status:'ulaanbaatar',expected_status:'confirmed'})).status,404,'UB cannot receive before Zamyn-Uud');
+// Inbound China tracking: Erenhot staff add a courier number, then a barcode scan finds the order.
+assert.equal((await ub('warehouse-inbound-add',{id,number:'SF1234567890'})).status,403,'Only Erenhot records inbound parcels');
+assert.equal((await manager('warehouse-inbound-add',{id,number:'bad number'})).status,400);
+const inboundAdded=await manager('warehouse-inbound-add',{id,number:'sf1234567890',company:'顺丰'});assert.equal(inboundAdded.status,200);assert.deepEqual(inboundAdded.order.inbound.numbers,[{no:'SF1234567890',company:'顺丰',source:'warehouse'}]);assert.equal(inboundAdded.order.inbound.trackable,false);
+const scanned=await manager('warehouse-orders&'+new URLSearchParams({q:'sf1234567890'}));assert.deepEqual(scanned.orders.map(o=>o.id),[id],'Courier barcode finds the order');
+assert.equal((await manager('warehouse-inbound-refresh',{id})).status,409,'Manual orders have no Taobao tracker');
+assert.equal((await admin('dashboard')).orders.find(o=>o.id===id).inbound.numbers.length,1,'Admin sees inbound tracking');
 assert.equal((await update('erenhot_dispatched','confirmed')).status,403,'Dispatch must use a batch');
 assert.equal((await fetch(base+'/api/index.php?action=warehouse-order-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:'erenhot'})})).status,403,'CSRF enforced');
 assert.equal((await update('erenhot','confirmed')).status,409,'Erenhot receipt requires a photo');

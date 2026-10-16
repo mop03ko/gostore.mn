@@ -136,8 +136,12 @@ function taobao_purchase_track(string $id): array {
     $r=taobao_http('GET','/v1/taobao/order/tracker/'.rawurlencode($provider),['access_token'=>taobao_access_token()]);
     if($r['status']!==200)fail('Taobao хүргэлтийн мэдээлэл авч чадсангүй: '.taobao_reason($r['body'],$r['status']),502);
     $db=db();$db->exec('BEGIN IMMEDIATE');
-    try{$o=order_row($id)['order'];$o['purchase']['tracking']=taobao_trim_payload($r['body']);$o['purchase']['tracked_at']=gmdate('c');save_order($o);$db->exec('COMMIT');}
-    catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    try{
+        $o=order_row($id)['order'];$o['purchase']['tracking']=taobao_trim_payload($r['body']);$o['purchase']['tracked_at']=gmdate('c');
+        inbound_merge($o,inbound_tracking_extract($r['body']),'taobao');$o['inbound']['checked_at']=gmdate('c');
+        $status=inbound_status_text($r['body']);if($status!=='')$o['inbound']['status']=$status;
+        save_order($o);$db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     return $o;
 }
 // Called after QPay confirms the first payment. Failures stay on the order for the admin.
@@ -159,5 +163,77 @@ function taobao_admin_post(string $action,array $b): never {
     if($action==='taobao-purchase-create')json_out(['order'=>taobao_purchase_create($id)]);
     if($action==='taobao-purchase-resolve')json_out(['order'=>taobao_purchase_resolve($id,$b)]);
     if($action==='taobao-purchase-track')json_out(['order'=>taobao_purchase_track($id)]);
+    if($action==='taobao-purchase-tracking-add')json_out(['order'=>inbound_add_manual($id,$b)]);
     fail('Үйлдэл олдсонгүй.',404);
+}
+
+// Inbound China-domestic parcels heading to Erenhot. Numbers come from the OT tracker or are typed in
+// by staff, so a courier barcode scan finds the matching GS order.
+function inbound_tracking_extract(mixed $value,array &$found=[],int $depth=0): array {
+    if($depth>8||!is_array($value)||count($found)>=10)return $found;
+    $number=null;$company='';
+    foreach($value as $key=>$child){
+        if(!is_string($key))continue;$k=strtolower(str_replace(['_','-'],'',$key));
+        if(in_array($k,['trackingno','trackingnumber','mailno','waybillno','waybillnumber','expressno','logisticsno','outsid','shipmentno','trackno'],true)&&(is_string($child)||is_int($child)))$number=(string)$child;
+        if(in_array($k,['company','companyname','logisticscompany','logisticscompanyname','expresscompany','cpname','carrier','carriername'],true)&&is_string($child))$company=$child;
+    }
+    if($number!==null&&preg_match('/^[A-Za-z0-9-]{6,40}$/',$number))$found[]=['no'=>strtoupper($number),'company'=>mb_substr(preg_replace('/[\x00-\x1F\x7F<>]/u','',$company),0,60)];
+    foreach($value as $child)if(is_array($child))inbound_tracking_extract($child,$found,$depth+1);
+    return $found;
+}
+function inbound_status_text(mixed $value,int $depth=0): string {
+    if($depth>8||!is_array($value))return '';
+    foreach($value as $key=>$child)if(is_string($key)&&is_string($child)&&in_array(strtolower(str_replace('_','',$key)),['statusdesc','logisticsstatus','actiondesc','desc','context','status'],true)&&trim($child)!=='')return mb_substr(preg_replace('/[\x00-\x1F\x7F<>]/u','',$child),0,160);
+    foreach($value as $child){$text=inbound_status_text($child,$depth+1);if($text!=='')return $text;}
+    return '';
+}
+function inbound_merge(array &$o,array $numbers,string $source): void {
+    $list=$o['inbound']['numbers']??[];$known=array_column($list,'no');
+    foreach($numbers as $n){if(in_array($n['no'],$known,true)||count($list)>=20)continue;$list[]=$n+['source'=>$source,'added_at'=>gmdate('c')];$known[]=$n['no'];}
+    $o['inbound']['numbers']=$list;
+}
+function inbound_add_manual(string $id,array $b,?string $location=null): array {
+    $number=strtoupper(str_field($b,'number',40));$company=str_field($b,'company',60,false);
+    if(!preg_match('/^[A-Z0-9-]{6,40}$/',$number))fail('Tracking дугаар буруу.');
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $o=order_row($id)['order'];
+        if($location!==null&&(!warehouse_order_visible($o,$location)||!in_array($o['status'],['confirmed','shipping'],true)))fail('Захиалга олдсонгүй.',404);
+        inbound_merge($o,[['no'=>$number,'company'=>$company]],$location===null?'admin':'warehouse');save_order($o);$db->exec('COMMIT');return $o;
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+function inbound_public(array $o): array {
+    $p=$o['purchase']??[];
+    return ['numbers'=>array_map(fn($n)=>array_intersect_key($n,array_flip(['no','company','source'])),$o['inbound']['numbers']??[]),'status'=>$o['inbound']['status']??'','checked_at'=>$o['inbound']['checked_at']??null,
+        'provider_order_ids'=>$p['provider_order_ids']??[],'trackable'=>($p['state']??'')==='created'&&!empty($p['provider_order_ids'])];
+}
+// Erenhot list views refresh a few stale purchases after the response has been sent.
+function inbound_schedule_refresh(): void {
+    if(!function_exists('fastcgi_finish_request')||empty(taobao_buyer_state()['access_token']))return;
+    $db=db();$s=$db->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['inbound_refresh_run']);if((int)$s->fetchColumn()>time()-600)return;
+    $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['inbound_refresh_run',(string)time()]);
+    register_shutdown_function(static function(){
+        ignore_user_abort(true);if(session_status()===PHP_SESSION_ACTIVE)session_write_close();fastcgi_finish_request();
+        foreach(inbound_refresh_candidates(5) as $id){try{taobao_purchase_track($id);}catch(Throwable $e){error_log('GOStore inbound tracking deferred');}}
+    });
+}
+function inbound_refresh_candidates(int $limit,?int $now=null): array {
+    $now??=time();$ids=[];
+    $s=db()->prepare("SELECT id,data FROM orders WHERE data LIKE '%\"state\":\"created\"%' ORDER BY created");$s->execute();
+    foreach($s->fetchAll() as $row){
+        $o=json_decode($row['data'],true);
+        if(!is_array($o)||!in_array($o['status']??'',['confirmed','shipping'],true)||($o['purchase']['state']??'')!=='created')continue;
+        if((strtotime($o['inbound']['checked_at']??'')?:0)>$now-10800)continue;
+        $ids[]=$row['id'];if(count($ids)>=$limit)break;
+    }
+    return $ids;
+}
+function inbound_warehouse_post(string $action,array $b,string $location): never {
+    if(warehouse_role($location)!=='erenhot')fail('Эрээн агуулахад ирж буй ачааг бүртгэнэ.',403);
+    limit_attempts('inbound:'.$location.':'.($_SERVER['REMOTE_ADDR']??''),60,900);
+    $id=str_field($b,'id',50);
+    if($action==='warehouse-inbound-add')$o=inbound_add_manual($id,$b,$location);
+    elseif($action==='warehouse-inbound-refresh'){$o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);$o=taobao_purchase_track($id);}
+    else fail('Үйлдэл олдсонгүй.',404);
+    json_out(['order'=>warehouse_order_public($o,$location)]);
 }
