@@ -223,3 +223,13 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  $('#close-category-menu').addEventListener('click',()=>menu.close());menu.addEventListener('close',()=>{trigger.setAttribute('aria-expanded','false');trigger.focus({preventScroll:true});});
  menu.addEventListener('click',e=>{if(e.target===menu){const r=menu.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)menu.close();}const department=e.target.closest('[data-department]');if(department){selected=department.dataset.department;draw();menu.querySelector('[data-department="'+selected+'"]').focus();return;}const choice=e.target.closest('[data-menu-query],[data-menu-category]');if(!choice)return;if(document.documentElement.classList.contains('product-view')||typeof window.supplierBrowse!=='function')return; e.preventDefault();menu.close();if(choice.dataset.menuCategory)filterCategory(choice.dataset.menuCategory);else{window.supplierBrowse(choice.dataset.menuQuery);scrollCatalog();}});
 })();
+
+// Share the full taxonomy with the header without issuing a catalog request.
+(()=>{
+ const row=document.querySelector('#quick-categories');if(!row)return;
+ row.innerHTML=categories.map(c=>`<button type="button" class="nav-link" data-supplier-query="${esc(c.query)}">${esc(c.name)}</button>`).join('');
+ const controls=[...document.querySelectorAll('[data-nav-scroll]')];
+ function sync(){const max=row.scrollWidth-row.clientWidth;controls.forEach(b=>b.disabled=Number(b.dataset.navScroll)<0?row.scrollLeft<=1:row.scrollLeft>=max-1);}
+ controls.forEach(b=>b.addEventListener('click',()=>row.scrollBy({left:Number(b.dataset.navScroll)*row.clientWidth*.75,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})));
+ row.addEventListener('scroll',sync,{passive:true});new ResizeObserver(sync).observe(row);document.fonts.ready.then(sync);sync();
+})();

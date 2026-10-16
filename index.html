@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Taobao каталогоос Хятад бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="/styles.css?v=20261016-catalog">
-  <script src="/script.js?v=20261016-catalog" defer></script><script src="/store-server.js?v=20261016-catalog" defer></script><script src="/account.js?v=20261013-account" defer></script><script src="/supplier.js?v=20261016-catalog" defer></script>
+  <link rel="stylesheet" href="/styles.css?v=20261016-quick-nav">
+  <script src="/script.js?v=20261016-quick-nav" defer></script><script src="/store-server.js?v=20261016-catalog" defer></script><script src="/account.js?v=20261013-account" defer></script><script src="/supplier.js?v=20261016-catalog" defer></script>
 <link rel="preload" href="/assets/fonts/arimo-variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css?v=20261010-gilroy">
 <script src="/barcode.js?v=20261013-logistics" defer></script><script src="/cargo.js?v=20261013-warehouses" defer></script><link rel="stylesheet" href="/product-page.css?v=20261016-catalog"><script src="/product-page.js?v=20261016-catalog" defer></script></head>
@@ -46,7 +46,7 @@
         <button class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></button>
       </div>
     </div>
-    <div class="nav-wrap"><nav class="container main-nav" aria-label="Барааны шуурхай ангилал"><span class="nav-caption">Таны өдөр тутамд</span><button class="nav-link" data-supplier-query="home storage">Гэр ахуй</button><button class="nav-link" data-supplier-query="bag">Цүнх</button><button class="nav-link" data-supplier-query="shoes">Гутал</button><button class="nav-link" data-supplier-query="headphones">Электроник</button><button class="nav-link" data-supplier-query="skincare">Гоо сайхан</button><button class="nav-link nav-end" data-action="help">Захиалах заавар ↗</button></nav></div>
+    <div class="nav-wrap"><nav class="container main-nav" aria-label="Барааны шуурхай ангилал"><span class="nav-caption">Таны өдөр тутамд</span><button class="nav-scroll" type="button" data-nav-scroll="-1" aria-label="Өмнөх ангиллууд" aria-controls="quick-categories">‹</button><div class="quick-categories" id="quick-categories"></div><button class="nav-scroll" type="button" data-nav-scroll="1" aria-label="Дараах ангиллууд" aria-controls="quick-categories">›</button><button class="nav-link nav-end" data-action="help">Захиалах заавар ↗</button></nav></div>
   </header>
   <dialog id="category-menu" aria-labelledby="category-menu-title"><div class="category-menu-heading"><h2 id="category-menu-title">Барааны ангилал</h2><button class="icon-button" id="close-category-menu" aria-label="Ангиллын цэс хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><label class="category-search"><span class="sr-only">Ангилал хайх</span><input id="category-search" type="search" placeholder="Ангилал хайх · хувцас, гутал, гал тогоо…" autocomplete="off"></label><div class="category-menu-layout"><nav id="category-departments" aria-label="Барааны ангиллууд"></nav><section id="category-suggestions" aria-live="polite"></section></div></dialog>
   <main id="main">
