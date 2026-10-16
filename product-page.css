@@ -13,3 +13,7 @@
 .pd-videos video{aspect-ratio:16/9}.pd-description-photos>div{max-width:790px;margin:0 auto}
 
 .pd-preview{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:32px 0;min-height:460px}.pd-preview>img{width:100%;max-height:580px;object-fit:contain;border-radius:18px;background:#f6f7f9}.pd-preview h1{font-size:28px;line-height:1.35;margin:18px 0}.pd-preview [role=status]{margin-top:24px;color:#667085}@media(max-width:760px){.pd-preview{grid-template-columns:1fr;gap:20px;padding:16px 0}.pd-preview>img{max-height:360px}.pd-preview h1{font-size:22px}}
+/* Instant checkout: add-to-cart beside «Шууд захиалах». */
+.pd-buybar .pd-add{display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:0 16px;min-width:0}
+.pd-buybar .pd-add .icon{width:20px;height:20px}
+@media(max-width:760px){.pd-buybar .pd-add{min-width:48px;width:48px;padding:0;justify-content:center;flex:0 0 48px}.pd-buybar .pd-add span{display:none}.pd-buybar .button[data-pd-submit]{min-width:0;flex:0 1 auto}}

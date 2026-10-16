@@ -186,6 +186,7 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
         $pictures=[$r['image']];foreach($p['Pictures']??[] as $picture){if(is_array($picture))$pictures[]=supplier_image((string)($picture['Url']??''));}
         $r['images']=array_slice(array_values(array_unique(array_filter($pictures))),0,20);
         $r['vendor_name']=supplier_text($p['VendorDisplayName']??$p['VendorName']??'',200);
+        $r['vendor_id']=supplier_text($p['VendorId']??'',100);
         $r['original_name']=supplier_text($p['OriginalTitle']??'',500);
         $r['brand']=supplier_text($p['BrandName']??'',200);
         $r['category_id']=supplier_text($p['CategoryId']??'',100);
@@ -263,7 +264,7 @@ function supplier_order(array $b): array {
     if(!$variant||$variant['cny']===null)fail('Барааны хувилбар эсвэл үнэ тодорхойгүй байна.',409);
     $qty=int_field($b,'qty',1,9999);if($qty<$p['min_qty']||($qty-$p['min_qty'])%$p['step']!==0||($variant['stock']!==null&&$qty>$variant['stock']))fail('Багцын тоо эсвэл үлдэгдлийг шалгана уу.');
     // Supplier variants and quantity discounts require an operator's final quote.
-    return ['id'=>$p['id'],'provider'=>$p['provider'],'sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
+    return ['id'=>$p['id'],'provider'=>$p['provider'],'sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'vendor_id'=>$p['vendor_id']??'','fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
 }
 
 require_once __DIR__.'/supplier-snapshot.php';

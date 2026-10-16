@@ -4,7 +4,7 @@ customerAccount.setUser=user=>{
   customerAccount.user=user;
   document.documentElement.classList.toggle('customer-signed-in',!!user);
   window.syncMobileNav?.();
-  if(!user&&document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#modal .account-summary'))accountForm();
+  if(!user&&document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form,#modal .account-summary'))accountForm();
   document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?'Профайл':'Нэвтрэх');
 };
 customerAccount.require=()=>{if(customerAccount.user)return true;customerAccount.open();return false;};

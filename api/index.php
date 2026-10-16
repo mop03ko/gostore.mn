@@ -12,6 +12,7 @@ require __DIR__.'/../server/warehouse.php';
 require __DIR__.'/../server/warehouse-batches.php';
 require __DIR__.'/../server/logistics.php';
 require __DIR__.'/../server/freight-payment.php';
+require __DIR__.'/../server/checkout.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
@@ -29,6 +30,8 @@ try {
     $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
+    // Unpaid instant checkouts are released lazily (at most every five minutes).
+    if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due();
     if ($method==='GET') {
         if($warehouseAction)warehouse_get($action);
         if ($action==='catalog') json_out(['products'=>products(),'local_products_enabled'=>config()['local_products_enabled'],'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
@@ -62,8 +65,10 @@ try {
     }
     $b=body();
     if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);
+    if($action==='checkout-quote')json_out(checkout_preview($b));
     if(in_array($action,['order-photo','freight-invoice','payment-check'],true)){
         $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);
+        if($action==='payment-check'){checkout_expire_order($r['id']);$r=order_row($r['id']);}
         if($action==='order-photo')logistics_photo_read($r['order'],str_field($b,'photo',32));
         if($action==='freight-invoice')json_out(['order'=>public_order(freight_invoice($r['id']))]);
         if(isset($r['order']['callback_token'])&&!$r['order']['paid'])qpay_callback($r['id'],$r['order']['callback_token']);
@@ -92,18 +97,19 @@ try {
     if ($action==='logout') { $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
         if(($b['type']??'')==='link')fail('Линкээр захиалах үйлчилгээ зогссон. Каталогоос бараагаа сонгоно уу.',410);
-        if(($b['require_account']??false)===true)customer_required();
+        if(($b['require_account']??false)===true||($b['type']??'')==='checkout')customer_required();
         limit_attempts('order:'.($_SERVER['REMOTE_ADDR']??''),15,3600);
         $token=str_field($b,'token',100); if (!preg_match('/^[a-f0-9]{64}$/',$token)) fail('Хүсэлтийн түлхүүр буруу.');
         $key=hash('sha256',$token); $s=db()->prepare('SELECT id FROM orders WHERE request_key=?');$s->execute([$key]);
         if ($existing=$s->fetchColumn()) { $r=order_row($existing);customer_order_access($r,$b);json_out(['order'=>public_order($r['order'])]); }
-        $type=str_field($b,'type',10); if (!in_array($type,['cart','supplier'],true)) fail('Захиалгын төрөл буруу.');
+        $type=str_field($b,'type',10); if (!in_array($type,['cart','supplier','checkout'],true)) fail('Захиалгын төрөл буруу.');
         $o=['type'=>$type,'title'=>str_field($b,'title',120),'customer'=>str_field($b,'customer',100),'phone'=>str_field($b,'phone',30),'notes'=>str_field($b,'notes',1000,false),'status'=>'new','amount'=>0,'paid'=>false,'demo'=>false,'internal_note'=>'','created'=>gmdate('c')];
         if (!preg_match('/^[+\d ()-]{8,25}$/',$o['phone'])) fail('Холбогдох утасны дугаараа шалгана уу.');
         $address=str_field($b,'address',500,false);
         $o['delivery_address']=$address;
         if($address!=='')$o['notes']=trim($o['notes']."\nХүргэлтийн хаяг: ".$address);
-        if ($type==='supplier') {
+        if($type==='checkout')$o=checkout_order($b,$o);
+        elseif ($type==='supplier') {
             $o['supplier']=supplier_order($b);$o['title']=mb_substr($o['supplier']['name'],0,120);$o['url']=$o['supplier']['url'];$o['variant']=$o['supplier']['variant'];$o['qty']=$o['supplier']['qty'];$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];
         } else {
             $items=$b['items']??[];if (!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>100) fail('Сагс буруу байна.');
@@ -142,7 +148,8 @@ try {
         json_out(['order'=>public_order($o)],201);
     }
     if (in_array($action,['order-get','invoice'],true)) {
-        $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);
+        $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);checkout_expire_order($r['id']);
+        if($action==='invoice'&&checkout_expired_or_cancelled($r['id']))fail('Төлбөрийн хугацаа дууссан тул захиалга цуцлагдсан. Сагсаа дахин захиална уу.',409);
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):$r['order'])]);
     }
     admin_required();

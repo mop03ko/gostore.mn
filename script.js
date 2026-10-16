@@ -64,7 +64,7 @@ function persist() {
   return storageAvailable;
 }
 function updateCounts() {
-  const count=state.cart.reduce((sum,item)=>sum+item.qty,0);
+  const count=state.cart.reduce((sum,item)=>sum+item.qty,0)+(window.taobaoCart?.count()||0);
   $('#cart-count').textContent=count;
   if($('#mobile-cart-count'))$('#mobile-cart-count').textContent=count;
   const favorites=window.supplierFavoriteCount?window.supplierFavoriteCount():state.favorites.length;
@@ -123,6 +123,8 @@ function addToCart(id,variant,qty=1) {
 }
 function cartTotal() {return state.cart.reduce((sum,item)=>sum+productById(item.id).price*item.qty,0);}
 function showCart() {
+  // Ready-stock sales are paused; the header cart then holds Taobao checkout items.
+  if(window.taobaoCart&&!localProductsEnabled&&!state.cart.length)return window.taobaoCart.show();
   if(!window.customerAccount?.require())return;
   if(!state.cart.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Өөрт таалагдсан бараагаа сонгоорой.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
   openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);

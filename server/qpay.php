@@ -77,7 +77,7 @@ function qpay_callback(string $id,string $key): array {
     $result=qpay_http('/v2/payment/check',['object_type'=>'INVOICE','object_id'=>$o['invoice']['id'],'offset'=>['page_number'=>1,'page_limit'=>100]],'Bearer '.qpay_token());
     if (paid_amount($result)>=$o['amount']) {
         $db=db(); $db->exec('BEGIN IMMEDIATE');
-        try { $fresh=order_row($id)['order']; if(!$fresh['paid']){$fresh['paid']=true;$fresh['paid_at']=gmdate('c');if($fresh['status']==='quoted'){$fresh['status']='confirmed';$fresh['history'][]=['status'=>'confirmed','at'=>gmdate('c')];}save_order($fresh);} $db->exec('COMMIT'); }
+        try { $fresh=order_row($id)['order']; if(!$fresh['paid']){$fresh['paid']=true;$fresh['paid_at']=gmdate('c');if($fresh['status']==='quoted'||($fresh['status']==='cancelled'&&($fresh['cancel_reason']??'')==='payment_timeout')){$fresh['status']='confirmed';unset($fresh['cancel_reason']);$fresh['history'][]=['status'=>'confirmed','at'=>gmdate('c')];}save_order($fresh);} $db->exec('COMMIT'); }
         catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     }
     return ['ok'=>true];

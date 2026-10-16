@@ -184,3 +184,5 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 /* Hidden until the admin enables provider photo search. */
 .search-form .image-search-button[hidden],.supplier-search .image-search-button[hidden]{display:none}
 @media(max-width:760px){.supplier-search:has(.image-search-button:not([hidden])){grid-template-columns:minmax(0,1fr) auto auto}.supplier-search .image-search-button{grid-column:2;grid-row:1;min-height:48px}.supplier-search button[type=submit]{grid-column:3}.catalog-context .image-search-preview{margin:10px 10px 0 0}.image-search-preview img{width:44px;height:44px}}
+.checkout-totals{margin-top:16px}
+.cart-row h3 a{color:inherit;text-decoration:none}
