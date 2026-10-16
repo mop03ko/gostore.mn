@@ -44,4 +44,5 @@ check($status('GS-000004')==='quoted','Paid order was cancelled');
 check(checkout_expired_or_cancelled('GS-000002')&&!checkout_expired_or_cancelled('GS-000001'),'Expiry state incorrect');
 // The final settlement keeps the stored rates and starts from the prepaid breakdown.
 check(settlement_summary(order_row('GS-000001')['order'])['breakdown']['domestic_mnt']===10000,'Settlement lost checkout breakdown');
+check(str_contains(shipping_public()['pickup']['address'],'14б байр, 4 тоот'),'Default Ulaanbaatar pickup address missing');
 echo "PASS: checkout pricing (sellers, service, cargo later), stock/duplicate/stale-total checks, 24 h expiry, invoice and paid protection.\n";

@@ -29,6 +29,9 @@ function shipping_save(array $b): array {
 function warehouse_profile(string $location): array {
     if(!in_array($location,['erenhot','ulaanbaatar'],true)&&(!function_exists('warehouse_definitions')||!isset(warehouse_definitions()[$location])))fail('Агуулахын байршил буруу.');
     $defaults=['name'=>$location==='erenhot'?'Эрээн агуулах':'Улаанбаатар агуулах','address'=>'','phone'=>'','contact_phone'=>'','hours'=>''];
+    // Customers collect parcels at the Ulaanbaatar cargo office unless the admin saves another address.
+    if($location==='ulaanbaatar')$defaults['address']="Улаанбаатар хот, Сүхбаатар дүүрэг, 3-р хороо, 5-р хороолол, 14б байр, 4 тоот.
+Шуудангийн код: 14252-0024";
     if($location==='erenhot'){$s=shipping_settings();foreach(['address','phone','contact_phone'] as $key)$defaults[$key]=$s['warehouse_'.$key];}
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['warehouse_profile_'.$location]);
     return array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true),['location'=>$location]);
@@ -66,7 +69,8 @@ function shipping_calculate(array $b,?array $s=null): array {
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'cargo_method'=>$method,'cargo_measure'=>$measure],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c')];
 }
 function shipping_public(): array {
-    $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);return $s;
+    $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
+    $pickup=warehouse_profile('ulaanbaatar');$s['pickup']=array_intersect_key($pickup,array_flip(['name','address','phone','hours']));return $s;
 }
 function warehouse_destination(array $order,array $input): array {
     $family=str_field($input,'family_name',100);$given=str_field($input,'customer',100);
