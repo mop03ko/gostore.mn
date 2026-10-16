@@ -14,10 +14,14 @@ await shop('catalog');assert.equal((await shop('supplier-product',{id:'https://e
 const search=await shop('supplier-search',{q:'bag',page:1,sort:'default'});assert.equal(search.status,200);assert.ok(search.products.length>0);assert.equal(search.shipping.cny_rate,550);
 const d=await shop('supplier-product',{id:search.products[0].id});assert.equal(d.status,200);assert.ok(d.cache_ttl>0&&d.cache_ttl<=3600);assert.ok(search.cache_ttl>0&&search.cache_ttl<=3600);
 const p=d.product,v=p.variants.find(v=>v.cny&&v.stock>=p.min_qty);
+assert.equal(p.id,'tb-123456789');assert.equal(p.provider,'taobao');assert.equal(p.provider_label,'Taobao');assert.equal(p.url,'https://item.taobao.com/item.htm?id=123456789');
+const legacy=await shop('supplier-product',{id:'abb-123456789'});assert.equal(legacy.product.provider,'alibaba1688');assert.equal(legacy.product.url,'https://detail.1688.com/offer/123456789.html');
+for(const id of ['123456789','tb-abb-123456789','tb-123456789/../a','tb-1234'])assert.equal((await shop('supplier-product',{id})).status,400);
+
 const b={type:'supplier',token:crypto.randomBytes(32).toString('hex'),product_id:p.id,sku:v.id,qty:p.min_qty,title:'Tampered title',customer:'Тамир',family_name:'Бат',phone:'99112233',notes:'',price:1,amount:1,unit_cny:1};
 assert.equal((await shop('order-create',{...b,sku:'fake'})).status,409);
 assert.equal((await shop('order-create',{...b,family_name:''})).status,400);
-const order=(await shop('order-create',b)).order;assert.equal(order.warehouse.recipient,'Бат Тамир / '+order.id);assert.equal(order.warehouse.phone,'18047981132');assert.equal(order.warehouse.contact_phone,'99889815');assert.ok(order.warehouse.label.includes(order.id));assert.equal(order.supplier.unit_cny,v.cny);assert.equal(order.amount,0);assert.notEqual(order.title,b.title);
+const order=(await shop('order-create',b)).order;assert.equal(order.warehouse.recipient,'Бат Тамир / '+order.id);assert.equal(order.warehouse.phone,'18047981132');assert.equal(order.warehouse.contact_phone,'99889815');assert.ok(order.warehouse.label.includes(order.id));assert.equal(order.supplier.provider,'taobao');assert.equal(order.supplier.id,'tb-123456789');assert.equal(order.supplier.unit_cny,v.cny);assert.equal(order.amount,0);assert.notEqual(order.title,b.title);
 assert.equal((await shop('order-create',b)).order.id,order.id);
 assert.equal((await admin('shipping-save',{...settings,cny_rate:-1})).status,400);
 const inputs={goods_cny:10,domestic_cny:2,cargo_method:'weight',cargo_measure:0.501};

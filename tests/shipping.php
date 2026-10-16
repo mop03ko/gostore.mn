@@ -13,6 +13,11 @@ $fixture['Pictures']=[['Url'=>'https://img.alicdn.com/first.jpg'],['Url'=>'https
 $fixture['VendorName']='Нийлүүлэгч';$p=supplier_normalize($fixture,true);
 check($p['images']===['https://img.alicdn.com/first.jpg'],'Gallery deduplicates and allows safe image hosts only');
 check($p['vendor_name']==='Нийлүүлэгч'&&$p['attributes']===[['name'=>'Өнгө','value'=>'Улаан']],'Detail vendor and attributes');
+$taobao=array_replace($fixture,['Id'=>'123456789','ProviderType'=>'Taobao','Title'=>'','OriginalTitle'=>'原商品']);
+$tp=supplier_normalize($taobao,true,'taobao');check($tp['id']==='tb-123456789'&&$tp['provider']==='taobao'&&$tp['name']==='原商品','Taobao namespace and original-title fallback');
+check($tp['url']==='https://item.taobao.com/item.htm?id=123456789'&&$tp['mnt']===6875&&$tp['variants'][0]['cny']===15.0,'Taobao CNY prices and SKU');
+foreach([array_replace($taobao,['ProviderType'=>'Alibaba1688']),array_replace($taobao,['Id'=>'abb-123456789']),array_replace($taobao,['HasError'=>true])] as $invalid){try{supplier_normalize($invalid,true,'taobao');throw new RuntimeException('Wrong provider accepted');}catch(ApiError){}}
+check(supplier_cache_key('/v1/taobao/product/123456789',['language'=>'mn'])!==supplier_cache_key('/v1/alibaba1688/product/123456789',['language'=>'mn']),'Provider cache isolation');
 check(supplier_cny(['OriginalPrice'=>20,'OriginalCurrencyCode'=>'USD'])===null,'Currency isolation');
 $before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>0.5]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===7000,'Snapshot preserved');
 $destination=warehouse_destination(['id'=>'GS-TEST-123'],['family_name'=>'Бат','customer'=>'Тамир','warehouse'=>['recipient'=>'Wrong','address'=>'Wrong']]);

@@ -1,10 +1,10 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const base=process.env.TEST_BASE,data=process.env.GOSTORE_DATA_DIR;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);assert.ok(path.resolve(data).startsWith(path.resolve('tmp')+path.sep));
-const dir=path.join(data,'supplier-cache'),key=crypto.createHash('sha256').update('/v1/alibaba1688/search?item_title=bag&language=mn&limit=12&page=1&sort=default').digest('hex'),file=path.join(dir,key+'.json');
+const dir=path.join(data,'supplier-cache'),key=crypto.createHash('sha256').update('/v1/taobao/search?item_title=bag&language=mn&limit=12&page=1&sort=default').digest('hex'),file=path.join(dir,key+'.json');
 const url=base+'/api/index.php?action=supplier-search&q=bag&page=1&sort=default';
 (async()=>{
  const before=fs.readFileSync(file,'utf8');
- for(let i=0;i<2;i++){const r=await fetch(url,{headers:{Cookie:'gostore_customer=unrelated-'+i}}),b=await r.json();assert.equal(r.status,200);assert.equal(r.headers.get('set-cookie'),null,'Public cache does not open a session');assert.match(r.headers.get('cache-control'),/^public, max-age=60/);assert.equal(b.stale,false);assert.ok(b.cache_expires>Math.floor(Date.now()/1000));assert.equal(b.products[0].id,'abb-123456789');for(const name of ['csrf','customer','authenticated','api_key'])assert.ok(!(name in b));}
+ for(let i=0;i<2;i++){const r=await fetch(url,{headers:{Cookie:'gostore_customer=unrelated-'+i}}),b=await r.json();assert.equal(r.status,200);assert.equal(r.headers.get('set-cookie'),null,'Public cache does not open a session');assert.match(r.headers.get('cache-control'),/^public, max-age=60/);assert.equal(b.stale,false);assert.ok(b.cache_expires>Math.floor(Date.now()/1000));assert.equal(b.products[0].id,'tb-123456789');for(const name of ['csrf','customer','authenticated','api_key'])assert.ok(!(name in b));}
  assert.equal(fs.readFileSync(file,'utf8'),before,'Different customers read the same server file without a provider request');
  const product=await fetch(base+'/api/index.php?action=supplier-product&id=abb-123456789');assert.equal(product.status,200);assert.equal(product.headers.get('set-cookie'),null);
  for(const suffix of ['&page[]=1','&page=1.5','&sort=invalid','&q[]=bad']){const r=await fetch(url+suffix);assert.equal(r.status,400);assert.equal(r.headers.get('cache-control'),'no-store');}
