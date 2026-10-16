@@ -198,6 +198,34 @@ function supplier_search(array $b,bool $display=false): array {
     if($display)supplier_schedule_warm();
     return supplier_search_result($c,$page);
 }
+// Image search: OT fetches the photo by URL, so a re-encoded JPEG is published under a content hash for 7 days.
+function supplier_image_search_dir(): string { return dirname(__DIR__).'/assets/uploads/search'; }
+function supplier_image_search_upload(): array {
+    if(!supplier_ready()||!shipping_settings()['image_search_enabled'])fail('Зургаар хайх үйлчилгээ түр идэвхгүй байна.',503);
+    limit_attempts('supplier-image-upload:'.($_SERVER['REMOTE_ADDR']??'cli'),20,3600);
+    $f=$_FILES['image']??null;if(!$f||$f['error']!==UPLOAD_ERR_OK||$f['size']>5*1024*1024)fail('5 MB хүртэл зураг сонгоно уу.');
+    $info=@getimagesize($f['tmp_name']);if(!$info||!in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true)||$info[0]*$info[1]>12000000)fail('JPEG, PNG, WebP зураг (12 MP хүртэл) оруулна уу.');
+    if(!function_exists('imagecreatefromstring'))fail('Серверт GD өргөтгөл шаардлагатай.',503);
+    $image=@imagecreatefromstring(file_get_contents($f['tmp_name']));if(!$image)fail('Зураг уншигдсангүй.');
+    $scale=min(1,800/max(imagesx($image),imagesy($image)));$width=max(1,(int)round(imagesx($image)*$scale));$height=max(1,(int)round(imagesy($image)*$scale));
+    $canvas=imagecreatetruecolor($width,$height);imagefill($canvas,0,0,imagecolorallocate($canvas,255,255,255));imagecopyresampled($canvas,$image,0,0,0,0,$width,$height,imagesx($image),imagesy($image));
+    ob_start();$ok=imagejpeg($canvas,null,85);$jpeg=(string)ob_get_clean();imagedestroy($canvas);imagedestroy($image);
+    if(!$ok||$jpeg==='')fail('Зураг хадгалагдсангүй.',503);
+    $dir=supplier_image_search_dir();if(!is_dir($dir)&&!mkdir($dir,0755,true))fail('Зураг хадгалагдсангүй.',503);
+    foreach(array_slice(glob($dir.'/*.jpg')?:[],0,500) as $old)if(filemtime($old)<time()-604800)@unlink($old);
+    $hash=substr(hash('sha256',$jpeg),0,32);$path=$dir.'/'.$hash.'.jpg';
+    if(!is_file($path)){$tmp=tempnam($dir,'write-');if($tmp===false||file_put_contents($tmp,$jpeg,LOCK_EX)===false||!chmod($tmp,0644)||!rename($tmp,$path)){if($tmp&&is_file($tmp))unlink($tmp);fail('Зураг хадгалагдсангүй.',503);}}
+    else touch($path);
+    return ['image'=>$hash];
+}
+function supplier_image_search(string $hash,int $page,bool $display=false): array {
+    if(!preg_match('/^[a-f0-9]{32}$/D',$hash))fail('Зургийн дугаар буруу.');
+    if(!shipping_settings()['image_search_enabled'])fail('Зургаар хайх үйлчилгээ түр идэвхгүй байна.',503);
+    if(!is_file(supplier_image_search_dir().'/'.$hash.'.jpg'))fail('Хайлтын зургийн хугацаа дууссан. Зургаа дахин оруулна уу.',404);
+    if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
+    $c=supplier_request('/v1/taobao/search',['language'=>'mn','image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>12],$display);
+    return supplier_search_result($c,$page)+['image'=>$hash];
+}
 function supplier_search_result(array $c,int $page): array {
     $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_normalize($p,false,'taobao');}catch(ApiError){}}
     return ['products'=>$items,'page'=>$page,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];

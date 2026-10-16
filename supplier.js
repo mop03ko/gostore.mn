@@ -1,6 +1,6 @@
 'use strict';
 function shippingOrderHtml(o){if(!o.supplier&&!o.quote&&!o.route)return '';const b=o.quote?.breakdown;return `<div class="info-box"><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Ачааны байршлын төлөвийг GOStore шинэчилнэ.</p>${o.fulfillment?`<p>Авах хэлбэр: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.warehouse?`<h3>Эрээн агуулахын хүлээн авах мэдээлэл</h3><p><strong>${esc(o.warehouse.recipient)}</strong></p><p>${esc(o.warehouse.address)}<br>手机号: ${esc(o.warehouse.phone)}<br>Утас: ${esc(o.warehouse.contact_phone)}</p><p>Ачааг энэ овог нэр, захиалгын кодоор бүртгэнэ.</p>`:''}${o.supplier?`<p>${esc(o.supplier.variant)} × ${o.supplier.qty} · Барааны лавлах дүн ${esc(o.supplier.goods_cny)}¥</p>`:''}${b?`<p>Бараа: ${money(b.goods_mnt)}<br>Хятад доторх хүргэлт: ${money(b.domestic_mnt)}<br>Үйлчилгээ: ${money(b.service_mnt)}<br>Карго: ${money(b.cargo_mnt)}<br>Тооцоонд ашигласан ханш: 1¥ = ${money(o.quote.rates.cny_rate)}</p>`:''}${o.history?.length?`<ol>${o.history.map(h=>`<li>${esc(orderLabels[h.status]||h.status)} · ${new Date(h.at).toLocaleString('mn-MN')}</li>`).join('')}</ol>`:''}</div>`;}
-let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')||'bag').slice(0,100),supplierSort=['default','price','-price','-volume'].includes(initialFilters.get('sort'))?initialFilters.get('sort'):'default',supplierBusy=false,supplierSelected=null;
+let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')||'bag').slice(0,100),supplierSort=['default','price','-price','-volume'].includes(initialFilters.get('sort'))?initialFilters.get('sort'):'default',supplierBusy=false,supplierSelected=null,supplierImage=/^[a-f0-9]{32}$/.test(initialFilters.get('image')||'')?initialFilters.get('image'):'';
 function supplierRateText(s){return `1 юань = ${money(s.cny_rate)} · ${s.weight_step_kg} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ) · ${s.volume_threshold} м³-ээс бага: ${s.volume_small_cny}¥/м³, түүнээс их буюу тэнцүү: ${s.volume_large_cny}¥/м³. Жин эсвэл эзлэхүүнээр тооцох аргыг админ баталгаажуулна.`;}
 
 const SUPPLIER_FAVORITES_KEY='gostore-taobao-favorites-v1';
@@ -28,25 +28,26 @@ function renderSupplierCards(items){
 function supplierUrl(page=1){
   if(document.documentElement.classList.contains('product-view'))return;
   const url=new URL(location.href);url.searchParams.delete('category');
-  for(const [key,value] of Object.entries({q:supplierQuery==='bag'?'':supplierQuery,sort:supplierSort==='default'?'':supplierSort,page:page===1?'':String(page),filter:supplierSaved?'saved':''})){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}
+  for(const [key,value] of Object.entries({q:supplierImage||supplierQuery==='bag'?'':supplierQuery,image:supplierSaved?'':supplierImage,sort:supplierImage||supplierSort==='default'?'':supplierSort,page:page===1?'':String(page),filter:supplierSaved?'saved':''})){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}
   history.replaceState(null,'',url.pathname+url.search+url.hash);
-  $('#supplier-reset').hidden=!supplierSaved&&supplierQuery==='bag'&&supplierSort==='default'&&page===1;
+  $('#supplier-reset').hidden=!supplierSaved&&!supplierImage&&supplierQuery==='bag'&&supplierSort==='default'&&page===1;
 }
 function supplierViewState(){
-  document.querySelectorAll('[data-supplier-query]').forEach(b=>b.setAttribute('aria-pressed',String(!supplierSaved&&b.dataset.supplierQuery===supplierQuery)));
+  document.querySelectorAll('[data-supplier-query]').forEach(b=>b.setAttribute('aria-pressed',String(!supplierSaved&&!supplierImage&&b.dataset.supplierQuery===supplierQuery)));
   window.syncMobileNav?.();
-  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан Taobao бараа':'Хятадаас захиалах бараа';
+  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан Taobao бараа':supplierImage?'Зургаар хайсан бараа':'Хятадаас захиалах бараа';
+  const preview=$('#image-search-preview');preview.hidden=supplierSaved||!supplierImage;if(!preview.hidden)preview.querySelector('img').src='/assets/uploads/search/'+supplierImage+'.jpg';
   document.querySelectorAll('#catalog .filter-tabs button').forEach(b=>{const active=(b.dataset.filter==='saved')===supplierSaved;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 }
 window.supplierBrowse=(query,saved=false)=>{
-  supplierSaved=saved;supplierViewState();
+  supplierSaved=saved;if(!saved)supplierImage='';supplierViewState();
   if(saved){supplierUrl();++supplierLoadSequence;supplierBusy=false;$('#supplier-search button').disabled=false;$('#supplier-grid').removeAttribute('aria-busy');renderSupplierCards(supplierFavoriteItems());$('#supplier-paging').replaceChildren();$('#supplier-status').textContent='Хадгалсан Taobao бараа · Үнэ, үлдэгдлийг дэлгэрэнгүй хуудаснаас шинэчилж харна.';return;}
   supplierQuery=String(query||'bag').trim().slice(0,100)||'bag';$('#supplier-query').value=supplierQuery;$('#search').value=supplierQuery;loadSupplier();
 };
 async function loadSupplier(page=1){
-  const request=++supplierLoadSequence,query=supplierQuery,sort=supplierSort;
+  const request=++supplierLoadSequence,query=supplierQuery,sort=supplierSort,image=supplierImage;
   supplierSaved=false;supplierViewState();supplierUrl(page);supplierBusy=true;$('#supplier-status').textContent='Taobao бараа ачаалж байна…';$('#supplier-search button').disabled=true;$('#supplier-grid').setAttribute('aria-busy','true');$('#supplier-grid').innerHTML=Array.from({length:4},()=>'<div class="product-skeleton" aria-hidden="true"><span></span><i></i><i></i></div>').join('');$('#supplier-paging').replaceChildren();
-  try{const r=await supplierApi('supplier-search',{q:query,page,sort});if(request!==supplierLoadSequence)return;supplierPage=page;
+  try{const r=await supplierApi('supplier-search',image?{image,page}:{q:query,page,sort});if(request!==supplierLoadSequence)return;supplierPage=page;
     supplierResults=(r.products||[]).filter(p=>/^tb-[0-9]{5,20}$/.test(p.id));renderSupplierCards(supplierResults);
     $('#supplier-status').textContent=(supplierResults.length?`${page}-р хуудас · ${supplierResults.length} бараа`:'Тохирох бараа олдсонгүй.')+(r.stale?' · Хадгалсан мэдээлэл · шинэчлэлт хүлээгдэж байна.':'');
     $('#supplier-paging').innerHTML=(page>1?'<button class="button outline" data-supplier-page="'+(page-1)+'">Өмнөх</button>':'')+(r.more?'<button class="button outline" data-supplier-page="'+(page+1)+'">Дараах</button>':'');
@@ -70,3 +71,30 @@ document.addEventListener('submit',async e=>{if(e.target.id!=='supplier-order-fo
 $('#supplier-search [name=sort]').addEventListener('change',e=>{supplierSort=e.target.value;window.supplierBrowse($('#supplier-query').value);});
 window.addEventListener('storage',e=>{if(e.key===SUPPLIER_FAVORITES_KEY){updateCounts();if(!document.documentElement.classList.contains('product-view'))renderSupplierCards(supplierSaved?supplierFavoriteItems():supplierResults);}});
 updateCounts();
+
+// Image search: downscale in the browser, publish via the server, then page through Taobao matches.
+async function supplierImageFile(file){
+  if(!/^image\/(?:jpeg|png|webp)$/.test(file.type))throw Error('JPEG, PNG, WebP зураг сонгоно уу.');
+  try{
+    const bitmap=await createImageBitmap(file),scale=Math.min(1,1000/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.88));if(blob)return blob;
+  }catch{/* The server re-encodes the original when the browser cannot decode it. */}
+  if(file.size>5*1024*1024)throw Error('5 MB хүртэл зураг сонгоно уу.');
+  return file;
+}
+async function supplierImageSearch(file){
+  const buttons=document.querySelectorAll('[data-image-search]');buttons.forEach(b=>b.disabled=true);toast('Зургаар хайж байна…');
+  try{
+    await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
+    const form=new FormData();form.append('image',await supplierImageFile(file),'search.jpg');
+    const response=await fetch('/api/index.php?action=supplier-image-upload',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':shopCsrf},body:form}),result=await response.json();
+    if(!response.ok)throw Error(result.error||'Зураг илгээж чадсангүй.');
+    if(document.documentElement.classList.contains('product-view')){location.assign('/?image='+result.image+'#supplier-catalog');return;}
+    supplierImage=result.image;$('#supplier-query').value='';$('#search').value='';filters.category='all';renderCategories();loadSupplier(1);scrollCatalog();
+  }catch(e){toast(e.message);}
+  finally{buttons.forEach(b=>b.disabled=false);}
+}
+document.addEventListener('click',e=>{if(e.target.closest('[data-image-search]')){$('#image-search-input').value='';$('#image-search-input').click();}});
+$('#image-search-input').addEventListener('change',e=>{const file=e.target.files?.[0];if(file)supplierImageSearch(file);});

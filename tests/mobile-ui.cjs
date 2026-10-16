@@ -9,11 +9,11 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    await page.setViewportSize({width,height:844});await page.evaluate(()=>scrollTo(0,0));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow at '+width);
    assert.equal(await page.locator('.mobile-notifications').isVisible(),true);assert.equal(await page.locator('.header-actions [data-action=account]').isVisible(),false);
-   for(const selector of ['.mobile-notifications','#search-form button','.mobile-nav [data-action=orders]']){const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44&&box.width>=44,'Touch target '+selector);}
+   for(const selector of ['.mobile-notifications','#search-form button[type=submit]','.mobile-nav [data-action=orders]']){const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44&&box.width>=44,'Touch target '+selector);}
    assert.ok((await page.locator('#search').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16,'Input avoids iOS focus zoom');
    await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=catalog]').getAttribute('aria-current')==='page');
    assert.equal(Math.round((await page.locator('.header').boundingBox()).y),0,'Search header remains reachable');
-   const input=await page.locator('#supplier-query').boundingBox(),button=await page.locator('#supplier-search button').boundingBox();assert.ok(Math.abs(input.y-button.y)<2,'Search action stays beside input');
+   const input=await page.locator('#supplier-query').boundingBox(),button=await page.locator('#supplier-search button[type=submit]').boundingBox();assert.ok(Math.abs(input.y-button.y)<2,'Search action stays beside input');
    await page.locator('#supplier-query').fill('bag');await page.locator('#supplier-query').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'supplier-query','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-catalog.png'});
    await page.locator('.mobile-nav [data-action=orders]').click();await page.locator('#cargo-search').waitFor();

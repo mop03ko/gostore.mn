@@ -172,3 +172,15 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 
 /* Full department shortcuts stay in one bounded, horizontally scrollable row. */
 .main-nav{gap:12px;min-width:0}.main-nav .nav-caption{flex-shrink:0;white-space:nowrap}.quick-categories{display:flex;align-items:center;gap:24px;flex:1;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#d6dbe4 transparent}.quick-categories .nav-link{flex:0 0 auto;min-height:44px;padding:10px 0}.quick-categories .nav-link[aria-pressed=true]{color:#132344;box-shadow:inset 0 -2px #e3b52e}.main-nav .nav-scroll{flex:0 0 44px;width:44px;height:44px;border-radius:8px;font-size:25px;color:#525d70}.main-nav .nav-scroll:hover:not(:disabled){background:#f5f6f8}.main-nav .nav-scroll:disabled{opacity:.25;cursor:default}.main-nav .nav-end{flex-shrink:0;margin-left:6px}.quick-categories .nav-link:focus-visible{outline:2px solid #183860;outline-offset:-2px}@media(max-width:1100px){.main-nav .nav-caption{display:none}.quick-categories{gap:20px}}
+/* Image search */
+.search-form .image-search-button,.supplier-search .image-search-button{flex:0 0 auto;display:grid;place-items:center;width:44px;min-width:44px;height:40px;min-height:0;padding:0;margin:0;border-radius:8px;background:transparent;color:#525d70;border:0;cursor:pointer}
+.search-form .image-search-button:hover,.supplier-search .image-search-button:hover{background:#e9edf3;color:var(--navy)}
+.search-form .image-search-button:disabled,.supplier-search .image-search-button:disabled{opacity:.45;cursor:progress}
+.search-form .image-search-button .icon,.supplier-search .image-search-button .icon{display:block;width:22px;height:22px}
+.supplier-search .image-search-button{height:auto;border:1px solid #d9dfe8;background:white;border-radius:10px;width:50px}
+.image-search-preview{display:flex;align-items:center;gap:10px;margin:0 12px 0 0;flex-shrink:0}
+.image-search-preview img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e2e5eb;background:#f4f5f7}
+.image-search-preview figcaption{font-size:12px;font-weight:700;color:#525d70}
+/* Hidden until the admin enables provider photo search. */
+.search-form .image-search-button[hidden],.supplier-search .image-search-button[hidden]{display:none}
+@media(max-width:760px){.supplier-search:has(.image-search-button:not([hidden])){grid-template-columns:minmax(0,1fr) auto auto}.supplier-search .image-search-button{grid-column:2;grid-row:1;min-height:48px}.supplier-search button[type=submit]{grid-column:3}.catalog-context .image-search-preview{margin:10px 10px 0 0}.image-search-preview img{width:44px;height:44px}}
