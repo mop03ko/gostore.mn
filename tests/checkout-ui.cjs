@@ -24,11 +24,13 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  // Goods 2×10 + 2×12 + 30 = 74¥; two sellers × default 10¥ domestic.
  const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('74 ¥')&&totals.includes('2 дэлгүүр'),totals);
  assert.ok(await page.locator('#taobao-checkout-form [data-action=cart]').isVisible(),'Cart checkout can return to the cart');
- assert.equal(await page.locator('#taobao-checkout-form [name=address]').count(),0,'Checkout is pickup-only');assert.ok((await page.locator('#taobao-checkout-form .pickup-info').innerText()).includes('14б байр, 4 тоот'),'Pickup address shown at checkout');
+ assert.equal(await page.locator('#taobao-checkout-form [name=address]').isVisible(),false,'Pickup is the default');
+ await page.locator('#taobao-checkout-form [name=fulfillment][value=delivery]').check();assert.ok(await page.locator('#taobao-checkout-form [name=address]').isVisible()&&await page.locator('#taobao-checkout-form [name=address]').evaluate(e=>e.required),'Delivery requires an address');assert.equal(await page.locator('#taobao-checkout-form [data-pickup-info]').isVisible(),false);
+ await page.locator('#taobao-checkout-form [name=fulfillment][value=pickup]').check();assert.ok((await page.locator('#taobao-checkout-form .pickup-info').innerText()).includes('14б байр, 4 тоот'),'Pickup address shown at checkout');
  await page.locator('#taobao-checkout-form [name=family_name]').fill('Тест');
  const created=page.waitForResponse(r=>r.url().includes('action=order-create'));await page.locator('#taobao-checkout-form [type=submit]').click();
  const response=await created,order=(await response.json()).order;assert.equal(response.status(),201);
- assert.equal(order.type,'checkout');assert.equal(order.status,'quoted');assert.equal(order.items.length,3);assert.equal(order.quote.breakdown.cargo_mnt,0);assert.ok(order.amount>0&&order.payment_due);
+ assert.equal(order.type,'checkout');assert.equal(order.fulfillment_request.method,'pickup');assert.equal(order.delivery_address,'');assert.equal(order.status,'quoted');assert.equal(order.items.length,3);assert.equal(order.quote.breakdown.cargo_mnt,0);assert.ok(order.amount>0&&order.payment_due);
  await page.waitForFunction(()=>document.querySelector('#cart-count').textContent==='0');
  assert.ok((await page.locator('.cargo-card').innerText()).includes('Төлбөр хүлээж байна'));await page.locator('.cargo-card [data-server-order]').first().click();await page.locator('.cargo-detail').waitFor();assert.ok((await page.locator('.cargo-detail').innerText()).includes('Төлөх хугацаа'));assert.equal(await page.locator('.cargo-items li').count(),3);assert.ok((await page.locator('.cargo-detail').innerText()).includes('Шуудангийн код: 14252-0024'),'Order shows the pickup address');
  assert.ok((await page.locator('#modal').innerText()).includes('Улаанбаатарт ирэхэд бодит жингээр'),'Cargo is billed later');

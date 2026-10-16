@@ -39,14 +39,14 @@ window.taobaoCart=(()=>{
       quote=(await shopApi('checkout-quote',{items:payload()})).quote;
     }catch(e){if(selected){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}show();const footer=$('.cart-footer');if(footer)footer.insertAdjacentHTML('beforebegin',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
     checkoutToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
-    openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}${pickupHtml()}<div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. ${quote.payment_window_hours} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. Олон улсын каргог Улаанбаатарт ирэхэд бодит жин, эзлэхүүнээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Захиалах · ${money(quote.total)}</button></div></form>`);
+    openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Улаанбаатар агуулахаас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Хүргэлтээр авах · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${pickupHtml()}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. ${quote.payment_window_hours} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. Олон улсын каргог Улаанбаатарт ирэхэд бодит жин, эзлэхүүнээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Захиалах · ${money(quote.total)}</button></div></form>`);
   }
   document.addEventListener('submit',async e=>{
     const f=e.target;if(f.id!=='taobao-checkout-form')return;e.preventDefault();
     const button=f.querySelector('[type="submit"]');button.disabled=true;
     try{
       if(!customerAccount.require())return;
-      const ordered=ordering(),b={...Object.fromEntries(new FormData(f)),type:'checkout',title:'Taobao сагс',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
+      const ordered=ordering(),fields=Object.fromEntries(new FormData(f));if(fields.fulfillment!=='delivery')delete fields.address;const b={...fields,type:'checkout',title:'Taobao сагс',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
       const r=await shopApi('order-create',b);
       checkoutToken='';write(read().filter(i=>!ordered.some(o=>o.id===i.id&&o.sku===i.sku)));
       selected=null;toast('Захиалга үүслээ · '+r.order.id);
@@ -56,6 +56,11 @@ window.taobaoCart=(()=>{
       if(/Үнэ шинэчлэгдсэн/.test(err.message)){checkoutToken='';await checkout(err.message);return;}
       const error=f.querySelector('#request-error');if(error)error.textContent=err.message;
     }finally{button.disabled=false;}
+  });
+  document.addEventListener('change',e=>{
+    if(e.target.name!=='fulfillment'||!e.target.closest('#taobao-checkout-form'))return;
+    const f=e.target.form,delivery=f.elements.fulfillment.value==='delivery',address=f.querySelector('[data-delivery-address]');
+    address.hidden=!delivery;f.elements.address.required=delivery;f.querySelector('[data-pickup-info]').hidden=delivery;
   });
   document.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;

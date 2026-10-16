@@ -36,6 +36,11 @@ function checkout_order(array $b,array $o): array {
     $lines=checkout_items($b);$quote=checkout_quote($lines);
     if(int_field($b,'expected_total',1,100000000)!==$quote['total'])fail('Үнэ шинэчлэгдсэн байна. Шинэ дүнг шалгаад дахин баталгаажуулна уу.',409);
     $now=time();$hours=(int)$quote['rates']['payment_window_hours'];
+    // The customer chooses Ulaanbaatar warehouse pickup or delivery; delivery is billed in the final settlement.
+    $method=str_field($b,'fulfillment',10,false)?:'pickup';if(!in_array($method,['pickup','delivery'],true))fail('Хүлээн авах хэлбэр буруу.');
+    if($method==='delivery'&&trim($o['delivery_address']??'')==='')fail('Хүргэлтийн хаягаа оруулна уу.');
+    if($method==='pickup')$o['delivery_address']='';
+    $o['fulfillment_request']=['method'=>$method];
     $o['items']=$lines;$o['quote']=$quote;$o['amount']=$quote['total'];$o['status']='quoted';
     $o['title']=mb_substr($lines[0]['name'],0,100).(count($lines)>1?' +'.(count($lines)-1).' бараа':'');
     $o['qty']=array_sum(array_column($lines,'qty'));$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];

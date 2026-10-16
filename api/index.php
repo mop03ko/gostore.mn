@@ -13,6 +13,8 @@ require __DIR__.'/../server/warehouse-batches.php';
 require __DIR__.'/../server/logistics.php';
 require __DIR__.'/../server/freight-payment.php';
 require __DIR__.'/../server/checkout.php';
+require __DIR__.'/../server/taobao-http.php';
+require __DIR__.'/../server/taobao-purchase.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
@@ -27,7 +29,7 @@ try {
         if(isset($_GET['image']))supplier_public_json(supplier_image_search(str_field($_GET,'image',32),$page,true));
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','page'=>$page,'sort'=>$_GET['sort']??'default'],true));
     }
-    $adminAction=str_starts_with($action,'ot-operator-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     // Unpaid instant checkouts are released lazily (at most every five minutes).
@@ -40,7 +42,7 @@ try {
         admin_required();
         if ($action==='dashboard') {
             $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'taobao_buyer'=>taobao_buyer_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -65,6 +67,7 @@ try {
     }
     $b=body();
     if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);
+    if(str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-'))taobao_admin_post($action,$b);
     if($action==='checkout-quote')json_out(checkout_preview($b));
     if(in_array($action,['order-photo','freight-invoice','payment-check'],true)){
         $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);

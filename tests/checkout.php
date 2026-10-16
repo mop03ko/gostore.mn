@@ -27,6 +27,8 @@ expect_error(fn()=>checkout_items(['items'=>[$cart[0],$cart[0]]]),400,'давх�
 expect_error(fn()=>checkout_items(['items'=>[]]),400);
 expect_error(fn()=>checkout_order(['items'=>$cart,'expected_total'=>81824],['paid'=>false]),409,'Үнэ шинэчлэгдсэн');
 
+expect_error(fn()=>checkout_order(['items'=>$cart,'expected_total'=>81825,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>' ']),400,'хаяг');
+$delivery=checkout_order(['items'=>$cart,'expected_total'=>81825,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>'БЗД 1-р хороо']);check($delivery['fulfillment_request']==['method'=>'delivery']&&$delivery['delivery_address']==='БЗД 1-р хороо','Delivery choice lost');
 $o=checkout_order(['items'=>$cart,'expected_total'=>81825],['type'=>'checkout','title'=>'x','paid'=>false,'demo'=>false,'created'=>gmdate('c')]);
 check($o['status']==='quoted'&&$o['amount']===81825&&count($o['items'])===3&&$o['items'][0]['price']===6250&&$o['qty']===4,'Order fields changed');
 check(abs(strtotime($o['payment_due'])-time()-86400)<5,'Payment window must default to 24 hours');

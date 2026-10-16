@@ -21,3 +21,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 #mobile-admin-page{display:none}@media(max-width:760px){#mobile-admin-page{display:block;margin-top:12px;font-size:14px;max-width:240px;min-height:44px}.main>header>div:first-child{min-width:0}.warehouse-card-heading>div{flex-basis:160px}.warehouse-card-heading>.tag{margin-left:0}}
 
 @media(max-width:760px){#mobile-admin-page{width:100%}.main>header>div:first-child{flex:1}.main>header .account{flex:0 0 auto}}
+.purchase-panel{margin-top:16px}
+.purchase-json{max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:12px;background:#f5f6f8;border-radius:8px;padding:10px}
