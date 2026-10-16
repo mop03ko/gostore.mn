@@ -1,0 +1,21 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const page=await browser.newPage({viewport:{width:1692,height:950},reducedMotion:'reduce'}),calls=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://img.alicdn.com/**',r=>r.abort());
+ await page.route('**/api/index.php?action=supplier-search*',r=>{const q=new URL(r.request().url()).searchParams.get('q');calls.push(q);return r.fulfill({json:{products:[{id:'tb-123456789',name:q,image:'',mnt:5500}],shipping:{cny_rate:550},more:false,stale:false,cache_ttl:600}});});
+ await page.goto(base+'/');await page.locator('.supplier-card').waitFor();
+ const nav=page.locator('#catalog-category-nav'),row=page.locator('.catalog-category-list'),active=nav.locator('[aria-pressed=true]');
+ assert.equal(await row.locator('button').count(),27);assert.equal(await active.innerText(),'Бүгд');assert.equal(calls.length,1,'Rendering categories adds no API calls');
+ await nav.locator('[data-catalog-scroll="1"]').click();assert.ok(await row.evaluate(e=>e.scrollLeft)>0);assert.equal(calls.length,1,'Scrolling adds no API calls');
+ await row.locator('button').first().focus();await page.keyboard.press('End');assert.equal(await page.evaluate(()=>document.activeElement.dataset.catalogCategory),'health');assert.ok(await row.evaluate(e=>e.scrollLeft)>100);
+ await row.locator('[data-catalog-category=men]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3').textContent==='men clothing');assert.equal(await active.innerText(),'Эрэгтэй хувцас');assert.equal(calls.at(-1),'men clothing');assert.equal(new URL(page.url()).searchParams.get('category'),'men');
+ await page.reload();await page.locator('.supplier-card').waitFor();assert.equal(await active.innerText(),'Эрэгтэй хувцас','Reload preserves category selection');
+ await row.locator('[data-catalog-category=bags]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3').textContent==='bag');assert.equal(await active.innerText(),'Цүнх, үүргэвч');await page.reload();await page.locator('.supplier-card').waitFor();assert.equal(await active.innerText(),'Цүнх, үүргэвч','Default query does not lose explicit bag category');
+ await row.locator('[data-catalog-category=all]').click();assert.equal(await active.innerText(),'Бүгд');assert.equal(new URL(page.url()).searchParams.has('category'),false);
+ await page.evaluate(()=>document.querySelector('.catalog-category-list').scrollLeft=0);await nav.screenshot({path:'tmp/catalog-navigation-desktop.png'});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal page overflow');
+ await row.evaluate(e=>e.scrollLeft=300);assert.ok(await row.evaluate(e=>e.scrollLeft)>0);await row.locator('[data-catalog-category=women]').click();assert.equal(await active.innerText(),'Эмэгтэй хувцас');assert.ok((await row.locator('button').first().boundingBox()).height>=44);await nav.screenshot({path:'tmp/catalog-navigation-mobile.png'});
+ await page.evaluate(()=>window.supplierBrowse(null,true));assert.equal(await active.count(),0,'Saved view does not claim an active catalog category');
+ assert.deepEqual(errors,[]);console.log('PASS: 27 category options, reference order, scroll without API calls, keyboard navigation, selection/URL/reload, all reset, mobile overflow and saved-view state.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
