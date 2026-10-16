@@ -39,7 +39,7 @@ function supplier_snapshot_search(string $q,int $page,string $sort): ?array {
     $record['shipping']=$shipping;return $record;
 }
 // Round-robin cached departments so the landing page is not a single bag search.
-function supplier_snapshot_all(int $page,string $sort): array {
+function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
     $snapshot=supplier_snapshot_current();$records=[];
     foreach(supplier_warm_queries() as $q){
         $record=$snapshot['records'][$q]??null;
@@ -56,14 +56,16 @@ function supplier_snapshot_all(int $page,string $sort): array {
         $seen[$p['id']]=true;$p=supplier_card_price($p,(int)$record['cache_expires']);$p['_position']=count($products);$products[]=$p;
         $expires=min($expires,(int)$record['cache_expires']);if($fetched===null||strcmp($record['fetched'],$fetched)<0)$fetched=$record['fetched'];
     }
-    if($sort!=='default')usort($products,static function($a,$b)use($sort){
+    // The mixed storefront is filtered by the displayed MNT price; unknown prices are left out of a price filter.
+    if($range)$products=array_values(array_filter($products,static fn($p)=>isset($p['mnt'])&&($p['price_status']??'available')==='available'&&(!isset($range['price_min'])||$p['mnt']>=$range['price_min'])&&(!isset($range['price_max'])||$p['mnt']<=$range['price_max'])));
+    if(!in_array($sort,['default','-updated_time'],true))usort($products,static function($a,$b)use($sort){
         if($sort==='-volume')$cmp=($b['sold_count']??0)<=>($a['sold_count']??0);
         else{$knownA=($a['price_status']??'')==='available';$knownB=($b['price_status']??'')==='available';if($knownA!==$knownB)return $knownA?-1:1;$cmp=($a['mnt']??0)<=>($b['mnt']??0);if($sort==='-price')$cmp=-$cmp;}
         return $cmp?:$a['_position']<=>$b['_position'];
     });
     $total=count($products);$items=array_slice($products,($page-1)*12,12);foreach($items as &$p)unset($p['_position']);unset($p);
     if(!$total)$expires=0;
-    return ['products'=>$items,'page'=>$page,'more'=>$page*12<$total,'total'=>$total,'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
+    return ['products'=>$items,'page'=>$page,'more'=>$page*12<$total,'total'=>$total,'pages'=>max(1,(int)ceil($total/12)),'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
 }
 function supplier_snapshot_run(int $maxJobs=26): array {
     if(empty(shipping_settings()['catalog_snapshot_enabled'])||!supplier_ready())return ['status'=>'disabled'];

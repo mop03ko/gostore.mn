@@ -17,7 +17,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  const saved=await page.evaluate(()=>sessionStorage.getItem('gostore-supplier-cache-v4-taobao'));assert.ok(!saved.includes('must-not-persist'),'No CSRF/customer fields persisted');
  await get({...query,page:2});await get({...query,sort:'price'});await get({...query,q:'shoes'});assert.equal(calls.length,4,'Query/page/sort are independent keys');
  await page.goto(base+'/?q=bag');await page.locator('.supplier-card').waitFor();assert.equal(calls.length,4,'Navigation restores cached search');
- await page.locator('[data-supplier-page="2"]').click();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Visited next page needs no request');
+ await page.locator('[data-supplier-page="2"]',{hasText:'Дараах'}).click();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Visited next page needs no request');
  await page.reload();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Reload restores page two from cache');
  for(let i=0;i<2;i++){await get({...query,q:'error'}).then(()=>assert.fail('Expected error'),()=>{});await get({...query,q:'stale'});}
  assert.equal(calls.filter(x=>x.q==='error').length,2,'Errors are not cached');assert.equal(calls.filter(x=>x.q==='stale').length,2,'Stale responses are not cached as fresh');
