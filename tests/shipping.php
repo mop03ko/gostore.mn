@@ -27,3 +27,12 @@ check($destination['recipient']==='Бат Тамир / GS-TEST-123','Server reci
 check($destination['address']==='内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号'&&$destination['phone']==='18047981132'&&$destination['contact_phone']==='99889815','Warehouse destination');
 foreach([['family_name'=>'','customer'=>'Тамир'],['family_name'=>"Бат\nOther",'customer'=>'Тамир']] as $invalid){try{warehouse_destination(['id'=>'GS-TEST-123'],$invalid);throw new RuntimeException('Invalid recipient accepted');}catch(ApiError){}}
 echo "Shipping rounding, volume thresholds, validation, rate snapshots, supplier normalization and warehouse recipient passed.\n";
+
+$rich=array_replace($taobao,['Description'=>'<script>alert(1)</script><p>Тайлбар</p><img src="//img.alicdn.com/details.jpg"><img src="https://evil.test/track"><img src="javascript:alert(1)">','BrandName'=>'Брэнд','OriginalTitle'=>'原名','MasterQuantity'=>20,'FeaturedValues'=>[['Name'=>'TotalSales','Value'=>'800'],['Name'=>'SalesInLast30Days','Value'=>'300']],'ActualWeightInfo'=>['Weight'=>0.8,'DisplayName'=>'Ойролцоогоор'],'Videos'=>[['Url'=>'https://cloud.video.taobao.com/test.mp4'],['Url'=>'https://evil.test/video']]]);
+$rp=supplier_normalize($rich,true,'taobao');
+check($rp['description']==='Тайлбар'&&$rp['description_images']===['https://img.alicdn.com/details.jpg'],'Description sanitization and image allowlist');
+check(count($rp['videos'])===1&&$rp['stock']===20&&$rp['weight_kg']===0.8&&$rp['brand']==='Брэнд','Public rich fields and video allowlist');
+check($rp['sold_count']===800&&$rp['sales_30_days']===300,'Featured sales values kept separate');
+$rich['Attributes'][0]['ImageUrl']='https://img.alicdn.com/red.jpg';$rp=supplier_normalize($rich,true,'taobao');check($rp['variants'][0]['image']==='https://img.alicdn.com/red.jpg','SKU image mapping');
+check(supplier_count(null)===null&&supplier_count(-1)===null&&supplier_count('invalid')===null&&supplier_count(0)===0,'Unknown stock never invented');
+echo "Rich product data, media safety, sales and SKU images passed.\n";

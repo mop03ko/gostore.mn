@@ -78,10 +78,31 @@ function supplier_cny(array $p): ?float {
     $v=(float)$p['OriginalPrice'];return is_finite($v)&&$v>0&&$v<=1000000?$v:null;
 }
 function supplier_image(string $url): string {
-    $url=preg_replace('#^http://#','https://',$url);$p=parse_url($url);$host=strtolower($p['host']??'');
+    $url=preg_replace('#^(?:http:)?//#','https://',$url);$p=parse_url($url);$host=strtolower($p['host']??'');
     if(($p['scheme']??'')!=='https'||isset($p['user'])||isset($p['port']))return '';
     foreach(['alicdn.com','otcommerce.com','otapi.net'] as $domain)if($host===$domain||str_ends_with($host,'.'.$domain))return $url;
     return '';
+}
+// Public product information only; provider markup is never rendered as HTML.
+function supplier_text(mixed $value,int $limit=500): string {
+    if(!is_scalar($value))return '';
+    $text=preg_replace('#<(script|style|iframe)\b[^>]*>.*?</\1>#is','',(string)$value);
+    $text=preg_replace('#<br\s*/?>|</(?:p|div|li|h[1-6])>#i',"\n",$text);
+    return mb_substr(trim(html_entity_decode(strip_tags($text),ENT_QUOTES|ENT_HTML5,'UTF-8')),0,$limit);
+}
+function supplier_count(mixed $value): ?int {
+    $n=filter_var($value,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>9007199254740991]]);
+    return $n===false?null:$n;
+}
+function supplier_description_images(string $html): array {
+    preg_match_all("#<img\b[^>]*\bsrc\s*=\s*(?:\"([^\"<>]*)\"|'([^'<>]*)'|([^\s<>]+))#i",substr($html,0,1000000),$matches,PREG_SET_ORDER);
+    $images=[];foreach($matches as $m){$url=supplier_image(html_entity_decode($m[1]?:($m[2]?:($m[3]??'')),ENT_QUOTES|ENT_HTML5,'UTF-8'));if($url!=='')$images[]=$url;}
+    return array_slice(array_values(array_unique($images)),0,80);
+}
+function supplier_video(string $url): string {
+    $url=preg_replace('#^(?:http:)?//#','https://',$url);$p=parse_url($url);$host=strtolower($p['host']??'');
+    if(($p['scheme']??'')!=='https'||isset($p['user'])||isset($p['port']))return '';
+    return $host==='cloud.video.taobao.com'||$host==='video.alicdn.com'||str_ends_with($host,'.video.taobao.com')?$url:'';
 }
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
     $rawId=(string)($p['Id']??'');$taobao=$provider==='taobao';
@@ -90,16 +111,32 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     $price=supplier_cny($p['Price']??[]);$rate=shipping_settings()['cny_rate'];
     $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id)),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>($p['IsSellAllowed']??false)===true&&!($p['IsFiltered']??false),'variants'=>[]];
     $sold=filter_var($p['Volume']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>9007199254740991]]);
-    $r['sold_count']=$sold===false?null:$sold; // OT uses zero when sales volume is unknown.
+    $r['sold_count']=$sold===false?null:$sold;
+    $featured=[];foreach($p['FeaturedValues']??[] as $feature)if(is_array($feature))$featured[(string)($feature['Name']??'')]=$feature['Value']??null;
+    if($r['sold_count']===null){$total=supplier_count($featured['TotalSales']??null);if($total>0)$r['sold_count']=$total;}
+    $r['sales_30_days']=supplier_count($featured['SalesInLast30Days']??null); // OT uses zero when sales volume is unknown.
     if($detail){
         $pictures=[$r['image']];foreach($p['Pictures']??[] as $picture){if(is_array($picture))$pictures[]=supplier_image((string)($picture['Url']??''));}
         $r['images']=array_slice(array_values(array_unique(array_filter($pictures))),0,20);
-        $r['vendor_name']=mb_substr((string)($p['VendorName']??''),0,200);
-        $r['attributes']=[];foreach(array_slice($p['Attributes']??[],0,60) as $attribute){$name=mb_substr((string)($attribute['PropertyName']??''),0,120);$value=mb_substr((string)($attribute['Value']??''),0,300);if($name!==''&&$value!=='')$r['attributes'][]=['name'=>$name,'value'=>$value];}
+        $r['vendor_name']=supplier_text($p['VendorDisplayName']??$p['VendorName']??'',200);
+        $r['original_name']=supplier_text($p['OriginalTitle']??'',500);
+        $r['brand']=supplier_text($p['BrandName']??'',200);
+        $r['category_id']=supplier_text($p['CategoryId']??'',100);
+        $r['condition']=supplier_text($p['StuffStatus']??'',50);
+        $r['stock']=supplier_count($p['MasterQuantity']??null);
+        $r['location']=[];foreach(['Country','State','City'] as $key){$value=supplier_text($p['Location'][$key]??'',100);if($value!=='')$r['location'][]=$value;}
+        $r['unavailable_reason']=supplier_text($p['SellDisallowReason']??'',500);
+        $r['weight_kg']=null;$weight=$p['ActualWeightInfo']['Weight']??null;
+        if(is_numeric($weight)&&is_finite((float)$weight)&&(float)$weight>0)$r['weight_kg']=(float)$weight;
+        $r['weight_type']=supplier_text($p['ActualWeightInfo']['DisplayName']??'',100);
+        $r['videos']=[];foreach(array_slice($p['Videos']??[],0,6) as $video){if(!is_array($video))continue;$url=supplier_video((string)($video['Url']??''));if($url!=='')$r['videos'][]=['url'=>$url,'poster'=>supplier_image((string)($video['PreviewUrl']??''))];}
+        $r['description_images']=supplier_description_images((string)($p['Description']??''));
+        $r['attributes']=[];foreach(array_slice($p['Attributes']??[],0,200) as $attribute){$name=mb_substr((string)($attribute['PropertyName']??''),0,120);$value=mb_substr((string)($attribute['Value']??''),0,300);if($name!==''&&$value!=='')$r['attributes'][]=['name'=>$name,'value'=>$value];}
+        $variantImages=[];foreach($p['Attributes']??[] as $a){$url=supplier_image((string)($a['ImageUrl']??''));if($url!=='')$variantImages[($a['Pid']??'').'|'.($a['Vid']??'')]=$url;}
         $attrs=[];foreach($p['Attributes']??[] as $a)$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]=($a['PropertyName']??$a['Pid']??'').': '.($a['Value']??$a['Vid']??'');
-        foreach($p['ConfiguredItems']??[] as $v){$labels=[];foreach($v['Configurators']??[] as $a)$labels[]=$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]??($a['Vid']??'');$vp=supplier_cny($v['Price']??[]);$r['variants'][]=['id'=>(string)$v['Id'],'label'=>mb_substr(implode(' / ',$labels)?:'Стандарт',0,300),'cny'=>$vp,'stock'=>isset($v['Quantity'])?(int)$v['Quantity']:null];}
-        if(!$r['variants'])$r['variants'][]=['id'=>'standard','label'=>'Стандарт · админ баталгаажуулна','cny'=>$price,'stock'=>isset($p['MasterQuantity'])?(int)$p['MasterQuantity']:null];
-        $r['description']=mb_substr(trim(html_entity_decode(strip_tags((string)($p['Description']??'')),ENT_QUOTES|ENT_HTML5,'UTF-8')),0,2000);
+        foreach($p['ConfiguredItems']??[] as $v){$variantImage='';foreach($v['Configurators']??[] as $a){$variantImage=$variantImages[($a['Pid']??'').'|'.($a['Vid']??'')]??$variantImage;}$labels=[];foreach($v['Configurators']??[] as $a)$labels[]=$attrs[($a['Pid']??'').'|'.($a['Vid']??'')]??($a['Vid']??'');$vp=supplier_cny($v['Price']??[]);$r['variants'][]=['id'=>(string)$v['Id'],'label'=>mb_substr(implode(' / ',$labels)?:'Стандарт',0,300),'cny'=>$vp,'image'=>$variantImage,'stock'=>supplier_count($v['Quantity']??null)];}
+        if(!$r['variants'])$r['variants'][]=['id'=>'standard','label'=>'Стандарт · админ баталгаажуулна','cny'=>$price,'image'=>$r['image'],'stock'=>supplier_count($p['MasterQuantity']??null)];
+        $r['description']=supplier_text($p['Description']??'',30000);
         $r['tiers']=[];foreach($p['QuantityRanges']??[] as $tier){$v=supplier_cny($tier['Price']??[]);if($v!==null)$r['tiers'][]=['qty'=>(int)$tier['MinQuantity'],'cny'=>$v];}
     }
     return $r;
@@ -115,6 +152,8 @@ function supplier_detail(string $id,bool $display=false): array {
     $identity=supplier_identity($id);
     $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn'],$display);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
+    $p['category_path']=[];foreach(array_reverse($c['data']['RootPath']['Content']??[]) as $category){$name=supplier_text($category['Name']??'',150);if($name!=='')$p['category_path'][]=$name;}
+    $p['related']=[];$seen=[$p['id']=>true];foreach(array_merge($c['data']['VendorItems']['Content']??[],$c['data']['RecommendedItems']['Content']??[]) as $item){try{$related=supplier_normalize($item,false,$identity['provider']);if(!isset($seen[$related['id']])){$seen[$related['id']]=true;$p['related'][]=$related;}if(count($p['related'])>=12)break;}catch(ApiError){}}
     return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_order(array $b): array {

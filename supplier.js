@@ -4,7 +4,7 @@ let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')|
 function supplierRateText(s){return `1 юань = ${money(s.cny_rate)} · ${s.weight_step_kg} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ) · ${s.volume_threshold} м³-ээс бага: ${s.volume_small_cny}¥/м³, түүнээс их буюу тэнцүү: ${s.volume_large_cny}¥/м³. Жин эсвэл эзлэхүүнээр тооцох аргыг админ баталгаажуулна.`;}
 
 const SUPPLIER_FAVORITES_KEY='gostore-taobao-favorites-v1';
-function supplierCategoryQuery(id){return ({home:'home storage',tech:'electronics',bags:'bag',shoes:'shoes',accessories:'accessories',beauty:'beauty',lighting:'lamp'})[id]||'bag';}
+function supplierCategoryQuery(id){return categories.find(c=>c.id===id)?.query||'bag';}
 function supplierFavoriteItems(){try{const saved=JSON.parse(localStorage.getItem(SUPPLIER_FAVORITES_KEY)||'[]');return Array.isArray(saved)?saved.filter(p=>p&&/^tb-[0-9]{5,20}$/.test(p.id)).slice(0,100):[];}catch{return [];}}
 let supplierResults=[],supplierSaved=false,supplierLoadSequence=0;
 window.supplierFavoriteCount=()=>supplierFavoriteItems().length;

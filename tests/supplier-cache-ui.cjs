@@ -14,7 +14,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.evaluate(async p=>{const [a,b]=await Promise.all([supplierApi('supplier-search',p),supplierApi('supplier-search',p)]);a.products[0].name='mutated';if(b.products[0].name==='mutated')throw Error('Shared mutable data');},query);
  assert.equal(calls.length,1,'Concurrent identical searches share one request');
  assert.equal((await get(query)).products[0].name,'bag 1 default');assert.equal(calls.length,1,'Warm request uses memory');
- const saved=await page.evaluate(()=>sessionStorage.getItem('gostore-supplier-cache-v2-taobao'));assert.ok(!saved.includes('must-not-persist'),'No CSRF/customer fields persisted');
+ const saved=await page.evaluate(()=>sessionStorage.getItem('gostore-supplier-cache-v3-taobao'));assert.ok(!saved.includes('must-not-persist'),'No CSRF/customer fields persisted');
  await get({...query,page:2});await get({...query,sort:'price'});await get({...query,q:'shoes'});assert.equal(calls.length,4,'Query/page/sort are independent keys');
  await page.goto(base+'/');await page.locator('.supplier-card').waitFor();assert.equal(calls.length,4,'Navigation restores cached search');
  await page.locator('[data-supplier-page="2"]').click();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Visited next page needs no request');
@@ -24,10 +24,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await get({...query,q:'short'});await page.evaluate(()=>{window.cacheTestNow=Date.now;Date.now=()=>cacheTestNow()+2000;});await get({...query,q:'short'});assert.equal(calls.filter(x=>x.q==='short').length,2,'Server freshness caps browser lifetime');
  await page.evaluate(()=>{Date.now=()=>cacheTestNow()+601000;});await get(query);assert.equal(calls.filter(x=>x.q==='bag'&&x.page===1&&x.sort==='default').length,2,'Search expires after ten minutes');await page.evaluate(()=>{Date.now=cacheTestNow;});
  for(let i=0;i<43;i++)await get({...query,q:'limit'+i});
- assert.ok(await page.evaluate(()=>{const s=sessionStorage.getItem('gostore-supplier-cache-v2-taobao');return JSON.parse(s).length<=40&&s.length*2<=1500000;}),'Cache is bounded');
- await page.evaluate(()=>sessionStorage.setItem('gostore-supplier-cache-v2-taobao','broken-json'));await page.goto(base+'/?filter=saved');await get(query);assert.equal((await get(query)).products.length,1,'Corrupt storage recovers');
+ assert.ok(await page.evaluate(()=>{const s=sessionStorage.getItem('gostore-supplier-cache-v3-taobao');return JSON.parse(s).length<=40&&s.length*2<=1500000;}),'Cache is bounded');
+ await page.evaluate(()=>sessionStorage.setItem('gostore-supplier-cache-v3-taobao','broken-json'));await page.goto(base+'/?filter=saved');await get(query);assert.equal((await get(query)).products.length,1,'Corrupt storage recovers');
  await page.addInitScript(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(this===sessionStorage)throw new DOMException('Full','QuotaExceededError');return set.call(this,k,v);};});
- await page.evaluate(()=>sessionStorage.removeItem('gostore-supplier-cache-v2-taobao'));await page.goto(base+'/?filter=saved');const before=calls.length;await get(query);await get(query);assert.equal(calls.length,before+1,'Storage disabled still supports memory caching');
+ await page.evaluate(()=>sessionStorage.removeItem('gostore-supplier-cache-v3-taobao'));await page.goto(base+'/?filter=saved');const before=calls.length;await get(query);await get(query);assert.equal(calls.length,before+1,'Storage disabled still supports memory caching');
  // Use a separate page without the storage fault for real product data and slow bootstrap.
  const detail=await browser.newPage();await detail.route('https://img.alicdn.com/**',r=>r.abort());let productCalls=0;detail.on('request',r=>{if(r.url().includes('action=supplier-product'))productCalls++;});
  await detail.goto(base+'/v/123456789');await detail.locator('#pd-options').waitFor();assert.equal(productCalls,1);

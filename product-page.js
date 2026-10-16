@@ -34,10 +34,17 @@
     root.querySelector('#pd-image-count').textContent=`${index+1} / ${images.length}`;
     root.querySelectorAll('[data-pd-photo]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.pdPhoto)===index)));
   }
+  function extraInfo(p){
+    const rows=[['Брэнд',p.brand],['Барааны төлөв',p.condition==='New'?'Шинэ':p.condition==='Used'?'Хуучин':p.condition],['Илгээх байршил',p.location?.join(', ')],['Нийт үлдэгдэл',p.stock==null?'':p.stock+' ширхэг'],['Доод захиалга',p.min_qty+' ширхэг'],['Нэмэх алхам',p.step+' ширхэг'],['Жин',p.weight_kg? p.weight_kg+' кг'+(p.weight_type?' · '+p.weight_type:''):''],['Нийлүүлэгчийн ангилал',p.category_path?.join(' / ')],['Эх нэр',p.original_name],['Шинэчилсэн',details.fetched?new Date(details.fetched).toLocaleString('mn-MN'):'']].filter(([,v])=>v);
+    return '<dl class="pd-facts">'+rows.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>';
+  }
+  function mediaInfo(p){
+    return (p.videos?.length?'<div class="pd-videos">'+p.videos.map(v=>'<video controls playsinline preload="none"'+(v.poster?' poster="'+esc(v.poster)+'"':'')+' src="'+esc(v.url)+'" aria-label="Барааны танилцуулга видео"></video>').join('')+'</div>':'')+(p.description_images?.length?'<details class="pd-description-photos"><summary>Нийлүүлэгчийн дэлгэрэнгүй зураг ('+p.description_images.length+')</summary><div>'+p.description_images.map((src,i)=>'<img data-description-src="'+esc(src)+'" alt="Барааны тайлбар · '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">').join('')+'</div></details>':'');
+  }
   function render(){
     const p=product,variants=p.variants;
     const available=supplier?variants.find(v=>v.cny!==null&&v.stock!==0)?.id:variants[0];
-    images=supplier?(p.images?.length?p.images:p.image?[p.image]:[]):['/assets/'+p.image+'.jpg'];
+    images=supplier?[...new Set([...(p.images?.length?p.images:p.image?[p.image]:[]),...variants.map(v=>v.image).filter(Boolean)])]:['/assets/'+p.image+'.jpg'];
     const specs=supplier?p.attributes||[]:[{name:'Ангилал',value:categories.find(c=>c.id===p.category)?.name||p.category},{name:'Төрөл',value:p.type==='local'?'Бэлэн бараа':'Хятадаас захиалах'}];
     document.title=p.name+' · GOStore';
     document.querySelector('meta[name=description]').content=p.name+' — GOStore. Барааны сонголт, үнэ, хүргэлтийн мэдээлэл.';
@@ -47,6 +54,7 @@
     ${images.length>1?`<div class="pd-thumbnails" aria-label="Барааны зургууд">${images.map((url,i)=>`<button type="button" data-pd-photo="${i}" aria-label="${i+1}-р зураг" aria-pressed="${i===0}"><img src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('')}</div>`:''}
     <div class="pd-gallery-foot"><span>Барааны код: <strong>${esc(match[2])}</strong></span><button type="button" class="text-button" data-pd-share>Холбоос хуулах ↗</button></div></div>
     <div class="pd-summary"><span class="section-kicker">${supplier?'ХЯТАДААС ЗАХИАЛАХ':'GOSTORE СОНГОЛТ'}</span><h1>${esc(p.name)}</h1>${supplier&&p.vendor_name?`<p class="pd-vendor">Дэлгүүр: ${esc(p.vendor_name)}</p>`:''}
+    ${supplier?`<div class="pd-sales">${p.sold_count?`<span>${esc(p.sold_count.toLocaleString())} зарагдсан</span>`:''}${p.sales_30_days?`<span>Сүүлийн 30 хоног: ${esc(p.sales_30_days.toLocaleString())}</span>`:''}</div>`:''}
     <div class="pd-price-box"><span>Барааны үнэ</span><strong id="pd-unit-price"></strong><small id="pd-original-price"></small><p>Хүргэлтийн төлбөр нэмэгдэнэ</p></div>
     ${!supplier&&p.demo?'<p class="pd-warning">Жишээ бараа · Бодит худалдааны санал биш.</p>':''}
     ${supplier&&(details.stale||!p.sellable)?'<div class="pd-warning" role="alert">Барааны үнэ, худалдаалах нөхцөлийг дахин шалгах шаардлагатай. Захиалга түр боломжгүй.<br><button type="button" class="text-button" data-pd-retry>Мэдээлэл шинэчлэх ↻</button></div>':''}
@@ -57,9 +65,12 @@
     ${supplier&&p.tiers?.length?`<div class="pd-tiers"><strong>Тоо ширхгээс хамаарах лавлах үнэ</strong>${p.tiers.map(t=>`<span>${t.qty}+ ширхэг <b>${esc(t.cny)} ¥</b></span>`).join('')}<small>Сонгосон хувилбарын эцсийн үнийг баталгаажуулна.</small></div>`:''}
     ${supplier?`<a class="text-button" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.provider_label||'1688')} дээр харах ↗</a>`:''}</div></div>
     <nav class="pd-section-links" aria-label="Барааны мэдээлэл"><a href="#pd-description">Тайлбар</a><a href="#pd-specifications">Үзүүлэлт</a><a href="#pd-shipping">Хүргэлт</a></nav>
-    <div class="pd-details"><section id="pd-description"><span class="section-kicker">БАРААНЫ ТУХАЙ</span><h2>Дэлгэрэнгүй тайлбар</h2><p class="pd-description">${esc(p.description||'Нийлүүлэгч дэлгэрэнгүй тайлбар оруулаагүй байна.')}</p></section>
-    <section id="pd-specifications"><h2>Барааны үзүүлэлт</h2>${specs.length?`<dl>${specs.map(a=>`<div><dt>${esc(a.name)}</dt><dd>${esc(a.value)}</dd></div>`).join('')}</dl>`:'<p>Үзүүлэлтийн мэдээлэл хараахан ирээгүй байна.</p>'}</section>
+    <div class="pd-details"><section id="pd-description"><span class="section-kicker">БАРААНЫ ТУХАЙ</span><h2>Дэлгэрэнгүй тайлбар</h2><p class="pd-description">${esc(p.description||(p.description_images?.length?'Дэлгэрэнгүй мэдээллийг доорх зургаас үзнэ үү.':'Нийлүүлэгч дэлгэрэнгүй тайлбар оруулаагүй байна.'))}</p>${supplier?mediaInfo(p):''}</section>
+    <section id="pd-specifications"><h2>Барааны үзүүлэлт</h2>${supplier?extraInfo(p):''}${specs.length?`<dl>${specs.map(a=>`<div><dt>${esc(a.name)}</dt><dd>${esc(a.value)}</dd></div>`).join('')}</dl>`:'<p>Үзүүлэлтийн мэдээлэл хараахан ирээгүй байна.</p>'}</section>
     <section id="pd-shipping"><h2>Хүргэлт ба төлбөр</h2><div class="pd-steps"><div><b>01</b><strong>Сонголтоо батлах</strong><p>Хувилбар, тоо ширхэгээ сонгон захиалгын мэдээллээ оруулна.</p></div><div><b>02</b><strong>Үнийн санал авах</strong><p>Бараа, хүргэлтийн дүн баталгаажсаны дараа QPay-ээр төлнө.</p></div><div><b>03</b><strong>Ачаагаа хянах</strong><p>Өөрийн GS кодоор “Миний ачаа” хэсгээс явцыг харна.</p></div></div></section></div>`;
+    const descriptionPhotos=root.querySelector('.pd-description-photos');
+    descriptionPhotos?.addEventListener('toggle',()=>{if(descriptionPhotos.open)descriptionPhotos.querySelectorAll('[data-description-src]').forEach(img=>{img.src=img.dataset.descriptionSrc;delete img.dataset.descriptionSrc;});});
+    if(supplier&&p.related?.length){const section=document.createElement('section');section.className='pd-related';section.innerHTML='<h2>Танд сонирхолтой байж болох бараа</h2><div class="pd-related-grid">'+p.related.map(item=>'<a href="/v/'+esc(item.id.startsWith('tb-')?item.id:item.id.replace(/^abb-/,''))+'">'+(item.image?'<img src="'+esc(item.image)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'')+'<span>'+esc(item.name)+'</span><strong>'+(item.mnt?money(item.mnt):'Үнэ лавлах')+'</strong></a>').join('')+'</div>';root.append(section);}
     update();
   }
   async function load(){
@@ -71,7 +82,7 @@
     }catch(error){stateMessage('Мэдээлэл авах боломжгүй',error.message,true);}
   }
   root.addEventListener('input',e=>{if(e.target.closest('#pd-options'))update();});
-  root.addEventListener('change',e=>{if(e.target.closest('#pd-options'))update();});
+  root.addEventListener('change',e=>{if(e.target.closest('#pd-options')){update();if(supplier&&e.target.name==='variant'){const image=selection()?.variant?.image,index=images.indexOf(image);if(index>=0)gallery(index);}}});
   root.addEventListener('submit',e=>{if(e.target.id!=='pd-options')return;e.preventDefault();if(!customerAccount.require())return;const value=selection();if(!value?.valid)return; if(supplier){if(details.stale||!product.sellable)return;openSupplierOrder(product,value.variant.id,value.qty);}else addToCart(id,value.variant,value.qty);});
   root.addEventListener('click',async e=>{
     const b=e.target.closest('button');if(!b)return;

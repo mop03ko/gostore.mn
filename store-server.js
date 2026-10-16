@@ -7,7 +7,7 @@ function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok){if(response.status===401&&['order-create','customer-orders','customer-me'].includes(action.split('&')[0]))window.customerAccount?.setUser(null);throw Error(result.error||'Сервертэй холбогдсонгүй.');}if(result.csrf)shopCsrf=result.csrf;return result;}
 // Only public supplier data is cached; sessions, orders and payments always use shopApi.
 window.supplierApi=(()=>{
-  const key='gostore-supplier-cache-v2-taobao',pending=new Map(),maxEntries=40,maxBytes=1500000;
+  const key='gostore-supplier-cache-v3-taobao',pending=new Map(),maxEntries=40,maxBytes=1500000;
   let entries=[];
   const clone=value=>JSON.parse(JSON.stringify(value));
   const valid=e=>e&&typeof e.key==='string'&&Number.isFinite(e.expires)&&e.expires>Date.now()&&e.expires<=Date.now()+600000&&e.data&&e.data.stale===false;
@@ -24,7 +24,7 @@ window.supplierApi=(()=>{
     if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
     if(!pending.has(request)){
       const work=(async()=>{
-        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v1'});
+        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v2'});
         const response=await fetch(url,{credentials:'omit'}),result=await response.json();
         if(!response.ok)throw Error(result.error||'Барааны мэдээлэл авч чадсангүй.');
         // Whitelist fields: never persist an API response's CSRF token or customer data.
