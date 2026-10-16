@@ -58,10 +58,21 @@ function supplier_public_json(array $data): never {
     header('Cache-Control: '.($ttl>0?'public, max-age='.$ttl.', must-revalidate':'no-store'));
     echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);exit;
 }
+function supplier_response(string $path,bool $ok,int $status,string $raw): array {
+    $response=json_decode($raw,true);
+    // A missing product is not a temporary gateway failure or an API-key problem.
+    if($ok&&$status===404&&($response['error']??null)==='not_found'&&preg_match('#^/v1/(?:taobao|alibaba1688)/product/\d+$#D',$path)){
+        fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
+    }
+    if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
+    return $response['Result'];
+}
 function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
+    $missing=$file.'.missing';
+    if(is_file($missing)&&(int)file_get_contents($missing)>time())fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
     $read=static function()use($file){$v=is_file($file)?json_decode(file_get_contents($file),true):null;return is_array($v)&&isset($v['data'],$v['fetched'],$v['expires'])&&is_array($v['data'])&&is_numeric($v['expires'])?$v:null;};
     $cached=$read();
     if($cached&&$cached['expires']>time()&&!$force){
@@ -78,6 +89,7 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
     $lock=fopen($dir.'/'.$key.'.lock','c');if(!$lock)fail('Нийлүүлэгчийн холболт завгүй байна.',503);
     if(!flock($lock,LOCK_EX|(($display||$force||$warming)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
     try {
+        if(is_file($missing)&&(int)file_get_contents($missing)>time())fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
         $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||($refreshAge===null?$cached['expires']-time()>=1800:strtotime((string)$cached['fetched'])>time()-$refreshAge)))return $cached;
         if(is_file($retry)&&(int)file_get_contents($retry)>time()){if($cached){$cached['stale']=$cached['expires']<=time();return $cached;}fail('Нийлүүлэгчийн холболтыг түр хүлээнэ үү.',503);}
         // Deduplicate each cache key; at most two independent provider requests run at once.
@@ -90,14 +102,21 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
             $ch=curl_init('https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
             curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_ENCODING=>'',CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
             $ok=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
-            $response=json_decode($raw,true);
-            if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!isset($response['Result']))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
-            $cached=['data'=>$response['Result'],'fetched'=>gmdate('c'),'expires'=>time()+21600,'stale'=>false];
+            $result=supplier_response($path,$ok!==false,$status,$raw);
+            $cached=['data'=>$result,'fetched'=>gmdate('c'),'expires'=>time()+21600,'stale'=>false];
             $tmp=tempnam($dir,'write-');if($tmp===false)fail('Cache хадгалж чадсангүй.',503);
             try {if(file_put_contents($tmp,json_encode($cached,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),LOCK_EX)===false)fail('Cache хадгалж чадсангүй.',503);chmod($tmp,0600);if(!rename($tmp,$file))fail('Cache хадгалж чадсангүй.',503);}finally{if(is_file($tmp))unlink($tmp);}
             if(is_file($retry))unlink($retry);
+            if(is_file($missing))unlink($missing);
             return $cached;
         } catch(ApiError $e) {
+            if($e->getCode()===404){
+                file_put_contents($missing,(string)(time()+300),LOCK_EX);chmod($missing,0600);
+                // Confirmed missing items must not be ordered from an earlier cached price.
+                if(is_file($file))unlink($file);
+                if(is_file($retry))unlink($retry);
+                throw $e;
+            }
             file_put_contents($retry,(string)(time()+300),LOCK_EX);chmod($retry,0600);
             if($cached&&(!$display||$cached['expires']>time()-86400)){$cached['stale']=$cached['expires']<=time();return $cached;}throw $e;
         } finally {flock($slot,LOCK_UN);fclose($slot);}

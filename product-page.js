@@ -81,7 +81,7 @@
       if(supplier){details=await supplierApi('supplier-product',{id});product=details.product;}
       else{await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');product=products.find(p=>p.id===id);details={};if(!product){stateMessage('Бараа олдсонгүй','Энэ бараа устгагдсан эсвэл худалдаанд байхгүй байна.');return;}}
       render();
-    }catch(error){stateMessage('Мэдээлэл авах боломжгүй',error.message,true);}
+    }catch(error){stateMessage(error.status===404?'Бараа олдсонгүй':'Мэдээлэл авах боломжгүй',error.message,error.status!==404);}
   }
   root.addEventListener('input',e=>{if(e.target.closest('#pd-options'))update();});
   root.addEventListener('change',e=>{if(e.target.closest('#pd-options')){update();if(supplier&&e.target.name==='variant'){const image=selection()?.variant?.image,index=images.indexOf(image);if(index>=0)gallery(index);}}});

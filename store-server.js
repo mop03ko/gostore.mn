@@ -27,7 +27,7 @@ window.supplierApi=(()=>{
       const work=(async()=>{
         const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v2'});
         const response=await fetch(url,{credentials:'omit'}),result=await response.json();
-        if(!response.ok)throw Error(result.error||'Барааны мэдээлэл авч чадсангүй.');
+        if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
         if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more});
