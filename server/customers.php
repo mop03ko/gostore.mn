@@ -33,7 +33,13 @@ function customer_addresses(array $c): array {
     $db=db();$s=$db->prepare('SELECT * FROM customer_addresses WHERE customer_id=? ORDER BY is_default DESC,created DESC,rowid DESC');$s->execute([$c['id']]);$rows=$s->fetchAll();
     if(!$rows&&trim((string)$c['address'])!==''){
         // Accounts created before the address book keep their saved profile address as the default.
-        $now=gmdate('c');$db->prepare('INSERT INTO customer_addresses VALUES (?,?,?,?,?,?,1,?,?)')->execute([bin2hex(random_bytes(16)),$c['id'],'Үндсэн хаяг',$c['name'],$c['phone'],$c['address'],$now,$now]);
+        // The write lock and re-check stop two parallel first visits from creating two defaults.
+        $db->exec('BEGIN IMMEDIATE');
+        try{
+            $s->execute([$c['id']]);
+            if(!$s->fetchAll()){$now=gmdate('c');$db->prepare('INSERT INTO customer_addresses VALUES (?,?,?,?,?,?,1,?,?)')->execute([bin2hex(random_bytes(16)),$c['id'],'Үндсэн хаяг',$c['name'],$c['phone'],$c['address'],$now,$now]);}
+            $db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         $s->execute([$c['id']]);$rows=$s->fetchAll();
     }
     return array_map(fn($a)=>['id'=>$a['id'],'label'=>$a['label'],'recipient'=>$a['recipient'],'phone'=>$a['phone'],'address'=>$a['address'],'is_default'=>(bool)$a['is_default']],$rows);

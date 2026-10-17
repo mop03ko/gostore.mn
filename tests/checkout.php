@@ -49,6 +49,12 @@ check($status('GS-000002')==='cancelled'&&order_row('GS-000002')['order']['cance
 check($status('GS-000003')==='quoted','Invoice was cancelled without checking QPay');
 check($status('GS-000004')==='quoted','Paid order was cancelled');
 check(checkout_expired_or_cancelled('GS-000002')&&!checkout_expired_or_cancelled('GS-000001'),'Expiry state incorrect');
+// Paid orders keep "quoted" in their history; hundreds of them must not hide a newer expired checkout.
+for($i=0;$i<250;$i++){$old=$paid;$old['history'][]=['status'=>'confirmed','at'=>gmdate('c')];$old['status']='confirmed';$insert($old,sprintf('GS-P%05d',$i));}
+$newest=$late;$newest['created']=gmdate('c',time()+5);$insert($newest,'GS-NEWEST');checkout_expire_due(true);
+check($status('GS-NEWEST')==='cancelled','Expiry scan must reach orders after many paid checkouts');
+$ancient=$late;$ancient['created']=gmdate('c',time()-15*86400);$insert($ancient,'GS-ANCIENT');checkout_expire_due(true);
+check($status('GS-ANCIENT')==='quoted','Scan is bounded to recent checkouts (older ones expire on their own reads)');checkout_expire_order('GS-ANCIENT');check($status('GS-ANCIENT')==='cancelled','Per-order expiry still applies');
 // The final settlement keeps the stored rates and starts from the prepaid breakdown.
 check(settlement_summary(order_row('GS-000001')['order'])['breakdown']['domestic_mnt']===10000,'Settlement lost checkout breakdown');
 check(str_contains(shipping_public()['pickup']['address'],'14б байр, 4 тоот'),'Default Ulaanbaatar pickup address missing');

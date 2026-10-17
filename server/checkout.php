@@ -72,6 +72,8 @@ function checkout_expire_due(bool $force=false): void {
     $db=db();$s=$db->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['checkout_expiry_run']);
     if(!$force&&(int)$s->fetchColumn()>time()-300)return;
     $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['checkout_expiry_run',(string)time()]);
-    $s=$db->prepare("SELECT id,data FROM orders WHERE data LIKE '%\"payment_due\"%' AND data LIKE '%\"status\":\"quoted\"%' ORDER BY created LIMIT 200");$s->execute();
+    // History keeps a "quoted" entry forever, so status text cannot narrow the scan. The payment window is at most
+    // 168 hours, so checkouts older than 14 days are already paid, cancelled or reviewed.
+    $s=$db->prepare("SELECT id,data FROM orders WHERE created>=? AND data LIKE '%\"payment_due\"%' ORDER BY created");$s->execute([gmdate('c',time()-14*86400)]);
     foreach($s->fetchAll() as $row){$o=json_decode($row['data'],true);if(is_array($o)&&checkout_expired($o))checkout_expire_order($row['id']);}
 }
