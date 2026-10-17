@@ -19,3 +19,4 @@
 @media(max-width:760px){.pd-buybar .pd-add{min-width:48px;width:48px;padding:0;justify-content:center;flex:0 0 48px}.pd-buybar .pd-add span{display:none}.pd-buybar .button[data-pd-submit]{min-width:0;flex:0 1 auto}}
 .pd-foot-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
 .pd-foot-actions [aria-pressed=true]{color:var(--blue)}
+@media(max-width:760px){.pd-buybar small{font-size:11px}}
