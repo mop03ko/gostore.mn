@@ -16,7 +16,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  assert.equal(await page.locator('.pd-more-specs dl > div').count(),4);assert.ok((await page.locator('.pd-more-specs summary').innerText()).includes('+4'));
  await page.locator('[data-pd-add]').click();await page.locator('#cart-flyout.visible').waitFor();
  assert.ok((await page.locator('#cart-flyout').innerText()).includes('Сагсанд нэмэгдлээ'));
- await page.locator('#pd-options [name=variant]').waitFor();await page.locator('[data-pd-delta="1"]').click();assert.equal(await page.locator('#pd-qty').inputValue(),'2','Flyout does not block the page');
+ await page.locator('#pd-options [name=variant]').first().waitFor();await page.locator('[data-pd-delta="1"]').click();assert.equal(await page.locator('#pd-qty').inputValue(),'2','Flyout does not block the page');
  await page.locator('[data-flyout-close]').click();await page.waitForFunction(()=>!document.querySelector('#cart-flyout').classList.contains('visible'));
  await open('722222222');await page.locator('[data-pd-add]').click();await page.locator('#cart-flyout a[href="/cart"]').click();await page.waitForURL(u=>u.pathname==='/cart');
  await page.locator('.store-cart-line').first().waitFor();assert.equal(await page.locator('.store-cart-line').count(),2);

@@ -24,3 +24,19 @@
 .pd-more-specs summary{cursor:pointer;font-weight:700;color:var(--navy);padding:12px 15px;min-height:44px;display:flex;align-items:center}
 .pd-more-specs dd{overflow-wrap:anywhere}
 .pd-details dd{overflow-wrap:anywhere}
+
+/* Variant list rows: thumbnail, name, price and stock, like marketplace product pages. */
+.pd-variant-list{border:0;padding:0;margin:0 0 14px;min-width:0;max-height:360px;overflow:auto;overscroll-behavior:contain}
+.pd-variant-list legend{font-weight:650;font-size:14px;margin-bottom:8px;padding:0}.pd-variant-list legend small{font-weight:400;color:#5f6b7d;margin-left:6px}
+.pd-variant{display:grid;grid-template-columns:auto 48px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e3e7ee;border-radius:12px;margin-bottom:6px;cursor:pointer;background:#fff}
+.pd-variant:has(input:checked){border-color:#ea580c;background:#fff7f0;box-shadow:0 0 0 1px #ea580c inset}
+.pd-variant:has(input:focus-visible){outline:2px solid #ea580c;outline-offset:2px}
+.pd-variant.off{opacity:.55;cursor:not-allowed}
+.pd-variant input{accent-color:#ea580c;width:18px;height:18px;margin:0}
+.pd-variant img,.pd-variant-noimg{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f3f4f7}
+.pd-variant-name{font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.pd-variant-side{text-align:right;display:flex;flex-direction:column;gap:2px}.pd-variant-side b{color:#c2410c;font-size:15px;white-space:nowrap}.pd-variant-side small{font-size:11px;color:#5f6b7d;white-space:nowrap}
+#pd-unit-price{color:#c2410c}
+.pd-buybar .pd-add{background:#eef0f4;border-color:#eef0f4;color:#263042}
+.pd-buybar .pd-buy{background:#ea580c;border-color:#ea580c;color:#fff}.pd-buybar .pd-buy:hover:not(:disabled){background:#c2410c;border-color:#c2410c}
+@media(max-width:760px){.pd-variant{grid-template-columns:auto 40px minmax(0,1fr) auto;gap:8px;padding:7px 8px}.pd-variant img,.pd-variant-noimg{width:40px;height:40px}.pd-variant-name{font-size:13px}}

@@ -44,7 +44,7 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
     foreach(supplier_warm_queries() as $q){
         $record=$snapshot['records'][$q]??null;
         if(!$record||(int)$record['cache_expires']<=time()-86400){
-            $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']).'.json';
+            $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/taobao/search',['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']).'.json';
             $cache=supplier_snapshot_read($file);
             $record=is_array($cache)&&($cache['expires']??0)>time()-86400?supplier_search_result($cache,1):null;
         }
@@ -88,7 +88,7 @@ function supplier_snapshot_run(int $maxJobs=26): array {
         foreach($queries as $q){
             if(isset($state['records'][$q]))continue;if($jobs++>=max(1,min(26,$maxJobs)))break;
             try{
-                $cache=supplier_request('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'],false,true,true,SUPPLIER_SNAPSHOT_INTERVAL);
+                $cache=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'],false,true,true,SUPPLIER_SNAPSHOT_INTERVAL);
                 $fetched=strtotime((string)($cache['fetched']??''));
                 if(!$fetched||$fetched+SUPPLIER_SNAPSHOT_INTERVAL<=time()||!empty($cache['stale']))throw new RuntimeException('Provider refresh incomplete');
                 $cache['expires']=min((int)$cache['expires'],$fetched+SUPPLIER_SNAPSHOT_INTERVAL);

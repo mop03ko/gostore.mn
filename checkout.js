@@ -37,7 +37,7 @@ window.taobaoCart=(()=>{
     openModal('Миний сагс',items.map(row).join('')+`<div class="cart-totals"><div><span>Барааны дүн</span><strong>${subtotal===null?'Тооцоолно':money(subtotal)}</strong></div><div><span>Хятад доторх хүргэлт, үйлчилгээ</span><span>Дараагийн алхамд</span></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд жингээр</span></div><div><span>Хүлээн авах</span><span>УБ каргоны хаягаас</span></div></div><div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
   }
   function breakdown(q){const b=q.breakdown;return `<div class="cart-totals checkout-totals"><div><span>Барааны үнэ</span><strong>${money(b.goods_mnt)}</strong></div><div><span>Хятад доторх хүргэлт · ${q.vendors} дэлгүүр</span>${q.domestic_later?'<span>УБ-д ирэхэд бодит дүнгээр</span>':`<strong>${money(b.domestic_mnt)}</strong>`}</div><div><span>Үйлчилгээний хураамж</span><strong>${money(b.service_mnt)}</strong></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд бодит жингээр</span></div><div class="total"><span>Одоо төлөх</span><strong>${money(q.total)}</strong></div></div>`;}
-  // «Шууд захиалах» orders only the shown item; the cart button orders the saved cart.
+  // «Худалдан авах» orders only the shown item; the cart button orders the saved cart.
   const ordering=()=>selected||read();
   const payload=()=>ordering().map(i=>({id:i.id,sku:i.sku,qty:i.qty}));
   async function checkout(message='',only){

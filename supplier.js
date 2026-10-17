@@ -17,13 +17,15 @@ function renderSupplierCards(items){
     // Search results only carry the listed price; it is shown as approximate until a SKU price is verified.
     const approx=!priced&&Number(p.approx_mnt)>0?Number(p.approx_mnt):0,soldOut=p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now();
     const sold=Number.isSafeInteger(p.sold_count)&&p.sold_count>0?p.sold_count:null;
-    return `<article class="supplier-card">
+    // Sales are rounded down to a leading digit (1,234 → 1,000+) like marketplace cards; 1,000+ earns a HOT badge.
+    const step=sold!==null&&sold>=10?10**Math.floor(Math.log10(sold)):1,soldLabel=sold===null?'':sold<10?String(sold):new Intl.NumberFormat('en-US').format(Math.floor(sold/step)*step)+'+';
+    return `<article class="supplier-card">${sold!==null&&sold>=1000?'<span class="supplier-hot">HOT</span>':''}
       <a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
       <button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button>
       <button class="favorite-button compare-button" data-compare-toggle="${p.id}" data-name="${esc(p.name)}" data-image="${esc(p.image||'')}" aria-label="${esc(p.name)} — харьцуулах" title="Харьцуулах">${icon('compare')}</button>
       <div class="supplier-card-copy">
         <h3><a href="/v/${p.id}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
-        <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${new Intl.NumberFormat('en-US').format(sold)}</b> зарагдсан</span>`:'<span>Taobao · Захиалгаар</span>'}</div>
+        <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> зарагдсан</span>`:'<span>Taobao · Захиалгаар</span>'}</div>
         <p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
         <div class="supplier-card-bottom"><div class="supplier-card-price"><strong>${priced?money(p.mnt):approx?'≈ '+money(approx):p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now()?'Дууссан':'Үнэ шалгах'}</strong>${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?(soldOut?'<small>Одоогоор захиалах боломжгүй</small>':'<small>-аас · нарийн үнэ хувилбараас</small>'):''}</div><a class="supplier-card-buy" href="/v/${p.id}" aria-label="${esc(p.name)} — сонголт харах" title="Өнгө, хэмжээ сонгож захиалах">${icon('cart-add')}</a></div>
       </div>

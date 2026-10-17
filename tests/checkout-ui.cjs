@@ -12,7 +12,7 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  const open=async id=>{await page.goto(base+'/v/tb-'+id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);};
  await open('511111111');await page.locator('[data-pd-add]').click();
- await page.locator('#pd-options [name=variant]').selectOption('blue');await page.locator('[data-pd-delta="1"]').click();await page.locator('[data-pd-add]').click();
+ await page.locator('#pd-options [name=variant][value=blue]').check();await page.locator('[data-pd-delta="1"]').click();await page.locator('[data-pd-add]').click();
  await open('522222222');await page.locator('[data-pd-add]').click();
  assert.equal(await page.locator('#cart-count').innerText(),'3','Header counts cart lines');
  await page.locator('.header-actions [data-action=cart]').click();await page.locator('.cart-row').first().waitFor();

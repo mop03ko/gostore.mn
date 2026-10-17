@@ -6,6 +6,8 @@ function supplier_identity(string $id): array {
     if(!preg_match('/^(abb|tb)-(\d{5,20})$/D',$id,$m))fail('Нийлүүлэгчийн барааны дугаар буруу.');
     return ['provider'=>$m[1]==='tb'?'taobao':'alibaba1688','number'=>$m[2],'label'=>$m[1]==='tb'?'Taobao':'1688'];
 }
+// Language for OT titles and attributes. The OT key must have the language enabled; otherwise OT keeps returning Mongolian.
+function supplier_language(): string { return (shipping_settings()['catalog_language']??'mn')==='en'?'en':'mn'; }
 function supplier_ready(): bool { return !empty(config()['otcommerce']['api_key']) && shipping_settings()['supplier_enabled']; }
 function supplier_cache_key(string $path,array $query): string { ksort($query);return hash('sha256',$path.'?'.http_build_query($query)); }
 // At most one post-response refresh runs across all PHP workers.
@@ -34,7 +36,7 @@ function supplier_schedule_warm(): void {
     if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return;}
     $next=null;
     foreach(supplier_warm_queries() as $q){
-        $query=['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'];$file=$dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json';
+        $query=['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'];$file=$dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json';
         $v=is_file($file)?json_decode(file_get_contents($file),true):null;
         if(is_array($v)&&is_array($v['data']??null)&&($v['expires']??0)>time())continue;
         if(is_file($file.'.retry')&&(int)file_get_contents($file.'.retry')>time())continue;
@@ -214,7 +216,7 @@ function supplier_clean_title(string $title): string {
 function supplier_card_price(array $p,int $expires): array {
     if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
     try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
-    $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn']).'.json';
+    $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()]).'.json';
     $cache=is_file($file)?json_decode(file_get_contents($file),true):null;
     if(is_array($cache)&&($cache['expires']??0)>time()&&empty($cache['stale'])&&isset($cache['data']['Item'])&&(string)($cache['data']['Item']['Id']??'')===($identity['provider']==='taobao'?$identity['number']:$p['id'])){
         $p=array_replace($p,supplier_stock_price($cache['data']['Item']));$expires=(int)$cache['expires'];
@@ -282,7 +284,7 @@ function supplier_search(array $b,bool $display=false): array {
     $range=supplier_price_range($b);
     if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort,$range);}
     if($display&&!$range){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return supplier_price_order_result($snapshot,$sort);}}
-    $query=['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
+    $query=['language'=>supplier_language(),'item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
     if(isset($range['price_min']))$query['price_min']=number_format($range['price_min']/$rate,2,'.','');
     if(isset($range['price_max']))$query['price_max']=number_format($range['price_max']/$rate,2,'.','');
     $c=supplier_request('/v1/taobao/search',$query,$display);
@@ -333,7 +335,7 @@ function supplier_image_search(string $hash,int $page,bool $display=false): arra
     if(!shipping_settings()['image_search_enabled'])fail('Зургаар хайх үйлчилгээ түр идэвхгүй байна.',503);
     if(!is_file(supplier_image_search_dir().'/'.$hash.'.jpg'))fail('Хайлтын зургийн хугацаа дууссан. Зургаа дахин оруулна уу.',404);
     if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
-    $c=supplier_request('/v1/taobao/search',['language'=>'mn','image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>12],$display);
+    $c=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>12],$display);
     return supplier_search_result($c,$page)+['image'=>$hash];
 }
 function supplier_search_result(array $c,int $page): array {
@@ -344,7 +346,7 @@ function supplier_search_result(array $c,int $page): array {
 }
 function supplier_detail(string $id,bool $display=false): array {
     $identity=supplier_identity($id);
-    $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn'],$display);
+    $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()],$display);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
     $p['price_expires']=(int)$c['expires'];
     $p['category_path']=[];foreach(array_reverse($c['data']['RootPath']['Content']??[]) as $category){$name=supplier_text($category['Name']??'',150);if($name!=='')$p['category_path'][]=$name;}

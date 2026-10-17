@@ -373,3 +373,10 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 @media(max-width:760px){.pd-buybar small,.mobile-nav a,.mobile-nav button{font-size:11px}}
 /* Bigger tap target for card titles without moving the layout (padding offset by negative margin). */
 .supplier-card-copy h3 a{padding:11px 0;margin:-11px 0}
+
+/* Marketplace-style card accents: HOT badge, orange price and cart button. */
+#supplier-grid .supplier-card{position:relative}
+.supplier-hot{position:absolute;top:10px;left:10px;z-index:2;padding:3px 8px;border-radius:6px;background:#e03131;color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;line-height:16px;pointer-events:none}
+#supplier-grid .supplier-card-price strong{color:#c2410c}
+#supplier-grid .supplier-card-buy{background:#ea580c;color:#fff;border-color:#ea580c}
+#supplier-grid .supplier-card-buy:hover,#supplier-grid .supplier-card-buy:focus-visible{background:#c2410c;border-color:#c2410c}
