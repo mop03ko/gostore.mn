@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/auth/refresh"
+method: POST
+order: 2000

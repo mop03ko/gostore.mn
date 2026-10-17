@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/invoice"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "invoice_code": "TEST_INVOICE",
+      "sender_invoice_no": "12345678",
+      "invoice_receiver_code": "83",
+      "invoice_description": "Order No1234 200.00",
+      "amount": 200,
+      "callback_url": "https://example.com/payments?payment_id=12345678"
+    }
+order: 3000

@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/ebarimt_v3/create"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "payment_id": "019276866891878",
+      "ebarimt_receiver_type": "CITIZEN",
+      "ebarimt_receiver": "88614450"
+    }
+order: 10000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/ebarimt_v3/{payment_id}"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string",
+          "description": "Optional цуцлах шалтгаан",
+          "example": "guilgee butsaav"
+        }
+      }
+    }
+order: 11000

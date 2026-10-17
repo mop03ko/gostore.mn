@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/payment/check"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "object_type": "INVOICE",
+      "object_id": "d50f49f2-9032-4a74-8929-530531f28f63",
+      "offset": {
+        "page_number": 1,
+        "page_limit": 100
+      }
+    }
+order: 6000

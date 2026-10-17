@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/payment/{payment_id}"
+method: GET
+order: 5000

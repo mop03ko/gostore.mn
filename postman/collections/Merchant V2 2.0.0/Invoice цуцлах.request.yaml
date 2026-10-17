@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/invoice/{invoice_id}"
+method: DELETE
+order: 4000

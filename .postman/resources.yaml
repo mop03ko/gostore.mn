@@ -1,0 +1,10 @@
+# Use this workspace to collaborate
+workspace:
+  id: 8da09784-ea51-4f44-8c91-6190f0b6d4e0
+
+localResources:
+  collections: []
+
+cloudResources:
+  collections:
+    ../postman/collections/Merchant V2 2.0.0: 88648773-4cec-438a-8f48-d9d74609963c

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/payment/list"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "object_type": "INVOICE",
+      "object_id": "TEST_INVOICE",
+      "start_date": "2024-01-01 00:00:01",
+      "end_date": "2024-01-31 23:59:59",
+      "offset": {
+        "page_number": 1,
+        "page_limit": 100
+      }
+    }
+order: 9000

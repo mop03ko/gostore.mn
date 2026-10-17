@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/v2/payment/cancel/{payment_id}"
+method: DELETE
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Тэмдэглэл",
+          "example": "butsaalt"
+        },
+        "callback_url": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Callback URL",
+          "example": "https://example.com/payments?payment_id=12345678"
+        }
+      }
+    }
+order: 7000
