@@ -24,7 +24,7 @@ function supplier_schedule_refresh(string $path,array $query,string $dir): void 
     });
 }
 // Warm only fixed storefront departments, after the visitor has received their response.
-function supplier_warm_queries(): array {return ['home storage','electronics','bag','men shoes','accessories','beauty','lamp','men clothing','women clothing','kids clothing','women shoes','kitchen utensils','home appliances','furniture','home decoration','baby products','toys','sports equipment','camping equipment','car accessories','tools','garden supplies','pet supplies','office supplies','personal care'];}
+function supplier_warm_queries(): array {return ['home storage','electronics','bag','men shoes','jewelry accessories','beauty','lamp','men clothing','women clothing','kids clothing','women shoes','kitchen utensils','home appliances','furniture','home decoration','baby products','toys','sports equipment','camping equipment','car accessories','tools','garden supplies','pet supplies','office supplies','personal care'];}
 function supplier_schedule_warm(): void {
     if(!empty(shipping_settings()['catalog_snapshot_enabled'])){supplier_snapshot_schedule();return;}
     if(!function_exists('fastcgi_finish_request')||!supplier_ready())return;
