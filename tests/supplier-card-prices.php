@@ -22,7 +22,10 @@ $records=[];foreach(supplier_warm_queries() as $i=>$q){$products=[];for($j=0;$j<
 $records['bag']['products'][0]=$records['home storage']['products'][0];
 $snapshot=['version'=>1,'generated_at'=>time(),'next_refresh_at'=>time()+7200,'records'=>$records];supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
 $a=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default'],true);$b=supplier_search(['q'=>'__all__','page'=>2,'sort'=>'default'],true);
-check(count($a['products'])===12&&count(array_unique(array_column($a['products'],'name')))===12,'All shows diverse departments');
+$mix=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-updated_time'],true);
+check(count($mix['products'])===12&&count(array_unique(array_column($mix['products'],'name')))===12,'All shows diverse departments');
+// The default feed is ordered cheapest first across every department.
+$prices=array_column($a['products'],'mnt');$sorted=$prices;sort($sorted);check(count($a['products'])===12&&$prices===$sorted,'Default feed is cheapest first');
 check(!$a['stale']&&$a['more']&&$a['total']===count(supplier_warm_queries())*3-1,'Real deduplicated total and pagination');
 check(!array_intersect(array_column($a['products'],'id'),array_column($b['products'],'id')),'Pages do not repeat products');
 check($a['products'][0]['mnt']===5500,'Mixed feed recomputes exchange rate');

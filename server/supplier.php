@@ -262,13 +262,30 @@ function supplier_search(array $b,bool $display=false): array {
     if(!in_array($sort,['default','price','-price','-volume','-updated_time'],true))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);
     if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort,$range);}
-    if($display&&!$range){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return $snapshot;}}
+    if($display&&!$range){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return supplier_price_order_result($snapshot,$sort);}}
     $query=['language'=>'mn','item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
     if(isset($range['price_min']))$query['price_min']=number_format($range['price_min']/$rate,2,'.','');
     if(isset($range['price_max']))$query['price_max']=number_format($range['price_max']/$rate,2,'.','');
     $c=supplier_request('/v1/taobao/search',$query,$display);
     if($display)supplier_schedule_warm();
-    return supplier_search_result($c,$page);
+    return supplier_price_order_result(supplier_search_result($c,$page),$sort);
+}
+// The shown price: verified SKU price first, otherwise the approximate search price; unknown is null.
+function supplier_display_price(array $p): ?int {
+    return ($p['price_status']??'')==='available'?($p['mnt']??null):($p['approx_mnt']??null);
+}
+// Default view: relevant results shown cheapest first. Taobao's own ascending price sort is not used
+// for this because it surfaces 0.01¥ placeholder listings.
+function supplier_price_order(array $products): array {
+    foreach($products as $i=>&$p)$p['_order']=$i;unset($p);
+    usort($products,static function($a,$b){$pa=supplier_display_price($a);$pb=supplier_display_price($b);
+        if(($pa===null)!==($pb===null))return $pa===null?1:-1;return ($pa<=>$pb)?:($a['_order']<=>$b['_order']);});
+    foreach($products as &$p)unset($p['_order']);unset($p);
+    return $products;
+}
+function supplier_price_order_result(array $r,string $sort): array {
+    if($sort==='default')$r['products']=supplier_price_order($r['products']??[]);
+    return $r;
 }
 // Image search: OT fetches the photo by URL, so a re-encoded JPEG is published under a content hash for 7 days.
 function supplier_image_search_dir(): string { return dirname(__DIR__).'/assets/uploads/search'; }

@@ -22,4 +22,9 @@ check(count($r['products'])===12&&$r['total']===250&&$r['pages']===21&&$r['more'
 check($r['products'][0]['price_status']==='unverified'&&$r['products'][0]['mnt']===null&&$r['products'][0]['approx_mnt']===(int)ceil(21*550),'Approximate card price missing');
 $data['Items']['Items']['TotalCount']=5000;file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json',json_encode(['data'=>$data,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
 check(supplier_search(['q'=>'bag','page'=>1,'sort'=>'-updated_time','price_min'=>'10000','price_max'=>'50000'])['pages']===50,'Pages must respect the provider maximum');
+// Default view: relevant results are shown cheapest first, unknown prices last, ties keep relevance order.
+$mixed=['Items'=>['Items'=>['Content'=>[$item('200001',30),$item('200002',10),['Id'=>'200003','ProviderType'=>'Taobao','Title'=>'Үнэгүй','IsSellAllowed'=>true],$item('200004',20),$item('200005',10)],'TotalCount'=>5],'MaximumPageCount'=>1]];
+file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>'shoes','page'=>1,'limit'=>12,'sort'=>'default']).'.json',json_encode(['data'=>$mixed,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
+check(array_column(supplier_search(['q'=>'shoes','page'=>1])['products'],'id')===['tb-200002','tb-200005','tb-200004','tb-200001','tb-200003'],'Default order must be cheapest first');
+check(supplier_price_order([['id'=>'a','price_status'=>'available','mnt'=>9000],['id'=>'b','price_status'=>'unverified','approx_mnt'=>5000]])[0]['id']==='b','Approximate prices take part in ordering');
 echo "PASS: catalog price bounds validation, MNT→CNY conversion for OT, newest sort, result total and page count.\n";

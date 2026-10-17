@@ -60,7 +60,8 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
     // Verified prices win; otherwise the approximate search price is used, and unknown prices go last.
     $price=static fn($p)=>($p['price_status']??'available')==='available'?($p['mnt']??null):($p['approx_mnt']??null);
     if($range)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))!==null&&(!isset($range['price_min'])||$m>=$range['price_min'])&&(!isset($range['price_max'])||$m<=$range['price_max'])));
-    if(!in_array($sort,['default','-updated_time'],true))usort($products,static function($a,$b)use($sort,$price){
+    // The default view is the whole mixed feed cheapest first; -updated_time keeps the department mix order.
+    if($sort!=='-updated_time')usort($products,static function($a,$b)use($sort,$price){
         if($sort==='-volume')$cmp=($b['sold_count']??0)<=>($a['sold_count']??0);
         else{$pa=$price($a);$pb=$price($b);if(($pa===null)!==($pb===null))return $pa===null?1:-1;$cmp=($pa??0)<=>($pb??0);if($sort==='-price')$cmp=-$cmp;}
         return $cmp?:$a['_position']<=>$b['_position'];
