@@ -38,6 +38,10 @@ foreach([
     ["Коридорын шат, хүний \u{200B}\u{200B}мэдрэгч",'Коридорын шат, хүний мэдрэгч'],
     ['спорт гутал, пүүз','Спорт гутал, пүүз'],
     ['MARIUS шаргал даашинз·','MARIUS шаргал даашинз'],
+    ['[Хувьцааны боловсруулалт дууссан] 8см болор чимэглэл','8см болор чимэглэл'],
+    ['[Дээд ба доод хоолойн температурын бие даасан хяналт] Оу Нин зуух','Дээд ба доод хоолойн температурын бие даасан хяналт, Оу Нин зуух'],
+    ['[Оролдох [Kyocka хутга','Оролдох Kyocka хутга'],
+    ['Цаг (ус нэвтэрдэггүй) эрэгтэй','Цаг (ус нэвтэрдэггүй) эрэгтэй'],
 ] as [$in,$out]){$got=supplier_clean_title($in);check($got===$out,"Title cleanup: $in => $got");check(supplier_clean_title($got)===$got,'Cleanup must be idempotent');}
 check(supplier_clean_title('【】')==='【】','Never returns an empty title');
 echo "PASS: catalog price bounds validation, MNT→CNY conversion for OT, newest sort, result total and page count.\n";

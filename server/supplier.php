@@ -197,7 +197,9 @@ function supplier_stock_price(array $p,bool $detail=true): array {
 // Idempotent, so names already stored in snapshots are cleaned again when read.
 function supplier_clean_title(string $title): string {
     $t=preg_replace('/[\x{200B}-\x{200D}\x{2060}\x{FEFF}]/u','',$title)??$title;
-    $t=preg_replace('/^\s*[\[【(（][^\]】)）]{1,30}[\]】)）]\s*/u','',$t)??$t;                 // [Өөртөө ажилладаг], 【…】
+    $t=preg_replace('/^\s*[\[【(（][^\[\]【】()（）]{1,40}[\]】)）]\s*/u','',$t)??$t;          // [Өөртөө ажилладаг], 【…】
+    $t=preg_replace('/^\s*[\[【]([^\[\]【】]{41,120})[\]】]\s*/u','$1, ',$t)??$t;             // long feature note: keep it as text
+    $t=preg_replace('/[\[【](?![^\[\]【】]*[\]】])/u','',$t)??$t;                                // unclosed opening bracket
     $t=preg_replace('/[\x{3000}-\x{303F}\x{3400}-\x{9FFF}\x{FF00}-\x{FFEF}]+/u',' ',$t)??$t; // Chinese characters and punctuation
     $t=preg_replace('/үнэгүй\s+хүргэлт(?:тэй)?/iu','',$t)??$t;
     $t=preg_replace('/(*UCP)(?<!\S)(\S+)(?:[\s,]+\1(?!\S))+/iu','$1',$t)??$t;               // Stent Stent Stent → Stent
