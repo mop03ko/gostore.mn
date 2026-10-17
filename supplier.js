@@ -29,7 +29,7 @@ function renderSupplierCards(items){
   }).join('')||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Taobao барааны зүрхэн тэмдгийг дарж хадгалаарай.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
 }
 function supplierUrl(page=1){
-  if(document.documentElement.matches('.product-view,.account-view'))return;
+  if(document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;
   const url=new URL(location.href);url.searchParams.delete('category');
   for(const [key,value] of Object.entries({q:supplierImage||supplierQuery==='__all__'?'':supplierQuery,image:supplierSaved?'':supplierImage,sort:supplierImage||supplierSort==='default'?'':supplierSort,page:page===1?'':String(page),filter:supplierSaved?'saved':'',price_min:supplierImage||supplierSaved?'':supplierPriceRange.min,price_max:supplierImage||supplierSaved?'':supplierPriceRange.max})){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}
   if(!supplierSaved&&!(typeof supplierImage!=='undefined'&&supplierImage)&&supplierCategory&&supplierCategory!=='all')url.searchParams.set('category',supplierCategory);
@@ -85,10 +85,10 @@ $('#supplier-search').addEventListener('submit',e=>{e.preventDefault();if(matchM
   if(min&&max&&Number(min)>Number(max)){toast('Доод үнэ дээд үнээс их байна.');return;}
   supplierPriceRange={min:min.slice(0,9),max:max.slice(0,9)};window.supplierBrowse($('#supplier-query').value);});
 document.addEventListener('submit',async e=>{if(e.target.id!=='supplier-order-form')return;e.preventDefault();const f=e.target,button=f.querySelector('[type="submit"]');button.disabled=true;try{await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');if(!customerAccount.require())return;const b=Object.fromEntries(new FormData(f));b.type='supplier';b.product_id=supplierSelected.id;b.title=supplierSelected.name.slice(0,120);b.qty=Number(b.qty);b.require_account=true;f.dataset.requestToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');b.token=f.dataset.requestToken;const r=await shopApi('order-create',b);if(!window.customerAccount?.user){const requests=savedRequests().filter(x=>x.id!==r.order.id);requests.unshift({id:r.order.id,token:b.token,title:r.order.title});localStorage.setItem(REQUESTS_KEY,JSON.stringify(requests.slice(0,100)));}toast('Захиалгын хүсэлт илгээгдлээ');await storeServer.orders();}catch(err){const error=f.querySelector('#request-error');if(error)error.textContent=err.message;}finally{button.disabled=false;}});
-(async()=>{if(document.documentElement.matches('.product-view,.account-view'))return;try{if(initialFilters.get('category'))supplierQuery=supplierCategoryQuery(initialFilters.get('category'));$('#supplier-query').value=(initialFilters.has('q')||initialFilters.has('category'))&&supplierQuery!=='__all__'?supplierQuery:'';$('#search').value=$('#supplier-query').value;$('#supplier-search [name=sort]').value=supplierSort;$('#supplier-search [name=price_min]').value=supplierPriceRange.min;$('#supplier-search [name=price_max]').value=supplierPriceRange.max;if(initialFilters.get('filter')==='saved')window.supplierBrowse(null,true);else await loadSupplier(Math.min(100,Math.max(1,parseInt(initialFilters.get('page'),10)||1)));}catch{$('#supplier-status').textContent='Taobao каталогийг сервертэй холбогдсон сайтаас ашиглана уу.';}})();
+(async()=>{if(document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;try{if(initialFilters.get('category'))supplierQuery=supplierCategoryQuery(initialFilters.get('category'));$('#supplier-query').value=(initialFilters.has('q')||initialFilters.has('category'))&&supplierQuery!=='__all__'?supplierQuery:'';$('#search').value=$('#supplier-query').value;$('#supplier-search [name=sort]').value=supplierSort;$('#supplier-search [name=price_min]').value=supplierPriceRange.min;$('#supplier-search [name=price_max]').value=supplierPriceRange.max;if(initialFilters.get('filter')==='saved')window.supplierBrowse(null,true);else await loadSupplier(Math.min(100,Math.max(1,parseInt(initialFilters.get('page'),10)||1)));}catch{$('#supplier-status').textContent='Taobao каталогийг сервертэй холбогдсон сайтаас ашиглана уу.';}})();
 
 $('#supplier-search [name=sort]').addEventListener('change',e=>{supplierSort=e.target.value;loadSupplier(1);});
-window.addEventListener('storage',e=>{if(e.key===SUPPLIER_FAVORITES_KEY){updateCounts();if(!document.documentElement.matches('.product-view,.account-view'))renderSupplierCards(supplierSaved?supplierFavoriteItems():supplierResults);}});
+window.addEventListener('storage',e=>{if(e.key===SUPPLIER_FAVORITES_KEY){updateCounts();if(!document.documentElement.matches('.product-view,.account-view,.store-page-view'))renderSupplierCards(supplierSaved?supplierFavoriteItems():supplierResults);}});
 updateCounts();
 
 // Image search: downscale in the browser, publish via the server, then page through Taobao matches.
@@ -110,7 +110,7 @@ async function supplierImageSearch(file){
     const form=new FormData();form.append('image',await supplierImageFile(file),'search.jpg');
     const response=await fetch('/api/index.php?action=supplier-image-upload',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':shopCsrf},body:form}),result=await response.json();
     if(!response.ok)throw Error(result.error||'Зураг илгээж чадсангүй.');
-    if(document.documentElement.matches('.product-view,.account-view')){location.assign('/?image='+result.image+'#supplier-catalog');return;}
+    if(document.documentElement.matches('.product-view,.account-view,.store-page-view')){location.assign('/?image='+result.image+'#supplier-catalog');return;}
     supplierImage=result.image;$('#supplier-query').value='';$('#search').value='';filters.category='all';renderCategories();loadSupplier(1);scrollCatalog();
   }catch(e){toast(e.message);}
   finally{buttons.forEach(b=>b.disabled=false);}

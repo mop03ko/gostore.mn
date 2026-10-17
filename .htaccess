@@ -17,4 +17,5 @@ RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
 RewriteRule ^v/(?:tb-)?[0-9]{5,20}/?$ index.html [L]
 RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 RewriteRule ^account(?:/[a-z]{1,20})?/?$ index.html [L]
+RewriteRule ^(?:cart|help)/?$ index.html [L]
 </IfModule>
