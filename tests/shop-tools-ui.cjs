@@ -10,11 +10,9 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
  const approxCard=await page.locator('.supplier-card').nth(2).locator('.supplier-card-price').innerText();assert.ok(approxCard.includes('≈ 9,900')&&approxCard.includes('-аас'),'Unverified card shows an approximate price: '+approxCard);
- // A header shortcut must bring the refreshed catalog into view, and the empty kids-shoes category is gone.
- assert.equal(await page.locator('#quick-categories [data-supplier-query="kids shoes"]').count(),0);
- await page.evaluate(()=>scrollTo(0,0));await page.locator('#quick-categories [data-supplier-query="lamp"]').click();
- await page.waitForFunction(()=>{const r=document.querySelector('#catalog').getBoundingClientRect();return r.top<innerHeight&&r.bottom>0&&scrollY>0;});
- await page.locator('#supplier-reset').click();await page.waitForFunction(()=>!new URL(location.href).searchParams.has('q')&&document.querySelectorAll('#supplier-paging button').length>0);
+ // The home page has a single category row (in the catalog); the empty kids-shoes category is gone.
+ assert.equal(await page.locator('#quick-categories').count(),0);assert.equal(await page.locator('#category-grid').count(),0);
+ assert.equal(await page.locator('.catalog-category-list').count(),1);assert.equal(await page.locator('.catalog-category-list [data-catalog-category="kids-shoes"]').count(),0);
  assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['1','2','21','Дараах'],'Numbered pages around the current one');
  await page.locator('#catalog').screenshot({path:'tmp/shop-tools-catalog-1440.png',clip:undefined});
  await page.locator('#supplier-paging [data-supplier-page="21"]').click();await page.waitForFunction(()=>document.querySelector('#supplier-paging [aria-current=page]')?.textContent==='21');

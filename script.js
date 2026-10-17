@@ -84,7 +84,9 @@ $('#close-modal').addEventListener('click',closeModal);
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
 
 function renderCategories() {
-  $('#category-grid').innerHTML=categories.slice(0,7).map(c=>`<button class="category-card ${filters.category===c.id?'active':''}" data-category="${c.id}" aria-pressed="${filters.category===c.id}"><div class="category-image"><img src="/assets/${c.image}.jpg" alt="" loading="lazy"></div><strong>${c.name}</strong><small>${c.subtitle}</small></button>`).join('');
+  // The home page keeps one category row (in the catalog); the old card grid may be absent.
+  const grid=$('#category-grid');if(!grid)return;
+  grid.innerHTML=categories.slice(0,7).map(c=>`<button class="category-card ${filters.category===c.id?'active':''}" data-category="${c.id}" aria-pressed="${filters.category===c.id}"><div class="category-image"><img src="/assets/${c.image}.jpg" alt="" loading="lazy"></div><strong>${c.name}</strong><small>${c.subtitle}</small></button>`).join('');
 }
 function visibleProducts() {
   const query=filters.query.toLocaleLowerCase('mn').trim();
