@@ -27,6 +27,11 @@ $mixed=['Items'=>['Items'=>['Content'=>[$item('200001',30),$item('200002',10),['
 file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>'shoes','page'=>1,'limit'=>12,'sort'=>'default']).'.json',json_encode(['data'=>$mixed,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
 check(array_column(supplier_search(['q'=>'shoes','page'=>1])['products'],'id')===['tb-200002','tb-200005','tb-200004','tb-200001','tb-200003'],'Default order must be cheapest first');
 check(supplier_price_order([['id'=>'a','price_status'=>'available','mnt'=>9000],['id'=>'b','price_status'=>'unverified','approx_mnt'=>5000]])[0]['id']==='b','Approximate prices take part in ordering');
+// Items the supplier will not sell still show their listed price, but sort after orderable ones.
+$blocked=$item('300001',5);$blocked['IsSellAllowed']=false;$blocked['SellDisallowReason']='IsAuction';
+$n=supplier_card_price(supplier_normalize($blocked,false,'taobao'),time()+3600);
+check($n['price_status']==='unavailable'&&$n['approx_mnt']===(int)ceil(5*550),'Unavailable item keeps its listed price');
+check(array_column(supplier_price_order([$n,['id'=>'x','price_status'=>'available','mnt'=>99000]]),'id')===['x','tb-300001'],'Unavailable items sort last');
 // Title cleanup on real machine-translated names; Cyrillic letters must survive edge trimming.
 foreach([
     ['[Өөртөө ажилладаг] Zwilling хутганы иж бүрдэл','Zwilling хутганы иж бүрдэл'],

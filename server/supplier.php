@@ -222,7 +222,7 @@ function supplier_card_price(array $p,int $expires): array {
         $p['cny']=null;$p['price_status']='unverified';
     }
     $p['price_expires']=$expires;$rate=shipping_settings()['cny_rate'];$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*$rate);
-    $p['approx_mnt']=($p['price_status']??'')==='unverified'&&($p['approx_cny']??0)>0?(int)ceil($p['approx_cny']*$rate):null;
+    $p['approx_mnt']=($p['price_status']??'')!=='available'&&($p['approx_cny']??0)>0?(int)ceil($p['approx_cny']*$rate):null;
     return $p;
 }
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
@@ -263,7 +263,7 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     }
     $r=array_replace($r,supplier_stock_price($p,$detail));$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);
     // Search results lack per-SKU stock; their listed price is shown only as an approximate "from" price.
-    $r['approx_cny']=$r['price_status']==='unverified'?supplier_cny($p['Price']??[]):null;
+    $r['approx_cny']=$r['cny']===null?supplier_cny($p['Price']??[]):null;
     return $r;
 }
 // Optional MNT price bounds; OT filters in CNY, so they are converted with the current rate.
@@ -297,7 +297,9 @@ function supplier_display_price(array $p): ?int {
 // for this because it surfaces 0.01¥ placeholder listings.
 function supplier_price_order(array $products): array {
     foreach($products as $i=>&$p)$p['_order']=$i;unset($p);
-    usort($products,static function($a,$b){$pa=supplier_display_price($a);$pb=supplier_display_price($b);
+    usort($products,static function($a,$b){
+        $ua=($a['price_status']??'')==='unavailable';$ub=($b['price_status']??'')==='unavailable';if($ua!==$ub)return $ua?1:-1; // not orderable: last
+        $pa=supplier_display_price($a);$pb=supplier_display_price($b);
         if(($pa===null)!==($pb===null))return $pa===null?1:-1;return ($pa<=>$pb)?:($a['_order']<=>$b['_order']);});
     foreach($products as &$p)unset($p['_order']);unset($p);
     return $products;

@@ -26,7 +26,7 @@ window.productCompare=(()=>{
     const counts=new Map();for(const p of loaded)for(const name of new Set((p.attributes||[]).map(a=>a.name)))counts.set(name,(counts.get(name)||0)+1);
     const names=[...counts].filter(([,n])=>n>1||loaded.length===1).sort((a,b)=>b[1]-a[1]).slice(0,14).map(([name])=>name);
     const value=(p,name)=>[...new Set((p.attributes||[]).filter(a=>a.name===name).map(a=>a.value))].slice(0,4).join(', ')||'—';
-    const price=p=>{const cny=minCny(p);return cny>0&&p.rate?money(Math.ceil(cny*p.rate)):'Үнэ шалгах';};
+    const price=p=>{const cny=minCny(p);return cny>0&&p.rate?money(Math.ceil(cny*p.rate)):p.mnt>0?money(p.mnt):p.approx_mnt>0?'≈ '+money(p.approx_mnt):'Үнэ шалгах';};
     const rows=[
       ['Үнэ',p=>`<strong>${price(p)}</strong>`],
       ['Зарагдсан',p=>p.sold_count?esc(new Intl.NumberFormat('en-US').format(p.sold_count)):'—'],

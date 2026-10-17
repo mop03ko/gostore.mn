@@ -15,7 +15,7 @@ function renderSupplierCards(items){
   $('#supplier-grid').innerHTML=items.map(p=>{
     const priced=p.price_status==='available'&&Number(p.price_expires)*1000>Date.now()&&Number(p.mnt)>0;
     // Search results only carry the listed price; it is shown as approximate until a SKU price is verified.
-    const approx=!priced&&p.price_status==='unverified'&&Number(p.approx_mnt)>0?Number(p.approx_mnt):0;
+    const approx=!priced&&Number(p.approx_mnt)>0?Number(p.approx_mnt):0,soldOut=p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now();
     const sold=Number.isSafeInteger(p.sold_count)&&p.sold_count>0?p.sold_count:null;
     return `<article class="supplier-card">
       <a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
@@ -25,7 +25,7 @@ function renderSupplierCards(items){
         <h3><a href="/v/${p.id}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${new Intl.NumberFormat('en-US').format(sold)}</b> зарагдсан</span>`:'<span>Taobao · Захиалгаар</span>'}</div>
         <p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong>${priced?money(p.mnt):approx?'≈ '+money(approx):p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now()?'Дууссан':'Үнэ шалгах'}</strong>${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?'<small>-аас · нарийн үнэ хувилбараас</small>':''}</div><a class="supplier-card-buy" href="/v/${p.id}" aria-label="${esc(p.name)} — сонголт харах" title="Өнгө, хэмжээ сонгож захиалах">${icon('cart-add')}</a></div>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong>${priced?money(p.mnt):approx?'≈ '+money(approx):p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now()?'Дууссан':'Үнэ шалгах'}</strong>${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?(soldOut?'<small>Одоогоор захиалах боломжгүй</small>':'<small>-аас · нарийн үнэ хувилбараас</small>'):''}</div><a class="supplier-card-buy" href="/v/${p.id}" aria-label="${esc(p.name)} — сонголт харах" title="Өнгө, хэмжээ сонгож захиалах">${icon('cart-add')}</a></div>
       </div>
     </article>`;
   }).join('')||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Taobao барааны зүрхэн тэмдгийг дарж хадгалаарай.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
