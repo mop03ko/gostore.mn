@@ -352,3 +352,18 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 @media(max-width:860px){.store-cart{grid-template-columns:1fr}.store-cart-summary{position:static}.store-route{grid-template-columns:repeat(2,minmax(0,1fr))}.store-title{font-size:24px}}
 @media(max-width:760px){.cart-flyout{top:auto;bottom:86px;right:16px}.float-help{bottom:90px;right:16px;width:44px;height:44px}.product-view .float-help{bottom:150px}}
 @media(max-width:520px){.store-cart-line{grid-template-columns:72px minmax(0,1fr)}.store-cart-line img,.store-cart-noimage{width:72px;height:72px}.store-cart-qty{grid-column:1/-1;grid-template-columns:auto 1fr;justify-items:end;align-items:center}.store-route{grid-template-columns:1fr}}
+/* Accessibility pass (WCAG 2.1 AA): text contrast >= 4.5:1, readable minimum sizes, named controls. */
+.search-provider{color:#a3430a}
+.link-card .small-label{color:#5f6b7d;font-size:11px}
+.link-card p{color:#5f6b7d}
+.supplier-section .section-kicker{color:#5f6b7d}
+.supplier-card-meta{color:#5f6b7d}
+#supplier-grid .supplier-delivery-note,#supplier-grid .supplier-card-price small{color:#5f6b7d}
+#catalog .filter-tabs button:not(.active){color:#5f6b7d}
+.cart-flyout-head .icon-button{width:44px;height:44px}
+@media(max-width:760px){
+ .supplier-card-meta,#supplier-grid .supplier-delivery-note,#supplier-grid .supplier-card-price small{font-size:11px}
+ .supplier-section .section-kicker,.how-intro .section-kicker,.link-card .small-label{font-size:11px}
+ /* The account label is hidden visually on phones but must stay as the button's accessible name. */
+ .header-action[data-action=account]>span[data-account-label]{display:block;position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+}
