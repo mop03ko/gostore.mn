@@ -21,8 +21,8 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.locator('[data-tb-remove="2"]').click();await page.waitForFunction(()=>document.querySelectorAll('.cart-row').length===2);
  await open('522222222');await page.locator('[data-pd-add]').click();
  await page.locator('.header-actions [data-action=cart]').click();await page.locator('[data-tb-checkout]').click();await page.locator('#taobao-checkout-form').waitFor();
- // Goods 2×10 + 2×12 + 30 = 74¥; two sellers; domestic shipping is billed at cost on arrival by default.
- const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('74 ¥')&&totals.includes('2 дэлгүүр')&&totals.includes('УБ-д ирэхэд бодит дүнгээр'),totals);
+ // Goods 2×10 + 2×12 + 30 = 74 CNY = 40,700₮ (shown only in MNT); two sellers; domestic shipping is billed at cost on arrival by default.
+ const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('40,700')&&!totals.includes('¥')&&totals.includes('2 дэлгүүр')&&totals.includes('УБ-д ирэхэд бодит дүнгээр'),totals);
  assert.ok(await page.locator('#taobao-checkout-form [data-action=cart]').isVisible(),'Cart checkout can return to the cart');
  assert.equal(await page.locator('#taobao-checkout-form [name=address]').isVisible(),false,'Pickup is the default');
  for(const box of [await page.locator('.fulfillment-choice input').first().boundingBox(),await page.locator('.fulfillment-choice label').first().boundingBox()])assert.ok(box);const radio=await page.locator('.fulfillment-choice input').first().boundingBox(),label=await page.locator('.fulfillment-choice label').first().boundingBox();assert.ok(radio.width<=24&&radio.x-label.x<30,'Radio keeps native size at the start of its label');await page.locator('.fulfillment-choice').screenshot({path:'tmp/checkout-fulfillment.png'});
