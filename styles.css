@@ -369,3 +369,5 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 }
 .category-suggestion-heading small{color:#5f6b7d}
 @media(max-width:760px){.category-suggestion-heading small,.hero-copy .eyebrow{font-size:11px}}
+#supplier-grid .supplier-card-price small,.category-suggestion-heading small{font-size:11px}
+@media(max-width:760px){.pd-buybar small,.mobile-nav a,.mobile-nav button{font-size:11px}}
