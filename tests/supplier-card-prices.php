@@ -26,6 +26,11 @@ $mix=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-updated_time'],true);
 check(count($mix['products'])===12&&count(array_unique(array_column($mix['products'],'name')))===12,'All shows diverse departments');
 // The default feed is ordered cheapest first across every department.
 $prices=array_column($a['products'],'mnt');$sorted=$prices;sort($sorted);check(count($a['products'])===12&&$prices===$sorted,'Default feed is cheapest first');
+// The unfiltered home feed hides items below the admin floor; an explicit price filter shows them again.
+$floorSettings=shipping_settings();$floorSettings['home_min_price_mnt']=6000;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($floorSettings)]);
+$floored=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default'],true);check(min(array_column($floored['products'],'mnt'))>=6000&&$floored['total']<$a['total'],'Home floor hides cheap items');
+check(min(array_column(supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default','price_min'=>'0'],true)['products'],'mnt'))<6000,'Price filter overrides the home floor');
+$floorSettings['home_min_price_mnt']=0;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($floorSettings)]);
 check(!$a['stale']&&$a['more']&&$a['total']===count(supplier_warm_queries())*3-1,'Real deduplicated total and pagination');
 check(!array_intersect(array_column($a['products'],'id'),array_column($b['products'],'id')),'Pages do not repeat products');
 check($a['products'][0]['mnt']===5500,'Mixed feed recomputes exchange rate');

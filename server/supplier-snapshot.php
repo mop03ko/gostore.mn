@@ -59,6 +59,9 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
     // The mixed storefront is filtered by the displayed MNT price; unknown prices are left out of a price filter.
     // Verified prices win; otherwise the approximate search price is used, and unknown prices go last.
     $price=static fn($p)=>($p['price_status']??'available')==='available'?($p['mnt']??null):($p['approx_mnt']??null);
+    // The unfiltered home feed hides very cheap parts and placeholder listings below the admin's floor.
+    $floor=$sort==='default'&&!$range?(int)(shipping_settings()['home_min_price_mnt']??0):0;
+    if($floor>0)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))===null||$m>=$floor));
     if($range)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))!==null&&(!isset($range['price_min'])||$m>=$range['price_min'])&&(!isset($range['price_max'])||$m<=$range['price_max'])));
     // The default view is the whole mixed feed cheapest first; -updated_time keeps the department mix order.
     if($sort!=='-updated_time')usort($products,static function($a,$b)use($sort,$price){

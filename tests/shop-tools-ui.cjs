@@ -9,6 +9,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.route('**/api/index.php?action=supplier-product*',r=>{const id=new URL(r.request().url()).searchParams.get('id'),n=Number(id.slice(3))-300000000;return r.fulfill({json:{product:{...product(n),cny:20+n,variants:[{id:'a',label:'Улаан',cny:20+n,stock:5}],vendor_name:'Дэлгүүр '+n,brand:n===1?'Xiaomi':'',location:['Zhejiang'],attributes:[{name:'Материал',value:n===1?'Хөвөн':'Арьс'},{name:'Өнгө',value:'Улаан'}],related:[]},fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}});});
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
+ // Hovering a card warms its product details before the click.
+ const warmed=page.waitForRequest(r=>r.url().includes('action=supplier-product')&&r.url().includes('tb-300000002'),{timeout:5000});await page.locator('.supplier-card a.supplier-photo').nth(1).hover();await warmed;
  const approxCard=await page.locator('.supplier-card').nth(2).locator('.supplier-card-price').innerText();assert.ok(approxCard.includes('≈ 9,900')&&approxCard.includes('-аас'),'Unverified card shows an approximate price: '+approxCard);
  // The home page has a single category row (in the catalog); the empty kids-shoes category is gone.
  assert.equal(await page.locator('#quick-categories').count(),0);assert.equal(await page.locator('#category-grid').count(),0);

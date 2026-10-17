@@ -2,7 +2,7 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 // Add-to-cart flyout, full cart page (quantity, save for later, compare, remove, clear, summary) and help page.
 const cache=path.join(process.env.GOSTORE_DATA_DIR,'supplier-cache');assert.ok(path.resolve(cache).startsWith(path.resolve('tmp')+path.sep));fs.mkdirSync(cache,{recursive:true});
-const product=(id,cny)=>({Item:{Id:id,ProviderType:'Taobao',Title:'Бараа '+id,MainPictureUrl:'https://img.alicdn.com/'+id+'.jpg',VendorId:'s'+id,IsSellAllowed:true,Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'},FirstLotQuantity:1,NextLotQuantity:1,Attributes:[{Pid:'c',Vid:'a',PropertyName:'Өнгө',Value:'Хар'}],ConfiguredItems:[{Id:'a',Quantity:9,Configurators:[{Pid:'c',Vid:'a'}],Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'}}]}});
+const product=(id,cny)=>({Item:{Id:id,ProviderType:'Taobao',Title:'Бараа '+id,MainPictureUrl:'https://img.alicdn.com/'+id+'.jpg',VendorId:'s'+id,IsSellAllowed:true,Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'},FirstLotQuantity:1,NextLotQuantity:1,Attributes:[{Pid:'c',Vid:'a',PropertyName:'Өнгө',Value:'Хар'},...[38,39,40,41,42,43,44,45].map(n=>({PropertyName:'Хэмжээ',Value:String(n)})),...Array.from({length:12},(_,i)=>({PropertyName:'Үзүүлэлт '+(i+1),Value:'Утга '+(i+1)}))],ConfiguredItems:[{Id:'a',Quantity:9,Configurators:[{Pid:'c',Vid:'a'}],Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'}}]}});
 for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/product/'+id+'?language=mn').digest('hex')+'.json'),JSON.stringify({data:product(id,cny),fetched:new Date().toISOString(),expires:Math.floor(Date.now()/1000)+3600,stale:false}));
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -11,6 +11,9 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await require('./customer-ui-helper.cjs')(page,base);
  const open=async id=>{await page.goto(base+'/v/tb-'+id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);};
  await open('711111111');assert.equal(await page.locator('.float-help').count(),1,'Floating help on product pages');
+ // Variant attributes are merged into one row each; only the first 10 rows show before «Бүх үзүүлэлт».
+ const specRows=await page.locator('#pd-specifications > dl.pd-spec-list > div').allInnerTexts();assert.equal(specRows.length,10);assert.ok(specRows[1].includes('38, 39, 40, 41, 42, 43, 44, 45'),specRows[1]);
+ assert.equal(await page.locator('.pd-more-specs dl > div').count(),4);assert.ok((await page.locator('.pd-more-specs summary').innerText()).includes('+4'));
  await page.locator('[data-pd-add]').click();await page.locator('#cart-flyout.visible').waitFor();
  assert.ok((await page.locator('#cart-flyout').innerText()).includes('Сагсанд нэмэгдлээ'));
  await page.locator('#pd-options [name=variant]').waitFor();await page.locator('[data-pd-delta="1"]').click();assert.equal(await page.locator('#pd-qty').inputValue(),'2','Flyout does not block the page');

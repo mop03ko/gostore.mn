@@ -20,3 +20,7 @@
 .pd-foot-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
 .pd-foot-actions [aria-pressed=true]{color:var(--blue)}
 @media(max-width:760px){.pd-buybar small{font-size:11px}}
+.pd-more-specs{max-width:850px;margin-top:6px}
+.pd-more-specs summary{cursor:pointer;font-weight:700;color:var(--navy);padding:12px 15px;min-height:44px;display:flex;align-items:center}
+.pd-more-specs dd{overflow-wrap:anywhere}
+.pd-details dd{overflow-wrap:anywhere}

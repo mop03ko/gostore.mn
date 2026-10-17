@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 function shipping_settings(): array {
-    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40,'catalog_snapshot_enabled'=>false,'image_search_enabled'=>false,'domestic_default_cny'=>0,'service_fee_mnt'=>0,'payment_window_hours'=>24];
+    $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40,'catalog_snapshot_enabled'=>false,'image_search_enabled'=>false,'domestic_default_cny'=>0,'service_fee_mnt'=>0,'payment_window_hours'=>24,'home_min_price_mnt'=>3000];
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['shipping_settings']);
     $settings=array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true));
     $s->execute(['warehouse_profile_erenhot']);$profile=json_decode($s->fetchColumn()?:'{}',true);
@@ -20,6 +20,7 @@ function shipping_save(array $b): array {
     // Checkout fields are optional so older admin clients keep their saved values.
     foreach(['domestic_default_cny'=>[0,10000],'service_fee_mnt'=>[0,10000000]] as $k=>$range)$s[$k]=array_key_exists($k,$b)?decimal_field($b,$k,...$range):$existing[$k];
     $s['payment_window_hours']=array_key_exists('payment_window_hours',$b)?int_field($b,'payment_window_hours',1,168):$existing['payment_window_hours'];
+    $s['home_min_price_mnt']=array_key_exists('home_min_price_mnt',$b)?int_field($b,'home_min_price_mnt',0,10000000):$existing['home_min_price_mnt'];
     foreach(['warehouse_address'=>1000,'warehouse_phone'=>80,'warehouse_contact_phone'=>80] as $key=>$max)$s[$key]=array_key_exists($key,$b)?str_field($b,$key,$max,false):$existing[$key];
     $s['catalog_snapshot_enabled']=array_key_exists('catalog_snapshot_enabled',$b)?$b['catalog_snapshot_enabled']===true:($existing['catalog_snapshot_enabled']??false);
     $s['image_search_enabled']=array_key_exists('image_search_enabled',$b)?$b['image_search_enabled']===true:($existing['image_search_enabled']??false);
