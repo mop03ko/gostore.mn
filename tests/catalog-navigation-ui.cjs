@@ -6,7 +6,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.route('**/api/index.php?action=supplier-search*',r=>{const q=new URL(r.request().url()).searchParams.get('q');calls.push(q);return r.fulfill({json:{products:[{id:'tb-123456789',name:q,image:'',mnt:5500}],shipping:{cny_rate:550},more:false,stale:false,cache_ttl:600}});});
  await page.goto(base+'/');await page.locator('.supplier-card').waitFor();
  const nav=page.locator('#catalog-category-nav'),row=page.locator('.catalog-category-list'),active=nav.locator('[aria-pressed=true]');
- assert.equal(await row.locator('button').count(),27);assert.equal(await active.innerText(),'Бүгд');assert.equal(calls[0],'__all__');assert.equal(calls.length,1,'Rendering categories adds no API calls');
+ assert.equal(await row.locator('button').count(),26);assert.equal(await active.innerText(),'Бүгд');assert.equal(calls[0],'__all__');assert.equal(calls.length,1,'Rendering categories adds no API calls');
  await nav.locator('[data-catalog-scroll="1"]').click();assert.ok(await row.evaluate(e=>e.scrollLeft)>0);assert.equal(calls.length,1,'Scrolling adds no API calls');
  await row.locator('button').first().focus();await page.keyboard.press('End');assert.equal(await page.evaluate(()=>document.activeElement.dataset.catalogCategory),'health');assert.ok(await row.evaluate(e=>e.scrollLeft)>100);
  await row.locator('[data-catalog-category=men]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3')?.textContent==='men clothing');assert.equal(await active.innerText(),'Эрэгтэй хувцас');assert.equal(calls.at(-1),'men clothing');assert.equal(new URL(page.url()).searchParams.get('category'),'men');
@@ -17,5 +17,5 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal page overflow');
  await row.evaluate(e=>e.scrollLeft=300);assert.ok(await row.evaluate(e=>e.scrollLeft)>0);await row.locator('[data-catalog-category=women]').click();assert.equal(await active.innerText(),'Эмэгтэй хувцас');assert.ok((await row.locator('button').first().boundingBox()).height>=44);await nav.screenshot({path:'tmp/catalog-navigation-mobile.png'});
  await page.evaluate(()=>window.supplierBrowse(null,true));assert.equal(await active.count(),0,'Saved view does not claim an active catalog category');
- assert.deepEqual(errors,[]);console.log('PASS: 27 category options, reference order, scroll without API calls, keyboard navigation, selection/URL/reload, all reset, mobile overflow and saved-view state.');
+ assert.deepEqual(errors,[]);console.log('PASS: 26 category options, reference order, scroll without API calls, keyboard navigation, selection/URL/reload, all reset, mobile overflow and saved-view state.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

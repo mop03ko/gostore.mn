@@ -9,6 +9,11 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.route('**/api/index.php?action=supplier-product*',r=>{const id=new URL(r.request().url()).searchParams.get('id'),n=Number(id.slice(3))-300000000;return r.fulfill({json:{product:{...product(n),cny:20+n,variants:[{id:'a',label:'Улаан',cny:20+n,stock:5}],vendor_name:'Дэлгүүр '+n,brand:n===1?'Xiaomi':'',location:['Zhejiang'],attributes:[{name:'Материал',value:n===1?'Хөвөн':'Арьс'},{name:'Өнгө',value:'Улаан'}],related:[]},fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}});});
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
+ // A header shortcut must bring the refreshed catalog into view, and the empty kids-shoes category is gone.
+ assert.equal(await page.locator('#quick-categories [data-supplier-query="kids shoes"]').count(),0);
+ await page.evaluate(()=>scrollTo(0,0));await page.locator('#quick-categories [data-supplier-query="lamp"]').click();
+ await page.waitForFunction(()=>{const r=document.querySelector('#catalog').getBoundingClientRect();return r.top<innerHeight&&r.bottom>0&&scrollY>0;});
+ await page.locator('#supplier-reset').click();await page.waitForFunction(()=>!new URL(location.href).searchParams.has('q')&&document.querySelectorAll('#supplier-paging button').length>0);
  assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['1','2','21','Дараах'],'Numbered pages around the current one');
  await page.locator('#catalog').screenshot({path:'tmp/shop-tools-catalog-1440.png',clip:undefined});
  await page.locator('#supplier-paging [data-supplier-page="21"]').click();await page.waitForFunction(()=>document.querySelector('#supplier-paging [aria-current=page]')?.textContent==='21');

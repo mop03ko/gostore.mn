@@ -16,8 +16,8 @@ foreach(supplier_warm_queries() as $q){
 $dir=supplier_snapshot_dir();$lock=fopen($dir.'/worker.lock','c');flock($lock,LOCK_EX);
 check(supplier_snapshot_run()['status']==='busy','Overlapping worker does not run');flock($lock,LOCK_UN);fclose($lock);
 check(supplier_snapshot_run(1)['completed']===1&&!is_file($dir.'/current.json'),'Partial builds stay private');
-check(supplier_snapshot_run()['status']==='published','All 26 categories published together');
-$first=supplier_snapshot_read($dir.'/current.json');check(count($first['records'])===26&&$first['next_refresh_at']<=time()+7200,'Two hour interval');
+check(supplier_snapshot_run()['status']==='published','All 25 categories published together');
+$first=supplier_snapshot_read($dir.'/current.json');check(count($first['records'])===25&&$first['next_refresh_at']<=time()+7200,'Two hour interval');
 check(!str_contains(file_get_contents($dir.'/current.json'),'must-not-persist'),'Only public normalized fields saved');
 check(supplier_snapshot_run()['status']==='fresh','Fresh snapshot does not spend API calls');
 $r=supplier_search(['q'=>'bag','page'=>1,'sort'=>'default'],true);check($r['products'][0]['mnt']===5500&&!$r['stale'],'Snapshot is used for browsing');
@@ -26,7 +26,7 @@ $settings['cny_rate']=600;unset($settings['catalog_snapshot_enabled']);shipping_
 check(supplier_snapshot_search('bag',1,'default')['products'][0]['mnt']===6000,'Current exchange rate applied');
 $first['next_refresh_at']=time()-1;supplier_snapshot_write($dir.'/current.json',$first);$before=file_get_contents($dir.'/current.json');
 $last=supplier_snapshot_read($files['personal care']);$last['fetched']=gmdate('c',time()-7201);supplier_snapshot_write($files['personal care'],$last);
-$result=supplier_snapshot_run();check($result['status']==='building'&&$result['completed']===25,'Failed provider leaves incomplete build');
+$result=supplier_snapshot_run();check($result['status']==='building'&&$result['completed']===24,'Failed provider leaves incomplete build');
 check(file_get_contents($dir.'/current.json')===$before,'Failed refresh preserves complete current snapshot');
 $last['fetched']=gmdate('c');$last['data']['Items']['Items']['Content'][0]['Title']='Updated';supplier_snapshot_write($files['personal care'],$last);
 $work=supplier_snapshot_read($dir.'/work.json');$work['retry_at']=0;supplier_snapshot_write($dir.'/work.json',$work);check(supplier_snapshot_run(1)['status']==='published','Resumes unfinished category only');
@@ -36,4 +36,4 @@ $backup=supplier_snapshot_read($dir.'/previous.json');foreach($backup['records']
 check(supplier_snapshot_search('bag',1,'default')['stale']===true&&supplier_snapshot_search('bag',1,'default')['cache_ttl']===0,'Stale backups are labelled, never fresh');
 foreach($backup['records'] as &$row)$row['cache_expires']=time()-86401;unset($row);supplier_snapshot_write($dir.'/previous.json',$backup);
 check(supplier_snapshot_search('bag',1,'default')===null,'Hard expiry prevents indefinitely stale browsing');
-echo "PASS snapshot: 2-hour cadence, 26-category atomic publish, resume, worker lock, failure/corruption backup, no provider calls for fresh cache, current FX, isolated search keys, stale labels and hard expiry.\n";
+echo "PASS snapshot: 2-hour cadence, 25-category atomic publish, resume, worker lock, failure/corruption backup, no provider calls for fresh cache, current FX, isolated search keys, stale labels and hard expiry.\n";

@@ -2,7 +2,7 @@
 (()=>{
   const nav=document.querySelector('#catalog-category-nav');if(!nav)return;
   const row=nav.querySelector('.catalog-category-list');
-  const first=['men','women','kids','women-shoes','shoes','kids-shoes','accessories','kitchen'];
+  const first=['men','women','kids','women-shoes','shoes','accessories','kitchen'];
   const ordered=[...first.map(id=>categories.find(c=>c.id===id)),...categories.filter(c=>!first.includes(c.id))].filter(Boolean);
   row.innerHTML='<button type="button" data-catalog-category="all" aria-pressed="true">Бүгд</button>'+ordered.map(c=>`<button type="button" data-catalog-category="${esc(c.id)}" aria-pressed="false">${esc(c.name)}</button>`).join('');
   const buttons=[...row.querySelectorAll('button')];
