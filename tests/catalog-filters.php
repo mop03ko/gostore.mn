@@ -27,4 +27,17 @@ $mixed=['Items'=>['Items'=>['Content'=>[$item('200001',30),$item('200002',10),['
 file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>'shoes','page'=>1,'limit'=>12,'sort'=>'default']).'.json',json_encode(['data'=>$mixed,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
 check(array_column(supplier_search(['q'=>'shoes','page'=>1])['products'],'id')===['tb-200002','tb-200005','tb-200004','tb-200001','tb-200003'],'Default order must be cheapest first');
 check(supplier_price_order([['id'=>'a','price_status'=>'available','mnt'=>9000],['id'=>'b','price_status'=>'unverified','approx_mnt'=>5000]])[0]['id']==='b','Approximate prices take part in ordering');
+// Title cleanup on real machine-translated names; Cyrillic letters must survive edge trimming.
+foreach([
+    ['[Өөртөө ажилладаг] Zwilling хутганы иж бүрдэл','Zwilling хутганы иж бүрдэл'],
+    ['贝肽斯 Хүүхдийн зуны пижама','Хүүхдийн зуны пижама'],
+    ['Labi Baby Baby Baby Boys Boys Boys Keysuit','Labi Baby Boys Keysuit'],
+    ['Файл файл хадгалах хадгалах хайрцаг','Файл хадгалах хайрцаг'],
+    ['Мини юбка, юбка, даашинз','Мини юбка, даашинз'],
+    ['Үнэгүй хүргэлт JONSANTY хархын хоол','JONSANTY хархын хоол'],
+    ["Коридорын шат, хүний \u{200B}\u{200B}мэдрэгч",'Коридорын шат, хүний мэдрэгч'],
+    ['спорт гутал, пүүз','Спорт гутал, пүүз'],
+    ['MARIUS шаргал даашинз·','MARIUS шаргал даашинз'],
+] as [$in,$out]){$got=supplier_clean_title($in);check($got===$out,"Title cleanup: $in => $got");check(supplier_clean_title($got)===$got,'Cleanup must be idempotent');}
+check(supplier_clean_title('【】')==='【】','Never returns an empty title');
 echo "PASS: catalog price bounds validation, MNT→CNY conversion for OT, newest sort, result total and page count.\n";

@@ -193,7 +193,24 @@ function supplier_stock_price(array $p,bool $detail=true): array {
     return ['cny'=>$prices?min($prices):null,'price_status'=>$prices?'available':($unknown?'unverified':'unavailable')];
 }
 // Read existing detail cache only: projecting a card never spends an API call.
+// Machine-translated Taobao titles: drop store tags, Chinese fragments, ad phrases and repeated words.
+// Idempotent, so names already stored in snapshots are cleaned again when read.
+function supplier_clean_title(string $title): string {
+    $t=preg_replace('/[\x{200B}-\x{200D}\x{2060}\x{FEFF}]/u','',$title)??$title;
+    $t=preg_replace('/^\s*[\[【(（][^\]】)）]{1,30}[\]】)）]\s*/u','',$t)??$t;                 // [Өөртөө ажилладаг], 【…】
+    $t=preg_replace('/[\x{3000}-\x{303F}\x{3400}-\x{9FFF}\x{FF00}-\x{FFEF}]+/u',' ',$t)??$t; // Chinese characters and punctuation
+    $t=preg_replace('/үнэгүй\s+хүргэлт(?:тэй)?/iu','',$t)??$t;
+    $t=preg_replace('/(*UCP)(?<!\S)(\S+)(?:[\s,]+\1(?!\S))+/iu','$1',$t)??$t;               // Stent Stent Stent → Stent
+    $t=preg_replace('/\s+/u',' ',$t)??$t;
+    // trim() works on bytes and would cut Cyrillic letters sharing a byte with «·», so edges are trimmed by regex.
+    $edge=static fn(string $s,string $chars)=>preg_replace('/^['.$chars.']+|['.$chars.']+$/u','',$s)??$s;
+    $segments=[];foreach(explode(',',$t) as $s){$s=$edge($s,'\s\-\/·');$k=mb_strtolower($s);if($s!==''&&!isset($segments[$k]))$segments[$k]=$s;}
+    $t=implode(', ',$segments);
+    $t=$edge($t,'\s,.\-\/·');
+    return $t===''?trim($title):mb_strtoupper(mb_substr($t,0,1)).mb_substr($t,1);
+}
 function supplier_card_price(array $p,int $expires): array {
+    if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
     try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
     $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>'mn']).'.json';
     $cache=is_file($file)?json_decode(file_get_contents($file),true):null;
@@ -211,7 +228,7 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     if(!preg_match($taobao?'/^\d{5,20}$/D':'/^abb-\d{5,20}$/D',$rawId)||!empty($p['HasError'])||(!empty($p['ProviderType'])&&$p['ProviderType']!==($taobao?'Taobao':'Alibaba1688')))fail('Нийлүүлэгчийн барааны мэдээлэл буруу.',503);
     $id=$taobao?'tb-'.$rawId:$rawId;$identity=supplier_identity($id);
     $price=supplier_cny($p['Price']??[]);$rate=shipping_settings()['cny_rate'];
-    $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id)),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>supplier_sellable($p),'variants'=>[]];
+    $r=['id'=>$id,'provider'=>$identity['provider'],'provider_label'=>$identity['label'],'name'=>mb_substr(supplier_clean_title(trim((string)($p['Title']??''))?:((string)($p['OriginalTitle']??$id))),0,300),'image'=>supplier_image((string)($p['MainPictureUrl']??'')),'cny'=>$price,'mnt'=>$price===null?null:(int)ceil($price*$rate),'url'=>$taobao?'https://item.taobao.com/item.htm?id='.$identity['number']:'https://detail.1688.com/offer/'.$identity['number'].'.html','min_qty'=>max(1,(int)($p['FirstLotQuantity']??1)),'step'=>max(1,(int)($p['NextLotQuantity']??1)),'sellable'=>supplier_sellable($p),'variants'=>[]];
     $sold=filter_var($p['Volume']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>9007199254740991]]);
     $r['sold_count']=$sold===false?null:$sold;
     $featured=[];foreach($p['FeaturedValues']??[] as $feature)if(is_array($feature))$featured[(string)($feature['Name']??'')]=$feature['Value']??null;
