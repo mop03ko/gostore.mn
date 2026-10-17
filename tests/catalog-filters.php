@@ -18,6 +18,8 @@ $data=['Items'=>['Items'=>['Content'=>array_map(fn($i)=>$item((string)(100000+$i
 file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json',json_encode(['data'=>$data,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
 $r=supplier_search(['q'=>'bag','page'=>1,'sort'=>'-updated_time','price_min'=>'10000','price_max'=>'50000']);
 check(count($r['products'])===12&&$r['total']===250&&$r['pages']===21&&$r['more']===true,'Filtered search totals changed');
+// Search rows have no SKU stock: the listed price is exposed only as an approximate "from" price.
+check($r['products'][0]['price_status']==='unverified'&&$r['products'][0]['mnt']===null&&$r['products'][0]['approx_mnt']===(int)ceil(21*550),'Approximate card price missing');
 $data['Items']['Items']['TotalCount']=5000;file_put_contents($dir.'/'.supplier_cache_key('/v1/taobao/search',$query).'.json',json_encode(['data'=>$data,'fetched'=>gmdate('c'),'expires'=>time()+3600,'stale'=>false]));
 check(supplier_search(['q'=>'bag','page'=>1,'sort'=>'-updated_time','price_min'=>'10000','price_max'=>'50000'])['pages']===50,'Pages must respect the provider maximum');
 echo "PASS: catalog price bounds validation, MNT→CNY conversion for OT, newest sort, result total and page count.\n";

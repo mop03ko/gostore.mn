@@ -57,10 +57,12 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
         $expires=min($expires,(int)$record['cache_expires']);if($fetched===null||strcmp($record['fetched'],$fetched)<0)$fetched=$record['fetched'];
     }
     // The mixed storefront is filtered by the displayed MNT price; unknown prices are left out of a price filter.
-    if($range)$products=array_values(array_filter($products,static fn($p)=>isset($p['mnt'])&&($p['price_status']??'available')==='available'&&(!isset($range['price_min'])||$p['mnt']>=$range['price_min'])&&(!isset($range['price_max'])||$p['mnt']<=$range['price_max'])));
-    if(!in_array($sort,['default','-updated_time'],true))usort($products,static function($a,$b)use($sort){
+    // Verified prices win; otherwise the approximate search price is used, and unknown prices go last.
+    $price=static fn($p)=>($p['price_status']??'available')==='available'?($p['mnt']??null):($p['approx_mnt']??null);
+    if($range)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))!==null&&(!isset($range['price_min'])||$m>=$range['price_min'])&&(!isset($range['price_max'])||$m<=$range['price_max'])));
+    if(!in_array($sort,['default','-updated_time'],true))usort($products,static function($a,$b)use($sort,$price){
         if($sort==='-volume')$cmp=($b['sold_count']??0)<=>($a['sold_count']??0);
-        else{$knownA=($a['price_status']??'')==='available';$knownB=($b['price_status']??'')==='available';if($knownA!==$knownB)return $knownA?-1:1;$cmp=($a['mnt']??0)<=>($b['mnt']??0);if($sort==='-price')$cmp=-$cmp;}
+        else{$pa=$price($a);$pb=$price($b);if(($pa===null)!==($pb===null))return $pa===null?1:-1;$cmp=($pa??0)<=>($pb??0);if($sort==='-price')$cmp=-$cmp;}
         return $cmp?:$a['_position']<=>$b['_position'];
     });
     $total=count($products);$items=array_slice($products,($page-1)*12,12);foreach($items as &$p)unset($p['_position']);unset($p);

@@ -4,11 +4,12 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[],searches=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/lamp.jpg',contentType:'image/jpeg'}));
- const product=(i)=>({id:'tb-'+(300000000+i),name:'Бараа '+i,image:'https://img.alicdn.com/'+i+'.jpg',mnt:11000+i*1000,price_status:'available',price_expires:Math.floor(Date.now()/1000)+3600,sold_count:i*10});
+ const product=(i)=>({id:'tb-'+(300000000+i),name:'Бараа '+i,image:'https://img.alicdn.com/'+i+'.jpg',mnt:i===3?null:11000+i*1000,approx_mnt:i===3?9900:null,price_status:i===3?'unverified':'available',price_expires:Math.floor(Date.now()/1000)+3600,sold_count:i*10});
  await page.route('**/api/index.php?action=supplier-search*',r=>{const p=new URL(r.request().url()).searchParams;searches.push(Object.fromEntries(p));const n=Number(p.get('page'));return r.fulfill({json:{products:Array.from({length:12},(_,i)=>product((n-1)*12+i+1)),page:n,more:n<21,total:250,pages:21,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399}}});});
  await page.route('**/api/index.php?action=supplier-product*',r=>{const id=new URL(r.request().url()).searchParams.get('id'),n=Number(id.slice(3))-300000000;return r.fulfill({json:{product:{...product(n),cny:20+n,variants:[{id:'a',label:'Улаан',cny:20+n,stock:5}],vendor_name:'Дэлгүүр '+n,brand:n===1?'Xiaomi':'',location:['Zhejiang'],attributes:[{name:'Материал',value:n===1?'Хөвөн':'Арьс'},{name:'Өнгө',value:'Улаан'}],related:[]},fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}});});
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
+ const approxCard=await page.locator('.supplier-card').nth(2).locator('.supplier-card-price').innerText();assert.ok(approxCard.includes('≈ 9,900')&&approxCard.includes('-аас'),'Unverified card shows an approximate price: '+approxCard);
  // A header shortcut must bring the refreshed catalog into view, and the empty kids-shoes category is gone.
  assert.equal(await page.locator('#quick-categories [data-supplier-query="kids shoes"]').count(),0);
  await page.evaluate(()=>scrollTo(0,0));await page.locator('#quick-categories [data-supplier-query="lamp"]').click();

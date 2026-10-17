@@ -202,7 +202,8 @@ function supplier_card_price(array $p,int $expires): array {
     }elseif(!isset($p['price_status'])||($p['price_expires']??$expires)<=time()){
         $p['cny']=null;$p['price_status']='unverified';
     }
-    $p['price_expires']=$expires;$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*shipping_settings()['cny_rate']);
+    $p['price_expires']=$expires;$rate=shipping_settings()['cny_rate'];$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*$rate);
+    $p['approx_mnt']=($p['price_status']??'')==='unverified'&&($p['approx_cny']??0)>0?(int)ceil($p['approx_cny']*$rate):null;
     return $p;
 }
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
@@ -242,6 +243,8 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
         $r['tiers']=[];foreach($p['QuantityRanges']??[] as $tier){$v=supplier_cny($tier['Price']??[]);if($v!==null)$r['tiers'][]=['qty'=>(int)$tier['MinQuantity'],'cny'=>$v];}
     }
     $r=array_replace($r,supplier_stock_price($p,$detail));$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);
+    // Search results lack per-SKU stock; their listed price is shown only as an approximate "from" price.
+    $r['approx_cny']=$r['price_status']==='unverified'?supplier_cny($p['Price']??[]):null;
     return $r;
 }
 // Optional MNT price bounds; OT filters in CNY, so they are converted with the current rate.
