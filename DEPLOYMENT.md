@@ -1,5 +1,10 @@
 # cPanel суулгалт
 
+## Brands first on homepage — 2026-10-19
+
+- At the owner's request, `9819d14` moves the existing brand logo row immediately below the header, before the hero and catalog. Only `index.html` was deployed; verified backup: `/gostore-backups/brands-first-20261019-3ae08eaed91d`.
+- Catalog navigation regression passed. Live Chrome verified ten loaded logos first on the homepage, 1440/390/320px layout without horizontal overflow, Nike's internal storefront link and no JavaScript errors. FTPS and HTTPS bytes match the committed file.
+
 ## Ecommerce purchase flow — production release 2026-10-19
 
 - Owner explicitly authorized review, fixes, merge and live deployment of PR #2. Reviewed head `b6d86443a399cadfebb6a7127cd760c1bdbf63ba`, merged into `main` as `fa2ccb709df716039c6581d6de676a41a6e2a7c8`.
