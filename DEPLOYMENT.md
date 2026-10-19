@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Supplier contention recovery — 2026-10-20
+
+- Release `65dd251` deployed five files: supplier backend, API, public cache client, prefetch logic and versioned HTML. Verified backup: `/gostore-backups/supplier-queue-20261020-a84b4285fcc1`; FTPS and public HTTPS bytes matched. No configuration/schema/payment changes.
+- Foreground cache-key/provider-slot contention now waits up to eight seconds; background work uses one slot without waiting. Typed busy responses receive bounded automatic retries only for public GETs. Speculative prefetch is serialized, capped at four, and disabled on slow/save-data connections. Existing checkout freshness checks remain enforced.
+- Ten targeted suites passed, including multiprocess cache publication/slot contention, retry/backoff/prefetch, shared browser cache, budget, English fallback and mocked invoice freshness. Live Chrome verified 50→100 scroll, 320/390px layouts and no JS errors. A browser-only simulated initial busy response recovered automatically into 50 real cached products without an error/retry UI; production was not load-tested or deliberately saturated.
+
 ## Cache, supplier budget and checkout freshness — 2026-10-20
 
 - Release `fa90e97` deployed 11 runtime files. Verified backup: `/gostore-backups/performance-20261020-9475eb8bd94d`. The live cPanel PHP 8.3 handler appended to `.htaccess` was preserved byte-for-byte; application directives match Git. No schema, business settings, orders or payment data were changed.
