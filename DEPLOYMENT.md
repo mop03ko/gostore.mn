@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Cache, supplier budget and checkout freshness — 2026-10-20
+
+- Release `fa90e97` deployed 11 runtime files. Verified backup: `/gostore-backups/performance-20261020-9475eb8bd94d`. The live cPanel PHP 8.3 handler appended to `.htaccess` was preserved byte-for-byte; application directives match Git. No schema, business settings, orders or payment data were changed.
+- Live checks passed for one-year immutable versioned assets, revalidating unversioned assets, HTML `no-cache`, customer/dashboard `no-store`, protected server files, and both Brotli/Gzip. `supplier.js`: 25,254 identity bytes, 8,497 Gzip, 8,004 Brotli. A fresh Chrome context's second navigation used browser cache for all 20 versioned JS/CSS resources (zero transfer bytes); 50→100 scroll and 390px layout passed without JS errors. These are controlled observations, not field p75 Web Vitals.
+- Eleven targeted PHP suites and six API/browser suites passed, including fake-QPay invoice freshness/price/stock checks, issued-invoice idempotency, budget reserve/caps, snapshot resume, title fallback, public cache privacy, concurrent orders and admin health display. No real invoice/payment/supplier purchase was created by verification.
+- Read-only live health confirmed the existing 800/day limit, a 160-call checkout reserve, 400-call background ceiling and adaptive three-hour snapshot cycle. Background worker activity is reported separately from cron. Cron has no verified heartbeat: PHP exec is disabled and the browser connector could not start, so no scheduling change was made. Hosting must confirm the ten-minute schedule in [the runbook](docs/performance-cache.md).
+
 ## Compact catalog and scroll batches — 2026-10-19
 
 - Release `5d6aa82` replaces numbered pagination with 50-item automatic scroll batches and compact responsive cards. Published eight runtime files, backend first and versioned HTML last. No database or configuration changes.
