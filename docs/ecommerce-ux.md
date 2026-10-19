@@ -22,4 +22,24 @@ Confirmed delivery ranges and refund deadlines cannot be supplied from the curre
 
 ## Deployment
 
-Ship all changed runtime files together, including commerce-ui.js/css and the changed index.html cache versions. scripts/package.ps1 includes their runtime dependencies. No database migration or production setting changes are required. Deploy to staging, verify cart → sign-in → quote → order/payment using test credentials, then publish the reviewed commit.
+Ship all changed runtime files together, including commerce-ui.js/css and the changed index.html cache versions. scripts/package.ps1 includes their runtime dependencies. No database migration or production setting changes are required. Verify cart → sign-in → quote → order/payment against disposable local data with provider network and live QPay disabled, then publish the reviewed commit.
+
+## Review and acceptance — 2026-10-19
+
+The owner explicitly authorized review, fixes, merge and production deployment of PR #2.
+Review caught a 320px header touch-target regression; controls now retain a 44px minimum.
+Four existing UI suites had expectations for the previous copy, brand grid or visible
+supplier source link; their assertions now exercise the new text, horizontal brand
+navigation and expandable source details.
+
+All 48 registered suites passed across the full run and targeted reruns after these
+fixes; the additional brand API and all-storefront UI suites also passed (50 total).
+The added commerce browser test covers late SKU selection while collapsed, guest cart
+counts, registration and login resuming the exact quote without creating an order,
+320/390/1440px layouts, help anchors and cargo tariff thresholds. Syntax and diff
+checks passed, and desktop/mobile screenshots were visually reviewed.
+
+Checkout/order and QPay success/failure/idempotency were exercised with local synthetic
+data and mocked payment transport. No real payment or supplier purchase was made;
+merchant-side real QPay acceptance remains outside these checks. English title
+fallback and all ten official seller catalogs remain covered by regression tests.
