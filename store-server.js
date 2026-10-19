@@ -41,7 +41,13 @@ window.supplierApi=(()=>{
     if(!pending.has(request)){
       const work=(async()=>{
         const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-v3'});
-        const response=await fetch(url,{credentials:'omit'}),result=await response.json();
+        let response,result;
+        for(let attempt=0;attempt<3;attempt++){
+          response=await fetch(url,{credentials:'omit'});result=await response.json();
+          if(response.ok||response.status!==503||result.code!=='supplier_busy'||attempt===2)break;
+          // Retry only read-only lookups with a typed contention response, never orders/payments.
+          await new Promise(resolve=>setTimeout(resolve,Math.min(4,Math.max(1,Number(result.retry_after)||2))*(attempt+1)*1000));
+        }
         if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};

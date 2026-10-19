@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('store-server.js','utf8'),start=source.indexOf('window.supplierApi=(()=>{'),end=source.indexOf('\nfunction requestFields',start);assert.ok(start>0&&end>start);
+function client(responses){const calls=[],waits=[],context={window:{},URLSearchParams,sessionStorage:{getItem:()=>null,setItem:()=>{}},setTimeout:(fn,ms)=>{waits.push(ms);queueMicrotask(fn);},fetch:async(url,options)=>{calls.push({url,options});const r=responses[Math.min(calls.length-1,responses.length-1)];return {ok:r.status===200,status:r.status,json:async()=>r.body};}};vm.runInNewContext(source.slice(start,end),context);return {api:context.window.supplierApi,calls,waits};}
+(async()=>{const busy={status:503,body:{code:'supplier_busy',retry_after:2,error:'busy'}},ok={status:200,body:{products:[],stale:false,cache_ttl:600}},c=client([busy,busy,ok]);await Promise.all([c.api('supplier-search',{q:'same',page:1}),c.api('supplier-search',{q:'same',page:1})]);assert.equal(c.calls.length,3,'Concurrent consumers share the entire retry chain');assert.deepEqual(c.waits,[2000,4000]);assert.ok(c.calls.every(r=>r.options.credentials==='omit'&&!r.options.method));await c.api('supplier-search',{q:'same',page:1});assert.equal(c.calls.length,3,'Recovered response cached');
+ const exhausted=client([busy]);await assert.rejects(()=>exhausted.api('supplier-product',{id:'tb-123456789'}));assert.equal(exhausted.calls.length,3,'Retry count is bounded');
+ for(const status of [404,429,503]){const c=client([{status,body:{error:'ordinary failure'}}]);await assert.rejects(()=>c.api('supplier-search',{q:'x'}));assert.equal(c.calls.length,1,'Unrelated failure never auto retried');}
+ const privateCall=client([ok]);await assert.rejects(()=>privateCall.api('invoice',{id:'x'}));assert.equal(privateCall.calls.length,0,'No write/payment replay');
+ const listeners={},warmed=[],connection={saveData:true},doc={hidden:false,addEventListener:(name,fn)=>listeners[name]=fn};let finish;
+ const warm=()=>{warmed.push(true);return new Promise(r=>finish=r);},scope={document:doc,navigator:{connection},window:{supplierApi:warm},supplierApi:warm,setTimeout,clearTimeout};
+ const shop=fs.readFileSync('shop-tools.js','utf8');vm.runInNewContext(shop.slice(shop.indexOf('(()=>{',shop.indexOf('// Warm product details'))),scope);
+ const focus=id=>listeners.focusin({target:{closest:()=>({getAttribute:()=>'/v/tb-'+id})}}),flush=()=>new Promise(r=>setImmediate(r));
+ focus(123456789);assert.equal(warmed.length,0,'Save-data disables speculative calls');connection.saveData=false;connection.effectiveType='3g';focus(123456789);assert.equal(warmed.length,0);connection.effectiveType='4g';
+ focus(123456789);focus(123456790);assert.equal(warmed.length,1,'At most one speculative request in flight');finish({});await flush();
+ for(const id of [123456790,123456791,123456792]){focus(id);finish({});await flush();}focus(123456793);assert.equal(warmed.length,4,'Speculative traffic capped at four per page');
+ console.log('PASS browser retry: typed busy only, shared chain, bounded backoff, recovered cache, no payment replay; prefetch serialized/capped and disabled on slow or save-data connections.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

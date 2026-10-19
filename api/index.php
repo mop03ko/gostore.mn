@@ -205,5 +205,6 @@ try {
         } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}json_out(['order'=>$o]);
     }
     fail('Үйлдэл олдсонгүй.',404);
-} catch(ApiError $e) { json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?warehouse_error_zh($e->getMessage()):$e->getMessage()],$e->getCode()?:400); }
+} catch(SupplierBusy $e) { header('Retry-After: 2');json_out(['error'=>$e->getMessage(),'code'=>'supplier_busy','retry_after'=>2],503); }
+catch(ApiError $e) { json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?warehouse_error_zh($e->getMessage()):$e->getMessage()],$e->getCode()?:400); }
 catch(Throwable $e) { error_log('GOStore API: '.get_class($e));json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?'服务器暂时不可用，请联系管理员。':'Серверийн тохиргоо эсвэл өгөгдлийн алдаа. Админтай холбогдоно уу.'],503); }

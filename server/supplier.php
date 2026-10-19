@@ -4,6 +4,22 @@ require_once __DIR__.'/supplier-brands.php';
 require_once __DIR__.'/supplier-titles.php';
 require_once __DIR__.'/supplier-budget.php';
 const SUPPLIER_PURCHASE_MAX_AGE = 120;
+class SupplierBusy extends ApiError {
+    public function __construct(){parent::__construct('Барааны мэдээлэл ачаалахад удаж байна. Дахин ачаална уу.',503);}
+}
+// Wait briefly for an existing lookup instead of failing concurrent visitors immediately.
+// A single deadline bounds the combined cache-key and provider-slot wait.
+function supplier_acquire_lock(array $paths,float $deadline) {
+    $handles=[];
+    try{
+        foreach($paths as $path){$h=fopen($path,'c');if(!$h)fail('Барааны мэдээлэл түр авах боломжгүй байна.',503);$handles[]=$h;}
+        do{
+            foreach($handles as $i=>$h)if(flock($h,LOCK_EX|LOCK_NB)){unset($handles[$i]);clearstatcache();return $h;}
+            if(microtime(true)>=$deadline)return null;
+            usleep(50000);
+        }while(true);
+    }finally{foreach($handles as $h)fclose($h);}
+}
 
 // New catalog uses Taobao. Explicit local prefixes keep legacy 1688 IDs unambiguous.
 function supplier_identity(string $id): array {
@@ -103,7 +119,7 @@ function supplier_raw_request(string $path,array $query,bool $display=false,bool
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
     $missing=$file.'.missing';
     if(is_file($missing)&&(int)file_get_contents($missing)>time())fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
-    $read=static function()use($file){$v=is_file($file)?json_decode(file_get_contents($file),true):null;return is_array($v)&&isset($v['data'],$v['fetched'],$v['expires'])&&is_array($v['data'])&&is_numeric($v['expires'])?$v:null;};
+    $read=static function()use($file){clearstatcache(true,$file);$v=is_file($file)?json_decode(file_get_contents($file),true):null;return is_array($v)&&isset($v['data'],$v['fetched'],$v['expires'])&&is_array($v['data'])&&is_numeric($v['expires'])?$v:null;};
     $cached=$read();
     if($cached&&$cached['expires']>time()&&!$force){
         if($display&&$cached['expires']-time()<$refreshWindow)supplier_schedule_refresh($path,$query,$dir);
@@ -116,15 +132,17 @@ function supplier_raw_request(string $path,array $query,bool $display=false,bool
         if($cached&&!$display){$cached['stale']=$cached['expires']<=time();return $cached;}
         fail('Нийлүүлэгчийн мэдээллийг шинэчилж байна. Түр хүлээгээд дахин оролдоно уу.',503);
     }
-    $lock=fopen($dir.'/'.$key.'.lock','c');if(!$lock)fail('Нийлүүлэгчийн холболт завгүй байна.',503);
-    if(!flock($lock,LOCK_EX|(($display||$force||$warming)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
+    $deadline=microtime(true)+($warming?0:8);
+    $lock=supplier_acquire_lock([$dir.'/'.$key.'.lock'],$deadline);
+    if(!$lock){if($cached&&$force)return $cached;throw new SupplierBusy();}
     try {
         if(is_file($missing)&&(int)file_get_contents($missing)>time())fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
         $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||($refreshAge===null?$cached['expires']-time()>=$refreshWindow:strtotime((string)$cached['fetched'])>time()-$refreshAge)))return $cached;
         if(is_file($retry)&&(int)file_get_contents($retry)>time()){if($cached){$cached['stale']=$cached['expires']<=time();return $cached;}fail('Нийлүүлэгчийн холболтыг түр хүлээнэ үү.',503);}
-        // Deduplicate each cache key; at most two independent provider requests run at once.
-        $slot=null;for($i=0;$i<2;$i++){$candidate=fopen($dir.'/network-'.$i.'.lock','c');if($candidate&&flock($candidate,LOCK_EX|LOCK_NB)){$slot=$candidate;break;}if($candidate)fclose($candidate);}
-        if(!$slot)fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);
+        // Background refresh/translation uses only slot 1, leaving slot 0 for shoppers.
+        // Still at most two provider calls globally, with no quota charged while waiting.
+        $slot=supplier_acquire_lock(array_map(fn($i)=>$dir.'/network-'.$i.'.lock',$warming?[1]:[0,1]),$deadline);
+        if(!$slot){if($cached&&$force)return $cached;throw new SupplierBusy();}
         try {
             supplier_limits($warming,$purchase);
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);

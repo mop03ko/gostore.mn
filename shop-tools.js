@@ -106,10 +106,10 @@ window.productCompare=(()=>{
 // Warm product details when a shopper is about to open a product (hover, touch, keyboard focus),
 // so the slow first supplier lookup happens before the click. Bounded to protect the API quota.
 (()=>{
-  const seen=new Set(),MAX=20;let timer=null;
+  const seen=new Set(),MAX=4;let timer=null,active=false;
   const idOf=a=>{const m=(a.getAttribute('href')||'').match(/^\/v\/((?:tb-)?\d{5,20})\/?$/);return m?(m[1].startsWith('tb-')?m[1]:'abb-'+m[1]):null;};
-  const warm=a=>{const id=idOf(a);if(!id||seen.has(id)||seen.size>=MAX||!window.supplierApi)return;seen.add(id);supplierApi('supplier-product',{id}).catch(()=>seen.delete(id));};
-  document.addEventListener('pointerover',e=>{const a=e.target.closest?.('a[href^="/v/"]');if(!a||e.pointerType==='touch')return;clearTimeout(timer);timer=setTimeout(()=>warm(a),150);},{passive:true});
+  const warm=a=>{const id=idOf(a),connection=navigator.connection;if(active||document.hidden||connection?.saveData||/^(slow-2g|2g|3g)$/.test(connection?.effectiveType||'')||!id||seen.has(id)||seen.size>=MAX||!window.supplierApi)return;seen.add(id);active=true;supplierApi('supplier-product',{id}).catch(()=>{}).finally(()=>active=false);};
+  document.addEventListener('pointerover',e=>{const a=e.target.closest?.('a[href^="/v/"]');if(!a||e.pointerType==='touch')return;clearTimeout(timer);timer=setTimeout(()=>warm(a),350);},{passive:true});
   document.addEventListener('pointerout',e=>{if(e.target.closest?.('a[href^="/v/"]'))clearTimeout(timer);},{passive:true});
   document.addEventListener('touchstart',e=>{const a=e.target.closest?.('a[href^="/v/"]');if(a)warm(a);},{passive:true});
   document.addEventListener('focusin',e=>{const a=e.target.closest?.('a[href^="/v/"]');if(a)warm(a);});
