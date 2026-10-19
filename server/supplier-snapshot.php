@@ -63,8 +63,12 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
     $floor=$sort==='default'&&!$range?(int)(shipping_settings()['home_min_price_mnt']??0):0;
     if($floor>0)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))===null||$m>=$floor));
     if($range)$products=array_values(array_filter($products,static fn($p)=>($m=$price($p))!==null&&(!isset($range['price_min'])||$m>=$range['price_min'])&&(!isset($range['price_max'])||$m<=$range['price_max'])));
-    // The default view is the whole mixed feed cheapest first; -updated_time keeps the department mix order.
-    if($sort!=='-updated_time')usort($products,static function($a,$b)use($sort,$price){
+    // Default preserves the round-robin department mix and supplier relevance, with unavailable items last.
+    if($sort==='default')usort($products,static function($a,$b){
+        $aUnavailable=($a['price_status']??'')==='unavailable';$bUnavailable=($b['price_status']??'')==='unavailable';
+        return ($aUnavailable<=>$bUnavailable)?:($a['_position']<=>$b['_position']);
+    });
+    elseif($sort!=='-updated_time')usort($products,static function($a,$b)use($sort,$price){
         if($sort==='-volume')$cmp=($b['sold_count']??0)<=>($a['sold_count']??0);
         else{$pa=$price($a);$pb=$price($b);if(($pa===null)!==($pb===null))return $pa===null?1:-1;$cmp=($pa??0)<=>($pb??0);if($sort==='-price')$cmp=-$cmp;}
         return $cmp?:$a['_position']<=>$b['_position'];

@@ -6,9 +6,9 @@ window.taobaoCart=(()=>{
   const read=()=>{try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(saved)?saved.filter(valid).slice(0,MAX):[];}catch{return [];}};
   const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Хөтөч сагс хадгалах боломжгүй байна.');return false;}updateCounts();window.dispatchEvent(new Event('gostore-cart-changed'));return true;};
   const rate=()=>Number(window.storeServer?.shipping?.cny_rate)||0;
-  const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(i.cny*rate())*i.qty:null;
+  const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(Number((i.cny*rate()*i.qty).toFixed(8))):null;
   let quote=null,checkoutToken='',selected=null;
-  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null});
+  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??''});
   function add(p,variant,qty){
     const items=read(),existing=items.find(i=>i.id===p.id&&i.sku===variant.id),next=(existing?.qty||0)+qty;
     if(next>9999||(Number.isInteger(variant.stock)&&next>variant.stock)){toast('Үлдэгдлээс их тоо сонгох боломжгүй.');return false;}
@@ -22,8 +22,8 @@ window.taobaoCart=(()=>{
     let el=document.querySelector('#cart-flyout');
     if(!el){el=document.createElement('div');el.id='cart-flyout';el.className='cart-flyout';el.setAttribute('role','status');el.setAttribute('aria-live','polite');document.body.append(el);}
     const mnt=lineMnt(i);
-    el.innerHTML=`<div class="cart-flyout-head"><strong>${icon('check')} Сагсанд нэмэгдлээ</strong><button type="button" class="icon-button" data-flyout-close aria-label="Хаах">${icon('close')}</button></div><div class="cart-flyout-item">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:''}<div><p>${esc(i.name)}</p><small>${esc(i.variant)} · ${i.qty} ширхэг${mnt?' · '+money(mnt):''}</small></div></div><div class="cart-flyout-actions"><a class="button outline" href="/cart">Сагс харах (${read().length})</a><button type="button" class="button blue" data-flyout-checkout>Төлбөр тооцох</button></div>`;
-    el.classList.add('visible');clearTimeout(flyTimer);flyTimer=setTimeout(()=>el.classList.remove('visible'),7000);
+    el.innerHTML=`<div class="cart-flyout-head"><strong>${icon('check')} Сагсанд нэмэгдлээ</strong><button type="button" class="icon-button" data-flyout-close aria-label="Хаах">${icon('close')}</button></div><div class="cart-flyout-item">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:''}<div><p>${esc(i.name)}</p><small>${esc(i.variant)} · ${i.qty} захиалгын нэгж${mnt?' · '+money(mnt):''}</small></div></div><div class="cart-flyout-actions"><a class="button outline" href="/cart">Сагс харах (${read().length})</a><button type="button" class="button blue" data-flyout-checkout>Төлбөр тооцох</button></div>`;
+    el.classList.add('visible');clearTimeout(flyTimer); // Keep the cart action available until dismissed or navigation.
   }
   const hideFlyout=()=>document.querySelector('#cart-flyout')?.classList.remove('visible');
   function row(i,index){
@@ -33,8 +33,7 @@ window.taobaoCart=(()=>{
   function show(){
     const items=read();
     if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Үйлдвэрээс захиалах бараагаа сонгоод сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-    const known=items.map(lineMnt),subtotal=known.every(v=>v!==null)?known.reduce((s,v)=>s+v,0):null;
-    openModal('Миний сагс',items.map(row).join('')+`<div class="cart-totals"><div><span>Барааны дүн</span><strong>${subtotal===null?'Тооцоолно':money(subtotal)}</strong></div><div><span>Хятад доторх хүргэлт, үйлчилгээ</span><span>Дараагийн алхамд</span></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд жингээр</span></div><div><span>Хүлээн авах</span><span>УБ каргоны хаягаас</span></div></div><div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
+    openModal('Миний сагс',items.map(row).join('')+commerceUI.estimateHtml(items)+`<div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
   }
   function breakdown(q){const b=q.breakdown;return `<div class="cart-totals checkout-totals"><div><span>Барааны үнэ</span><strong>${money(b.goods_mnt)}</strong></div><div><span>Хятад доторх хүргэлт · ${q.vendors} дэлгүүр</span>${q.domestic_later?'<span>УБ-д ирэхэд бодит дүнгээр</span>':`<strong>${money(b.domestic_mnt)}</strong>`}</div><div><span>Үйлчилгээний хураамж</span><strong>${money(b.service_mnt)}</strong></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд бодит жингээр</span></div><div class="total"><span>Одоо төлөх</span><strong>${money(q.total)}</strong></div></div>`;}
   // «Худалдан авах» orders only the shown item; the cart button orders the saved cart.
@@ -42,7 +41,7 @@ window.taobaoCart=(()=>{
   const payload=()=>ordering().map(i=>({id:i.id,sku:i.sku,qty:i.qty}));
   async function checkout(message='',only){
     if(only!==undefined){selected=only;checkoutToken='';}
-    if(!customerAccount.require())return;
+    if(!customerAccount.user){await customerAccount.forCheckout(()=>checkout());return;}
     if(!ordering().length)return show();
     try{
       await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');

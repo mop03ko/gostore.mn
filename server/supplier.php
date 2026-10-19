@@ -310,8 +310,7 @@ function supplier_search(array $b,bool $display=false): array {
 function supplier_display_price(array $p): ?int {
     return ($p['price_status']??'')==='available'?($p['mnt']??null):($p['approx_mnt']??null);
 }
-// Default view: relevant results shown cheapest first. Taobao's own ascending price sort is not used
-// for this because it surfaces 0.01¥ placeholder listings.
+// Explicit ascending price sort. The default keeps supplier relevance.
 function supplier_price_order(array $products): array {
     foreach($products as $i=>&$p)$p['_order']=$i;unset($p);
     usort($products,static function($a,$b){
@@ -322,7 +321,7 @@ function supplier_price_order(array $products): array {
     return $products;
 }
 function supplier_price_order_result(array $r,string $sort): array {
-    if($sort==='default')$r['products']=supplier_price_order($r['products']??[]);
+    if($sort==='price')$r['products']=supplier_price_order($r['products']??[]);
     return $r;
 }
 // Image search: OT fetches the photo by URL, so a re-encoded JPEG is published under a content hash for 7 days.

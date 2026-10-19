@@ -9,18 +9,18 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    await page.setViewportSize({width,height:844});await page.evaluate(()=>scrollTo(0,0));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow at '+width);
    assert.equal(await page.locator('.mobile-notifications').isVisible(),true);assert.equal(await page.locator('.header-actions [data-action=account]').isVisible(),false);
-   for(const selector of ['.mobile-notifications','#search-form button[type=submit]','.mobile-nav [data-action=orders]']){const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44&&box.width>=44,'Touch target '+selector);}
+   for(const selector of ['.mobile-notifications','#search-form button[type=submit]','.mobile-nav [data-action=cart]']){const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44&&box.width>=44,'Touch target '+selector);}
    assert.ok((await page.locator('#search').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16,'Input avoids iOS focus zoom');
    await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=catalog]').getAttribute('aria-current')==='page');
    assert.equal(Math.round((await page.locator('.header').boundingBox()).y),0,'Search header remains reachable');
    const input=await page.locator('#search').boundingBox(),button=await page.locator('#search-form button[type=submit]').boundingBox();assert.ok(Math.abs((input.y+input.height/2)-(button.y+button.height/2))<2,'Search action stays beside input');
    await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-catalog.png'});
-   await page.locator('.mobile-nav [data-action=orders]').click();await page.locator('#cargo-search').waitFor();
+   await page.locator('.mobile-nav [data-action=cart]').click();await page.locator('#modal .empty-state').waitFor();
    const modal=await page.locator('#modal').boundingBox();assert.ok(Math.abs(modal.width-width)<=1&&modal.y>=0,'Sheet fits screen');
    assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth),'Sheet has no horizontal overflow');
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-cargo.png'});
-   await page.locator('#close-modal').click();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'orders','Close restores focus');
+   await page.locator('#close-modal').click();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'cart','Close restores focus');
  }
  await page.setViewportSize({width:390,height:844});await page.locator('.mobile-nav [data-action=favorites]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=saved]').getAttribute('aria-current')==='page');
  await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.locator('.supplier-card').first().waitFor();assert.equal(await page.locator('#catalog [data-filter=all]').getAttribute('aria-pressed'),'true','Catalog tab exits saved filter');

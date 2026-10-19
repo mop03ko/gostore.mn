@@ -21,7 +21,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await open('722222222');await page.locator('[data-pd-add]').click();await page.locator('#cart-flyout a[href="/cart"]').click();await page.waitForURL(u=>u.pathname==='/cart');
  await page.locator('.store-cart-line').first().waitFor();assert.equal(await page.locator('.store-cart-line').count(),2);
  assert.equal(await page.locator('#catalog').isVisible(),false,'Catalog hidden on the cart page');
- let summary=await page.locator('.store-cart-summary').innerText();assert.ok(summary.includes('Бараа (2 ширхэг)')&&summary.includes('22,000'),summary);
+ let summary=await page.locator('.store-cart-summary').innerText();assert.ok(summary.includes('Одоо төлөх · урьдчилсан')&&summary.includes('22,000'),summary);
  await page.locator('[data-cart-qty="0"][data-delta="1"]').click();await page.waitForFunction(()=>document.querySelector('.store-cart-summary').textContent.includes('27,500'));
  await page.locator('.store-cart-line [data-compare-toggle]').first().click();await page.waitForFunction(()=>document.querySelector('[data-compare-open] .count')?.textContent==='1');
  await page.locator('[data-cart-save="1"]').click();await page.waitForFunction(()=>document.querySelectorAll('.store-cart-line').length===1);
@@ -32,7 +32,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  page.once('dialog',d=>d.accept());await page.locator('[data-cart-clear]').click();await page.locator('#store-page .account-empty').waitFor();assert.equal(await page.locator('#cart-count').innerText(),'0');
  // Help page: header link, FAQ search, delivery section with live tariff, no floating button on itself.
  await page.goto(base+'/');await page.locator('.service-strip [data-action=help]').click();await page.waitForURL(u=>u.pathname==='/help');
- await page.locator('.store-faq details').first().waitFor();assert.equal(await page.locator('.store-faq details').count(),8);assert.equal(await page.locator('.float-help').count(),0);
+ await page.locator('.store-faq details').first().waitFor();assert.equal(await page.locator('.store-faq details').count(),9);assert.equal(await page.locator('.float-help').count(),0);
  await page.locator('#help-search').fill('карго');await page.waitForFunction(()=>[...document.querySelectorAll('.store-faq details')].filter(d=>!d.hidden).length>=1&&[...document.querySelectorAll('.store-faq details')].some(d=>d.hidden));
  assert.ok(await page.locator('.store-faq details:not([hidden])').first().getAttribute('open')!==null,'Matching answers open');
  await page.locator('#help-search').fill('zzzz');await page.locator('#help-empty').waitFor();
