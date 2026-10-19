@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Nike брэндийн тусдаа хуудас — 2026-10-19
+
+- `17a0b04`: `/brands/nike` хуудас GOStore-ийн өнгө, фонт, header/footer-тэй; Nike лого, нүүр хэсэг, API каталог, шинэ бараа/борлуулалтын цэс, үнийн шүүлт, хуудаслалт, захиалгын тайлбартай. Нүүрийн Nike карт, барааны дэлгэрэнгүйн буцах холбоос энэ хуудсыг нээнэ.
+- Nike seller scope URL дахь өөр brand/category/image/filter утгаар солигдохгүй. Reset Nike-д үлдэнэ; сайтын ерөнхий хайлт, хадгалсан бараа, зураг хайлт үндсэн каталог руу шилжинэ. Нэмэлт API хүсэлтгүй, одоогийн кэш/зураг/хямдралын шалгалтыг ашигласан. Tmall жишээ холбоос автомат уншилтаар нээгдээгүй; дэлгүүрийн HTML хуулбарлаагүй, GOStore-ийн загвараар бүтээсэн.
+- `nike-storefront-ui`, `brand-browse-ui`, `catalog-navigation-ui`, `product-page-ui`, `supplier-cache-ui` тэнцсэн. 320/390/1440px харагдац, exact seller, ганц анхны хүсэлт, sort/page/reload/price/reset, дотоод detail/return, ерөнхий хайлт, keyboard болон үндсэн каталогийн регрессийг шалгасан.
+- 7 live файл байршуулсан (2 шинэ: `brand-page.js`, `brand-page.css`). `.htaccess`-ийн cPanel PHP handler блокийг хадгалсан. Нөөц: `/gostore-backups/nike-storefront-20261019-abeafef83be0`. FTPS backup/stage/live байт, HTTPS assets, route HTTP 200, private server файл 403 шалгасан.
+- Live: гурван эрэмбэ тус бүр зөв Nike seller-ийн 12 бараа буцаасан; бүтээгдэхүүний зургууд ачаалсан. Шинэ эрэмбэ, page 2/reload, reset, дэлгэрэнгүйгээс буцах, нүүрийн Nike карт, mobile overflow болон JavaScript/HTTP алдаагүйг browser-оор баталсан. Захиалга, төлбөр үүсгээгүй.
+
 ## Брэндийн дотоод API каталог, урамшуулал — 2026-10-19
 
 - `cdb8c88`: 10 лого `/?brand=<id>#catalog` дотоод каталог нээнэ. Барааны дэлгэрэнгүй `?brand=<id>` хадгална; гадаад дэлгүүр рүү автоматаар шилжихгүй. Үнэ, эрэмбэ, хуудаслалт, reload болон брэндээс гарах төлөв тестлэгдсэн.
