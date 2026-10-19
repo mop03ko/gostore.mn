@@ -13,3 +13,6 @@
 .storefront-hero-art>img{max-width:72%;max-height:220px}.storefront-art-word{white-space:nowrap}.storefront-page[data-brand=newbalance] .storefront-art-word{font-size:64px;letter-spacing:-3px}.storefront-page[data-brand=xiaomi] .storefront-art-word{font-size:100px;letter-spacing:-4px}
 @media(max-width:600px){.storefront-hero-art>img{max-height:110px;max-width:50%}.storefront-page[data-brand=newbalance] .storefront-art-word{font-size:40px;letter-spacing:-2px}.storefront-page[data-brand=xiaomi] .storefront-art-word{font-size:66px}}
 @media(max-width:600px){.storefront-hero{grid-template-columns:minmax(0,1fr)}.storefront-hero-copy{min-width:0}.storefront-hero h1{font-size:clamp(28px,9vw,40px);overflow-wrap:break-word}}
+
+.storefront-page[data-brand=thenorthface] .storefront-art-word{font-size:58px;letter-spacing:-3px}
+@media(max-width:600px){.storefront-page[data-brand=thenorthface] .storefront-art-word{font-size:34px;letter-spacing:-2px}.storefront-page[data-brand=thenorthface] .storefront-store-identity strong{font-size:19px}}

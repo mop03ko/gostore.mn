@@ -10,6 +10,8 @@ function supplier_brands(): array {
         'newbalance'=>['name'=>'New Balance','vendor'=>'New Balance官方旗舰店','seller'=>'520557274'],
         'uniqlo'=>['name'=>'UNIQLO','vendor'=>'优衣库官方旗舰店','seller'=>'196993935'],
         'zara'=>['name'=>'ZARA','vendor'=>'ZARA官方旗舰店','seller'=>'2228361831'],
+        'hm'=>['name'=>'H&M','vendor'=>'HM官方旗舰店','seller'=>'3676232520'],
+        'thenorthface'=>['name'=>'The North Face','vendor'=>'The North Face官方旗舰店','seller'=>'928417138'],
         'sony'=>['name'=>'Sony','vendor'=>'索尼官方旗舰店','seller'=>'782731205'],
         'xiaomi'=>['name'=>'Xiaomi','vendor'=>'小米官方旗舰店','seller'=>'1714128138'],
         'lego'=>['name'=>'LEGO','vendor'=>'乐高官方旗舰店','seller'=>'766568254'],

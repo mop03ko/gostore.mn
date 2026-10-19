@@ -1,6 +1,8 @@
 # Brand storefronts
 
-Updated 2026-10-19. The ten logo cards open GOStore's internal `/?brand=<id>#catalog` view.
+Updated 2026-10-20. The twelve logo cards open GOStore's internal `/brands/<id>` pages.
+Desktop widths of 1000px and above show six columns in two rows, without horizontal
+scrolling. Tablets use four columns and phones three, keeping every brand visible.
 Product links keep `?brand=<id>` and open on GOStore. Apple and Samsung are excluded.
 The external URLs below are source references, not navigation destinations.
 GOStore does not imply that it is itself an authorized retailer.
@@ -13,6 +15,8 @@ GOStore does not imply that it is itself an authorized retailer.
 | New Balance | https://newbalance.tmall.com/ | [Tmall sports directory](https://www.tmall.com/wow/fushi/act/goufangxin) and [July 2026 brand press release](https://www.businessnews.cn/2026/07/16/21805.html). |
 | UNIQLO | https://uniqlo.tmall.com/ | [UNIQLO official FAQ](https://www.uniqlo.cn/htmlcode_FAQinn.html?category=6&sub=1). |
 | ZARA | https://zara.tmall.com/ | [Flagship launch announcement](https://fashion.sina.com.cn/s/sh/2014-10-13/2140/doc-iavxeafr4081165.shtml) and [current indexed storefront title](https://site.365jz.com/29567.html). |
+| H&M | https://hm.tmall.com/ | [H&M's flagship launch announcement](https://hmgroup.com/nyheter/hm-opens-on-tmall-today-2/); shop HTML seller identity matches OT. |
+| The North Face | https://thenorthface.tmall.com/ | [Brand membership terms listing its official channels](https://www.thenorthface.com.cn/index.php/wap/article-342.html). |
 | Sony | https://sony.tmall.com/ | [Sony product announcement with purchase channels](https://www.sony.com.cn/content/sonyportal/zh-cn/cms/newscenter/product/2022/20220913-1.html). |
 | Xiaomi | https://xiaomi.tmall.com/ | [Xiaomi official shop](https://www.mi.com/shop), footer link. |
 | LEGO | https://lego.tmall.com/ | [Flagship listing](https://www.ppqjd.com.cn/94-531/) and [store campaign coverage](https://post.smzdm.com/p/akx7r9w4/). |
@@ -31,10 +35,16 @@ matching Vendor block. Brand browsing therefore uses the documented
 [BatchSearchItemsFrame](https://docs.otapi.net/en/Documentations/Method/BatchSearchItemsFrame)
 with a case-sensitive VendorId. The server allowlist in `server/supplier-brands.php`
 records both the exact VendorId and numeric seller ID verified through OT's
-Vendor block for all ten shops. Responses must match both; individual products
+Vendor block for all twelve shops. Responses must match both; individual products
 must match VendorId and any returned numeric seller ID. Mismatches are omitted,
 never replaced by keyword matches. Real smoke checks returned 12 items per shop,
 except adidas where one mismatched seller was correctly excluded (11 remained).
+
+On 2026-10-20, H&M returned `HM官方旗舰店` / seller `3676232520`, and The North Face
+returned `The North Face官方旗舰店` / seller `928417138`, with twelve matching items
+each. Case and spaces in these IDs matter. The two new SVG logos come from
+[Simple Icons 11.15.0](https://github.com/simple-icons/simple-icons/tree/11.15.0/icons)
+(`handm.svg`, `thenorthface.svg`), under the existing CC0 license in `assets/brands`.
 
 Brand product details use
 [BatchGetItemFullInfo](https://docs.otapi.net/en/Documentations/Method/BatchGetItemFullInfo)

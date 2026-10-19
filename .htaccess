@@ -33,5 +33,5 @@ RewriteRule ^v/(?:tb-)?[0-9]{5,20}/?$ index.html [L]
 RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 RewriteRule ^account(?:/[a-z]{1,20})?/?$ index.html [L]
 RewriteRule ^(?:cart|help)/?$ index.html [L]
-RewriteRule ^brands/(?:nike|adidas|puma|newbalance|uniqlo|zara|sony|xiaomi|lego|ikea)/?$ index.html [L]
+RewriteRule ^brands/(?:nike|adidas|puma|newbalance|uniqlo|zara|hm|thenorthface|sony|xiaomi|lego|ikea)/?$ index.html [L]
 </IfModule>

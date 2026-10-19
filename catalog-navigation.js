@@ -33,6 +33,8 @@
     {id:'newbalance',name:'New Balance',shop:'newbalance'},
     {id:'uniqlo',name:'UNIQLO',shop:'uniqlo'},
     {id:'zara',name:'ZARA',shop:'zara'},
+    {id:'hm',name:'H&M',shop:'hm'},
+    {id:'thenorthface',name:'The North Face',shop:'thenorthface'},
     {id:'sony',name:'Sony',shop:'sony'},
     {id:'xiaomi',name:'Xiaomi',shop:'xiaomi'},
     {id:'lego',name:'LEGO',shop:'lego'},
