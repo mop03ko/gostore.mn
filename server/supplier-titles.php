@@ -61,9 +61,11 @@ function supplier_english_titles(array $cache,string $path,array $query,bool $di
     });
     if(!$wanted)return $cache;
     try {
-        if(($query['language']??'')!=='en'&&array_diff_key($wanted,$titles)){
+        if(($display||$warming)&&($query['language']??'')!=='en'&&array_diff_key($wanted,$titles)){
             // One translated page/detail request, never one API call per product.
             // Existing request limits, retries and language-specific caches apply.
+            // Checkout uses cached titles only: translation must never add network
+            // latency, lock contention or quota consumption to SKU/price validation.
             $english=supplier_raw_request($path,array_replace($query,['language'=>'en']),$display,false,$warming);
             supplier_title_map($english['data'],static function($item)use(&$titles,$wanted,$provider){
                 $id=supplier_title_id($item,$provider);
