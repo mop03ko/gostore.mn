@@ -27,22 +27,23 @@ function supplier_brand_item_matches(array $item,array $brand): bool {
     foreach($item['FeaturedValues']??[] as $feature)if(($feature['Name']??'')==='TaobaoVendorId'&&(string)($feature['Value']??'')!==$brand['seller'])return false;
     return true;
 }
-function supplier_brand_query(array $brand,int $page,string $sort,array $range=[]): array {
+function supplier_brand_query(array $brand,int $page,string $sort,array $range=[],int $limit=12): array {
     $orders=['default'=>'Default','price'=>'Price:Asc','-price'=>'Price:Desc','-volume'=>'Volume:Desc','-updated_time'=>'UpdatedTime:Desc'];
     if(!isset($orders[$sort]))fail('Эрэмбэ буруу.');
     $xml='<SearchItemsParameters><Provider>Taobao</Provider><VendorId>'.htmlspecialchars($brand['vendor'],ENT_XML1|ENT_QUOTES,'UTF-8').'</VendorId><OrderBy>'.$orders[$sort].'</OrderBy>';
     $rate=shipping_settings()['cny_rate'];foreach(['price_min'=>'MinPrice','price_max'=>'MaxPrice'] as $key=>$tag)if(isset($range[$key]))$xml.='<'.$tag.'>'.number_format($range[$key]/$rate,2,'.','').'</'.$tag.'>';
-    return ['language'=>supplier_language(),'xmlParameters'=>$xml.'</SearchItemsParameters>','framePosition'=>($page-1)*12,'frameSize'=>12,'blockList'=>'Vendor'];
+    return ['language'=>supplier_language(),'xmlParameters'=>$xml.'</SearchItemsParameters>','framePosition'=>($page-1)*$limit,'frameSize'=>$limit,'blockList'=>'Vendor'];
 }
 function supplier_brand_search(array $b,bool $display=false): array {
+    $limit=supplier_page_size($b);
     $id=str_field($b,'brand',30);$brand=supplier_brand($id);$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
-    $c=supplier_request('/service-json/BatchSearchItemsFrame',supplier_brand_query($brand,$page,$sort,supplier_price_range($b)),$display);
+    $c=supplier_request('/service-json/BatchSearchItemsFrame',supplier_brand_query($brand,$page,$sort,supplier_price_range($b),$limit),$display);
     supplier_brand_assert_vendor($c['data']['Vendor']??[],$brand);
     $raw=$c['data']['Items']['Items']['Content']??[];$safe=array_values(array_filter($raw,static fn($p)=>is_array($p)&&supplier_brand_item_matches($p,$brand)));
-    $c['data']['Items']['Items']['Content']=$safe;$r=supplier_search_result($c,$page);
+    $c['data']['Items']['Items']['Content']=$safe;$r=supplier_search_result($c,$page,$limit);
     $byId=[];foreach($safe as $p)$byId['tb-'.$p['Id']]=$p;
     foreach($r['products'] as &$p){$p['brand_id']=$id;$p['brand_name']=$brand['name'];$p['offers']=supplier_offers($byId[$p['id']],$c);}unset($p);
-    if(count($safe)!==count($raw)){$r['total']=null;$r['more']=count($raw)===12&&$page<100;$r['pages']=$page+($r['more']?1:0);}
+    if(count($safe)!==count($raw)){$r['total']=null;$r['more']=count($raw)===$limit&&$page<100;$r['pages']=$page+($r['more']?1:0);}
     $r['brand']=['id'=>$id,'name'=>$brand['name']];
     return supplier_price_order_result($r,$sort);
 }

@@ -18,3 +18,22 @@
  .commerce-estimate>div{font-size:13px}.commerce-estimate .total{font-size:16px}.cart-flyout{bottom:86px}.product-view .cart-flyout{bottom:110px}
 }
 @media(max-width:350px){.header-main .brand{width:120px}.header-actions .header-action{min-width:44px}.category-trigger{min-width:44px}.pd-buybar{grid-template-columns:minmax(0,1fr) 44px minmax(112px,auto)}.pd-buybar .pd-add{width:44px;min-width:44px}}
+
+/* Compact cards, with batches appended below the current catalog. */
+#supplier-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:16px 12px}
+#supplier-grid .supplier-card{border-radius:14px}
+#supplier-grid .supplier-card-copy{padding:10px}
+#supplier-grid .supplier-card-copy h3{font-size:13px;line-height:19px;margin-bottom:5px}
+#supplier-grid .supplier-card-copy h3 a{white-space:normal;min-height:3em}
+#supplier-grid .supplier-card-meta{font-size:10px;min-height:16px;line-height:16px}
+#supplier-grid .supplier-delivery-note{font-size:10px;margin:2px 0 6px;line-height:15px}
+#supplier-grid .supplier-card-bottom{gap:6px}
+#supplier-grid .supplier-card-price strong{font-size:18px}
+#supplier-grid .supplier-card-price small{font-size:10px;line-height:14px}
+#supplier-grid .supplier-card-buy{font-size:12px;min-height:44px}
+#supplier-paging{min-height:52px;justify-content:center;align-items:center;color:var(--muted);font-size:13px}
+@media(min-width:1600px){#supplier-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@media(max-width:1199px){#supplier-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:999px){#supplier-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){#supplier-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:539px){#supplier-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}#supplier-grid .supplier-card-copy{padding:8px}#supplier-grid .supplier-card-price strong{font-size:16px}}

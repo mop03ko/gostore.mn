@@ -3,7 +3,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('action=supplier-search'))requests.push(new URL(r.url()).searchParams);});
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
- const ready=()=>page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===12&&!document.querySelector('#supplier-grid').hasAttribute('aria-busy'));
+ const ready=()=>page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===50&&!document.querySelector('#supplier-grid').hasAttribute('aria-busy'));
  for(const [index,[id,[name]]] of Object.entries(vendors).entries()){
   await page.setViewportSize({width:1440,height:1000});
   await page.goto(base+'/');const card=page.locator('#brands [data-brand='+id+']');assert.equal(await card.getAttribute('href'),'/brands/'+id);await card.click();await ready();
@@ -17,7 +17,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  }
  await page.goto(base+'/brands/ikea/?brand=nike&category=bags&filter=saved');await ready();assert.equal(await page.locator('#catalog-title').innerText(),'IKEA бараанууд');assert.equal(new URL(page.url()).search,'');
  await page.locator('.storefront-catalog-tabs [data-storefront-sort="-updated_time"]').click();await ready();assert.equal(requests.at(-1).get('brand'),'ikea');assert.equal(requests.at(-1).get('sort'),'-updated_time');
- await page.locator('[data-supplier-page="2"]').last().click();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));await page.reload();await ready();assert.equal(new URL(page.url()).searchParams.get('page'),'2');
+ await page.locator('[data-supplier-more]').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===100);await page.evaluate(()=>scrollTo(0,0));await page.reload();await ready();assert.equal(new URL(page.url()).searchParams.get('page'),null);
  await page.locator('#supplier-search [name=price_min]').fill('5500');await page.locator('.price-apply').click();await ready();assert.equal(requests.at(-1).get('brand'),'ikea');assert.equal(requests.at(-1).get('price_min'),'5500');assert.equal(requests.at(-1).get('page'),'1');await page.locator('#supplier-reset').click();await ready();assert.equal(new URL(page.url()).search,'');assert.equal(await page.locator('#catalog-title').innerText(),'IKEA бараанууд');
  for(const id of ['apple','samsung','unknown'])assert.equal((await page.request.get(base+'/brands/'+id)).status(),404);
  // A failed supplier response leaves the correct storefront visible and supports retry.

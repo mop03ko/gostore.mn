@@ -2,14 +2,15 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage(),calls=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{window.IntersectionObserver=undefined;});
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await page.route('**/api/index.php?action=supplier-search*',async r=>{
    const b=({...Object.fromEntries(new URL(r.request().url()).searchParams),page:Number(new URL(r.request().url()).searchParams.get('page'))});calls.push(b);
    if(b.q==='error')return r.fulfill({status:503,json:{error:'Unavailable'}});
-   return r.fulfill({json:{products:[{id:'tb-123456789',name:b.q+' '+b.page+' '+b.sort,image:'https://img.alicdn.com/test.jpg',mnt:5500,cny:10}],page:b.page,more:b.page===1,shipping:{cny_rate:550},stale:b.q==='stale',cache_ttl:b.q==='short'?1:21600,fetched:new Date().toISOString(),csrf:'must-not-persist',customer:{email:'must-not-persist'}}});
+   return r.fulfill({json:{products:[{id:'tb-'+(123456788+b.page),name:b.q+' '+b.page+' '+b.sort,image:'https://img.alicdn.com/test.jpg',mnt:5500,cny:10}],page:b.page,more:b.page===1,shipping:{cny_rate:550},stale:b.q==='stale',cache_ttl:b.q==='short'?1:21600,fetched:new Date().toISOString(),csrf:'must-not-persist',customer:{email:'must-not-persist'}}});
  });
  await page.goto(base+'/?filter=saved');await page.evaluate(()=>window.catalogReady);
- const query={q:'bag',page:1,sort:'default'};
+ const query={q:'bag',page:1,limit:50,sort:'default'};
  const get=q=>page.evaluate(p=>supplierApi('supplier-search',p),q);
  await page.evaluate(async p=>{const [a,b]=await Promise.all([supplierApi('supplier-search',p),supplierApi('supplier-search',p)]);a.products[0].name='mutated';if(b.products[0].name==='mutated')throw Error('Shared mutable data');},query);
  assert.equal(calls.length,1,'Concurrent identical searches share one request');
@@ -17,8 +18,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  const saved=await page.evaluate(()=>sessionStorage.getItem('gostore-supplier-cache-v4-taobao'));assert.ok(!saved.includes('must-not-persist'),'No CSRF/customer fields persisted');
  await get({...query,page:2});await get({...query,sort:'price'});await get({...query,q:'shoes'});assert.equal(calls.length,4,'Query/page/sort are independent keys');
  await page.goto(base+'/?q=bag');await page.locator('.supplier-card').waitFor();assert.equal(calls.length,4,'Navigation restores cached search');
- await page.locator('[data-supplier-page="2"]',{hasText:'Дараах'}).click();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Visited next page needs no request');
- await page.reload();await page.waitForFunction(()=>document.querySelector('#supplier-status').textContent.startsWith('2-'));assert.equal(calls.length,4,'Reload restores page two from cache');
+ await page.locator('[data-supplier-more]').click();await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===2);assert.equal(calls.length,4,'Visited next page needs no request');
+ await page.reload();await page.locator('.supplier-card').waitFor();assert.equal(calls.length,4,'Reload restores the first batch from cache');
  for(let i=0;i<2;i++){await get({...query,q:'error'}).then(()=>assert.fail('Expected error'),()=>{});await get({...query,q:'stale'});}
  assert.equal(calls.filter(x=>x.q==='error').length,2,'Errors are not cached');assert.equal(calls.filter(x=>x.q==='stale').length,2,'Stale responses are not cached as fresh');
  await get({...query,q:'short'});await page.evaluate(()=>{window.cacheTestNow=Date.now;Date.now=()=>cacheTestNow()+2000;});await get({...query,q:'short'});assert.equal(calls.filter(x=>x.q==='short').length,2,'Server freshness caps browser lifetime');

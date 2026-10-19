@@ -6,7 +6,7 @@ const translated={...item,Title:'Nike Everyday Backpack',Description:'English de
 const detailQuery={itemId:item.Id,blockList:'Promotions,Vendor,RootPath,Description,MostPopularVendorItems16'};
 put('BatchGetItemFullInfo',{language:'mn',...detailQuery},{Vendor:vendorData,Item:item,RootPath:{Content:[{Name:'Монгол ангилал'}]}});
 put('BatchGetItemFullInfo',{language:'en',...detailQuery},{Vendor:vendorData,Item:translated,RootPath:{Content:[{Name:'English category'}]}});
-const searchQuery={xmlParameters:'<SearchItemsParameters><Provider>Taobao</Provider><VendorId>'+vendor+'</VendorId><OrderBy>Default</OrderBy></SearchItemsParameters>',framePosition:0,frameSize:12,blockList:'Vendor'};
+const searchQuery={xmlParameters:'<SearchItemsParameters><Provider>Taobao</Provider><VendorId>'+vendor+'</VendorId><OrderBy>Default</OrderBy></SearchItemsParameters>',framePosition:0,frameSize:50,blockList:'Vendor'};
 put('BatchSearchItemsFrame',{language:'mn',...searchQuery},{Vendor:vendorData,Items:{Items:{Content:[item],TotalCount:1},MaximumPageCount:1}});
 put('BatchSearchItemsFrame',{language:'en',...searchQuery},{Vendor:vendorData,Items:{Items:{Content:[translated],TotalCount:1},MaximumPageCount:1}});
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{

@@ -292,19 +292,25 @@ function supplier_price_range(array $b): array {
     if(isset($range['price_min'],$range['price_max'])&&$range['price_min']>$range['price_max'])fail('Доод үнэ дээд үнээс их байна.');
     return $range;
 }
+function supplier_page_size(array $b): int {
+    $limit=filter_var($b['limit']??12,FILTER_VALIDATE_INT);
+    if(!in_array($limit,[12,50],true))fail('Барааны тоо буруу.');
+    return $limit;
+}
 function supplier_search(array $b,bool $display=false): array {
+    $limit=supplier_page_size($b);
     if(($b['brand']??'')!=='')return supplier_brand_search($b,$display);
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume','-updated_time'],true))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);
-    if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort,$range);}
-    if($display&&!$range){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return supplier_price_order_result($snapshot,$sort);}}
-    $query=['language'=>supplier_language(),'item_title'=>$q,'page'=>$page,'limit'=>12,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
+    if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort,$range,$limit);}
+    if($display&&!$range&&$limit===12){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return supplier_price_order_result($snapshot,$sort);}}
+    $query=['language'=>supplier_language(),'item_title'=>$q,'page'=>$page,'limit'=>$limit,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
     if(isset($range['price_min']))$query['price_min']=number_format($range['price_min']/$rate,2,'.','');
     if(isset($range['price_max']))$query['price_max']=number_format($range['price_max']/$rate,2,'.','');
     $c=supplier_request('/v1/taobao/search',$query,$display);
     if($display)supplier_schedule_warm();
-    return supplier_price_order_result(supplier_search_result($c,$page),$sort);
+    return supplier_price_order_result(supplier_search_result($c,$page,$limit),$sort);
 }
 // The shown price: verified SKU price first, otherwise the approximate search price; unknown is null.
 function supplier_display_price(array $p): ?int {
@@ -344,19 +350,20 @@ function supplier_image_search_upload(): array {
     else touch($path);
     return ['image'=>$hash];
 }
-function supplier_image_search(string $hash,int $page,bool $display=false): array {
+function supplier_image_search(string $hash,int $page,bool $display=false,int $limit=12): array {
+    $limit=supplier_page_size(['limit'=>$limit]);
     if(!preg_match('/^[a-f0-9]{32}$/D',$hash))fail('Зургийн дугаар буруу.');
     if(!shipping_settings()['image_search_enabled'])fail('Зургаар хайх үйлчилгээ түр идэвхгүй байна.',503);
     if(!is_file(supplier_image_search_dir().'/'.$hash.'.jpg'))fail('Хайлтын зургийн хугацаа дууссан. Зургаа дахин оруулна уу.',404);
     if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
-    $c=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>12],$display);
-    return supplier_search_result($c,$page)+['image'=>$hash];
+    $c=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>$limit],$display);
+    return supplier_search_result($c,$page,$limit)+['image'=>$hash];
 }
-function supplier_search_result(array $c,int $page): array {
+function supplier_search_result(array $c,int $page,int $limit=12): array {
     $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_card_price(supplier_normalize($p,false,'taobao'),(int)$c['expires']);}catch(ApiError){}}
     $total=filter_var($block['Items']['TotalCount']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
-    $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/12)));
-    return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
+    $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/$limit)));
+    return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($block['Items']['Content']??[])===$limit&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*$limit<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id,bool $display=false,string $brandId=''): array {
     $identity=supplier_identity($id);

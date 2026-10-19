@@ -39,7 +39,7 @@ function supplier_snapshot_search(string $q,int $page,string $sort): ?array {
     $record['shipping']=$shipping;return $record;
 }
 // Round-robin cached departments so the landing page is not a single bag search.
-function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
+function supplier_snapshot_all(int $page,string $sort,array $range=[],int $limit=12): array {
     $snapshot=supplier_snapshot_current();$records=[];
     foreach(supplier_warm_queries() as $q){
         $record=$snapshot['records'][$q]??null;
@@ -73,9 +73,9 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[]): array {
         else{$pa=$price($a);$pb=$price($b);if(($pa===null)!==($pb===null))return $pa===null?1:-1;$cmp=($pa??0)<=>($pb??0);if($sort==='-price')$cmp=-$cmp;}
         return $cmp?:$a['_position']<=>$b['_position'];
     });
-    $total=count($products);$items=array_slice($products,($page-1)*12,12);foreach($items as &$p)unset($p['_position']);unset($p);
+    $total=count($products);$items=array_slice($products,($page-1)*$limit,$limit);foreach($items as &$p)unset($p['_position']);unset($p);
     if(!$total)$expires=0;
-    return ['products'=>$items,'page'=>$page,'more'=>$page*12<$total,'total'=>$total,'pages'=>max(1,(int)ceil($total/12)),'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
+    return ['products'=>$items,'page'=>$page,'more'=>$page*$limit<$total,'total'=>$total,'pages'=>max(1,(int)ceil($total/$limit)),'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
 }
 function supplier_snapshot_run(int $maxJobs=26): array {
     if(empty(shipping_settings()['catalog_snapshot_enabled'])||!supplier_ready())return ['status'=>'disabled'];

@@ -33,7 +33,7 @@ window.supplierApi=(()=>{
   }
   const api=async(action,payload)=>{
     if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
-    if(action==='supplier-search'&&payload.image){if(!/^[a-f0-9]{32}$/.test(payload.image))throw Error('Зургийн дугаар буруу.');payload={image:payload.image,page:payload.page};}
+    if(action==='supplier-search'&&payload.image){if(!/^[a-f0-9]{32}$/.test(payload.image))throw Error('Зургийн дугаар буруу.');payload={image:payload.image,page:payload.page,...(payload.limit?{limit:payload.limit}:{})};}
     else if(action==='supplier-search')payload={...payload,q:String(payload.q||'__all__').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'__all__'};
     const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
     const found=entries.find(e=>e.key===request&&valid(e));

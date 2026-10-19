@@ -1,0 +1,26 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});let release;try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[],calls=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
+ let failNext=true;const gate=new Promise(r=>release=r);
+ await page.route('**/api/index.php?action=supplier-search*',async route=>{
+  const params=Object.fromEntries(new URL(route.request().url()).searchParams),n=Number(params.page),q=params.q;calls.push(params);assert.equal(params.limit,'50');
+  if(q==='slow'&&n===2)await gate;
+  if(q==='__all__'&&n===2&&failNext){failNext=false;return route.fulfill({status:503,json:{error:'Test retry'}});}
+  const count=n===3?20:50,offset=(n-1)*50,products=Array.from({length:count},(_,i)=>({id:'tb-'+(900000000+offset+i),name:q+' product '+(offset+i),image:'https://img.alicdn.com/test.jpg',mnt:11000,price_status:'available',price_expires:Math.floor(Date.now()/1000)+3600}));if(n===3)products[0].id='tb-900000099';
+  await route.fulfill({json:{products,page:n,more:n<3,total:120,stale:false,cache_ttl:600,shipping:{cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399}}});
+ });
+ const count=n=>page.waitForFunction(n=>document.querySelectorAll('.supplier-card').length===n,n);
+ await page.goto(base+'/');await count(50);assert.equal(calls.length,1);assert.equal(await page.locator('[data-supplier-page]').count(),0);assert.equal(await page.locator('#supplier-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),6);assert.ok((await page.locator('.supplier-card').first().boundingBox()).width<225);
+ await page.evaluate(()=>window.firstCard=document.querySelector('.supplier-card'));
+ await page.locator('[data-supplier-more]').scrollIntoViewIfNeeded();await page.locator('[data-supplier-retry="2"]').waitFor();assert.equal(await page.locator('.supplier-card').count(),50);assert.ok(await page.evaluate(()=>window.firstCard===document.querySelector('.supplier-card')),'Append failure preserves card DOM');assert.equal(calls.filter(p=>p.page==='2').length,1,'Failure does not auto retry');
+ await page.locator('[data-supplier-retry="2"]').click();await count(100);assert.ok(await page.evaluate(()=>window.firstCard===document.querySelector('.supplier-card')),'Successful append preserves DOM');assert.equal(new URL(page.url()).searchParams.has('page'),false,'Auto scroll does not change reload starting batch');
+ await page.locator('[data-supplier-more]').scrollIntoViewIfNeeded();await count(119);assert.equal(await page.locator('[data-supplier-more]').count(),0);assert.equal(await page.locator('.supplier-photo').evaluateAll(links=>new Set(links.map(a=>a.href)).size),119,'Duplicate IDs never appear twice');assert.match(await page.locator('#supplier-status').innerText(),/119 бараа/);
+ await page.evaluate(()=>{scrollTo(0,0);supplierBrowse('slow');});await count(50);const slowRequest=page.waitForRequest(r=>r.url().includes('q=slow')&&r.url().includes('page=2'));await page.locator('[data-supplier-more]').scrollIntoViewIfNeeded();await slowRequest;
+ await page.evaluate(()=>{scrollTo(0,0);supplierBrowse('fresh');});await page.waitForFunction(()=>document.querySelector('.supplier-card h3')?.textContent.startsWith('fresh'));release();await page.waitForFunction(()=>!document.querySelector('#supplier-grid').hasAttribute('aria-busy'));assert.equal(await page.locator('.supplier-card').count(),50);assert.ok((await page.locator('.supplier-card h3').allTextContents()).every(s=>s.startsWith('fresh')),'Old query append is discarded');
+ await page.locator('.favorite-button[data-supplier-favorite]').first().click();await page.evaluate(()=>supplierBrowse(null,true));await count(1);assert.equal(await page.locator('[data-supplier-more]').count(),0,'Saved list never loads another page');
+ await page.evaluate(()=>{scrollTo(0,0);supplierBrowse('fresh');});await count(50);await page.locator('#supplier-sort').selectOption('-price');await count(50);await page.waitForFunction(()=>!document.querySelector('#supplier-grid').hasAttribute('aria-busy'));assert.equal(calls.at(-1).page,'1');assert.equal(calls.at(-1).sort,'-price');
+ for(const width of [1440,760,390,320]){await page.setViewportSize({width,height:900});await page.locator('#supplier-grid').scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow '+width);assert.ok(await page.locator('.supplier-card').first().evaluate(e=>e.scrollWidth<=e.clientWidth),'Card fits '+width);await page.screenshot({path:'tmp/catalog-scroll-'+width+'.png'});}
+ assert.deepEqual(errors,[]);console.log('PASS infinite catalog: 50 then 50, automatic scroll, append retry and DOM retention, duplicate/final stop, stale-query discard, saved/filter reset, compact 1440/760/390/320px cards.');
+}finally{release?.();await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

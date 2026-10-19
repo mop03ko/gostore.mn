@@ -3,9 +3,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 // Catalog price filter, numbered pages, comparison and search suggestions with mocked supplier data.
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[],searches=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{window.IntersectionObserver=undefined;});
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/lamp.jpg',contentType:'image/jpeg'}));
  const product=(i)=>({id:'tb-'+(300000000+i),name:'Бараа '+i,image:'https://img.alicdn.com/'+i+'.jpg',mnt:i===3?null:11000+i*1000,approx_mnt:i===3?9900:null,price_status:i===3?'unverified':'available',price_expires:Math.floor(Date.now()/1000)+3600,sold_count:i*10});
- await page.route('**/api/index.php?action=supplier-search*',r=>{const p=new URL(r.request().url()).searchParams;searches.push(Object.fromEntries(p));const n=Number(p.get('page'));return r.fulfill({json:{products:Array.from({length:12},(_,i)=>product((n-1)*12+i+1)),page:n,more:n<21,total:250,pages:21,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399}}});});
+ await page.route('**/api/index.php?action=supplier-search*',r=>{const p=new URL(r.request().url()).searchParams;searches.push(Object.fromEntries(p));const n=Number(p.get('page'));return r.fulfill({json:{products:Array.from({length:50},(_,i)=>product((n-1)*50+i+1)),page:n,more:n<5,total:250,pages:5,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399}}});});
  await page.route('**/api/index.php?action=supplier-product*',r=>{const id=new URL(r.request().url()).searchParams.get('id'),n=Number(id.slice(3))-300000000;return r.fulfill({json:{product:{...product(n),cny:20+n,variants:[{id:'a',label:'Улаан',cny:20+n,stock:5}],vendor_name:'Дэлгүүр '+n,brand:n===1?'Xiaomi':'',location:['Zhejiang'],attributes:[{name:'Материал',value:n===1?'Хөвөн':'Арьс'},{name:'Өнгө',value:'Улаан'}],related:[]},fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}});});
  await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
@@ -15,10 +16,9 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // The home page has a single category row (in the catalog); the empty kids-shoes category is gone.
  assert.equal(await page.locator('#quick-categories').count(),0);assert.equal(await page.locator('#category-grid').count(),0);
  assert.equal(await page.locator('.catalog-category-list').count(),1);assert.equal(await page.locator('.catalog-category-list [data-catalog-category="kids-shoes"]').count(),0);
- assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['1','2','21','Дараах'],'Numbered pages around the current one');
+ assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['Дараагийн 50 барааг харах'],'Load more replaces numbered pages');
  await page.locator('#catalog').screenshot({path:'tmp/shop-tools-catalog-1440.png',clip:undefined});
- await page.locator('#supplier-paging [data-supplier-page="21"]').click();await page.waitForFunction(()=>document.querySelector('#supplier-paging [aria-current=page]')?.textContent==='21');
- assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['Өмнөх','1','20','21']);
+ await page.locator('[data-supplier-more]').click();await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===100);assert.equal(searches.at(-1).page,'2');
  // Price range in MNT is sent to the server and kept in the URL.
  await page.locator('#supplier-search [name=price_min]').fill('10 000');await page.locator('#supplier-search [name=price_max]').fill('50000');await page.locator('#supplier-search .price-apply').click();
  await page.waitForFunction(()=>new URL(location.href).searchParams.get('price_max')==='50000');
@@ -50,5 +50,5 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow on mobile');
  for(const name of ['price_min','price_max']){const box=await page.locator('#supplier-search [name='+name+']').boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390,'Price input inside the screen: '+name);}
  await page.locator('#supplier-search').scrollIntoViewIfNeeded();await page.evaluate(()=>scrollBy(0,-200));await page.screenshot({path:'tmp/shop-tools-filter-390.png'});
- assert.deepEqual(errors,[]);console.log('PASS shop tools: price filter (URL, sort, reset), totals and numbered pages, compare list/table/removal/product page, search suggestions and recent searches, mobile layout.');
+ assert.deepEqual(errors,[]);console.log('PASS shop tools: price filter (URL, sort, reset), totals and 50-item append, compare list/table/removal/product page, search suggestions and recent searches, mobile layout.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
