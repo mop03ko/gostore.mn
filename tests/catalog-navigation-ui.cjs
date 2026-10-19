@@ -24,7 +24,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.waitForFunction(()=>[...document.querySelectorAll('.brand-logo img')].every(img=>img.complete&&img.naturalWidth>0));
  assert.equal(await brands.locator('[data-brand=apple],[data-brand=samsung]').count(),0);
  assert.ok(!/taobao/i.test(await brands.innerText()));
- await page.setViewportSize({width:1440,height:1000});assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).display),'flex');assert.ok(await brands.evaluate(e=>e.previousElementSibling.id==='catalog'),'Products precede compact brand navigation');
+ await page.setViewportSize({width:1440,height:1000});assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).display),'flex');assert.ok(await brands.evaluate(e=>e.parentElement.firstElementChild===e),'Brands appear first on the home page');
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await brands.locator('.brand-grid').evaluate(e=>e.scrollWidth>e.clientWidth),'Mobile brands scroll horizontally');await brands.locator('.brand-grid').evaluate(e=>e.scrollLeft=e.scrollWidth);assert.ok(await brands.locator('.brand-grid').evaluate(e=>e.scrollLeft>0));
- assert.deepEqual(errors,[]);console.log('PASS: category navigation, URL/reload, mobile overflow; 10 loaded logos, internal brand links, compact scrolling layout after products.');
+ assert.deepEqual(errors,[]);console.log('PASS: category navigation, URL/reload, mobile overflow; 10 loaded logos, internal brand links, compact scrolling layout first on the home page.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
