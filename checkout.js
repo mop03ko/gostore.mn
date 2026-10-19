@@ -28,11 +28,11 @@ window.taobaoCart=(()=>{
   const hideFlyout=()=>document.querySelector('#cart-flyout')?.classList.remove('visible');
   function row(i,index){
     const mnt=lineMnt(i);
-    return `<div class="cart-row">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:'<span></span>'}<div><h3><a href="/v/${esc(i.id.replace(/^abb-/,''))}">${esc(i.name)}</a></h3><small>${esc(i.variant)} · ${i.id.startsWith('abb-')?'1688':'Taobao'}</small><div class="quantity-controls"><button data-tb-qty="${index}" data-delta="-1" aria-label="${esc(i.name)} тоог бууруулах" ${i.qty-i.step<i.min_qty?'disabled':''}>−</button><span>${i.qty}</span><button data-tb-qty="${index}" data-delta="1" aria-label="${esc(i.name)} тоог нэмэх" ${i.qty+i.step>Math.min(9999,i.stock??9999)?'disabled':''}>+</button></div></div><div><strong>${mnt===null?'Үнэ тооцоолно':money(mnt)}</strong><button class="remove-item" data-tb-remove="${index}">Хасах</button></div></div>`;
+    return `<div class="cart-row">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:'<span></span>'}<div><h3><a href="/v/${esc(i.id.replace(/^abb-/,''))}">${esc(i.name)}</a></h3><small>${esc(i.variant)} · Шууд захиалга</small><div class="quantity-controls"><button data-tb-qty="${index}" data-delta="-1" aria-label="${esc(i.name)} тоог бууруулах" ${i.qty-i.step<i.min_qty?'disabled':''}>−</button><span>${i.qty}</span><button data-tb-qty="${index}" data-delta="1" aria-label="${esc(i.name)} тоог нэмэх" ${i.qty+i.step>Math.min(9999,i.stock??9999)?'disabled':''}>+</button></div></div><div><strong>${mnt===null?'Үнэ тооцоолно':money(mnt)}</strong><button class="remove-item" data-tb-remove="${index}">Хасах</button></div></div>`;
   }
   function show(){
     const items=read();
-    if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Taobao каталогоос бараагаа сонгоод сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
+    if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Үйлдвэрээс захиалах бараагаа сонгоод сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
     const known=items.map(lineMnt),subtotal=known.every(v=>v!==null)?known.reduce((s,v)=>s+v,0):null;
     openModal('Миний сагс',items.map(row).join('')+`<div class="cart-totals"><div><span>Барааны дүн</span><strong>${subtotal===null?'Тооцоолно':money(subtotal)}</strong></div><div><span>Хятад доторх хүргэлт, үйлчилгээ</span><span>Дараагийн алхамд</span></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд жингээр</span></div><div><span>Хүлээн авах</span><span>УБ каргоны хаягаас</span></div></div><div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
   }
@@ -56,7 +56,7 @@ window.taobaoCart=(()=>{
     const button=f.querySelector('[type="submit"]');button.disabled=true;
     try{
       if(!customerAccount.require())return;
-      const ordered=ordering(),fields=Object.fromEntries(new FormData(f));if(fields.fulfillment!=='delivery')delete fields.address;const b={...fields,type:'checkout',title:'Taobao сагс',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
+      const ordered=ordering(),fields=Object.fromEntries(new FormData(f));if(fields.fulfillment!=='delivery')delete fields.address;const b={...fields,type:'checkout',title:'GOStore захиалга',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
       const r=await shopApi('order-create',b);
       checkoutToken='';write(read().filter(i=>!ordered.some(o=>o.id===i.id&&o.sku===i.sku)));
       selected=null;toast('Захиалга үүслээ · '+r.order.id);
