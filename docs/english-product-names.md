@@ -38,9 +38,17 @@ values. The fixtures deliberately put a different currency and price in the Engl
 response to catch accidental full-product replacement.
 
 Review on 2026-10-19: the production key's read-only `language_list` response still
-contained only `khk` (Mongolian). English names therefore remain a deployment
-dependency; do not change the site's `catalog_language` to work around it. PR #1
-requires the owner's explicit approval before merging into `main` or publishing.
+contained only `khk` (Mongolian). English names therefore require provider-side
+enablement; do not change the site's `catalog_language` to work around it.
+
+The owner explicitly approved merging and production deployment on 2026-10-19.
+PR #1 was merged as `d1beb526cda3ab7eb14cc9990414c27fe201be93`, and its three PHP
+files were deployed with verified backups. Live search and product detail matched
+the pre-deployment baseline exactly. Nike products matched by ID with unchanged
+prices, currency, SKU data and offers; normal cache refresh updated expiry times
+and moved five already-unsellable products to the end of the list. Desktop/mobile
+browser checks passed. The live key still lists only `khk`, so existing names remain
+until English is enabled upstream. See `DEPLOYMENT.md` for the backup location.
 
 After deploying the PHP files, check a search, a product page and a brand page with
 an English-enabled OT key. Confirm the heading is English while the description,

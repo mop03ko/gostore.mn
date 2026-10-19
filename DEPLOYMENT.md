@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## English product names — production release 2026-10-19
+
+- Owner explicitly authorized merging and production deployment. PR #1 merged into `main` as `d1beb526cda3ab7eb14cc9990414c27fe201be93`; reviewed implementation head `ef3ab183b716b5a6079f776123380ad96438c4bc`.
+- Published only `server/supplier-titles.php`, `server/supplier-snapshot.php`, and `server/supplier.php` using verified FTPS staging and backups. Backup: `/gostore-backups/english-titles-20261019-acbb7e7512ad`. Live bytes match the committed release; direct PHP file requests return 403.
+- Eleven targeted PHP/browser suites passed during review. Live search and product detail exactly matched the pre-deployment baseline. The initial positional Nike comparison detected a normal cache refresh: ID-based comparison confirmed the same 12 products with unchanged prices, currency, SKU data and offers; expiry timestamps changed and five already-unsellable products changed from unverified to unavailable and sorted last. Existing pricing logic is unchanged.
+- Live Chrome checks passed for homepage entry, Nike catalog, product heading fallback, brand return, mobile layout and no JavaScript errors. No orders or payments created.
+- Provider limitation: the read-only OT language list still contains only `khk` (Mongolian). English titles remain unavailable until English is enabled for the key. The deployed fallback preserves existing names; `catalog_language`, descriptions, attributes, SKU language and pricing settings remain unchanged.
+
 ## Бүх брэндийн тусдаа хуудас — 2026-10-19
 
 - `626452c`: Nike-ийн хуудасны загварыг adidas, Puma, New Balance, UNIQLO, ZARA, Sony, Xiaomi, LEGO, IKEA-д өргөтгөсөн. `/brands/<id>` route, тухайн брэндийн эх SVG лого, нүүрийн текст, title/meta/canonical болон API каталогтой. Нүүрийн карт, барааны дэлгэрэнгүйн буцах холбоос бүгд энэ route-ийг ашиглана.
