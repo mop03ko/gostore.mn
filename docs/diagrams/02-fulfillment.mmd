@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant customer as Хэрэглэгч
+    participant api as GOStore сервер
+    participant supplier as OT / Taobao
+    participant erenhot as Эрээн агуулах
+    participant ub as УБ агуулах
+    participant qpay as QPay
+    rect rgb(240,246,255)
+    Note over customer,qpay: 01  Taobao худалдан авалт, Эрээн хүлээн авалт
+    api->>supplier: 1. Админы үйлдлээр order/render, дараа нь order/create
+    supplier-->>api: 2. Захиалгын дугаар; order/tracker-аар тээврийн мэдээлэл
+    supplier->>erenhot: 3. Барааг Эрээн хаягт хүргэх (биет хөдөлгөөн)
+    erenhot->>api: 4. GS захиалгыг тулгаж, зурагтай хүлээн авах
+    erenhot->>api: 5. Жин, хэмжээ, тоо бүртгэж GB багц үүсгэх
+    erenhot->>api: 6. Багц бэлэн болгох; бодитоор гарсныг тусад нь батлах
+    end
+    rect rgb(247,243,255)
+    Note over customer,qpay: 02  Эрээн → Замын-Үүд → Улаанбаатар
+    erenhot->>ub: 7. Багцыг Замын-Үүдээр дамжуулан тээвэрлэх
+    ub->>api: 8. GB QR нээж, GS бараа бүрийг тулган зурагтай хүлээн авах
+    ub->>api: 9. Агуулахаас авах / хүргүүлэхээр ангилах
+    ub->>api: 10. Бодит хэмжилт, хадгалсан тарифаар эцсийн тооцоо батлах
+    api-->>customer: 11. Миний захиалгууд: явц, зураг, төлөх үлдэгдэл
+    end
+    rect rgb(255,248,237)
+    Note over customer,qpay: 03  Үлдэгдэл төлбөр байгаа үед
+    customer->>api: 12. Үлдэгдэл төлөх (freight-invoice)
+    api->>qpay: 13. Зөвхөн үлдэгдэлд тусдаа /v2/invoice
+    qpay-->>api: 14. Нэхэмжлэлийн QR, банкны холбоосууд
+    api-->>customer: 15. Үлдэгдэл төлбөрийн QR харуулах
+    customer->>qpay: 16. Банкны апп-аар үлдэгдэл төлөх
+    qpay-->>api: 17. freight-callback мэдэгдэл
+    api->>qpay: 18. Үлдэгдлийн гүйлгээг /v2/payment/check-ээр шалгах
+    qpay-->>api: 19. Баталгаажсан төлсөн дүн
+    end
+    rect rgb(238,250,247)
+    Note over customer,qpay: 04  Төлбөр, зөрчил бүрэн шийдэгдсэний дараа
+    api-->>customer: 20. Авахад бэлэн / хүргэлтэд гарсан үед 8 оронтой код харуулах
+    customer->>ub: 21. Нэг удаагийн авах кодоо өгөх
+    ub->>api: 22. Код болон хүлээлгэн өгөх нөхцөлийг шалгуулах
+    api-->>ub: 23. Баталгаажуулж, захиалгыг completed болгох
+    ub->>customer: 24. Барааг хүлээлгэн өгөх / хүргэлтээр өгөх
+    end

@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant customer as Хэрэглэгч
+    participant web as GOStore вэб
+    participant api as GOStore сервер
+    participant qpay as QPay
+    participant supplier as OT / Taobao
+    rect rgb(240,246,255)
+    Note over customer,supplier: 01  Бараа сонгох, захиалга үүсгэх
+    customer->>web: 1. Бараа, хувилбар, тоо болон авах хэлбэр сонгох
+    web->>api: 2. Үнэ тооцуулах / захиалах хүсэлт
+    api->>supplier: 3. Үнэ, SKU, үлдэгдлийг дахин шалгах
+    supplier-->>api: 4. Барааны баталгаажуулсан мэдээлэл
+    api->>api: 5. Нийт дүнг тооцож, GS захиалгыг quoted төлөвөөр хадгалах
+    api-->>web: 6. Захиалгын дугаар, төлөх дүн
+    end
+    rect rgb(247,243,255)
+    Note over customer,supplier: 02  QPay нэхэмжлэл үүсгэх
+    web->>api: 7. Нэхэмжлэл авах (invoice)
+    api->>qpay: 8. Нэхэмжлэл үүсгэх /v2/invoice
+    qpay-->>api: 9. invoice_id, QR, банкны холбоосууд
+    api-->>web: 10. Нэхэмжлэл хадгалж, QR буцаах
+    web-->>customer: 11. Төлөх дүн, QR болон банкны сонголт
+    end
+    rect rgb(238,250,247)
+    Note over customer,supplier: 03  Төлбөрийг шалгаж баталгаажуулах
+    customer->>qpay: 12. Банкны апп-аар төлөх (нэгтгэн үзүүлэв)
+    qpay-->>api: 13. Төлбөрийн callback мэдэгдэл
+    api->>qpay: 14. Серверээс шалгах /v2/payment/check
+    qpay-->>api: 15. Төлсөн гүйлгээ, MNT дүн
+    api->>api: 16. Дүн хүрсэн үед paid = true, status = confirmed
+    web->>api: 17. Төлөв шинэчлэх (payment-check)
+    api-->>web: 18. Баталгаажсан захиалгын төлөв
+    web-->>customer: 19. Төлбөр баталгаажсан мэдээлэл
+    end
