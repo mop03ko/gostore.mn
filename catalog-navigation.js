@@ -39,12 +39,13 @@
     {id:'ikea',name:'IKEA',shop:'ikea'}
   ];
   window.supplierBrands=brands;
+  window.supplierBrandHref=id=>id==='nike'?'/brands/nike':'/?brand='+encodeURIComponent(id)+'#catalog';
   const section=document.querySelector('#brands');if(!section)return;
-  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="/?brand=${b.id}#catalog" aria-label="${esc(b.name)} брэндийн бараа үзэх"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" decoding="async"></span><strong>${esc(b.name)}</strong><span class="brand-store-label">Бараа үзэх <span aria-hidden="true">→</span></span></a>`).join('');
+  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="${window.supplierBrandHref(b.id)}" aria-label="${esc(b.name)} брэндийн бараа үзэх"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" decoding="async"></span><strong>${esc(b.name)}</strong><span class="brand-store-label">Бараа үзэх <span aria-hidden="true">→</span></span></a>`).join('');
   window.syncSupplierBrands=id=>section.querySelectorAll('[data-brand]').forEach(a=>{if(a.dataset.brand===id)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
   section.addEventListener('click',e=>{
     const link=e.target.closest('[data-brand],[data-brand-all]');if(!link)return;
-    if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||typeof window.supplierBrowse!=='function')return;
+    if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||link.dataset.brand==='nike'||typeof window.supplierBrowse!=='function')return;
     e.preventDefault();if(link.dataset.brand)window.supplierBrowseBrand(link.dataset.brand);else window.supplierBrowse('__all__',false,'all');scrollCatalog();
   });
 })();

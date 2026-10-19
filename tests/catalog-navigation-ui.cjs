@@ -20,7 +20,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // Brand cards remain internal and use an explicit brand query parameter.
  const brands=page.locator('#brands'),expected=['nike','adidas','puma','newbalance','uniqlo','zara','sony','xiaomi','lego','ikea'];
  assert.deepEqual(await brands.locator('[data-brand]').evaluateAll(links=>links.map(a=>a.dataset.brand)),expected);
- for(const id of expected){const link=brands.locator('[data-brand='+id+']');assert.equal(await link.getAttribute('href'),'/?brand='+id+'#catalog');assert.equal(await link.getAttribute('target'),null);}
+ for(const id of expected){const link=brands.locator('[data-brand='+id+']');assert.equal(await link.getAttribute('href'),id==='nike'?'/brands/nike':'/?brand='+id+'#catalog');assert.equal(await link.getAttribute('target'),null);}
  await page.waitForFunction(()=>[...document.querySelectorAll('.brand-logo img')].every(img=>img.complete&&img.naturalWidth>0));
  assert.equal(await brands.locator('[data-brand=apple],[data-brand=samsung]').count(),0);
  assert.ok(!/taobao/i.test(await brands.innerText()));
