@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Бүх брэндийн тусдаа хуудас — 2026-10-19
+
+- `626452c`: Nike-ийн хуудасны загварыг adidas, Puma, New Balance, UNIQLO, ZARA, Sony, Xiaomi, LEGO, IKEA-д өргөтгөсөн. `/brands/<id>` route, тухайн брэндийн эх SVG лого, нүүрийн текст, title/meta/canonical болон API каталогтой. Нүүрийн карт, барааны дэлгэрэнгүйн буцах холбоос бүгд энэ route-ийг ашиглана.
+- Нийтлэг `brand-page.js`/CSS нь баталгаажсан брэндийн жагсаалтаас нэр ба лого сонгоно. Apple/Samsung/үл мэдэгдэх route 404. Үнийн шүүлт, шинэ/борлуулалтын эрэмбэ, хуудаслалт, кэш, урамшууллын одоогийн логик ашиглагдана. Гар утсанд урт гарчиг багтах font хэмжээг тохируулсан.
+- `brand-storefronts-ui`, `nike-storefront-ui`, `brand-browse-ui`, `catalog-navigation-ui` тэнцсэн. 10 брэндийн seller scope, metadata/logo, detail return, 320/390/1440px layout, IKEA sort/page/price/reset/reload, Sony error/retry шалгасан. JS/PHP syntax болон diff шалгалт тэнцсэн.
+- 5 live файл шинэчилсэн; `.htaccess`-ийн cPanel handler хадгалсан. FTPS backup/stage/live ба HTTPS файлын байт, 10 route HTTP 200, unknown route 404 баталсан. Нөөц: `/gostore-backups/all-storefronts-20261019-64e418a195b5`.
+- Live browser: бүх 10 брэнд зөв seller-ийн каталог буцаасан (adidas 11, бусад 12 бараа). Desktop/mobile лого, title/canonical, IKEA борлуулалтын эрэмбэ/reload, adidas detail return, нүүрээс LEGO руу орох, JS/HTTP алдаагүйг шалгасан. Захиалга, төлбөр үүсгээгүй.
+
 ## Nike брэндийн тусдаа хуудас — 2026-10-19
 
 - `17a0b04`: `/brands/nike` хуудас GOStore-ийн өнгө, фонт, header/footer-тэй; Nike лого, нүүр хэсэг, API каталог, шинэ бараа/борлуулалтын цэс, үнийн шүүлт, хуудаслалт, захиалгын тайлбартай. Нүүрийн Nike карт, барааны дэлгэрэнгүйн буцах холбоос энэ хуудсыг нээнэ.
