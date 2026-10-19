@@ -1,4 +1,13 @@
 'use strict';
+// Resize only unsigned, original AliCDN photos; retain source URLs for zoom/cart.
+function supplierImageUrl(source,size=400){
+  const original=String(source||'');
+  try{const url=new URL(original);if(url.protocol!=='https:'||!/(^|\.)alicdn\.com$/.test(url.hostname)||url.search||url.hash||!/^\/(?:imgextra|bao|tfs)\//.test(url.pathname)||! /\.(?:jpe?g|png)$/i.test(url.pathname)||/_[0-9]+x[0-9]+/.test(url.pathname)||![80,120,400,800].includes(size))return original;
+    return original+'_'+size+'x'+size+'q80.jpg_.webp';
+  }catch{return original;}
+}
+function supplierImageAttrs(source,size=400){const resized=supplierImageUrl(source,size);return `src="${esc(resized)}"${resized!==source?` data-image-original="${esc(source)}"`:''} decoding="async"`;}
+document.addEventListener('error',event=>{const img=event.target;if(img instanceof HTMLImageElement&&img.dataset.imageOriginal){const original=img.dataset.imageOriginal;delete img.dataset.imageOriginal;img.src=original;}},true);
 // Optional PHP backend. Static preview retains its browser-only draft behavior.
 window.storeServer={ready:false};
 let shopCsrf='',qpayEnabled=false;

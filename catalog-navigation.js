@@ -24,33 +24,24 @@
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();
 })();
 
-// Brand collections use the existing supplier keyword search and shareable q URLs.
+// Official storefront destinations and logo provenance: docs/brand-storefronts.md.
 (()=>{
   const brands=[
-    {id:'nike',name:'Nike',group:'Спорт · гутал'},
-    {id:'adidas',name:'adidas',group:'Спорт · хувцас'},
-    {id:'puma',name:'Puma',group:'Спорт · гутал'},
-    {id:'new-balance',name:'New Balance',group:'Гутал · хувцас'},
-    {id:'uniqlo',name:'UNIQLO',group:'Өдөр тутмын хувцас'},
-    {id:'zara',name:'ZARA',group:'Загвар · хувцас'},
-    {id:'apple',name:'Apple',group:'Технологи · дагалдах'},
-    {id:'samsung',name:'Samsung',group:'Технологи · электроник'},
-    {id:'sony',name:'Sony',group:'Аудио · электроник'},
-    {id:'xiaomi',name:'Xiaomi',group:'Технологи · гэр ахуй'},
-    {id:'lego',name:'LEGO',group:'Тоглоом · бүтээлч байдал'},
-    {id:'ikea',name:'IKEA',group:'Гэр · интерьер'}
+    {id:'nike',name:'Nike',shop:'nike'},
+    {id:'adidas',name:'adidas',shop:'adidas'},
+    {id:'puma',name:'Puma',shop:'puma'},
+    {id:'newbalance',name:'New Balance',shop:'newbalance'},
+    {id:'uniqlo',name:'UNIQLO',shop:'uniqlo'},
+    {id:'zara',name:'ZARA',shop:'zara'},
+    {id:'sony',name:'Sony',shop:'sony'},
+    {id:'xiaomi',name:'Xiaomi',shop:'xiaomi'},
+    {id:'lego',name:'LEGO',shop:'lego'},
+    {id:'ikea',name:'IKEA',shop:'ikea'}
   ];
-  window.supplierBrandForQuery=query=>brands.find(b=>b.name.toLowerCase()===String(query||'').trim().toLowerCase());
   const section=document.querySelector('#brands');if(!section)return;
-  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="/?q=${encodeURIComponent(b.name)}#catalog" aria-label="${esc(b.name)} брэндийн бараа хайх"><strong>${esc(b.name)}</strong><span>${esc(b.group)}</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>`).join('');
-  window.syncSupplierBrands=(query,saved,image)=>{
-    const selected=!saved&&!image?window.supplierBrandForQuery(query)?.id:null;
-    section.querySelectorAll('[data-brand]').forEach(link=>{if(link.dataset.brand===selected)link.setAttribute('aria-current','true');else link.removeAttribute('aria-current');});
-  };
-  section.addEventListener('click',e=>{
-    const link=e.target.closest('[data-brand],[data-brand-all]');
-    if(!link||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||typeof window.supplierBrowse!=='function')return;
-    const brand=brands.find(b=>b.id===link.dataset.brand);e.preventDefault();
-    window.supplierBrowse(brand?brand.name:'__all__',false,brand?'':'all');scrollCatalog();
+  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="https://${b.shop}.tmall.com/" target="_blank" rel="noopener noreferrer" aria-label="${esc(b.name)} · албан ёсны дэлгүүр (шинэ цонхонд нээгдэнэ)"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" decoding="async"></span><strong>${esc(b.name)}</strong><span class="brand-store-label">Албан ёсны дэлгүүр <span aria-hidden="true">↗</span></span></a>`).join('');
+  section.querySelector('[data-brand-all]').addEventListener('click',e=>{
+    if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||typeof window.supplierBrowse!=='function')return;
+    e.preventDefault();window.supplierBrowse('__all__',false,'all');scrollCatalog();
   });
 })();

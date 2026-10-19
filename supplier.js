@@ -12,7 +12,7 @@ window.supplierFavoriteCount=()=>supplierFavoriteItems().length;
 window.clearSupplierFavorites=()=>{try{localStorage.removeItem(SUPPLIER_FAVORITES_KEY);if(supplierSaved)renderSupplierCards([]);return true;}catch{toast('Хөтөчийн хадгалсан мэдээллийг цэвэрлэж чадсангүй.');return false;}};
 function renderSupplierCards(items){
   const saved=new Set(supplierFavoriteItems().map(p=>p.id));
-  $('#supplier-grid').innerHTML=items.map(p=>{
+  $('#supplier-grid').innerHTML=items.map((p,index)=>{
     const priced=p.price_status==='available'&&Number(p.price_expires)*1000>Date.now()&&Number(p.mnt)>0;
     // Search results only carry the listed price; it is shown as approximate until a SKU price is verified.
     const approx=!priced&&Number(p.approx_mnt)>0?Number(p.approx_mnt):0,soldOut=p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now();
@@ -20,7 +20,7 @@ function renderSupplierCards(items){
     // Sales are rounded down to a leading digit (1,234 → 1,000+) like marketplace cards; 1,000+ earns a HOT badge.
     const step=sold!==null&&sold>=10?10**Math.floor(Math.log10(sold)):1,soldLabel=sold===null?'':sold<10?String(sold):new Intl.NumberFormat('en-US').format(Math.floor(sold/step)*step)+'+';
     return `<article class="supplier-card">${sold!==null&&sold>=1000?'<span class="supplier-hot">HOT</span>':''}
-      <a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
+      <a class="supplier-photo" href="/v/${p.id}">${/^https:\/\//i.test(p.image||'')?`<img ${supplierImageAttrs(p.image,400)} alt="${esc(p.name)}" loading="${index<4?'eager':'lazy'}" width="400" height="400" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
       <button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button>
       <button class="favorite-button compare-button" data-compare-toggle="${p.id}" data-name="${esc(p.name)}" data-image="${esc(p.image||'')}" aria-label="${esc(p.name)} — харьцуулах" title="Харьцуулах">${icon('compare')}</button>
       <div class="supplier-card-copy">
@@ -41,12 +41,10 @@ function supplierUrl(page=1){
   $('#supplier-reset').hidden=!supplierSaved&&!supplierImage&&supplierQuery==='__all__'&&supplierSort==='default'&&page===1&&!supplierPriceRange.min&&!supplierPriceRange.max;
 }
 function supplierViewState(){
-  window.syncSupplierBrands?.(supplierQuery,supplierSaved,!!supplierImage);
-  const brand=window.supplierBrandForQuery?.(supplierQuery);
   window.syncSupplierCategories?.(supplierCategory,supplierSaved,typeof supplierImage!=='undefined'&&!!supplierImage);
   document.querySelectorAll('[data-supplier-query]').forEach(b=>b.setAttribute('aria-pressed',String(!supplierSaved&&!supplierImage&&b.dataset.supplierQuery===supplierQuery)));
   window.syncMobileNav?.();
-  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан бараа':supplierImage?'Зургаар хайсан бараа':brand?brand.name+' · хайлтын үр дүн':'Үйлдвэрээс шууд захиалах';
+  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан бараа':supplierImage?'Зургаар хайсан бараа':'Үйлдвэрээс шууд захиалах';
   const preview=$('#image-search-preview');preview.hidden=supplierSaved||!supplierImage;if(!preview.hidden)preview.querySelector('img').src='/assets/uploads/search/'+supplierImage+'.jpg';
   document.querySelectorAll('#catalog .filter-tabs button').forEach(b=>{const active=(b.dataset.filter==='saved')===supplierSaved;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 }
