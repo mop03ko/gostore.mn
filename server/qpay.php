@@ -44,11 +44,15 @@ function paid_amount(array $result): int {
 }
 function qpay_invoice(string $id): array {
     if (!qpay_ready()) fail('QPay merchant тохиргоо хүлээгдэж байна.',503);
+    $validated=order_row($id)['order'];$verifiedUntil=PHP_INT_MAX;
+    if(($validated['type']??'')==='checkout'&&!isset($validated['invoice']))$verifiedUntil=checkout_validate_payment($validated);
     $db=db(); $db->exec('BEGIN IMMEDIATE');
     try {
         $o=order_row($id)['order'];
         if (($o['invoice']['state']??'')==='ready') { $db->exec('COMMIT'); return $o; }
         if (isset($o['invoice'])) fail('Нэхэмжлэлийн өмнөх оролдлогыг админ шалгах шаардлагатай.',409);
+        if($verifiedUntil<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
+        if(($o['type']??'')==='checkout'&&array_intersect_key($o,array_flip(['items','amount','quote','status','payment_due']))!==array_intersect_key($validated,array_flip(['items','amount','quote','status','payment_due'])))fail('Захиалга өөрчлөгдсөн байна. Дахин шалгана уу.',409);
         if ($o['status']!=='quoted' || $o['amount']<1 || $o['demo']) fail('Бодит бараа, хүргэлтийн нийт үнийг админ баталгаажуулсны дараа төлнө.',409);
         if (!str_starts_with(config()['site_url'],'https://')) fail('QPay callback-д HTTPS домэйн шаардлагатай.',503);
         $o['callback_token']=bin2hex(random_bytes(32));

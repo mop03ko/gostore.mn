@@ -37,6 +37,6 @@ check(!$a['stale']&&$a['more']&&$a['total']===count(supplier_warm_queries())*3-1
 check(!array_intersect(array_column($a['products'],'id'),array_column($b['products'],'id')),'Pages do not repeat products');
 check($a['products'][0]['mnt']===5500,'Mixed feed recomputes exchange rate');
 $c=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-price'],true);check($c['products'][0]['cny']===count(supplier_warm_queries())+9,'Price sorting uses verified amounts');
-foreach($snapshot['records'] as &$r)$r['cache_expires']=time()-86401;unset($r);supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
+foreach($snapshot['records'] as &$r)$r['cache_expires']=time()-SUPPLIER_SNAPSHOT_STALE_MAX-1;unset($r);supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
 check(supplier_snapshot_all(1,'price')['products']===[],'Expired categories are excluded without network requests');
 echo "PASS: purchasable SKU prices, unknown/expired data, cached detail overlay, mixed departments, deduplication, pagination, sorting, FX and zero provider calls.\n";

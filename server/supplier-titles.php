@@ -66,7 +66,7 @@ function supplier_english_titles(array $cache,string $path,array $query,bool $di
             // Existing request limits, retries and language-specific caches apply.
             // Checkout uses cached titles only: translation must never add network
             // latency, lock contention or quota consumption to SKU/price validation.
-            $english=supplier_raw_request($path,array_replace($query,['language'=>'en']),$display,false,$warming);
+            $english=supplier_raw_request($path,array_replace($query,['language'=>'en']),$display,false,true);
             supplier_title_map($english['data'],static function($item)use(&$titles,$wanted,$provider){
                 $id=supplier_title_id($item,$provider);
                 if($id!==null&&isset($wanted[$id])&&($title=supplier_title_text($item['Title']??null))!==null){

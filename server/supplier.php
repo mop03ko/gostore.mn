@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__.'/supplier-brands.php';
 require_once __DIR__.'/supplier-titles.php';
+require_once __DIR__.'/supplier-budget.php';
+const SUPPLIER_PURCHASE_MAX_AGE = 120;
 
 // New catalog uses Taobao. Explicit local prefixes keep legacy 1688 IDs unambiguous.
 function supplier_identity(string $id): array {
@@ -23,7 +25,7 @@ function supplier_schedule_refresh(string $path,array $query,string $dir): void 
         ignore_user_abort(true);
         if(session_status()===PHP_SESSION_ACTIVE)session_write_close();
         fastcgi_finish_request();
-        try {supplier_request($path,$query,false,true);}catch(Throwable $e){error_log('GOStore supplier background refresh deferred');}
+        try {supplier_request($path,$query,false,true,true);}catch(Throwable $e){error_log('GOStore supplier background refresh deferred');}
         finally {flock($lock,LOCK_UN);fclose($lock);}
     });
 }
@@ -48,8 +50,6 @@ function supplier_schedule_warm(): void {
     register_shutdown_function(static function()use($next,$lock,$pause){
         ignore_user_abort(true);if(session_status()===PHP_SESSION_ACTIVE)session_write_close();fastcgi_finish_request();
         try{
-            // Leave at least half the configured daily budget for actual browsing and orders.
-            limit_attempts('supplier-warm:'.gmdate('Y-m-d'),(int)floor(shipping_settings()['api_daily_limit']/2),86400);
             supplier_request('/v1/taobao/search',$next,false,false,true);
         }catch(Throwable $e){file_put_contents($pause,(string)(time()+($e->getCode()===429?3600:300)),LOCK_EX);}
         finally{flock($lock,LOCK_UN);fclose($lock);}
@@ -75,7 +75,7 @@ function supplier_response(string $path,bool $ok,int $status,string $raw): array
     if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
     return $response['Result'];
 }
-function supplier_limits(bool $warming): void {
+function supplier_limits(bool $warming,bool $purchase=false): void {
     if(!$warming){
         $ip=$_SERVER['REMOTE_ADDR']??'cli';
         try {
@@ -86,17 +86,17 @@ function supplier_limits(bool $warming): void {
             fail('Богино хугацаанд олон шинэ бараа нээсэн байна. Түр хүлээгээд дахин оролдоно уу. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
         }
     }
-    try {limit_attempts('supplier-budget:'.gmdate('Y-m-d'),shipping_settings()['api_daily_limit'],86400);}
+    try {supplier_budget_take($warming,$purchase);}
     catch(ApiError $e){
         if($e->getCode()!==429)throw $e;
         fail('Сайтын шинэ мэдээлэл авах өдрийн API лимит дууссан байна. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
     }
 }
-function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
-    $cache=supplier_raw_request($path,$query,$display,$force,$warming,$refreshAge);
+function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null,bool $purchase=false): array {
+    $cache=supplier_raw_request($path,$query,$display,$force,$warming,$refreshAge,$purchase);
     return supplier_english_titles($cache,$path,$query,$display,$warming);
 }
-function supplier_raw_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
+function supplier_raw_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null,bool $purchase=false): array {
     $native=in_array($path,['/service-json/BatchSearchItemsFrame','/service-json/BatchGetItemFullInfo'],true);$refreshWindow=$native?60:1800;
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
@@ -126,7 +126,7 @@ function supplier_raw_request(string $path,array $query,bool $display=false,bool
         $slot=null;for($i=0;$i<2;$i++){$candidate=fopen($dir.'/network-'.$i.'.lock','c');if($candidate&&flock($candidate,LOCK_EX|LOCK_NB)){$slot=$candidate;break;}if($candidate)fclose($candidate);}
         if(!$slot)fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);
         try {
-            supplier_limits($warming);
+            supplier_limits($warming,$purchase);
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);
             $ch=curl_init($native?'https://otapi.net'.$path:'https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
             curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_ENCODING=>'',CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
@@ -365,14 +365,17 @@ function supplier_search_result(array $c,int $page,int $limit=12): array {
     $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/$limit)));
     return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($block['Items']['Content']??[])===$limit&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*$limit<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
-function supplier_detail(string $id,bool $display=false,string $brandId=''): array {
+function supplier_detail(string $id,bool $display=false,string $brandId='',bool $purchase=false): array {
     $identity=supplier_identity($id);
     if($brandId!==''){
         $brand=supplier_brand($brandId);if($identity['provider']!=='taobao')fail('Брэндийн барааны дугаар буруу.');
         $c=supplier_request('/service-json/BatchGetItemFullInfo',['language'=>supplier_language(),'itemId'=>$identity['number'],'blockList'=>'Promotions,Vendor,RootPath,Description,MostPopularVendorItems16'],$display);
         supplier_brand_assert_vendor($c['data']['Vendor']??[],$brand);
         if(!supplier_brand_item_matches($c['data']['Item']??[],$brand))fail('Энэ бараа сонгосон дэлгүүрт хамаарахгүй байна.',404);
-    }else $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()],$display);
+    }else $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()],$display,$purchase,false,$purchase?SUPPLIER_PURCHASE_MAX_AGE:null,$purchase);
+    // Backoff, lock contention and network errors may return display cache. Never order from that fallback.
+    $age=time()-(strtotime((string)($c['fetched']??''))?:0);
+    if($purchase&&($age<0||$age>=SUPPLIER_PURCHASE_MAX_AGE||!empty($c['stale'])||$c['expires']<=time()))fail('Үнэ, үлдэгдлийг шинэчилж чадсангүй. Түр хүлээгээд дахин оролдоно уу.',409);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
     $p['price_expires']=(int)$c['expires'];
     if($brandId!==''){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];$p['offers']=supplier_offers($c['data']['Item'],$c);$p['offers_available']=empty($c['data']['PromotionsError'])&&!$c['stale'];}
@@ -381,7 +384,7 @@ function supplier_detail(string $id,bool $display=false,string $brandId=''): arr
     return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_order(array $b): array {
-    $d=supplier_detail(str_field($b,'product_id',50));$p=$d['product'];
+    $d=supplier_detail(str_field($b,'product_id',50),false,'',true);$p=$d['product'];
     if($d['stale']||!$p['sellable'])fail('Барааны худалдаалах нөхцөлийг шинэчилж чадсангүй. Дараа дахин оролдоно уу.',409);
     $sku=str_field($b,'sku',150);$variant=null;foreach($p['variants'] as $v)if($v['id']===$sku)$variant=$v;
     if(!$variant||$variant['cny']===null)fail('Барааны хувилбар эсвэл үнэ тодорхойгүй байна.',409);

@@ -5,7 +5,7 @@ putenv('GOSTORE_DISABLE_SUPPLIER_NETWORK=1');
 require __DIR__.'/../server/bootstrap.php';require __DIR__.'/../server/shipping.php';require __DIR__.'/../server/supplier.php';
 function check(bool $ok,string $message):void{if(!$ok)throw new RuntimeException($message);}
 check(supplier_snapshot_run()['status']==='disabled','Disabled mode');
-$settings=shipping_settings();$settings['catalog_snapshot_enabled']=true;shipping_save($settings);
+$settings=shipping_settings();$settings['catalog_snapshot_enabled']=true;$settings['api_daily_limit']=1200;shipping_save($settings);
 $cacheDir=config()['data_dir'].'/supplier-cache';mkdir($cacheDir,0700,true);$files=[];
 foreach(supplier_warm_queries() as $q){
     $key=supplier_cache_key('/v1/taobao/search',['language'=>'mn','item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']);
@@ -34,6 +34,6 @@ check(file_get_contents($dir.'/previous.json')===$before,'Previous complete vers
 file_put_contents($dir.'/current.json','broken');check(supplier_snapshot_search('bag',1,'default')!==null,'Corruption falls back to previous version');
 $backup=supplier_snapshot_read($dir.'/previous.json');foreach($backup['records'] as &$row)$row['cache_expires']=time()-1;unset($row);supplier_snapshot_write($dir.'/previous.json',$backup);
 check(supplier_snapshot_search('bag',1,'default')['stale']===true&&supplier_snapshot_search('bag',1,'default')['cache_ttl']===0,'Stale backups are labelled, never fresh');
-foreach($backup['records'] as &$row)$row['cache_expires']=time()-86401;unset($row);supplier_snapshot_write($dir.'/previous.json',$backup);
+foreach($backup['records'] as &$row)$row['cache_expires']=time()-SUPPLIER_SNAPSHOT_STALE_MAX-1;unset($row);supplier_snapshot_write($dir.'/previous.json',$backup);
 check(supplier_snapshot_search('bag',1,'default')===null,'Hard expiry prevents indefinitely stale browsing');
 echo "PASS snapshot: 2-hour cadence, 25-category atomic publish, resume, worker lock, failure/corruption backup, no provider calls for fresh cache, current FX, isolated search keys, stale labels and hard expiry.\n";

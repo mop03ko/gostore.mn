@@ -3,15 +3,17 @@ declare(strict_types=1);
 
 // Instant Taobao checkout: goods, China domestic delivery and service are paid upfront;
 // cargo and Ulaanbaatar delivery are collected later through the final settlement.
-function checkout_items(array $b): array {
+function checkout_items(array $b,?int &$verifiedUntil=null): array {
     $items=$b['items']??null;if(!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>30)fail('Сагсанд 1-30 бараа байна.');
-    $rate=shipping_settings()['cny_rate'];$lines=[];$seen=[];
+    $rate=shipping_settings()['cny_rate'];$lines=[];$seen=[];$verifiedUntil=PHP_INT_MAX;
     foreach($items as $item){
         if(!is_array($item))fail('Сагсны барааны мэдээлэл буруу байна.');
         $s=supplier_order(['product_id'=>$item['id']??'','sku'=>$item['sku']??'','qty'=>$item['qty']??null]);
+        $verifiedUntil=min($verifiedUntil,(strtotime($s['fetched'])?:0)+SUPPLIER_PURCHASE_MAX_AGE);
         $key=$s['id'].'|'.$s['sku'];if(isset($seen[$key]))fail('Сагсанд давхардсан бараа байна.');$seen[$key]=true;
         $lines[]=['id'=>$s['id'],'provider'=>$s['provider'],'sku'=>$s['sku'],'name'=>$s['name'],'variant'=>$s['variant'],'qty'=>$s['qty'],'unit_cny'=>$s['unit_cny'],'goods_cny'=>$s['goods_cny'],'price'=>(int)ceil(round($s['unit_cny']*$rate,8)),'url'=>$s['url'],'image'=>$s['image'],'vendor_id'=>$s['vendor_id']];
     }
+    if($verifiedUntil<=time())fail('Сагсны үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
     return $lines;
 }
 function checkout_quote(array $lines): array {
@@ -50,6 +52,15 @@ function checkout_order(array $b,array $o): array {
 }
 function checkout_expired(array $o,?int $now=null): bool {
     return isset($o['payment_due'])&&!$o['paid']&&$o['status']==='quoted'&&strtotime($o['payment_due'])<=($now??time());
+}
+// Recheck before creating a new invoice, outside the order database transaction.
+// Already-issued invoices keep their immutable amount and normal callback handling.
+function checkout_validate_payment(array $o): int {
+    if(($o['type']??'')!=='checkout'||isset($o['invoice']))return PHP_INT_MAX;
+    if(checkout_expired($o))fail('Төлбөрийн хугацаа дууссан. Сагсаа дахин шалгана уу.',409);
+    $fresh=checkout_items(['items'=>$o['items']??[]],$verifiedUntil);
+    foreach($fresh as $i=>$line){$old=$o['items'][$i];if((float)$line['unit_cny']!==(float)$old['unit_cny']||(float)$line['goods_cny']!==(float)$old['goods_cny'])fail('Үнэ шинэчлэгдсэн байна. Сагсаа дахин шалгаж шинэ захиалга үүсгэнэ үү.',409);}
+    return $verifiedUntil;
 }
 // An issued invoice is checked with QPay first, so a late payment is recorded instead of cancelled.
 function checkout_expire_order(string $id): void {

@@ -2,6 +2,12 @@
 declare(strict_types=1);
 
 const SUPPLIER_SNAPSHOT_INTERVAL = 7200;
+const SUPPLIER_SNAPSHOT_STALE_MAX = 604800;
+function supplier_snapshot_interval(): int {
+    // Allow for the original page plus its optional English-title request.
+    $daily=max(1,(int)floor(shipping_settings()['api_daily_limit']/2));
+    return max(SUPPLIER_SNAPSHOT_INTERVAL,(int)ceil(count(supplier_warm_queries())*2*86400/$daily));
+}
 function supplier_snapshot_dir(): string {
     $dir=config()['data_dir'].'/supplier-snapshots';
     if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))throw new RuntimeException('Snapshot directory unavailable');
@@ -31,7 +37,7 @@ function supplier_snapshot_current(): ?array {
 function supplier_snapshot_search(string $q,int $page,string $sort): ?array {
     if(empty(shipping_settings()['catalog_snapshot_enabled'])||$page!==1||$sort!=='default'||!in_array($q,supplier_warm_queries(),true))return null;
     $snapshot=supplier_snapshot_current();$record=$snapshot['records'][$q]??null;
-    if(!$record||(int)$record['cache_expires']<=time()-86400)return null;
+    if(!$record||(int)$record['cache_expires']<=time()-SUPPLIER_SNAPSHOT_STALE_MAX)return null;
     $record['stale']=(int)$record['cache_expires']<=time();
     $record['cache_ttl']=$record['stale']?0:max(0,(int)$record['cache_expires']-time());
     // Currency settings can change independently of the supplier snapshot.
@@ -43,7 +49,7 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[],int $limit
     $snapshot=supplier_snapshot_current();$records=[];
     foreach(supplier_warm_queries() as $q){
         $record=$snapshot['records'][$q]??null;
-        if(!$record||(int)$record['cache_expires']<=time()-86400){
+        if(!$record||(int)$record['cache_expires']<=time()-SUPPLIER_SNAPSHOT_STALE_MAX){
             $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/taobao/search',['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default']).'.json';
             $cache=supplier_snapshot_read($file);
             $record=is_array($cache)&&($cache['expires']??0)>time()-86400?supplier_search_result($cache,1):null;
@@ -78,6 +84,21 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[],int $limit
     return ['products'=>$items,'page'=>$page,'more'=>$page*$limit<$total,'total'=>$total,'pages'=>max(1,(int)ceil($total/$limit)),'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
 }
 function supplier_snapshot_run(int $maxJobs=26): array {
+    $start=microtime(true);
+    try{$result=supplier_snapshot_build($maxJobs);}
+    catch(Throwable $e){$previous=supplier_snapshot_read(supplier_snapshot_dir().'/health.json')??[];supplier_snapshot_write(supplier_snapshot_dir().'/health.json',['last_run'=>time(),'last_success'=>$previous['last_success']??null,'status'=>'failed','error_code'=>(int)$e->getCode()]);throw $e;}
+    if($result['status']!=='busy'){
+        $previous=supplier_snapshot_read(supplier_snapshot_dir().'/health.json')??[];
+        supplier_snapshot_write(supplier_snapshot_dir().'/health.json',['last_run'=>time(),'last_success'=>in_array($result['status'],['fresh','published'],true)?time():($previous['last_success']??null),'duration_ms'=>(int)round((microtime(true)-$start)*1000)]+$result);
+    }
+    return $result;
+}
+function supplier_snapshot_health(): array {
+    $dir=supplier_snapshot_dir();$run=supplier_snapshot_read($dir.'/health.json')??[];$cron=supplier_snapshot_read($dir.'/cron.json')??[];
+    $snapshot=supplier_snapshot_current();$work=supplier_snapshot_read($dir.'/work.json')??[];
+    return ['budget'=>supplier_budget_status(),'refresh_interval'=>supplier_snapshot_interval(),'last_run'=>$run['last_run']??null,'last_success'=>$run['last_success']??null,'status'=>$run['status']??'unknown','duration_ms'=>$run['duration_ms']??null,'cron_last_run'=>$cron['last_run']??null,'cron_status'=>$cron['status']??'unknown','cron_overdue'=>empty($cron['last_run'])||$cron['last_run']<time()-1800,'snapshot_generated'=>$snapshot['generated_at']??null,'next_refresh'=>$snapshot['next_refresh_at']??null,'building_categories'=>count($work['records']??[]),'errors'=>count($work['errors']??[])];
+}
+function supplier_snapshot_build(int $maxJobs=26): array {
     if(empty(shipping_settings()['catalog_snapshot_enabled'])||!supplier_ready())return ['status'=>'disabled'];
     $dir=supplier_snapshot_dir();$lock=fopen($dir.'/worker.lock','c');if(!$lock)return ['status'=>'unavailable'];
     if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return ['status'=>'busy'];}
@@ -87,22 +108,22 @@ function supplier_snapshot_run(int $maxJobs=26): array {
         $state=supplier_snapshot_read($dir.'/work.json')??[];
         if(($state['title_language']??'')!=='en')$state=[];
         if(($state['retry_at']??0)>time())return ['status'=>'cooldown','retry_at'=>$state['retry_at']];
-        $queries=supplier_warm_queries();$records=[];
-        foreach($queries as $q){$r=$state['records'][$q]??null;if(is_array($r)&&is_array($r['products']??null)&&($r['cache_expires']??0)>time())$records[$q]=$r;}
+        $interval=supplier_snapshot_interval();$queries=supplier_warm_queries();$records=[];
+        foreach($queries as $q){$r=$state['records'][$q]??null;if(is_array($r)&&is_array($r['products']??null)&&(strtotime((string)($r['fetched']??''))?:0)>time()-$interval)$records[$q]=$r;}
         $state=['title_language'=>'en','started_at'=>$state['started_at']??time(),'records'=>$records,'errors'=>[],'retry_at'=>0];$jobs=0;
         foreach($queries as $q){
             if(isset($state['records'][$q]))continue;if($jobs++>=max(1,min(26,$maxJobs)))break;
             try{
-                $cache=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'],false,true,true,SUPPLIER_SNAPSHOT_INTERVAL);
+                $cache=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'item_title'=>$q,'page'=>1,'limit'=>12,'sort'=>'default'],false,true,true,$interval);
                 $fetched=strtotime((string)($cache['fetched']??''));
-                if(!$fetched||$fetched+SUPPLIER_SNAPSHOT_INTERVAL<=time()||!empty($cache['stale']))throw new RuntimeException('Provider refresh incomplete');
-                $cache['expires']=min((int)$cache['expires'],$fetched+SUPPLIER_SNAPSHOT_INTERVAL);
+                if(!$fetched||$fetched+$interval<=time()||!empty($cache['stale']))throw new RuntimeException('Provider refresh incomplete');
+                $cache['expires']=min((int)$cache['expires'],$fetched+$interval);
                 $record=supplier_search_result($cache,1);unset($record['shipping']);$state['records'][$q]=$record;
             }catch(Throwable $e){$state['errors'][]=['query'=>$q,'code'=>(int)$e->getCode()];if($e->getCode()===429)break;}
             supplier_snapshot_write($dir.'/work.json',$state);
         }
         if(count($state['records'])===count($queries)){
-            $snapshot=['version'=>1,'title_language'=>'en','generated_at'=>time(),'next_refresh_at'=>min(array_column($state['records'],'cache_expires')),'records'=>$state['records']];
+            $snapshot=['version'=>1,'title_language'=>'en','generated_at'=>time(),'next_refresh_at'=>min(array_map(static fn($r)=>(strtotime($r['fetched'])?:0)+$interval,$state['records'])),'records'=>$state['records']];
             if(!supplier_snapshot_valid($snapshot))throw new RuntimeException('Incomplete snapshot');
             // The current version is replaced only after the entire new catalog is ready.
             if($current)supplier_snapshot_write($dir.'/previous.json',$current);

@@ -11,6 +11,7 @@ function shipping_settings(): array {return ['catalog_language'=>'mn','cny_rate'
 function shipping_public(): array {return shipping_settings();}
 $networkAttempts=0;
 function limit_attempts(...$args): void {global $networkAttempts;$networkAttempts++;throw new ApiError('Network is forbidden in this test',429);}
+function db(): never {global $networkAttempts;$networkAttempts++;throw new ApiError('Network budget is forbidden in this test',429);}
 require_once __DIR__.'/../server/supplier.php';
 function check(bool $ok,string $message): void {if(!$ok)throw new RuntimeException($message);}
 function seed(string $path,array $query,array $data): array {

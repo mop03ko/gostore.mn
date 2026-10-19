@@ -10,7 +10,7 @@ for(const file of files){const result=spawnSync(file.endsWith('.php')?php:node,f
 console.log('Syntax checked '+files.length+' PHP/JavaScript files.');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
-for(const test of ['qpay','qpay-flow','freight-payment','shipping','supplier-snapshot','supplier-batches','supplier-card-prices','supplier-errors','supplier-english-titles','checkout','catalog-filters','customer-addresses','taobao-purchase','ot-operator','configure-admin','warehouse-overview'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
+for(const test of ['qpay','qpay-flow','freight-payment','shipping','supplier-snapshot','supplier-batches','supplier-performance','checkout-freshness','supplier-card-prices','supplier-errors','supplier-english-titles','checkout','catalog-filters','customer-addresses','taobao-purchase','ot-operator','configure-admin','warehouse-overview'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
 for(const test of ['api','customers','supplier','supplier-speed','shared-cache','warehouse','warehouse-batches','warehouse-branches','logistics','admin-management','ot-operator','audit','demo-catalog','order-concurrency','product-page-ui','collection-ui','catalog-scroll-ui','catalog-batches-api','catalog-navigation-ui','storefront-ui','supplier-cache-ui','english-titles-ui','mobile-ui','customer-actions-ui','image-search-ui','checkout-ui','commerce-ui','shop-tools-ui','account-ui','store-pages-ui','admin-management-ui','ot-operator-ui','logistics-ui'])run(node,['tests/run-logistics.cjs',test],test);
 console.log(failures?'FAILED: '+failures+' check(s).':'PASS: all registered suites and source syntax checks.');process.exitCode=failures?1:0;
 

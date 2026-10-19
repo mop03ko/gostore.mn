@@ -13,9 +13,9 @@ async function client(url){const r=await fetch(url+'/api/index.php?action=catalo
   const worker=path.join(data,'hold-supplier-lock.php');fs.writeFileSync(worker,"<?php $f=fopen(getenv('GOSTORE_DATA_DIR').'/supplier-cache/'.hash('sha256','/v1/alibaba1688/product/123456789?language=mn').'.lock','c');flock($f,LOCK_EX);echo 'ready';fflush(STDOUT);fgets(STDIN);flock($f,LOCK_UN);fclose($f);");
   holder=spawn(php,[worker],{env:process.env,windowsHide:true,stdio:['pipe','pipe','pipe']});await new Promise((resolve,reject)=>{holder.stdout.once('data',resolve);holder.once('error',reject);holder.once('exit',code=>{if(code)reject(Error('Lock helper failed'));});});
   const body={type:'supplier',token:crypto.randomBytes(32).toString('hex'),product_id:'abb-123456789',sku:'blue',qty:2,title:'Race',customer:'Test',family_name:'Test',phone:'99112233'};
-  // Both sessions enter supplier validation before either can insert the order.
-  let finished=0;const pending=[first(body),second(body)].map(p=>p.then(r=>{finished++;return r;}));await new Promise(r=>setTimeout(r,1000));assert.equal(finished,0,'Both requests wait for provider validation');
-  seedSupplier(data);holder.stdin.end('\n');const responses=await Promise.all(pending),orders=await Promise.all(responses.map(r=>r.json()));
+  // Busy refresh plus expired data must fail closed in both sessions, without inserting an order.
+  const blocked=await Promise.all([first(body),second(body)]);assert.deepEqual(blocked.map(r=>r.status),[409,409]);
+  seedSupplier(data);holder.stdin.end('\n');const responses=await Promise.all([first(body),second(body)]),orders=await Promise.all(responses.map(r=>r.json()));
   assert.deepEqual(responses.map(r=>r.status).sort(),[200,201]);assert.equal(orders[0].order.id,orders[1].order.id,'Concurrent requests return one order');assert.ok(!/PHP (Warning|Fatal|Parse)/.test(logs),logs);
   console.log('PASS: simultaneous requests from different sessions return one order, with 201/200 responses.');
  }finally{if(holder&&!holder.killed)holder.kill();const stopped=new Promise(r=>server.once('exit',r));server.kill();await stopped;}
