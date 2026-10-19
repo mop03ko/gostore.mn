@@ -23,7 +23,8 @@ function renderSupplierCards(items,append=false){
     // Sales are rounded down to a leading digit (1,234 → 1,000+) like marketplace cards; 1,000+ earns a HOT badge.
     const step=sold!==null&&sold>=10?10**Math.floor(Math.log10(sold)):1,soldLabel=sold===null?'':sold<10?String(sold):new Intl.NumberFormat('en-US').format(Math.floor(sold/step)*step)+'+';
     const productHref='/v/'+p.id+(p.brand_id?'?brand='+encodeURIComponent(p.brand_id):'');
-    const discount=p.offers?.expires*1000>Date.now()&&p.offers.discount?.current_mnt===(priced?p.mnt:approx)?p.offers.discount:null;
+    const offer=Object.hasOwn(p,'card_discount')?p.card_discount:p.offers?.discount&&{...p.offers.discount,expires:p.offers.expires};
+    const discount=!soldOut&&offer?.expires*1000>Date.now()&&offer.current_mnt===Number(priced?p.mnt:approx)&&Number.isFinite(offer.was_mnt)&&offer.was_mnt>offer.current_mnt?offer:null;
     return `<article class="supplier-card">${sold!==null&&sold>=1000?'<span class="supplier-hot">HOT</span>':''}
       <a class="supplier-photo" href="${productHref}">${/^https:\/\//i.test(p.image||'')?`<img ${supplierImageAttrs(p.image,400)} alt="${esc(p.name)}" loading="${!append&&index<4?'eager':'lazy'}" width="400" height="400" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
       <button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button>
@@ -31,8 +32,8 @@ function renderSupplierCards(items,append=false){
       <div class="supplier-card-copy">
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>Шууд захиалга</span>'}</div>
-        ${discount?`<p class="supplier-discount"><span>−${discount.percent}%</span> <del>${money(discount.was_mnt)}</del></p>`:''}<p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong>${priced?money(p.mnt):approx?'≈ '+money(approx):p.price_status==='unavailable'&&Number(p.price_expires)*1000>Date.now()?'Дууссан':'Үнэ шалгах'}</strong>${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?(soldOut?'<small>Одоогоор захиалах боломжгүй</small>':'<small>-аас · нарийн үнэ хувилбараас</small>'):''}</div></div>
+        <p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?'≈ '+money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?(soldOut?'<small>Одоогоор захиалах боломжгүй</small>':'<small>-аас · нарийн үнэ хувилбараас</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');

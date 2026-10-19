@@ -18,6 +18,22 @@ $dir=config()['data_dir'].'/supplier-cache';mkdir($dir,0700,true);$file=$dir.'/'
 $cache=['data'=>['Item'=>$raw],'expires'=>time()+3600,'fetched'=>gmdate('c'),'stale'=>false];supplier_snapshot_write($file,$cache);
 $p=supplier_card_price(['id'=>'tb-671184888238','cny'=>.01,'mnt'=>6],time()+7200);check($p['mnt']===523600&&$p['price_expires']===$cache['expires'],'Existing detail cache corrects legacy snapshots without provider calls');
 $cache['expires']=time()-1;supplier_snapshot_write($file,$cache);check(supplier_card_price(['id'=>'tb-671184888238','cny'=>.01,'mnt'=>6],time()+7200)['mnt']===null,'Expired detail cannot verify a legacy minimum');
+$sale=['Id'=>'777888999','ProviderType'=>'Taobao','Title'=>'Discount test','IsSellAllowed'=>true,'Price'=>price(80)+['PriceWithoutDiscountAndDelivery'=>price(100)]];
+$expires=time()+3600;$card=supplier_card_price(supplier_normalize($sale,false,'taobao'),$expires);
+check($card['card_discount']===['current_mnt'=>44000,'was_mnt'=>55000,'percent'=>20,'expires'=>$expires],'Search cards retain a real provider discount with approximate current price');
+$result=supplier_search_result(['data'=>['Items'=>['Items'=>['Content'=>[$sale]]]],'expires'=>$expires,'stale'=>true,'fetched'=>gmdate('c')],1);
+check($result['products'][0]['card_discount']===null,'Stale response cannot advertise an active discount even with a future expiry');
+$settings=shipping_settings();$settings['cny_rate']=600;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($settings)]);
+$converted=supplier_card_price($card,$expires);check($converted['card_discount']['current_mnt']===48000&&$converted['card_discount']['was_mnt']===60000,'Both prices use the current exchange rate');
+$settings['cny_rate']=550;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($settings)]);
+$expired=$card;$expired['discount_expires']=time()-1;check(supplier_card_price($expired,$expires)['card_discount']===null,'Reprojection cannot revive an expired discount');
+$mismatch=$card;$mismatch['cny']=90;$mismatch['price_status']='available';check(supplier_card_price($mismatch,$expires)['card_discount']===null,'Different SKU minimum cannot inherit base discount');
+$sold=$card;$sold['price_status']='unavailable';check(supplier_card_price($sold,$expires)['card_discount']===null,'Sold out product has no active discount');
+foreach([100,120] as $n){$invalid=$sale;$invalid['Price']['OriginalPrice']=$n;check(supplier_normalize($invalid,false,'taobao')['discount_source']===null,'Equal and higher current prices are not discounts');}
+$invalid=$sale;$invalid['Price']['PriceWithoutDiscountAndDelivery']['OriginalCurrencyCode']='USD';check(supplier_normalize($invalid,false,'taobao')['discount_source']===null,'Do not compare different currencies');
+$saleFile=$dir.'/'.supplier_cache_key('/v1/taobao/product/777888999',['language'=>'mn']).'.json';
+$sale['MasterQuantity']=10;unset($sale['Price']['PriceWithoutDiscountAndDelivery']);supplier_snapshot_write($saleFile,['data'=>['Item'=>$sale],'expires'=>$expires,'stale'=>false]);
+check(supplier_card_price($card,$expires)['card_discount']===null,'Fresh detail without a promotion supersedes old search discount');
 $records=[];foreach(supplier_warm_queries() as $i=>$q){$products=[];for($j=0;$j<3;$j++)$products[]=['id'=>'tb-'.(100000+$i*3+$j),'name'=>$q,'cny'=>10+$i,'mnt'=>1,'price_status'=>'available'];$records[$q]=['products'=>$products,'fetched'=>gmdate('c'),'cache_expires'=>time()+7200,'more'=>false];}
 $records['bag']['products'][0]=$records['home storage']['products'][0];
 $snapshot=['version'=>1,'generated_at'=>time(),'next_refresh_at'=>time()+7200,'records'=>$records];supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);

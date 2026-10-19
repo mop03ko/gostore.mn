@@ -29,6 +29,10 @@
 #supplier-grid .supplier-delivery-note{font-size:10px;margin:2px 0 6px;line-height:15px}
 #supplier-grid .supplier-card-bottom{gap:6px}
 #supplier-grid .supplier-card-price strong{font-size:18px}
+#supplier-grid .supplier-card-price{width:100%;min-width:0}
+#supplier-grid .supplier-discount{margin:3px 0 4px;justify-content:space-between;gap:4px;font-size:12px;line-height:18px}
+#supplier-grid .supplier-discount del{color:#778195;text-decoration-thickness:1px}
+#supplier-grid .supplier-discount>span{background:#f43f47;color:#fff;border-radius:5px;padding:2px 6px;font-size:12px;line-height:18px}
 #supplier-grid .supplier-card-price small{font-size:10px;line-height:14px}
 #supplier-grid .supplier-card-buy{font-size:12px;min-height:44px}
 #supplier-paging{min-height:52px;justify-content:center;align-items:center;color:var(--muted);font-size:13px}

@@ -243,7 +243,14 @@ function supplier_clean_title(string $title): string {
     $t=$edge($t,'\s,.\-\/·');
     return $t===''?trim($title):mb_strtoupper(mb_substr($t,0,1)).mb_substr($t,1);
 }
+// Keep the provider's comparable price pair in CNY so snapshots can apply today's rate.
+function supplier_discount_source(array $item): ?array {
+    $price=$item['Price']??[];
+    $current=supplier_cny($price);$original=supplier_cny($price['PriceWithoutDiscountAndDelivery']??[]);
+    return $current!==null&&$original!==null&&$original>$current?['current_cny'=>$current,'original_cny'=>$original]:null;
+}
 function supplier_card_price(array $p,int $expires): array {
+    $p['discount_expires']=$p['discount_expires']??$expires;
     $english=supplier_title_read((string)($p['id']??''));
     if($english!==null)$p['name']=$english;
     if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
@@ -252,11 +259,19 @@ function supplier_card_price(array $p,int $expires): array {
     $cache=is_file($file)?json_decode(file_get_contents($file),true):null;
     if(is_array($cache)&&($cache['expires']??0)>time()&&empty($cache['stale'])&&isset($cache['data']['Item'])&&(string)($cache['data']['Item']['Id']??'')===($identity['provider']==='taobao'?$identity['number']:$p['id'])){
         $p=array_replace($p,supplier_stock_price($cache['data']['Item']));$expires=(int)$cache['expires'];
+        $p['discount_source']=supplier_discount_source($cache['data']['Item']);$p['discount_expires']=$expires;
     }elseif(!isset($p['price_status'])||($p['price_expires']??$expires)<=time()){
         $p['cny']=null;$p['price_status']='unverified';
     }
     $p['price_expires']=$expires;$rate=shipping_settings()['cny_rate'];$p['mnt']=$p['cny']===null?null:(int)ceil($p['cny']*$rate);
     $p['approx_mnt']=($p['price_status']??'')!=='available'&&($p['approx_cny']??0)>0?(int)ceil($p['approx_cny']*$rate):null;
+    $p['card_discount']=null;$source=$p['discount_source']??null;
+    $shown=($p['price_status']??'')==='available'?$p['cny']:($p['approx_cny']??null);
+    // A base-price promotion must never be attached to a different in-stock SKU price.
+    if($source&&$p['discount_expires']>time()&&($p['price_status']??'')!=='unavailable'&&$shown!==null&&(float)$shown===(float)$source['current_cny']){
+        $current=(int)ceil($source['current_cny']*$rate);$original=(int)ceil($source['original_cny']*$rate);
+        if($original>$current)$p['card_discount']=['current_mnt'=>$current,'was_mnt'=>$original,'percent'=>(int)floor(round(($source['original_cny']-$source['current_cny'])/$source['original_cny']*100,8)),'expires'=>(int)$p['discount_expires']];
+    }
     return $p;
 }
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
@@ -298,6 +313,7 @@ function supplier_normalize(array $p,bool $detail=false,string $provider='alibab
     $r=array_replace($r,supplier_stock_price($p,$detail));$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);
     // Search results lack per-SKU stock; their listed price is shown only as an approximate "from" price.
     $r['approx_cny']=$r['cny']===null?supplier_cny($p['Price']??[]):null;
+    $r['discount_source']=supplier_discount_source($p);
     return $r;
 }
 // Optional MNT price bounds; OT filters in CNY, so they are converted with the current rate.
@@ -378,7 +394,10 @@ function supplier_image_search(string $hash,int $page,bool $display=false,int $l
     return supplier_search_result($c,$page,$limit)+['image'=>$hash];
 }
 function supplier_search_result(array $c,int $page,int $limit=12): array {
-    $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{$items[]=supplier_card_price(supplier_normalize($p,false,'taobao'),(int)$c['expires']);}catch(ApiError){}}
+    $block=$c['data']['Items']??[];$items=[];foreach($block['Items']['Content']??[] as $p){try{
+        $card=supplier_normalize($p,false,'taobao');$card['discount_expires']=empty($c['stale'])?(int)$c['expires']:0;
+        $items[]=supplier_card_price($card,(int)$c['expires']);
+    }catch(ApiError){}}
     $total=filter_var($block['Items']['TotalCount']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
     $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/$limit)));
     return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($block['Items']['Content']??[])===$limit&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*$limit<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
