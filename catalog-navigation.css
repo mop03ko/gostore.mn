@@ -9,3 +9,23 @@
 .catalog-category-arrow{position:absolute;z-index:1;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:50px;height:50px;padding:0;border:1px solid #e1e5ec;border-radius:50%;background:#fff;color:#111827;box-shadow:0 2px 4px #11182712;cursor:pointer}
 .catalog-category-arrow[hidden]{display:none}.catalog-category-arrow[data-catalog-scroll="-1"]{left:0}.catalog-category-arrow[data-catalog-scroll="1"]{right:0}.catalog-category-arrow .icon{width:18px;height:18px}.catalog-category-arrow[data-catalog-scroll="-1"] .icon{transform:rotate(180deg)}
 @media(max-width:760px){.catalog-category-nav{margin:12px 0 6px}.catalog-category-list{gap:4px;padding-block:6px;padding-right:48px}.catalog-category-list button{min-height:44px;padding:10px 16px;font-size:14px;line-height:24px}.catalog-category-arrow{width:44px;height:44px}}
+
+/* Text wordmarks keep brand browsing fast and usable without external image requests. */
+.brand-section{padding-top:30px}
+.brand-section .section-heading{align-items:center;margin-bottom:16px}
+.brand-section .section-kicker{font-size:10px;letter-spacing:1.3px}
+.brand-section h2{font-size:25px;margin:5px 0 0}
+.brand-section .section-heading p{font-size:13px;color:var(--muted);margin:8px 0 0}
+.brand-section .text-button{display:inline-flex;align-items:center;gap:8px;min-height:44px;white-space:nowrap;font-size:13px}
+.brand-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:3px}
+.brand-card{position:relative;display:flex;flex-direction:column;justify-content:center;gap:9px;min-width:0;min-height:98px;padding:18px 30px 18px 17px;border:1px solid #e1e5ec;border-radius:14px;background:#fafbfc;color:#182331;transition:background .15s,border-color .15s}
+.brand-card strong{font-size:22px;line-height:1.1;letter-spacing:-.7px;overflow-wrap:anywhere}
+.brand-card span{font-size:11px;line-height:1.5;color:#637087}
+.brand-card>.icon{position:absolute;right:12px;top:20px;width:14px;height:14px;color:#8993a4}
+.brand-card:hover{background:#fff3eb;border-color:#edb99b}
+.brand-card[aria-current]{background:#fff0e8;border-color:#c45b25;box-shadow:inset 0 0 0 1px #c45b25}
+.brand-card[aria-current]>.icon{color:#a53b0b}
+.brand-card:focus-visible{outline:2px solid #a53b0b;outline-offset:2px}
+@media(max-width:1100px) and (min-width:761px){.brand-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){.brand-section{padding-top:24px}.brand-section h2{font-size:21px}.brand-section .section-heading{gap:8px}.brand-section .section-heading p{font-size:12px;max-width:230px;line-height:1.5}.brand-section .text-button{font-size:12px}.brand-grid{grid-template-columns:none;grid-template-rows:repeat(2,auto);grid-auto-flow:column;grid-auto-columns:145px;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:3px;padding-bottom:10px;scrollbar-width:thin}.brand-card{min-height:88px;padding:15px 25px 15px 13px;scroll-snap-align:start}.brand-card strong{font-size:20px}.brand-card span{font-size:10px}.brand-card>.icon{right:9px;width:12px;height:12px}}
+@media(prefers-reduced-motion:reduce){.brand-card{transition:none}}

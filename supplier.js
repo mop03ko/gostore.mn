@@ -41,10 +41,12 @@ function supplierUrl(page=1){
   $('#supplier-reset').hidden=!supplierSaved&&!supplierImage&&supplierQuery==='__all__'&&supplierSort==='default'&&page===1&&!supplierPriceRange.min&&!supplierPriceRange.max;
 }
 function supplierViewState(){
+  window.syncSupplierBrands?.(supplierQuery,supplierSaved,!!supplierImage);
+  const brand=window.supplierBrandForQuery?.(supplierQuery);
   window.syncSupplierCategories?.(supplierCategory,supplierSaved,typeof supplierImage!=='undefined'&&!!supplierImage);
   document.querySelectorAll('[data-supplier-query]').forEach(b=>b.setAttribute('aria-pressed',String(!supplierSaved&&!supplierImage&&b.dataset.supplierQuery===supplierQuery)));
   window.syncMobileNav?.();
-  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан Taobao бараа':supplierImage?'Зургаар хайсан бараа':'Хятадаас захиалах бараа';
+  $('#catalog-title').textContent=supplierSaved?'Таны хадгалсан Taobao бараа':supplierImage?'Зургаар хайсан бараа':brand?brand.name+' · хайлтын үр дүн':'Хятадаас захиалах бараа';
   const preview=$('#image-search-preview');preview.hidden=supplierSaved||!supplierImage;if(!preview.hidden)preview.querySelector('img').src='/assets/uploads/search/'+supplierImage+'.jpg';
   document.querySelectorAll('#catalog .filter-tabs button').forEach(b=>{const active=(b.dataset.filter==='saved')===supplierSaved;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 }
