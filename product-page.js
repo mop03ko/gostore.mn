@@ -35,7 +35,7 @@
     root.querySelectorAll('[data-pd-photo]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.pdPhoto)===index)));
   }
   function extraInfo(p){
-    const rows=[['Брэнд',p.brand],['Барааны төлөв',p.condition==='New'?'Шинэ':p.condition==='Used'?'Хуучин':p.condition],['Илгээх байршил',p.location?.join(', ')],['Нийт үлдэгдэл',p.stock==null?'':p.stock+' ширхэг'],['Доод захиалга',p.min_qty+' ширхэг'],['Нэмэх алхам',p.step+' ширхэг'],['Жин',p.weight_kg? p.weight_kg+' кг'+(p.weight_type?' · '+p.weight_type:''):''],['Нийлүүлэгчийн ангилал',p.category_path?.join(' / ')],['Эх нэр',p.original_name],['Шинэчилсэн',details.fetched?new Date(details.fetched).toLocaleString('mn-MN'):'']].filter(([,v])=>v);
+    const rows=[['Брэнд',p.brand],['Барааны төлөв',p.condition==='New'?'Шинэ':p.condition==='Used'?'Хуучин':p.condition],['Илгээх байршил',p.location?.join(', ')],['Нийт үлдэгдэл',p.stock==null?'':p.stock+' ширхэг'],['Доод захиалга',p.min_qty+' ширхэг'],['Нэмэх алхам',p.step+' ширхэг'],['Жин',p.weight_kg? p.weight_kg+' кг'+(p.weight_type?' · '+p.weight_type:''):''],['Нийлүүлэгчийн ангилал',p.category_path?.filter(name=>!/^taobao$/i.test(name.trim())).join(' / ')],['Эх нэр',p.original_name],['Шинэчилсэн',details.fetched?new Date(details.fetched).toLocaleString('mn-MN'):'']].filter(([,v])=>v);
     return '<dl class="pd-facts">'+rows.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>';
   }
   function mediaInfo(p){
