@@ -79,12 +79,13 @@ function supplier_snapshot_run(int $maxJobs=26): array {
     if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return ['status'=>'busy'];}
     try{
         $current=supplier_snapshot_current();
-        if($current&&$current['next_refresh_at']>time())return ['status'=>'fresh','next_refresh_at'=>$current['next_refresh_at']];
+        if($current&&($current['title_language']??'')==='en'&&$current['next_refresh_at']>time())return ['status'=>'fresh','next_refresh_at'=>$current['next_refresh_at']];
         $state=supplier_snapshot_read($dir.'/work.json')??[];
+        if(($state['title_language']??'')!=='en')$state=[];
         if(($state['retry_at']??0)>time())return ['status'=>'cooldown','retry_at'=>$state['retry_at']];
         $queries=supplier_warm_queries();$records=[];
         foreach($queries as $q){$r=$state['records'][$q]??null;if(is_array($r)&&is_array($r['products']??null)&&($r['cache_expires']??0)>time())$records[$q]=$r;}
-        $state=['started_at'=>$state['started_at']??time(),'records'=>$records,'errors'=>[],'retry_at'=>0];$jobs=0;
+        $state=['title_language'=>'en','started_at'=>$state['started_at']??time(),'records'=>$records,'errors'=>[],'retry_at'=>0];$jobs=0;
         foreach($queries as $q){
             if(isset($state['records'][$q]))continue;if($jobs++>=max(1,min(26,$maxJobs)))break;
             try{
@@ -97,7 +98,7 @@ function supplier_snapshot_run(int $maxJobs=26): array {
             supplier_snapshot_write($dir.'/work.json',$state);
         }
         if(count($state['records'])===count($queries)){
-            $snapshot=['version'=>1,'generated_at'=>time(),'next_refresh_at'=>min(array_column($state['records'],'cache_expires')),'records'=>$state['records']];
+            $snapshot=['version'=>1,'title_language'=>'en','generated_at'=>time(),'next_refresh_at'=>min(array_column($state['records'],'cache_expires')),'records'=>$state['records']];
             if(!supplier_snapshot_valid($snapshot))throw new RuntimeException('Incomplete snapshot');
             // The current version is replaced only after the entire new catalog is ready.
             if($current)supplier_snapshot_write($dir.'/previous.json',$current);
@@ -112,7 +113,7 @@ function supplier_snapshot_run(int $maxJobs=26): array {
 }
 function supplier_snapshot_schedule(): void {
     if(!function_exists('fastcgi_finish_request')||empty(shipping_settings()['catalog_snapshot_enabled']))return;
-    $current=supplier_snapshot_current();if($current&&$current['next_refresh_at']>time())return;
+    $current=supplier_snapshot_current();if($current&&($current['title_language']??'')==='en'&&$current['next_refresh_at']>time())return;
     $state=supplier_snapshot_read(supplier_snapshot_dir().'/work.json');if(($state['retry_at']??0)>time())return;
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $lock=fopen($dir.'/background.lock','c');if(!$lock)return;
@@ -123,3 +124,4 @@ function supplier_snapshot_schedule(): void {
         finally{flock($lock,LOCK_UN);fclose($lock);}
     });
 }
+
