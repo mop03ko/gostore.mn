@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Ecommerce purchase flow — production release 2026-10-19
+
+- Owner explicitly authorized review, fixes, merge and live deployment of PR #2. Reviewed head `b6d86443a399cadfebb6a7127cd760c1bdbf63ba`, merged into `main` as `fa2ccb709df716039c6581d6de676a41a6e2a7c8`.
+- Published 13 runtime files, including new `commerce-ui.js/css`, guest cart/login continuation, cost estimates, product/SKU layout and catalog sort changes. Verified FTPS backup/stage/live bytes and HTTPS public asset bytes. Backup: `/gostore-backups/commerce-ux-20261019-92502b87507b`. No configuration or database changes.
+- All 48 registered suites passed across the full local run and targeted reruns, plus brand API and all-storefront UI (50 total). Review fixed narrow-header touch targets and updated obsolete UI expectations. Local payment tests use mocked transport; no live payment or supplier purchase was made.
+- Live public baseline confirmed unchanged product price, SKU, title, descriptions, attributes and shipping/payment settings, with QPay still enabled. Normal cache refresh changed expiry/offer availability metadata and marked already-unsellable related products unavailable; product amounts and offer content were unchanged.
+- Live Chrome passed homepage/catalog, 320px layout and 44px controls, guest cart add, buy-now sign-in, Nike product detail, cart/help/returns anchors and cargo calculator. No JavaScript or same-origin HTTP errors, and no live orders created. Deployment state and verification artifacts are retained in ignored `tmp/`.
+
 ## English product names — production release 2026-10-19
 
 - Owner explicitly authorized merging and production deployment. PR #1 merged into `main` as `d1beb526cda3ab7eb14cc9990414c27fe201be93`; reviewed implementation head `ef3ab183b716b5a6079f776123380ad96438c4bc`.

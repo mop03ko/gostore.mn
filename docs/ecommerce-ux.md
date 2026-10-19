@@ -43,3 +43,9 @@ Checkout/order and QPay success/failure/idempotency were exercised with local sy
 data and mocked payment transport. No real payment or supplier purchase was made;
 merchant-side real QPay acceptance remains outside these checks. English title
 fallback and all ten official seller catalogs remain covered by regression tests.
+
+PR #2 was merged as `fa2ccb709df716039c6581d6de676a41a6e2a7c8` and its 13 runtime
+files deployed to production on 2026-10-19 with verified backups. Live guest cart,
+buy-now sign-in, product/help pages, calculator and responsive checks passed with
+no JavaScript/HTTP errors or real orders. Product commercial data and public
+shipping/payment settings were unchanged; QPay remains enabled. See `DEPLOYMENT.md`.
