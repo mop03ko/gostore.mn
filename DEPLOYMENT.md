@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Compact catalog and scroll batches — 2026-10-19
+
+- Release `5d6aa82` replaces numbered pagination with 50-item automatic scroll batches and compact responsive cards. Published eight runtime files, backend first and versioned HTML last. No database or configuration changes.
+- Verified backup: `/gostore-backups/catalog-scroll50-20261019-f8228cf7967b`. FTPS backup/stage/live bytes and HTTPS assets match the committed release; private PHP files remain protected.
+- Targeted PHP, public API, catalog/cache, all-ten-brand, English-title, image-search and desktop/mobile browser checks passed. Tests exercise append retry, preserved DOM, duplicate/final stop, stale-query races, filter/saved resets, native offsets and 50-item image search. Both provider search transports returned 50 products in read-only checks.
+- Live Chrome verified 50 initial products becoming 100 unique products by scrolling, retained first-card DOM, no numbered pages, six columns at 1440px and two at 390/320px, no horizontal overflow or JavaScript errors. Desktop/mobile screenshots reviewed. No live orders or payments created.
+
+
 ## Brands first on homepage — 2026-10-19
 
 - At the owner's request, `9819d14` moves the existing brand logo row immediately below the header, before the hero and catalog. Only `index.html` was deployed; verified backup: `/gostore-backups/brands-first-20261019-3ae08eaed91d`.
