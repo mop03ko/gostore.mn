@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/supplier-brands.php';
+require_once __DIR__.'/supplier-titles.php';
 
 // New catalog uses Taobao. Explicit local prefixes keep legacy 1688 IDs unambiguous.
 function supplier_identity(string $id): array {
@@ -92,6 +93,10 @@ function supplier_limits(bool $warming): void {
     }
 }
 function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
+    $cache=supplier_raw_request($path,$query,$display,$force,$warming,$refreshAge);
+    return supplier_english_titles($cache,$path,$query,$display,$warming);
+}
+function supplier_raw_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
     $native=in_array($path,['/service-json/BatchSearchItemsFrame','/service-json/BatchGetItemFullInfo'],true);$refreshWindow=$native?60:1800;
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
@@ -221,6 +226,8 @@ function supplier_clean_title(string $title): string {
     return $t===''?trim($title):mb_strtoupper(mb_substr($t,0,1)).mb_substr($t,1);
 }
 function supplier_card_price(array $p,int $expires): array {
+    $english=supplier_title_read((string)($p['id']??''));
+    if($english!==null)$p['name']=$english;
     if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
     try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
     $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()]).'.json';
@@ -378,3 +385,4 @@ function supplier_order(array $b): array {
 }
 
 require_once __DIR__.'/supplier-snapshot.php';
+
