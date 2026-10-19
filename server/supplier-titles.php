@@ -4,6 +4,8 @@ declare(strict_types=1);
 // English is a display preference for product names only. Keep the catalog language
 // for descriptions, SKU labels, categories, offers and all transactional data.
 const SUPPLIER_TITLE_TTL = 604800;
+// A translated name can survive a temporary provider outage; prices and stock cannot.
+const SUPPLIER_TITLE_STALE_TTL = 2592000;
 function supplier_title_text(mixed $value): ?string {
     $title=supplier_text($value,500);
     // A key without English enabled can silently return Mongolian or Chinese.
@@ -15,11 +17,12 @@ function supplier_title_file(string $id): ?string {
     if(!preg_match('/^(tb|abb)-\d{5,20}$/D',$id))return null;
     return config()['data_dir'].'/supplier-titles/'.$id.'.json';
 }
-function supplier_title_read(string $id): ?string {
+function supplier_title_read(string $id,bool $allowStale=false): ?string {
     $file=supplier_title_file($id);
     if($file===null||!is_file($file)||filesize($file)>4096)return null;
     $entry=json_decode((string)file_get_contents($file),true);
-    if(!is_array($entry)||($entry['expires']??0)<=time())return null;
+    if(!is_array($entry)||!is_int($entry['expires']??null))return null;
+    if($entry['expires']+($allowStale?SUPPLIER_TITLE_STALE_TTL:0)<=time())return null;
     return supplier_title_text($entry['title']??null);
 }
 function supplier_title_write(string $id,string $title): void {
@@ -84,7 +87,9 @@ function supplier_english_titles(array $cache,string $path,array $query,bool $di
     }
     $cache['data']=supplier_title_map($cache['data'],static function($item)use($titles,$provider){
         $id=supplier_title_id($item,$provider);
-        if($id!==null&&isset($titles[$id]))$item['Title']=$titles[$id];
+        // Stale names are only a fallback after attempting refresh. They must not
+        // count as a fresh hit above or extend their own expiry on every visit.
+        if($id!==null&&($title=$titles[$id]??supplier_title_read($id,true))!==null)$item['Title']=$title;
         return $item;
     });
     return $cache;

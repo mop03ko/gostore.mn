@@ -251,7 +251,7 @@ function supplier_discount_source(array $item): ?array {
 }
 function supplier_card_price(array $p,int $expires): array {
     $p['discount_expires']=$p['discount_expires']??$expires;
-    $english=supplier_title_read((string)($p['id']??''));
+    $english=supplier_title_read((string)($p['id']??''),true);
     if($english!==null)$p['name']=$english;
     if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
     try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
