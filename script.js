@@ -65,7 +65,8 @@ function persist() {
 function updateCounts() {
   const count=state.cart.reduce((sum,item)=>sum+item.qty,0)+(window.taobaoCart?.count()||0);
   $('#cart-count').textContent=count;
-  if($('#mobile-cart-count'))$('#mobile-cart-count').textContent=count;
+  $('#cart-count').hidden=!count;
+  if($('#mobile-cart-count')){$('#mobile-cart-count').textContent=count;$('#mobile-cart-count').hidden=!count;}
   const favorites=window.supplierFavoriteCount?window.supplierFavoriteCount():state.favorites.length;
   $('#favorite-count').textContent=favorites;
   $('#favorite-count').hidden=!favorites;
@@ -206,7 +207,9 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
    const bounds=document.querySelector('#catalog').getBoundingClientRect();
    let tab=bounds.top<innerHeight*.65&&bounds.bottom>140?(document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true'?'saved':'catalog'):'home';
-   if(modal.open){if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
+   if(location.pathname==='/cart')tab='cart';
+   if(location.pathname.startsWith('/account'))tab='account';
+   if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='account';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
  nav.addEventListener('click',e=>{if(e.target.closest('[data-mobile-tab=catalog]')&&document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true')window.supplierBrowse?.(document.querySelector('#supplier-query').value||'bag');});

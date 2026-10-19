@@ -24,8 +24,10 @@ $snapshot=['version'=>1,'generated_at'=>time(),'next_refresh_at'=>time()+7200,'r
 $a=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default'],true);$b=supplier_search(['q'=>'__all__','page'=>2,'sort'=>'default'],true);
 $mix=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-updated_time'],true);
 check(count($mix['products'])===12&&count(array_unique(array_column($mix['products'],'name')))===12,'All shows diverse departments');
-// The default feed is ordered cheapest first across every department.
-$prices=array_column($a['products'],'mnt');$sorted=$prices;sort($sorted);check(count($a['products'])===12&&$prices===$sorted,'Default feed is cheapest first');
+// Explicit price sorting is cheapest first across every department.
+$ascending=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'price'],true);
+$prices=array_column($ascending['products'],'mnt');$sorted=$prices;sort($sorted);check(count($ascending['products'])===12&&$prices===$sorted,'Explicit price feed is cheapest first');
+check(count(array_unique(array_column($a['products'],'name')))===12,'Default home feed preserves department diversity');
 // The unfiltered home feed hides items below the admin floor; an explicit price filter shows them again.
 $floorSettings=shipping_settings();$floorSettings['home_min_price_mnt']=6000;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($floorSettings)]);
 $floored=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default'],true);check(min(array_column($floored['products'],'mnt'))>=6000&&$floored['total']<$a['total'],'Home floor hides cheap items');
@@ -36,5 +38,5 @@ check(!array_intersect(array_column($a['products'],'id'),array_column($b['produc
 check($a['products'][0]['mnt']===5500,'Mixed feed recomputes exchange rate');
 $c=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-price'],true);check($c['products'][0]['cny']===count(supplier_warm_queries())+9,'Price sorting uses verified amounts');
 foreach($snapshot['records'] as &$r)$r['cache_expires']=time()-86401;unset($r);supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
-check(supplier_snapshot_all(1,'default')['products']===[],'Expired categories are excluded without network requests');
+check(supplier_snapshot_all(1,'price')['products']===[],'Expired categories are excluded without network requests');
 echo "PASS: purchasable SKU prices, unknown/expired data, cached detail overlay, mixed departments, deduplication, pagination, sorting, FX and zero provider calls.\n";

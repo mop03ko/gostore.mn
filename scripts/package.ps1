@@ -4,12 +4,12 @@ $outputDirectory = Join-Path $projectRoot 'output'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$publicFiles = @('index.html', 'styles.css', 'script.js', 'store-server.js', 'account.js', 'supplier.js', 'cargo.js', 'checkout.js', 'shop-tools.js', 'account-page.js', 'store-pages.js', 'barcode.js', 'product-page.js', 'product-page.css', '.htaccess') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot $_) }
+$publicFiles = @('index.html', 'commerce-ui.js', 'commerce-ui.css', 'catalog-navigation.js', 'catalog-navigation.css', 'brand-page.js', 'brand-page.css', 'styles.css', 'script.js', 'store-server.js', 'account.js', 'supplier.js', 'cargo.js', 'checkout.js', 'shop-tools.js', 'account-page.js', 'store-pages.js', 'barcode.js', 'product-page.js', 'product-page.css', '.htaccess') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot $_) }
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets') -File -Recurse | Where-Object { $_.FullName -notlike '*\assets\uploads\*' -or $_.Name -eq '.htaccess' }
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'admin') -File
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'warehouse') -File
 $publicFiles += Get-ChildItem -LiteralPath (Join-Path $projectRoot 'api') -File
-$publicFiles += @('.htaccess', 'bootstrap.php', 'qpay.php', 'qpay-http.php', 'customers.php', 'warehouse.php', 'warehouse-batches.php', 'logistics.php', 'freight-payment.php', 'checkout.php', 'taobao-http.php', 'taobao-purchase.php', 'shipping.php', 'supplier.php', 'ot-operator.php', 'ot-operator-http.php', 'config.example.php', 'seed.json') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot "server/$_") -Force }
+$publicFiles += @('.htaccess', 'bootstrap.php', 'qpay.php', 'qpay-http.php', 'customers.php', 'warehouse.php', 'warehouse-batches.php', 'logistics.php', 'freight-payment.php', 'checkout.php', 'taobao-http.php', 'taobao-purchase.php', 'shipping.php', 'supplier.php', 'supplier-snapshot.php', 'supplier-titles.php', 'supplier-brands.php', 'cache-refresh.php', 'ot-operator.php', 'ot-operator-http.php', 'config.example.php', 'seed.json') | ForEach-Object { Get-Item -LiteralPath (Join-Path $projectRoot "server/$_") -Force }
 $archivePath = Join-Path $outputDirectory 'gostore-preview.zip'
 $archiveStream = [System.IO.File]::Open($archivePath, [System.IO.FileMode]::Create)
 $archive = New-Object System.IO.Compression.ZipArchive($archiveStream, [System.IO.Compression.ZipArchiveMode]::Create)
