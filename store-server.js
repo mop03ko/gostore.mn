@@ -7,6 +7,11 @@ function supplierImageUrl(source,size=400){
   }catch{return original;}
 }
 function supplierImageAttrs(source,size=400){const resized=supplierImageUrl(source,size);return `src="${esc(resized)}"${resized!==source?` data-image-original="${esc(source)}"`:''} decoding="async"`;}
+function productOffersHtml(product,stale){
+  const offers=product.offers,fresh=!stale&&offers?.expires*1000>Date.now(),discount=fresh?offers.discount:null;
+  const promotions=fresh?(offers.promotions||[]).filter(p=>!p.ends||Date.parse(p.ends)>Date.now()):[];
+  return `<section class="product-offers" aria-label="Хямдрал, урамшуулал"><h3>Хямдрал, урамшуулал</h3>${discount?`<p class="supplier-discount"><span>−${discount.percent}%</span> Каталогийн үнэ: <del>${money(discount.was_mnt)}</del> <strong>≈ ${money(discount.current_mnt)}</strong></p>`:''}${promotions.map(p=>`<article><strong>${esc(p.name)}</strong>${p.description?`<p>${esc(p.description)}</p>`:''}${p.price_mnt?`<p>Урамшууллын лавлах үнэ: <strong>≈ ${money(p.price_mnt)}</strong></p>`:''}${p.ends?`<small>Дуусах: ${esc(new Date(p.ends).toLocaleString('mn-MN'))}</small>`:''}</article>`).join('')}${!discount&&!promotions.length?`<p>${!fresh||product.offers_available===false?'Урамшууллын мэдээлэл одоогоор шинэчлэгдээгүй байна.':'Нийлүүлэгчээс баталгаажсан хямдрал, урамшууллын мэдээлэл ирээгүй байна.'}</p>`:'<small>Сонгосон хувилбар, тоо болон урамшууллын нөхцөлөөс хамаарна. Төлөх дүнг захиалга баталгаажуулахад шалгана.</small>'}</section>`;
+}
 document.addEventListener('error',event=>{const img=event.target;if(img instanceof HTMLImageElement&&img.dataset.imageOriginal){const original=img.dataset.imageOriginal;delete img.dataset.imageOriginal;img.src=original;}},true);
 // Optional PHP backend. Static preview retains its browser-only draft behavior.
 window.storeServer={ready:false};
@@ -40,7 +45,7 @@ window.supplierApi=(()=>{
         if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
-        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null});
+        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null});
         else data.product=result.product;
         const ttl=Math.min(action==='supplier-search'?600:300,Number(result.cache_ttl)||0);
         const shaped=action==='supplier-search'?Array.isArray(data.products):data.product?.id===payload.id;

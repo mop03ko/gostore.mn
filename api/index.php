@@ -23,11 +23,11 @@ try {
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.
     if($method==='GET'&&in_array($action,['supplier-search','supplier-product'],true)){
-        if($action==='supplier-product')supplier_public_json(supplier_detail(str_field($_GET,'id',50),true));
+        if($action==='supplier-product')supplier_public_json(supplier_detail(str_field($_GET,'id',50),true,str_field($_GET,'brand',30,false)));
         $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);
         if($page===false)fail('Хуудасны дугаар буруу.');
         if(isset($_GET['image']))supplier_public_json(supplier_image_search(str_field($_GET,'image',32),$page,true));
-        supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','page'=>$page,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??''],true));
+        supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','page'=>$page,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??''],true));
     }
     $adminAction=str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||in_array($action,['session','dashboard','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');

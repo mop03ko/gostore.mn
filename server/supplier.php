@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/supplier-brands.php';
 
 // New catalog uses Taobao. Explicit local prefixes keep legacy 1688 IDs unambiguous.
 function supplier_identity(string $id): array {
@@ -62,6 +63,10 @@ function supplier_public_json(array $data): never {
 }
 function supplier_response(string $path,bool $ok,int $status,string $raw): array {
     $response=json_decode($raw,true);
+    // Optional offer lookup failure must not hide an otherwise verified product.
+    if($ok&&$status===200&&$path==='/service-json/BatchGetItemFullInfo'&&($response['ErrorCode']??'')==='BatchError'&&is_array($response['Result']['Item']??null)&&!empty($response['Result']['PromotionsError'])&&empty($response['Result']['ItemError'])&&empty($response['Result']['VendorError'])&&empty($response['Result']['Item']['HasError'])){
+        $response['Result']['Item']['Promotions']=[];$response['Result']['Item']['IsValidPromotions']=false;return $response['Result'];
+    }
     // A missing product is not a temporary gateway failure or an API-key problem.
     if($ok&&$status===404&&($response['error']??null)==='not_found'&&preg_match('#^/v1/(?:taobao|alibaba1688)/product/\d+$#D',$path)){
         fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
@@ -87,6 +92,7 @@ function supplier_limits(bool $warming): void {
     }
 }
 function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null): array {
+    $native=in_array($path,['/service-json/BatchSearchItemsFrame','/service-json/BatchGetItemFullInfo'],true);$refreshWindow=$native?60:1800;
     if(!supplier_ready())fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
     $dir=config()['data_dir'].'/supplier-cache';if(!is_dir($dir))mkdir($dir,0700,true);
     $key=supplier_cache_key($path,$query);$file=$dir.'/'.$key.'.json';
@@ -95,7 +101,7 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
     $read=static function()use($file){$v=is_file($file)?json_decode(file_get_contents($file),true):null;return is_array($v)&&isset($v['data'],$v['fetched'],$v['expires'])&&is_array($v['data'])&&is_numeric($v['expires'])?$v:null;};
     $cached=$read();
     if($cached&&$cached['expires']>time()&&!$force){
-        if($display&&$cached['expires']-time()<1800)supplier_schedule_refresh($path,$query,$dir);
+        if($display&&$cached['expires']-time()<$refreshWindow)supplier_schedule_refresh($path,$query,$dir);
         return $cached;
     }
     // Browsing may use one day's stale data; ordering uses the strict path below.
@@ -109,7 +115,7 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
     if(!flock($lock,LOCK_EX|(($display||$force||$warming)?LOCK_NB:0))){fclose($lock);if($cached&&$force)return $cached;fail('Нийлүүлэгчийн холболт завгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
     try {
         if(is_file($missing)&&(int)file_get_contents($missing)>time())fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
-        $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||($refreshAge===null?$cached['expires']-time()>=1800:strtotime((string)$cached['fetched'])>time()-$refreshAge)))return $cached;
+        $cached=$read();if($cached&&$cached['expires']>time()&&(!$force||($refreshAge===null?$cached['expires']-time()>=$refreshWindow:strtotime((string)$cached['fetched'])>time()-$refreshAge)))return $cached;
         if(is_file($retry)&&(int)file_get_contents($retry)>time()){if($cached){$cached['stale']=$cached['expires']<=time();return $cached;}fail('Нийлүүлэгчийн холболтыг түр хүлээнэ үү.',503);}
         // Deduplicate each cache key; at most two independent provider requests run at once.
         $slot=null;for($i=0;$i<2;$i++){$candidate=fopen($dir.'/network-'.$i.'.lock','c');if($candidate&&flock($candidate,LOCK_EX|LOCK_NB)){$slot=$candidate;break;}if($candidate)fclose($candidate);}
@@ -117,11 +123,12 @@ function supplier_request(string $path,array $query,bool $display=false,bool $fo
         try {
             supplier_limits($warming);
             if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд нийлүүлэгчийн дуудлагыг хаасан.',503);
-            $ch=curl_init('https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
+            $ch=curl_init($native?'https://otapi.net'.$path:'https://rest.otapi.net'.$path.'?'.http_build_query($query));$raw='';
             curl_setopt_array($ch,[CURLOPT_HTTPHEADER=>['X-Api-Key: '.config()['otcommerce']['api_key'],'Accept: application/json'],CURLOPT_ENCODING=>'',CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>35,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$raw){if(strlen($raw)+strlen($chunk)>12000000)return 0;$raw.=$chunk;return strlen($chunk);}]);
+            if($native)curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($query+['instanceKey'=>config()['otcommerce']['api_key']]),CURLOPT_HTTPHEADER=>['Accept: application/json','Content-Type: application/x-www-form-urlencoded']]);
             $ok=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);curl_close($ch);
             $result=supplier_response($path,$ok!==false,$status,$raw);
-            $cached=['data'=>$result,'fetched'=>gmdate('c'),'expires'=>time()+21600,'stale'=>false];
+            $cached=['data'=>$result,'fetched'=>gmdate('c'),'expires'=>time()+($native?600:21600),'stale'=>false];
             $tmp=tempnam($dir,'write-');if($tmp===false)fail('Cache хадгалж чадсангүй.',503);
             try {if(file_put_contents($tmp,json_encode($cached,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),LOCK_EX)===false)fail('Cache хадгалж чадсангүй.',503);chmod($tmp,0600);if(!rename($tmp,$file))fail('Cache хадгалж чадсангүй.',503);}finally{if(is_file($tmp))unlink($tmp);}
             if(is_file($retry))unlink($retry);
@@ -279,6 +286,7 @@ function supplier_price_range(array $b): array {
     return $range;
 }
 function supplier_search(array $b,bool $display=false): array {
+    if(($b['brand']??'')!=='')return supplier_brand_search($b,$display);
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume','-updated_time'],true))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);
@@ -344,11 +352,17 @@ function supplier_search_result(array $c,int $page): array {
     $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/12)));
     return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($items)===12&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*12<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
-function supplier_detail(string $id,bool $display=false): array {
+function supplier_detail(string $id,bool $display=false,string $brandId=''): array {
     $identity=supplier_identity($id);
-    $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()],$display);
+    if($brandId!==''){
+        $brand=supplier_brand($brandId);if($identity['provider']!=='taobao')fail('Брэндийн барааны дугаар буруу.');
+        $c=supplier_request('/service-json/BatchGetItemFullInfo',['language'=>supplier_language(),'itemId'=>$identity['number'],'blockList'=>'Promotions,Vendor,RootPath,Description,MostPopularVendorItems16'],$display);
+        supplier_brand_assert_vendor($c['data']['Vendor']??[],$brand);
+        if(!supplier_brand_item_matches($c['data']['Item']??[],$brand))fail('Энэ бараа сонгосон дэлгүүрт хамаарахгүй байна.',404);
+    }else $c=supplier_request('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()],$display);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
     $p['price_expires']=(int)$c['expires'];
+    if($brandId!==''){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];$p['offers']=supplier_offers($c['data']['Item'],$c);$p['offers_available']=empty($c['data']['PromotionsError'])&&!$c['stale'];}
     $p['category_path']=[];foreach(array_reverse($c['data']['RootPath']['Content']??[]) as $category){$name=supplier_text($category['Name']??'',150);if($name!=='')$p['category_path'][]=$name;}
     $p['related']=[];$seen=[$p['id']=>true];foreach(array_merge($c['data']['VendorItems']['Content']??[],$c['data']['RecommendedItems']['Content']??[]) as $item){try{$related=supplier_card_price(supplier_normalize($item,false,$identity['provider']),(int)$c['expires']);if(!isset($seen[$related['id']])){$seen[$related['id']]=true;$p['related'][]=$related;}if(count($p['related'])>=12)break;}catch(ApiError){}}
     return ['product'=>$p,'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];

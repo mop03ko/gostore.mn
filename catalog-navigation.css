@@ -26,5 +26,11 @@
 .brand-store-label>span{margin-left:3px}
 .brand-card:hover{background:#fff8f3;border-color:#d8a384}
 .brand-card:focus-visible{outline:2px solid #a53b0b;outline-offset:2px}
+.brand-card[aria-current=true]{background:#fff4ec;border-color:#c45b25;box-shadow:inset 0 0 0 1px #c45b25}
+.supplier-discount{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px;color:#576174}
+.supplier-discount>span{display:inline-block;padding:3px 7px;border-radius:6px;background:#ffefe8;color:#a9380a;font-weight:700}
+.supplier-discount del{color:#737c89}
+.product-offers{padding:15px;margin:16px 0;background:#fff8f3;border:1px solid #f0dccd;border-radius:12px;line-height:1.6;font-size:13px}
+.product-offers h3{font-size:15px;margin:0 0 9px}.product-offers p{margin:6px 0}.product-offers article+article{border-top:1px solid #efd9cc;margin-top:10px;padding-top:10px}.product-offers small{color:#666;display:block}.pd-brand-store{font-size:13px;color:#a53b0b}
 @media(max-width:760px){.brand-section{padding-top:24px}.brand-section h2{font-size:21px}.brand-section .section-heading{gap:8px}.brand-section .section-heading p{font-size:12px;max-width:230px}.brand-section .text-button{font-size:12px}.brand-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.brand-card{min-height:138px;padding:14px 8px;gap:7px}.brand-logo{height:55px}.brand-logo img{width:100px;height:48px}.brand-card strong{font-size:14px}.brand-store-label{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.brand-card{transition:none}}

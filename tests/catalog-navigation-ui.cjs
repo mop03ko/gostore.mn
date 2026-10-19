@@ -17,25 +17,14 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal page overflow');
  await row.evaluate(e=>e.scrollLeft=300);assert.ok(await row.evaluate(e=>e.scrollLeft)>0);await row.locator('[data-catalog-category=women]').click();assert.equal(await active.innerText(),'Эмэгтэй хувцас');assert.ok((await row.locator('button').first().boundingBox()).height>=44);await nav.screenshot({path:'tmp/catalog-navigation-mobile.png'});
  await page.evaluate(()=>window.supplierBrowse(null,true));assert.equal(await active.count(),0,'Saved view does not claim an active catalog category');
- // Brand links are local logo cards opening the exact official storefront in a new tab.
+ // Brand cards remain internal and use an explicit brand query parameter.
  const brands=page.locator('#brands'),expected=['nike','adidas','puma','newbalance','uniqlo','zara','sony','xiaomi','lego','ikea'];
  assert.deepEqual(await brands.locator('[data-brand]').evaluateAll(links=>links.map(a=>a.dataset.brand)),expected);
- for(const id of expected){const link=brands.locator('[data-brand='+id+']');assert.equal(await link.getAttribute('href'),'https://'+id+'.tmall.com/');assert.equal(await link.getAttribute('target'),'_blank');assert.equal(await link.getAttribute('rel'),'noopener noreferrer');}
+ for(const id of expected){const link=brands.locator('[data-brand='+id+']');assert.equal(await link.getAttribute('href'),'/?brand='+id+'#catalog');assert.equal(await link.getAttribute('target'),null);}
  await page.waitForFunction(()=>[...document.querySelectorAll('.brand-logo img')].every(img=>img.complete&&img.naturalWidth>0));
  assert.equal(await brands.locator('[data-brand=apple],[data-brand=samsung]').count(),0);
  assert.ok(!/taobao/i.test(await brands.innerText()));
- await page.setViewportSize({width:1440,height:1000});
- assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),5);
- await brands.screenshot({path:'tmp/brands-desktop.png'});
- await page.context().route('https://*.tmall.com/**',r=>r.fulfill({body:'Official storefront test destination',contentType:'text/html'}));
- const before=calls.length,original=page.url();
- const popupPromise=page.waitForEvent('popup');await brands.locator('[data-brand=nike]').click();const popup=await popupPromise;await popup.waitForLoadState();assert.equal(popup.url(),'https://nike.tmall.com/');assert.equal(await popup.evaluate(()=>window.opener),null);await popup.close();
- assert.equal(page.url(),original);assert.equal(calls.length,before,'Official store links never run generic provider searches');
- await page.setViewportSize({width:390,height:844});
- assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No mobile overflow');
- assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),2);
- const keyboardPopup=page.waitForEvent('popup');await brands.locator('[data-brand=lego]').focus();await page.keyboard.press('Enter');const lego=await keyboardPopup;await lego.waitForLoadState();assert.equal(lego.url(),'https://lego.tmall.com/');await lego.close();
- await brands.screenshot({path:'tmp/brands-mobile.png'});
- await brands.locator('[data-brand-all]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3')?.textContent==='__all__');assert.equal(await active.innerText(),'Бүгд');
- assert.deepEqual(errors,[]);console.log('PASS: category navigation, URL/reload, mobile overflow; 10 loaded logos, exact store URLs, safe new tabs, no keyword requests, keyboard access, 5/2-column layouts.');
+ await page.setViewportSize({width:1440,height:1000});assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),5);
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.equal(await brands.locator('.brand-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),2);
+ assert.deepEqual(errors,[]);console.log('PASS: category navigation, URL/reload, mobile overflow; 10 loaded logos, internal brand links, 5/2-column layouts.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

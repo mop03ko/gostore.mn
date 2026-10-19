@@ -24,7 +24,7 @@
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();
 })();
 
-// Official storefront destinations and logo provenance: docs/brand-storefronts.md.
+// Official storefront identities are enforced by the server; see docs/brand-storefronts.md.
 (()=>{
   const brands=[
     {id:'nike',name:'Nike',shop:'nike'},
@@ -38,10 +38,13 @@
     {id:'lego',name:'LEGO',shop:'lego'},
     {id:'ikea',name:'IKEA',shop:'ikea'}
   ];
+  window.supplierBrands=brands;
   const section=document.querySelector('#brands');if(!section)return;
-  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="https://${b.shop}.tmall.com/" target="_blank" rel="noopener noreferrer" aria-label="${esc(b.name)} · албан ёсны дэлгүүр (шинэ цонхонд нээгдэнэ)"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" decoding="async"></span><strong>${esc(b.name)}</strong><span class="brand-store-label">Албан ёсны дэлгүүр <span aria-hidden="true">↗</span></span></a>`).join('');
-  section.querySelector('[data-brand-all]').addEventListener('click',e=>{
+  section.querySelector('.brand-grid').innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="/?brand=${b.id}#catalog" aria-label="${esc(b.name)} брэндийн бараа үзэх"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" decoding="async"></span><strong>${esc(b.name)}</strong><span class="brand-store-label">Бараа үзэх <span aria-hidden="true">→</span></span></a>`).join('');
+  window.syncSupplierBrands=id=>section.querySelectorAll('[data-brand]').forEach(a=>{if(a.dataset.brand===id)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
+  section.addEventListener('click',e=>{
+    const link=e.target.closest('[data-brand],[data-brand-all]');if(!link)return;
     if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||typeof window.supplierBrowse!=='function')return;
-    e.preventDefault();window.supplierBrowse('__all__',false,'all');scrollCatalog();
+    e.preventDefault();if(link.dataset.brand)window.supplierBrowseBrand(link.dataset.brand);else window.supplierBrowse('__all__',false,'all');scrollCatalog();
   });
 })();

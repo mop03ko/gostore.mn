@@ -1,9 +1,9 @@
 # Brand storefronts
 
-Updated 2026-10-19. The ten homepage cards open the following external official
-Taobao/Tmall flagship storefronts in a new tab. They do not run a generic keyword
-search or imply that GOStore itself is an authorized retailer. Apple and Samsung
-are excluded. Public card text uses “Албан ёсны дэлгүүр”.
+Updated 2026-10-19. The ten logo cards open GOStore's internal `/?brand=<id>#catalog` view.
+Product links keep `?brand=<id>` and open on GOStore. Apple and Samsung are excluded.
+The external URLs below are source references, not navigation destinations.
+GOStore does not imply that it is itself an authorized retailer.
 
 | Brand | Destination | Reference |
 | --- | --- | --- |
@@ -22,8 +22,41 @@ Some storefronts redirect international visitors to `*.world.tmall.com` and may
 require sign-in or a regional security check. Automated page retrieval is blocked
 for some destinations; source verification is not a promise of anonymous access.
 Puma, ZARA and LEGO URL evidence includes secondary sources as noted above.
-Browser tests verify exact link destinations and behavior using intercepted pages;
-they do not bypass or certify third-party sign-in flows.
+Customers no longer need to enter these third-party storefronts to browse on GOStore.
+
+## API identity and offers
+
+OT's REST `vendor_name` was observed returning unrelated catalog items despite a
+matching Vendor block. Brand browsing therefore uses the documented
+[BatchSearchItemsFrame](https://docs.otapi.net/en/Documentations/Method/BatchSearchItemsFrame)
+with a case-sensitive VendorId. The server allowlist in `server/supplier-brands.php`
+records both the exact VendorId and numeric seller ID verified through OT's
+Vendor block for all ten shops. Responses must match both; individual products
+must match VendorId and any returned numeric seller ID. Mismatches are omitted,
+never replaced by keyword matches. Real smoke checks returned 12 items per shop,
+except adidas where one mismatched seller was correctly excluded (11 remained).
+
+Brand product details use
+[BatchGetItemFullInfo](https://docs.otapi.net/en/Documentations/Method/BatchGetItemFullInfo)
+with Promotions and Vendor blocks. Native calls share the existing request budget,
+concurrency locks, retry backoff and private server cache; keys never reach browsers.
+Brand data is cached for 10 minutes, with background refresh in its last minute.
+OT may itself return its Storage search method; freshness is limited by upstream data.
+
+Discounts use only `Price.PriceWithoutDiscountAndDelivery` compared with the same
+item's current CNY price. Cards display a discount only when it matches the price
+actually shown. Promotion names, `Desciption` (OT's spelling), calculated reference
+prices and end times are escaped plain text. Invalid, future, expired or stale offers
+are hidden. Unavailable offers are distinguished from a response with no offers;
+no coupon or percentage is invented. Promotions remain informational: checkout
+independently validates its current SKU price, stock and quantity, and does not
+apply unverified coupon prices.
+
+Validation: all ten shops and one Nike detail were read using the implementation
+against the real API. That sample returned no active offers, so actual promotion
+rendering was verified with isolated fixtures. Tests cover seller mismatches,
+pagination/price/sort isolation, URL reloads, no external tabs, expired/stale offers,
+SKU price preservation and mobile layout.
 
 ## Logos
 
