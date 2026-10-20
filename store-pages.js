@@ -32,24 +32,99 @@
     const s=settings(),window_h=Number(s.payment_window_hours)||24,domestic=Number(s.domestic_default_cny)>0;
     const faq=[
       ['Хэрхэн захиалах вэ?',`<ol class="help-list"><li>Каталогоос бараа, өнгө/хэмжээ, тоогоо сонгоно.</li><li>«Сагслах» эсвэл «Худалдан авах» дарна.</li><li>Нэвтэрч, хүлээн авах хэлбэрээ сонгоод «Захиалах» дарна.</li><li>QPay QR эсвэл банкны аппаар төлнө.</li></ol>`],
-      ['Захиалахдаа юуны төлбөр төлөх вэ?',`<p>Барааны үнэ (тухайн өдрийн ханшаар төгрөгт хөрвүүлсэн)${domestic?', Хятад доторх хүргэлт':''} болон үйлчилгээний хураамжийг захиалахдаа төлнө. ${domestic?'':'Хятад доторх хүргэлт болон '}Олон улсын каргоны төлбөрийг бараа Улаанбаатарт ирэхэд бодит дүнгээр эцсийн тооцоонд нэмнэ.</p>`],
+      ['Захиалахдаа юуны төлбөр төлөх вэ?',`<p>Барааны үнэ (захиалгын тооцоонд ашигласан ханшаар төгрөгт хөрвүүлсэн)${domestic?', Хятад доторх хүргэлт':''} болон үйлчилгээний хураамжийг захиалахдаа төлнө. ${domestic?'':'Хятад доторх хүргэлт болон '}Олон улсын каргоны төлбөрийг бараа Улаанбаатарт ирэхэд бодит дүнгээр эцсийн тооцоонд нэмнэ.</p>`],
       ['Төлбөрөө хэрхэн, хэзээ төлөх вэ?',`<p>Захиалга үүсмэгц QPay нэхэмжлэл гарна. ${window_h} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. Үлдэгдэл (карго, хүргэлт)-ийг «Миний захиалгууд» хэсгээс QPay-ээр төлнө.</p>`],
-      ['Каргоны төлбөр хэрхэн тооцогдох вэ?',s.weight_step_kg?`<p>Эрээн агуулахад ачааг бодитоор жигнэж, хэмжинэ.</p><ul class="help-list"><li>Жингээр: ${esc(s.weight_step_kg)} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ).</li><li>Эзлэхүүнээр: ${esc(s.volume_threshold)} м³-аас бага бол ${money(Math.round(s.volume_small_cny*s.cny_rate))}/м³, түүнээс их бол ${money(Math.round(s.volume_large_cny*s.cny_rate))}/м³.</li></ul><p>Аль аргаар тооцохыг ачааны төрлөөс хамааран агуулах баталгаажуулна.</p>`:'<p>Эрээн агуулахад бодитоор жигнэж, хэмжиж тооцно.</p>'],
+      ['Каргоны төлбөр хэрхэн тооцогдох вэ?',s.weight_step_kg?`<p>Эрээн агуулахад ачааг бодитоор жигнэж, хэмжинэ.</p><ul class="help-list"><li>Жингээр: ${esc(s.weight_step_kg)} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ).</li><li>Эзлэхүүнээр: ${esc(s.volume_threshold)} м³-аас бага бол ${money(Math.round(s.volume_small_cny*s.cny_rate))}/м³, түүнээс их буюу тэнцүү бол ${money(Math.round(s.volume_large_cny*s.cny_rate))}/м³.</li></ul><p>Аль аргаар тооцохыг ачааны төрлөөс хамааран агуулах баталгаажуулна.</p>`:'<p>Эрээн агуулахад бодитоор жигнэж, хэмжиж тооцно.</p>'],
       ['Захиалгынхаа явцыг хаанаас харах вэ?','<p>«Миний бүртгэл → Миний захиалгууд» эсвэл «Миний ачаа» хэсгээс Эрээнд ирсэн, илгээсэн, Улаанбаатарт ирсэн явц болон агуулахын зургийг харна. Төлөв өөрчлөгдөх бүрт сайтад мэдэгдэл ирнэ.</p>'],
       ['Бараагаа хаанаас авах вэ?',`${pickupHtml()}<p>Төлбөрөө бүрэн төлсний дараа 8 оронтой авах код гарна. Кодоо агуулахын ажилтанд хэлж бараагаа авна. Хүргэлтээр авах бол хүргэлтийн төлбөр эцсийн тооцоонд нэмэгдэнэ.</p>`],
       ['Хэзээ ирэх вэ?',`<p>${esc(commerceUI.timingText())}</p>`],
       ['Захиалгаа цуцлах боломжтой юу?',`<p>Төлөөгүй захиалга ${window_h} цагийн дараа автоматаар цуцлагдана. Төлбөр төлсөн захиалгыг цуцлах бол бидэнтэй холбогдоно уу: нийлүүлэгчээс аль хэдийн захиалсан бол цуцлах боломж нийлүүлэгчээс хамаарна.</p>`],
       ['Бараа дутуу эсвэл гэмтэлтэй ирвэл яах вэ?','<p>Агуулахууд ачааг хүлээн авахдаа тулгаж, зураг авдаг. Зөрүү илэрвэл захиалга дээр бүртгэж шийдвэрлэнэ. Асуудал гарвал захиалгын код, сонгосон хувилбар, хүлээн авсан огноо болон бараа, савлагааны зургийг бидэнд илгээнэ үү. Хүсэлтийг шалгасны дараа боломжит шийдэл, хугацаа, буцаах тээврийн зардлыг тусад нь мэдээлнэ. Нийлүүлэгчийн баталгаагүй буцаалт, нөхөн төлбөрийг урьдчилан амлахгүй.</p>'],
     ];
-    root.innerHTML=crumbs('Тусламж')+`<div class="store-help-hero"><span class="section-kicker">ТУСЛАМЖ & ДЭМЖЛЭГ</span><h1 class="store-title">Танд юугаар туслах вэ?</h1><label class="field store-help-search"><span class="sr-only">Асуулт хайх</span><input id="help-search" type="search" placeholder="Жишээ нь: төлбөр, карго, авах" autocomplete="off"></label></div><div class="store-contact">${phone()?`<a class="account-card" href="tel:${esc(phone().replace(/[^\d+]/g,''))}"><strong>Утсаар залгах</strong><span>${esc(phone())}</span></a>`:''}<a class="account-card" href="mailto:shop@gostore.mn"><strong>И-мэйл</strong><span>shop@gostore.mn</span></a><a class="account-card" href="#delivery"><strong>Агуулахын хаяг</strong><span>${esc((settings().pickup?.address||'Улаанбаатар').split('\n')[0])}</span></a></div><h2 class="store-subtitle">Түгээмэл асуултууд</h2><div class="store-faq">${faq.map(([q,a])=>`<details class="account-card" ${q.includes('цуцлах')?'id="cancellation"':q.includes('гэмтэлтэй')?'id="returns"':''}><summary>${esc(q)}</summary><div>${a}</div></details>`).join('')}</div><p class="account-hint" id="help-empty" hidden>Тохирох асуулт олдсонгүй. shop@gostore.mn хаягаар бидэнд бичээрэй.</p><section id="delivery" class="store-delivery"><span class="section-kicker">ХҮРГЭЛТ & КАРГО</span><h2 class="store-subtitle">Хүргэлтийн нөхцөл</h2><ol class="store-route"><li><strong>Нийлүүлэгч</strong><span>Нийлүүлэгч барааг Эрээн агуулах руу илгээнэ.</span></li><li><strong>Эрээн агуулах</strong><span>Хүлээн авч, тулгаж, жигнэж, багцална.</span></li><li><strong>Замын-Үүд</strong><span>Хил дамжин Монголд орж ирнэ.</span></li><li><strong>Улаанбаатар агуулах</strong><span>Задалж, захиалга бүрээр ангилж, танд мэдэгдэнэ.</span></li></ol>${s.weight_step_kg?`<table class="store-tariff"><caption>Каргоны тариф (одоогийн тохиргоо)</caption><tbody><tr><th scope="row">Жингээр</th><td>${esc(s.weight_step_kg)} кг тутам ${money(s.weight_step_mnt)}</td></tr><tr><th scope="row">Эзлэхүүн &lt; ${esc(s.volume_threshold)} м³</th><td>${money(Math.round(s.volume_small_cny*s.cny_rate))} / м³</td></tr><tr><th scope="row">Эзлэхүүн ≥ ${esc(s.volume_threshold)} м³</th><td>${money(Math.round(s.volume_large_cny*s.cny_rate))} / м³</td></tr></tbody></table>`:''}${commerceUI.calculator(s)}<div class="store-pickup account-card"><h3>Хүлээн авах</h3>${pickupHtml()}${phone()?`<p>Утас: <a href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a></p>`:''}</div></section>`;
-    const target=['#delivery','#returns','#cancellation'].includes(location.hash)?root.querySelector(location.hash):null;if(target){if(target.tagName==='DETAILS')target.open=true;target.scrollIntoView();}
+    const topics=[['all','Бүгд'],['order','Захиалга'],['payment','Төлбөр'],['delivery','Карго, хүргэлт'],['returns','Буцаалт, цуцлалт']];
+    const groups=['order','payment','payment','delivery','order','delivery','delivery','returns','returns'];
+    const ids=['ordering','payment-details','payment-deadline','cargo-pricing','order-tracking','collecting','arrival','cancellation','returns'];
+    const telephone=phone()?`<a href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:'';
+    root.classList.add('help-page');
+    root.innerHTML=crumbs('Тусламж')+`
+      <header class="help-hero">
+        <div><span class="help-eyebrow">GOSTORE · ТУСЛАМЖИЙН ТӨВ</span><h1>Танд юугаар туслах вэ?</h1><p>Захиалахаас эхлээд бараагаа хүлээн авах хүртэл — хэрэгтэй мэдээлэл нэг дор.</p>
+        <div class="help-search"><label class="sr-only" for="help-search">Асуулт хайх</label>${icon('search')}<input id="help-search" type="search" placeholder="Төлбөр, карго, бараа авах..." autocomplete="off" aria-controls="help-questions"><button type="button" data-help-clear aria-label="Хайлтыг цэвэрлэх" hidden>×</button></div></div>
+        <span class="help-hero-mark" aria-hidden="true">?</span>
+      </header>
+      <div class="help-shortcuts">
+        <a href="/account/orders"><span class="help-shortcut-icon">${icon('bag')}</span><span><strong>Захиалгаа хянах</strong><small>Явц, агуулахын зураг, авах код</small></span><span aria-hidden="true">↗</span></a>
+        <a href="#delivery"><span class="help-shortcut-icon">${icon('truck')}</span><span><strong>Каргоны төлбөр</strong><small>Тариф болон зардлын тооцоолуур</small></span><span aria-hidden="true">↗</span></a>
+        <a href="#contact"><span class="help-shortcut-icon">?</span><span><strong>Бидэнтэй холбогдох</strong><small>Танд нэмэлт тусламж хэрэгтэй юу?</small></span><span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="help-layout">
+        <nav class="help-nav" aria-label="Тусламжийн бүлгүүд"><span>ЭНЭ ХУУДСАНД</span><a href="#questions">Түгээмэл асуулт</a><a href="#payment">Төлбөрийн мэдээлэл</a><a href="#delivery">Карго, хүргэлт</a><a href="#pickup">Бараа хүлээн авах</a><a href="#contact">Холбоо барих</a></nav>
+        <div class="help-content">
+          <section id="questions" class="help-section">
+            <div class="help-section-heading"><span>01</span><div><h2>Түгээмэл асуултууд</h2><p>Сэдвээ сонгох эсвэл дээрх хайлтаар асуултаа олоорой.</p></div></div>
+            <div class="help-topics" role="group" aria-label="Асуултын сэдэв">${topics.map(([id,label])=>`<button type="button" data-help-topic="${id}" aria-pressed="${id==='all'}">${label}</button>`).join('')}</div>
+            <p id="help-results" class="help-results" role="status">Нийт ${faq.length} асуулт</p>
+            <div id="help-questions" class="store-faq">${faq.map(([q,a],i)=>`<details id="${ids[i]}" data-topic="${groups[i]}"><summary>${esc(q)}</summary><div>${a}</div></details>`).join('')}</div>
+            <div id="help-empty" class="help-empty" hidden><strong>Тохирох асуулт олдсонгүй</strong><p>Өөр үгээр хайх эсвэл бидэнд <a href="mailto:shop@gostore.mn">и-мэйл бичээрэй.</a></p><button type="button" class="text-button" data-help-reset>Бүх асуултыг харах →</button></div>
+          </section>
+          <section id="payment" class="help-section">
+            <div class="help-section-heading"><span>02</span><div><h2>Хэзээ, юунд төлөх вэ?</h2><p>Захиалгын төлбөр ба тээврийн эцсийн тооцоо.</p></div></div>
+            <div class="help-payment-grid">
+              <article class="help-panel"><span class="help-badge">Захиалга хийхэд</span><h3>Одоо төлөх</h3><ul class="help-list"><li>Барааны үнэ</li><li>Үйлчилгээний хураамж</li>${domestic?'<li>Хятад доторх хүргэлтийн урьдчилсан төлбөр</li>':''}</ul><p>QPay QR эсвэл банкны апп ашиглан ${window_h} цагийн дотор төлнө.</p></article>
+              <article class="help-panel"><span class="help-badge help-badge-muted">Эцсийн тооцоогоор</span><h3>Дараа төлөх</h3><ul class="help-list">${!domestic?'<li>Хятад доторх хүргэлт</li>':''}<li>Олон улсын каргоны төлбөр</li><li>Хот доторх хүргэлт сонгосон бол хүргэлтийн төлбөр</li></ul><p>Бодит жин, хэмжээ болон хүргэлтийн мэдээллээр баталгаажуулна.</p></article>
+            </div>
+            <p class="help-note">Төлбөрийн задаргаа, үлдэгдлээ <a href="/account/orders">Миний захиалгууд</a> хэсгээс харж, QPay-ээр төлөх боломжтой. Урьдчилсан дүн эцсийн тооцоогоор өөрчлөгдөж болно.</p>
+          </section>
+          <section id="delivery" class="help-section store-delivery">
+            <div class="help-section-heading"><span>03</span><div><h2>Карго, хүргэлт</h2><p>Таны бараа ямар замаар ирэх вэ?</p></div></div>
+            <ol class="store-route"><li><strong>Нийлүүлэгч</strong><span>Барааг Эрээн агуулах руу илгээнэ.</span></li><li><strong>Эрээн агуулах</strong><span>Хүлээн авч, зураг авч, жигнэж, багцална.</span></li><li><strong>Замын-Үүд</strong><span>Хил дамжин Монголд орж ирнэ.</span></li><li><strong>Улаанбаатар</strong><span>Захиалга бүрээр ангилж, танд мэдэгдэнэ.</span></li></ol>
+            <p class="help-note">${esc(commerceUI.timingText())}</p>
+            <div class="help-delivery-grid"><div class="help-panel"><h3>Каргоны тариф</h3>${s.weight_step_kg?`<table class="store-tariff"><caption class="sr-only">Каргоны одоогийн тариф</caption><tbody><tr><th scope="row">Жингээр</th><td>${esc(s.weight_step_kg)} кг тутам <strong>${money(s.weight_step_mnt)}</strong></td></tr><tr><th scope="row">Эзлэхүүн &lt; ${esc(s.volume_threshold)} м³</th><td>${money(Math.round(s.volume_small_cny*s.cny_rate))} / м³</td></tr><tr><th scope="row">Эзлэхүүн ≥ ${esc(s.volume_threshold)} м³</th><td>${money(Math.round(s.volume_large_cny*s.cny_rate))} / м³</td></tr></tbody></table><p>Жинг дээш бүхэлчилнэ. Тооцох аргыг ачааны төрлөөс хамааран агуулах баталгаажуулна.</p>`:'<p>Тарифын мэдээлэл ачаалагдсангүй. Бидэнтэй холбогдож лавлана уу.</p>'}</div><div class="help-panel"><h3>Зардлаа урьдчилан тооцоолох</h3><p>Жин эсвэл эзлэхүүнээ оруулж каргоны ойролцоо төлбөрийг хараарай.</p>${commerceUI.calculator(s)}</div></div>
+          </section>
+          <section id="pickup" class="help-section">
+            <div class="help-section-heading"><span>04</span><div><h2>Бараагаа хүлээн авах</h2><p>Агуулахаас авах эсвэл хүргүүлэх боломжтой.</p></div></div>
+            <div class="help-pickup-grid"><div class="help-panel help-address"><span class="help-badge">Агуулахын хаяг</span>${pickupHtml()}${telephone?`<p>Утас: ${telephone}</p>`:''}</div><div class="help-panel"><h3>Ирж авахын өмнө</h3><ol class="help-list"><li>Бараа Улаанбаатар агуулахад ирсэн эсэхийг шалгана.</li><li>Төлбөрийн үлдэгдлээ бүрэн төлнө.</li><li>8 оронтой авах кодоо агуулахын ажилтанд хэлнэ.</li></ol><a class="text-button" href="/account/orders">Миний захиалгууд →</a></div></div>
+          </section>
+          <section id="contact" class="help-contact">
+            <div><span class="help-eyebrow">БИД ТАНД ТУСАЛЪЯ</span><h2>Асуултынхаа хариуг олсонгүй юу?</h2><p>Захиалгын код, барааны мэдээлэл болон шаардлагатай зургийг бэлдвэл бид хурдан шалгах боломжтой.</p></div>
+            <div class="help-contact-links">${telephone?`<div><small>Утсаар холбогдох</small>${telephone}</div>`:''}<div><small>И-мэйл бичих</small><a href="mailto:shop@gostore.mn">shop@gostore.mn</a></div>${s.pickup?.hours?`<p>Агуулахын цаг: ${esc(s.pickup.hours)}</p>`:''}</div>
+          </section>
+        </div>
+      </div>`;
+    revealHelpAnchor();
   }
+  let helpTopic='all';
+  function filterHelp(){
+    const q=root.querySelector('#help-search').value.trim().toLocaleLowerCase('mn');
+    let shown=0;
+    root.querySelectorAll('.store-faq details').forEach(d=>{
+      const hit=(helpTopic==='all'||d.dataset.topic===helpTopic)&&(!q||d.textContent.toLocaleLowerCase('mn').includes(q));
+      d.hidden=!hit;d.open=!!q&&hit;if(hit)shown++;
+    });
+    root.querySelectorAll('[data-help-topic]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.helpTopic===helpTopic)));
+    root.querySelector('[data-help-clear]').hidden=!q;
+    root.querySelector('#help-results').textContent=q||helpTopic!=='all'?`${shown} асуулт олдлоо`:`Нийт ${shown} асуулт`;
+    root.querySelector('#help-empty').hidden=shown>0;
+  }
+  function revealHelpAnchor(){
+    if(page!=='help'||!location.hash)return;
+    const target=[...root.querySelectorAll('[id]')].find(el=>'#'+el.id===location.hash);
+    if(!target)return;
+    if(target.tagName==='DETAILS'){helpTopic='all';root.querySelector('#help-search').value='';filterHelp();target.open=true;}
+    requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+  }
+  window.addEventListener('hashchange',revealHelpAnchor);
   const render=()=>page==='cart'?renderCart():renderHelp();
   document.title=(page==='cart'?'Миний сагс':'Тусламж')+' · gostore.mn';
   root.innerHTML='<p class="account-loading">Ачаалж байна…</p>';
   (async()=>{try{await window.catalogReady;}catch{}render();})();
   root.addEventListener('click',e=>{
-    const b=e.target.closest('button');if(!b||page!=='cart')return;
+    const b=e.target.closest('button');if(!b)return;
+    if(page==='help'){
+      if(b.hasAttribute('data-help-topic')){helpTopic=b.dataset.helpTopic;filterHelp();}
+      if(b.hasAttribute('data-help-clear')||b.hasAttribute('data-help-reset')){helpTopic='all';const input=root.querySelector('#help-search');input.value='';filterHelp();input.focus({preventScroll:true});}
+      return;
+    }
     const items=taobaoCart.items();
     if(b.dataset.cartQty!==undefined){const i=items[Number(b.dataset.cartQty)];if(!i)return;const qty=i.qty+Number(b.dataset.delta)*i.step;if(qty<i.min_qty||qty>Math.min(9999,i.stock??9999))return;i.qty=qty;taobaoCart.save(items);renderCart();return;}
     if(b.dataset.cartRemove!==undefined){items.splice(Number(b.dataset.cartRemove),1);taobaoCart.save(items);renderCart();toast('Сагснаас хаслаа');return;}
@@ -57,7 +132,7 @@
     if(b.hasAttribute('data-cart-save-all')){const rest=items.filter(i=>!/^tb-/.test(i.id));if(saveForLater(items)){taobaoCart.save(rest);renderCart();toast('Сагсны барааг хадгалсан бараанд шилжүүллээ');}return;}
     if(b.hasAttribute('data-cart-clear')){if(!confirm('Сагсны бүх барааг хасах уу?'))return;taobaoCart.save([]);renderCart();toast('Сагс хоосорлоо');}
   });
-  root.addEventListener('input',e=>{if(e.target.id!=='help-search')return;const q=e.target.value.trim().toLocaleLowerCase('mn');let shown=0;root.querySelectorAll('.store-faq details').forEach(d=>{const hit=!q||d.textContent.toLocaleLowerCase('mn').includes(q);d.hidden=!hit;if(hit)shown++;if(q&&hit)d.open=true;});root.querySelector('#help-empty').hidden=shown>0;});
+  root.addEventListener('input',e=>{if(e.target.id==='help-search')filterHelp();});
   // The cart page stays in sync with changes from other tabs and from a completed checkout.
   window.addEventListener('storage',e=>{if(page==='cart'&&e.key===taobaoCart.key)renderCart();});
   window.addEventListener('gostore-cart-changed',()=>{if(page==='cart')renderCart();});

@@ -36,8 +36,23 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.locator('#help-search').fill('карго');await page.waitForFunction(()=>[...document.querySelectorAll('.store-faq details')].filter(d=>!d.hidden).length>=1&&[...document.querySelectorAll('.store-faq details')].some(d=>d.hidden));
  assert.ok(await page.locator('.store-faq details:not([hidden])').first().getAttribute('open')!==null,'Matching answers open');
  await page.locator('#help-search').fill('zzzz');await page.locator('#help-empty').waitFor();
+ await page.locator('[data-help-reset]').click();
+ assert.equal(await page.locator('.store-faq details:not([hidden])').count(),9);
+ assert.equal(await page.locator('.store-faq details[open]').count(),0,'Clearing search closes search-expanded answers');
+ await page.locator('[data-help-topic="payment"]').click();
+ assert.equal(await page.locator('[data-help-topic="payment"]').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.locator('.store-faq details:not([hidden])').count(),2);
+ await page.locator('#help-search').fill('zzzz');
+ await page.evaluate(()=>{location.hash='returns';});
+ await page.locator('#returns[open]').waitFor();
+ assert.equal(await page.locator('#help-search').inputValue(),'','Deep links reveal answers even when filtered out');
+ assert.equal(await page.locator('.store-faq details:not([hidden])').count(),9);
+ await page.locator('.help-nav a[href="#pickup"]').click();
+ await page.waitForFunction(()=>document.querySelector('#pickup').getBoundingClientRect().top<innerHeight);
+ assert.ok((await page.locator('#pickup').innerText()).includes('8 оронтой'));
  assert.ok((await page.locator('#delivery .store-tariff').innerText()).includes('кг тутам'));assert.equal(await page.locator('#delivery .store-route li').count(),4);
  await page.goto(base+'/help#delivery');await page.waitForFunction(()=>document.querySelector('#delivery').getBoundingClientRect().top<innerHeight);
  for(const url of ['/cart','/help']){await page.setViewportSize({width:390,height:844});await page.goto(base+url);await page.locator('#store-page h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile fit '+url);await page.screenshot({path:'tmp/store-page'+url.replace('/','-')+'-390.png',fullPage:true});}
+ for(const width of [320,760,1440]){await page.setViewportSize({width,height:960});await page.goto(base+'/help');await page.locator('.help-hero h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Help fits '+width);await page.screenshot({path:'tmp/help-'+width+'.png',fullPage:true});}
  assert.deepEqual(errors,[]);console.log('PASS store pages: non-blocking add-to-cart flyout, cart page quantity/summary/compare/save for later/checkout/clear, modal link, help FAQ search, delivery tariff and anchor, floating help, mobile.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
