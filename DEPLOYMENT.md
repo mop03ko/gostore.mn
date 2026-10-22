@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Google Analytics and Facebook domain verification
+
+- Deployed the tags from `2f0ac89` and `e825f0f` to `/public_html/index.html`: GA4 measurement ID `G-WLC1E39628` and Facebook domain verification value `ebt236r27oijorkmps2m2pz9vkr4t7`.
+- Inserted only the two tag blocks into the existing live HTML. Verified FTPS backup: `/gostore-backups/site-tags-ac3eb8cbe8c2/index.html`; staged and published bytes matched the prepared artifact. Local backup and manifest remain in ignored `tmp/site-tags-deployment/`.
+- Public HTTPS checks for `/` and `/help` returned HTTP 200 and exactly matched the deployed HTML, with one Google loader/config and one Facebook verification meta tag. GA4 event receipt and Meta's Verify domain action were not checked; these require their respective consoles. No application configuration or database changes.
+
 ## Supplier contention recovery — 2026-10-20
 
 - Release `65dd251` deployed five files: supplier backend, API, public cache client, prefetch logic and versioned HTML. Verified backup: `/gostore-backups/supplier-queue-20261020-a84b4285fcc1`; FTPS and public HTTPS bytes matched. No configuration/schema/payment changes.
