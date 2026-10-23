@@ -5,7 +5,12 @@ to control descriptions, SKU labels, categories and promotions. No currency or p
 setting is changed. Product identities, stock and prices always come from the original
 catalog response; only matching product `Title` fields are overlaid.
 
-English names are cached separately for seven days by provider and product ID. A page
+English names are cached separately for seven days by provider and product ID. After
+expiry, a validated English name may be reused for up to 30 additional days while
+refresh is unavailable. This grace period applies only to the title, never prices,
+stock or the product response expiry. Browsing still attempts the normal refresh;
+checkout and snapshot cards reuse the saved name without a translation request.
+Cache reads never extend the expiry, and corrupt or non-English entries are ignored. A page
 or product viewed in the catalog without cached names can use one additional OT
 request with `language=en`; background catalog warming can do the same.
 The existing API limits and response caches apply. There is no per-card network call.
@@ -13,7 +18,8 @@ This can increase API consumption during the initial catalog refresh. Ensure the
 key has English enabled; a request parameter alone cannot enable an unavailable language.
 
 If OT fails, the quota is exhausted, the English result does not contain a matching ID,
-or OT returns Cyrillic/Chinese text instead, the original name is retained. Names are
+or OT returns Cyrillic/Chinese text instead, a saved English name within its grace
+period is retained. Without one, the original name is retained. Names are
 never replaced with invented translations or empty placeholders. Translation failure
 does not block product availability checks or checkout. Checkout only reuses an
 already cached English title; it never requests a translation while validating SKU

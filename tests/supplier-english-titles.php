@@ -72,7 +72,28 @@ try {
     $expiredFile=supplier_title_file('tb-333333333');
     file_put_contents($expiredFile,json_encode(['title'=>'Expired translation','expires'=>time()-1]));
     check(supplier_title_read('tb-333333333')===null,'Expired title is not reused');
+    check(supplier_title_read('tb-333333333',true)==='Expired translation','Display may reuse a validated title during its grace period');
+    file_put_contents($expiredFile,json_encode(['title'=>'Too old','expires'=>time()-SUPPLIER_TITLE_STALE_TTL-1]));
+    check(supplier_title_read('tb-333333333',true)===null,'Grace period is bounded');
+    file_put_contents($expiredFile,json_encode(['title'=>'English Монгол','expires'=>time()-1]));
+    check(supplier_title_read('tb-333333333',true)===null,'Stale fallback still rejects non-English text');
+    file_put_contents($expiredFile,json_encode(['title'=>'Invalid expiry','expires'=>'invalid']));
+    check(supplier_title_read('tb-333333333',true)===null,'Malformed expiry is ignored safely');
     file_put_contents($expiredFile,'{broken');check(supplier_title_read('tb-333333333')===null,'Corrupt title cache falls back safely');
+    $staleFile=supplier_title_file('tb-222222222');
+    $staleJson=json_encode(['title'=>'Saved Travel Bag','expires'=>time()-60]);file_put_contents($staleFile,$staleJson);
+    $before=$networkAttempts;
+    $staleExpected=$missing;$staleExpected['data']['Item']['Title']='Saved Travel Bag';
+    check(supplier_request($missingPath,['language'=>'mn'])===$staleExpected,'Checkout reuses only the stale name, preserving all commercial data and timestamps');
+    check($networkAttempts===$before,'Stale checkout title never adds a network request');
+    check(supplier_request($missingPath,['language'=>'mn'],true)===$staleExpected,'Failed translation refresh keeps the English name');
+    check($networkAttempts===$before+1,'Stale names do not suppress refresh attempts');
+    check(file_get_contents($staleFile)===$staleJson,'Fallback never renews its own expiry');
+    $staleCard=supplier_card_price(['id'=>'tb-222222222','name'=>'Хуучин нэр','cny'=>null],time()+3600);
+    check($staleCard['name']==='Saved Travel Bag','Snapshot cards use the same English fallback');
+    seed($missingPath,['language'=>'en'],['Item'=>array_replace($third,['Title'=>'New Travel Bag'])]);
+    $newTitle=supplier_request($missingPath,['language'=>'mn'],true);
+    check($newTitle['data']['Item']['Title']==='New Travel Bag'&&supplier_title_read('tb-222222222')==='New Travel Bag','A successful refresh replaces the stale name');
     echo "PASS: English-only names; unchanged descriptions, SKUs, categories and prices; ID joins; snapshot reuse; quota fallback; no checkout translation requests.\n";
 } finally {
     // Delete only this test's randomly created temporary directory.
