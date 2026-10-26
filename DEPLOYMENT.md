@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Taobao provider error details — 2026-10-27
+
+- Deployed only `server/taobao-purchase.php` from `b650b3e` after an admin saw `Missing parameter` from «Taobao тооцоо харах». Admin errors now include provider detail fields (`sub_msg`, `message`, `detail`…) next to `reason`, so the missing field can be identified. Request payloads were not changed.
+- Live file matched the previous release before publishing. Verified FTPS backup: `/gostore-backups/taobao-reason-20261027-d37d6ad165`; staged and published bytes matched. Live HTTPS: `/`, `/admin/` and catalog API 200; private PHP 403. No orders, payments or Taobao purchases were created.
+- `tests/taobao-purchase.php` passed. Unconfirmed hypothesis: single-variant (`standard`) lines omit `sku_id`; confirm with the next detailed provider error before changing the payload.
+- The earlier admin purchase-panel layout fix (`07806a2`) is committed but not deployed.
+
 ## Restricted catalog products — 2026-10-26
 
 - Removed the knife navigation entry and applied a shared restriction to supplier search (including brand/image results), detail, related products, cached snapshots, local inventory, checkout, invoice requests and supplier purchases. Browser favorites/cart/comparison displays are filtered; cache namespaces and asset versions changed. See `docs/product-policy.md` for scope and limitations.
