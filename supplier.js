@@ -32,9 +32,9 @@ function renderSupplierCards(items,append=false){
       <button class="favorite-button compare-button" data-compare-toggle="${p.id}" data-name="${esc(p.name)}" data-image="${esc(p.image||'')}" aria-label="${esc(p.name)} — харьцуулах" title="Харьцуулах">${icon('compare')}</button>
       <div class="supplier-card-copy">
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
-        <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>Шууд захиалга</span>'}</div>
-        <p class="supplier-delivery-note">Хүргэлт нэмэгдэнэ</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?'≈ '+money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${priced?'<small>Үлдэгдэлтэй хувилбараас</small>':approx?(soldOut?'<small>Одоогоор захиалах боломжгүй</small>':'<small>-аас · нарийн үнэ хувилбараас</small>'):''}</div></div>
+        <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
+        <p class="supplier-delivery-note">Карго тусдаа</p>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');

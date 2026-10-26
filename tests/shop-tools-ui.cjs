@@ -12,7 +12,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  assert.match(await page.locator('#supplier-status').innerText(),/нийт 250 үр дүн/);
  // Hovering a card warms its product details before the click.
  const warmed=page.waitForRequest(r=>r.url().includes('action=supplier-product')&&r.url().includes('tb-300000002'),{timeout:5000});await page.locator('.supplier-card a.supplier-photo').nth(1).hover();await warmed;
- const approxCard=await page.locator('.supplier-card').nth(2).locator('.supplier-card-price').innerText();assert.ok(approxCard.includes('≈ 9,900')&&approxCard.includes('-аас'),'Unverified card shows an approximate price: '+approxCard);
+ const approxCard=await page.locator('.supplier-card').nth(2).locator('.supplier-card-price').innerText();assert.ok(approxCard.includes('9,900')&&approxCard.includes('-аас'),'Unverified card shows an approximate price: '+approxCard);
  // The home page has a single category row (in the catalog); the empty kids-shoes category is gone.
  assert.equal(await page.locator('#quick-categories').count(),0);assert.equal(await page.locator('#category-grid').count(),0);
  assert.equal(await page.locator('.catalog-category-list').count(),1);assert.equal(await page.locator('.catalog-category-list [data-catalog-category="kids-shoes"]').count(),0);

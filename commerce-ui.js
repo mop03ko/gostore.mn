@@ -8,8 +8,8 @@ window.commerceUI = (() => {
   };
   const timingText = () => 'Ирэх өдөр одоогоор баталгаажаагүй. Нийлүүлэгчийн илгээлт, хил, тээврээс хамаарна. Явцыг Миний захиалгууд хэсгээс хянана.';
   // A SKU may be one piece, a pair or a pack. Do not infer a pack size from a title.
-  const unit = 'захиалгын нэгж';
-  const unitHelp = 'Тоо нь сонгосон хувилбарын захиалгын нэгж. Багцын бүрдлийг сонголтын нэр, үзүүлэлтээс шалгана уу.';
+  const unit = 'ш';
+  const unitHelp = 'Тоо нь сонгосон хувилбарын ширхэг. Багцын бүрдлийг сонголтын нэр, үзүүлэлтээс шалгана уу.';
   function estimate(items, s = settings()) {
     const rate = Number(s.cny_rate);
     if (!(rate > 0) || !items.length || items.some(i => !(Number(i.cny) > 0) || !Number.isInteger(i.qty))) return null;
