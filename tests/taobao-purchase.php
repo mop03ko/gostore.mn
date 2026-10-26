@@ -35,6 +35,7 @@ expect_error(fn()=>taobao_purchase_create('GS-AAA111'),409,'төлбөр орс�
 $set(['paid'=>true]);
 $next=[['status'=>400,'body'=>['error'=>'bad_request','reason'=>'Invalid items.']]];$calls=[];$r=taobao_purchase_create('GS-AAA111');
 check($r['purchase']['state']==='failed'&&$r['purchase']['error']==='Invalid items.'&&$calls[0]['json']['order_id']==='GS-AAA111','Rejected order must be retryable');
+check(taobao_reason(['error'=>'bad_request','reason'=>'Missing parameter','data'=>['sub_msg'=>'sku_id is required']],400)==='Missing parameter · sku_id is required'&&taobao_reason(null,502)==='HTTP 502','Provider detail must reach the admin');
 $next=[new ApiError('timeout',504)];$calls=[];$r=taobao_purchase_create('GS-AAA111');
 check($r['purchase']['state']==='review'&&$calls[0]['json']['order_id']==='GS-AAA111-2','Ambiguous result must wait for review with a new external number');
 expect_error(fn()=>taobao_purchase_create('GS-AAA111'),409,'шалгаж');

@@ -17,9 +17,15 @@ function taobao_buyer_public(): array {
         'auto_purchase'=>($s['auto_purchase']??false)===true,'receiver'=>taobao_receiver('GS-000000')];
 }
 // Provider reasons are short English codes; keep them readable for the admin without markup.
+// Taobao errors relayed by OT may name the missing field outside `reason`, so nearby detail fields are kept too.
 function taobao_reason(?array $body,int $status): string {
-    $reason=is_array($body)&&is_string($body['reason']??null)?$body['reason']:'HTTP '.$status;
-    return mb_substr(preg_replace('/[\x00-\x1F\x7F<>]/u','',$reason),0,200);
+    $parts=[];
+    foreach([$body,$body['error']??null,$body['data']??null,$body['details']??null] as $level){
+        if(!is_array($level))continue;
+        foreach(['reason','message','msg','sub_code','sub_msg','detail','error_description','code'] as $key)if(is_string($level[$key]??null)&&trim($level[$key])!=='')$parts[]=trim($level[$key]);
+    }
+    $reason=$parts?implode(' · ',array_unique($parts)):'HTTP '.$status;
+    return mb_substr(preg_replace('/[\x00-\x1F\x7F<>]/u','',$reason),0,400);
 }
 function taobao_oauth_tokens(array $body): array {
     foreach(['access_token','refresh_token'] as $key)if(!is_string($body[$key]??null)||$body[$key]===''||strlen($body[$key])>2000)fail('Taobao нэвтрэлтийн хариу танигдсангүй.',502);
