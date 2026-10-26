@@ -45,10 +45,12 @@ function paid_amount(array $result): int {
 function qpay_invoice(string $id): array {
     if (!qpay_ready()) fail('QPay merchant тохиргоо хүлээгдэж байна.',503);
     $validated=order_row($id)['order'];$verifiedUntil=PHP_INT_MAX;
+    product_policy_order_assert($validated);
     if(($validated['type']??'')==='checkout'&&!isset($validated['invoice']))$verifiedUntil=checkout_validate_payment($validated);
     $db=db(); $db->exec('BEGIN IMMEDIATE');
     try {
         $o=order_row($id)['order'];
+        product_policy_order_assert($o);
         if (($o['invoice']['state']??'')==='ready') { $db->exec('COMMIT'); return $o; }
         if (isset($o['invoice'])) fail('Нэхэмжлэлийн өмнөх оролдлогыг админ шалгах шаардлагатай.',409);
         if($verifiedUntil<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);

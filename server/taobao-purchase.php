@@ -92,6 +92,7 @@ function taobao_purchase_preview(string $id): array {
     return ['render'=>taobao_trim_payload($r['body'])];
 }
 function taobao_purchase_check(array $o): void {
+    product_policy_order_assert($o);
     if(!$o['paid']||in_array($o['status'],['cancelled','completed'],true))fail('Зөвхөн төлбөр орсон идэвхтэй захиалгыг Taobao-д захиална.',409);
     if(in_array($o['purchase']['state']??'',['creating','created','review'],true))fail('Энэ захиалгыг Taobao-д захиалсан эсвэл шалгаж байна.',409);
 }

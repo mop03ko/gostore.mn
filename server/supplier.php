@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/product-policy.php';
 require_once __DIR__.'/supplier-brands.php';
 require_once __DIR__.'/supplier-titles.php';
 require_once __DIR__.'/supplier-budget.php';
@@ -250,13 +251,16 @@ function supplier_discount_source(array $item): ?array {
     return $current!==null&&$original!==null&&$original>$current?['current_cny'=>$current,'original_cny'=>$original]:null;
 }
 function supplier_card_price(array $p,int $expires): array {
+    product_policy_assert($p);
     $p['discount_expires']=$p['discount_expires']??$expires;
     $english=supplier_title_read((string)($p['id']??''));
     if($english!==null)$p['name']=$english;
+    product_policy_assert($p);
     if(isset($p['name'])&&is_string($p['name']))$p['name']=supplier_clean_title($p['name']);
     try{$identity=supplier_identity($p['id']);}catch(ApiError){return $p;}
     $file=config()['data_dir'].'/supplier-cache/'.supplier_cache_key('/v1/'.$identity['provider'].'/product/'.$identity['number'],['language'=>supplier_language()]).'.json';
     $cache=is_file($file)?json_decode(file_get_contents($file),true):null;
+    if(is_array($cache['data']['Item']??null))product_policy_assert($cache['data']['Item']);
     if(is_array($cache)&&($cache['expires']??0)>time()&&empty($cache['stale'])&&isset($cache['data']['Item'])&&(string)($cache['data']['Item']['Id']??'')===($identity['provider']==='taobao'?$identity['number']:$p['id'])){
         $p=array_replace($p,supplier_stock_price($cache['data']['Item']));$expires=(int)$cache['expires'];
         $p['discount_source']=supplier_discount_source($cache['data']['Item']);$p['discount_expires']=$expires;
@@ -275,6 +279,7 @@ function supplier_card_price(array $p,int $expires): array {
     return $p;
 }
 function supplier_normalize(array $p,bool $detail=false,string $provider='alibaba1688'): array {
+    product_policy_assert($p);
     $rawId=(string)($p['Id']??'');$taobao=$provider==='taobao';
     if(!preg_match($taobao?'/^\d{5,20}$/D':'/^abb-\d{5,20}$/D',$rawId)||!empty($p['HasError'])||(!empty($p['ProviderType'])&&$p['ProviderType']!==($taobao?'Taobao':'Alibaba1688')))fail('Нийлүүлэгчийн барааны мэдээлэл буруу.',503);
     $id=$taobao?'tb-'.$rawId:$rawId;$identity=supplier_identity($id);
@@ -337,6 +342,7 @@ function supplier_search(array $b,bool $display=false): array {
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
     if(!in_array($sort,['default','price','-price','-volume','-updated_time'],true))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);
+    if(product_policy_text_blocked($q))return ['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false,'fetched'=>gmdate('c'),'stale'=>false,'cache_expires'=>0,'cache_ttl'=>0,'shipping'=>shipping_public()];
     if($q==='__all__'){if($display)supplier_snapshot_schedule();return supplier_snapshot_all($page,$sort,$range,$limit);}
     if($display&&!$range&&$limit===12){$snapshot=supplier_snapshot_search($q,$page,$sort);if($snapshot!==null){supplier_snapshot_schedule();return supplier_price_order_result($snapshot,$sort);}}
     $query=['language'=>supplier_language(),'item_title'=>$q,'page'=>$page,'limit'=>$limit,'sort'=>$sort];$rate=shipping_settings()['cny_rate'];
@@ -404,6 +410,7 @@ function supplier_search_result(array $c,int $page,int $limit=12): array {
 }
 function supplier_detail(string $id,bool $display=false,string $brandId='',bool $purchase=false): array {
     $identity=supplier_identity($id);
+    product_policy_assert(['id'=>$id]);
     if($brandId!==''){
         $brand=supplier_brand($brandId);if($identity['provider']!=='taobao')fail('Брэндийн барааны дугаар буруу.');
         $c=supplier_request('/service-json/BatchGetItemFullInfo',['language'=>supplier_language(),'itemId'=>$identity['number'],'blockList'=>'Promotions,Vendor,RootPath,Description,MostPopularVendorItems16'],$display);
@@ -413,6 +420,7 @@ function supplier_detail(string $id,bool $display=false,string $brandId='',bool 
     // Backoff, lock contention and network errors may return display cache. Never order from that fallback.
     $age=time()-(strtotime((string)($c['fetched']??''))?:0);
     if($purchase&&($age<0||$age>=SUPPLIER_PURCHASE_MAX_AGE||!empty($c['stale'])||$c['expires']<=time()))fail('Үнэ, үлдэгдлийг шинэчилж чадсангүй. Түр хүлээгээд дахин оролдоно уу.',409);
+    product_policy_assert(($c['data']['Item']??[])+['RootPath'=>$c['data']['RootPath']??[]]);
     $p=supplier_normalize($c['data']['Item']??[],true,$identity['provider']);if($p['id']!==$id)fail('Барааны дугаар таарахгүй байна.',503);
     $p['price_expires']=(int)$c['expires'];
     if($brandId!==''){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];$p['offers']=supplier_offers($c['data']['Item'],$c);$p['offers_available']=empty($c['data']['PromotionsError'])&&!$c['stale'];}

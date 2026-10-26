@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/product-policy.php';
 
 function config(): array {
     static $value;
@@ -135,7 +136,7 @@ function int_field(array $b,string $key,int $min,int $max): int {
 function products(bool $all=false): array {
     $rows=db()->query('SELECT data FROM products ORDER BY rowid')->fetchAll();
     $items=array_map(fn($r)=>json_decode($r['data'],true),$rows);
-    return array_values(array_filter($items,fn($p)=>empty($p['deleted_at']) && ($all || ($p['active']&&($p['type']!=='local'||config()['local_products_enabled'])))));
+    return array_values(array_filter($items,fn($p)=>empty($p['deleted_at']) && ($all || (!product_policy_blocked($p)&&$p['active']&&($p['type']!=='local'||config()['local_products_enabled'])))));
 }
 function order_row(string $id): array {
     $s=db()->prepare('SELECT * FROM orders WHERE id=?'); $s->execute([$id]); $r=$s->fetch();

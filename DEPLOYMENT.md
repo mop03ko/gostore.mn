@@ -1,5 +1,14 @@
 # cPanel суулгалт
 
+## Restricted catalog products — 2026-10-26
+
+- Removed the knife navigation entry and applied a shared restriction to supplier search (including brand/image results), detail, related products, cached snapshots, local inventory, checkout, invoice requests and supplier purchases. Browser favorites/cart/comparison displays are filtered; cache namespaces and asset versions changed. See `docs/product-policy.md` for scope and limitations.
+- The initial live snapshot contained 300 department entries, including eight identified restricted Taobao IDs. These IDs are explicitly denied even if renamed. Existing normalized snapshots are rebuilt from screened raw data. No schema, configuration, historical orders or payment records were edited.
+- Deployed 15 runtime files over verified FTPS with pre-change comparisons, remote backups, staged byte verification and per-file atomic rename. Backup: `/gostore-backups/product-policy-20261026-6bb44d3af3`. Prepared artifacts, audit snapshot and verification report remain in ignored `tmp/product-policy-deployment/`.
+- Live HTTPS: all seven public assets matched local bytes; four restricted queries returned zero products; all eight confirmed IDs returned 404. The mixed feed returned 266 products without a policy match; kitchen/tools/camping feeds also passed. Private PHP source returned 403. Live mobile browser confirmed the removed category, blocked detail with no purchase controls, no overflow and no JavaScript errors. No live orders/payments were created.
+- Passed isolated PHP suites: product policy, supplier errors/performance/snapshots/card prices/batches/English names, catalog filters, checkout/freshness, Taobao purchase, QPay/flow, freight payment and OT operator. Browser policy, supplier cache and checkout suites passed. PHP/JS syntax and diff checks passed.
+- Two older UI suites have unrelated stale assumptions: catalog navigation expects 10 brands and a flex layout (current site has 12 and a grid); product-page UI reaches the legacy `/p/chair` test after supplier assertions, but that demo product is removed by the existing migration. They were not reported as fully passing. New policy and live browser checks cover this change's category removal and blocked detail behavior.
+
 ## Google Analytics and Facebook domain verification
 
 - Deployed the tags from `2f0ac89` and `e825f0f` to `/public_html/index.html`: GA4 measurement ID `G-WLC1E39628` and Facebook domain verification value `ebt236r27oijorkmps2m2pz9vkr4t7`.

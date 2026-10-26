@@ -2,7 +2,7 @@
 // Isolated SQLite + fake QPay transport. Never uses real merchant credentials.
 $fixture=__DIR__.'/../tmp/qpay-flow-'.bin2hex(random_bytes(6));
 mkdir($fixture.'/server',0700,true);
-foreach(['bootstrap.php','qpay.php','config.example.php','seed.json'] as $file)copy(__DIR__.'/../server/'.$file,$fixture.'/server/'.$file);
+foreach(['product-policy.php','bootstrap.php','qpay.php','config.example.php','seed.json'] as $file)copy(__DIR__.'/../server/'.$file,$fixture.'/server/'.$file);
 file_put_contents($fixture.'/server/config.local.php','<?php return '.var_export([
     'data_dir'=>$fixture.'/data','site_url'=>'https://example.test',
     'qpay'=>['enabled'=>true,'environment'=>'sandbox','client_id'=>'test','client_secret'=>'fake','invoice_code'=>'TEST'],

@@ -6,7 +6,7 @@ function supplierRateText(s){return `${s.weight_step_kg} кг тутам ${money
 
 const SUPPLIER_FAVORITES_KEY='gostore-taobao-favorites-v1';
 function supplierCategoryQuery(id){return categories.find(c=>c.id===id)?.query||'__all__';}
-function supplierFavoriteItems(){try{const saved=JSON.parse(localStorage.getItem(SUPPLIER_FAVORITES_KEY)||'[]');return Array.isArray(saved)?saved.filter(p=>p&&/^tb-[0-9]{5,20}$/.test(p.id)).slice(0,100):[];}catch{return [];}}
+function supplierFavoriteItems(){try{const saved=JSON.parse(localStorage.getItem(SUPPLIER_FAVORITES_KEY)||'[]');return Array.isArray(saved)?saved.filter(p=>p&&/^tb-[0-9]{5,20}$/.test(p.id)&&!window.productPolicyBlocked(p)).slice(0,100):[];}catch{return [];}}
 const SUPPLIER_BATCH_SIZE=50;
 let supplierResults=[],supplierSaved=false,supplierLoadSequence=0,supplierMore=false;
 let supplierCategory=initialFilters.get('category')||(initialFilters.has('q')?categories.find(c=>c.query===supplierQuery)?.id||'':'all');
@@ -14,6 +14,7 @@ if(window.brandStorefront){supplierQuery='__all__';supplierCategory='';supplierI
 window.supplierFavoriteCount=()=>supplierFavoriteItems().length;
 window.clearSupplierFavorites=()=>{try{localStorage.removeItem(SUPPLIER_FAVORITES_KEY);if(supplierSaved)renderSupplierCards([]);return true;}catch{toast('Хөтөчийн хадгалсан мэдээллийг цэвэрлэж чадсангүй.');return false;}};
 function renderSupplierCards(items,append=false){
+  items=items.filter(p=>!window.productPolicyBlocked(p));
   const saved=new Set(supplierFavoriteItems().map(p=>p.id));
   const html=items.map((p,index)=>{
     const priced=p.price_status==='available'&&Number(p.price_expires)*1000>Date.now()&&Number(p.mnt)>0;

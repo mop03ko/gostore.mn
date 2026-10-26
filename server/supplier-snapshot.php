@@ -25,7 +25,7 @@ function supplier_snapshot_read(string $file): ?array {
     return is_array($data)?$data:null;
 }
 function supplier_snapshot_valid(?array $data): bool {
-    if(($data['version']??null)!==1||!is_int($data['generated_at']??null)||!is_int($data['next_refresh_at']??null))return false;
+    if(($data['version']??null)!==1||($data['product_policy']??null)!==PRODUCT_POLICY_VERSION||!is_int($data['generated_at']??null)||!is_int($data['next_refresh_at']??null))return false;
     foreach(supplier_warm_queries() as $q){$r=$data['records'][$q]??null;if(!is_array($r)||!is_array($r['products']??null)||!isset($r['fetched'],$r['cache_expires'],$r['more']))return false;}
     return true;
 }
@@ -41,7 +41,9 @@ function supplier_snapshot_search(string $q,int $page,string $sort): ?array {
     $record['stale']=(int)$record['cache_expires']<=time();
     $record['cache_ttl']=$record['stale']?0:max(0,(int)$record['cache_expires']-time());
     // Currency settings can change independently of the supplier snapshot.
-    $shipping=shipping_public();foreach($record['products'] as &$p)$p=supplier_card_price($p,(int)$record['cache_expires']);unset($p);
+    $shipping=shipping_public();$products=[];
+    foreach($record['products'] as $p){try{$products[]=supplier_card_price($p,(int)$record['cache_expires']);}catch(ApiError){}}
+    $record['products']=$products;
     $record['shipping']=$shipping;return $record;
 }
 // Round-robin cached departments so the landing page is not a single bag search.
@@ -58,8 +60,9 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[],int $limit
     }
     $products=[];$seen=[];$expires=PHP_INT_MAX;$fetched=null;
     for($i=0;$i<12;$i++)foreach($records as $record){
-        $p=$record['products'][$i]??null;if(!$p||isset($seen[$p['id']]))continue;
-        $seen[$p['id']]=true;$p=supplier_card_price($p,(int)$record['cache_expires']);$p['_position']=count($products);$products[]=$p;
+        $p=$record['products'][$i]??null;if(!$p||isset($seen[$p['id']])||product_policy_blocked($p))continue;
+        try{$p=supplier_card_price($p,(int)$record['cache_expires']);}catch(ApiError){continue;}
+        $seen[$p['id']]=true;$p['_position']=count($products);$products[]=$p;
         $expires=min($expires,(int)$record['cache_expires']);if($fetched===null||strcmp($record['fetched'],$fetched)<0)$fetched=$record['fetched'];
     }
     // The mixed storefront is filtered by the displayed MNT price; unknown prices are left out of a price filter.
@@ -106,11 +109,11 @@ function supplier_snapshot_build(int $maxJobs=26): array {
         $current=supplier_snapshot_current();
         if($current&&($current['title_language']??'')==='en'&&$current['next_refresh_at']>time())return ['status'=>'fresh','next_refresh_at'=>$current['next_refresh_at']];
         $state=supplier_snapshot_read($dir.'/work.json')??[];
-        if(($state['title_language']??'')!=='en')$state=[];
+        if(($state['title_language']??'')!=='en'||($state['product_policy']??null)!==PRODUCT_POLICY_VERSION)$state=[];
         if(($state['retry_at']??0)>time())return ['status'=>'cooldown','retry_at'=>$state['retry_at']];
         $interval=supplier_snapshot_interval();$queries=supplier_warm_queries();$records=[];
         foreach($queries as $q){$r=$state['records'][$q]??null;if(is_array($r)&&is_array($r['products']??null)&&(strtotime((string)($r['fetched']??''))?:0)>time()-$interval)$records[$q]=$r;}
-        $state=['title_language'=>'en','started_at'=>$state['started_at']??time(),'records'=>$records,'errors'=>[],'retry_at'=>0];$jobs=0;
+        $state=['title_language'=>'en','product_policy'=>PRODUCT_POLICY_VERSION,'started_at'=>$state['started_at']??time(),'records'=>$records,'errors'=>[],'retry_at'=>0];$jobs=0;
         foreach($queries as $q){
             if(isset($state['records'][$q]))continue;if($jobs++>=max(1,min(26,$maxJobs)))break;
             try{
@@ -123,7 +126,7 @@ function supplier_snapshot_build(int $maxJobs=26): array {
             supplier_snapshot_write($dir.'/work.json',$state);
         }
         if(count($state['records'])===count($queries)){
-            $snapshot=['version'=>1,'title_language'=>'en','generated_at'=>time(),'next_refresh_at'=>min(array_map(static fn($r)=>(strtotime($r['fetched'])?:0)+$interval,$state['records'])),'records'=>$state['records']];
+            $snapshot=['version'=>1,'product_policy'=>PRODUCT_POLICY_VERSION,'title_language'=>'en','generated_at'=>time(),'next_refresh_at'=>min(array_map(static fn($r)=>(strtotime($r['fetched'])?:0)+$interval,$state['records'])),'records'=>$state['records']];
             if(!supplier_snapshot_valid($snapshot))throw new RuntimeException('Incomplete snapshot');
             // The current version is replaced only after the entire new catalog is ready.
             if($current)supplier_snapshot_write($dir.'/previous.json',$current);

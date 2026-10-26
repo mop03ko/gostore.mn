@@ -176,6 +176,7 @@ try {
         if (!in_array($p['image'],['chair','headphones','backpack','sneakers','watch','lamp','skincare','living'],true) && !(preg_match('#^uploads/[a-f0-9]{32}$#',$p['image']) && is_file(__DIR__.'/../assets/'.$p['image'].'.jpg'))) fail('Зураг буруу.');
         $variants=$b['variants']??null; if (!is_array($variants)||count($variants)<1||count($variants)>30) fail('Хувилбар оруулна уу.');
         $p['variants']=array_values(array_unique(array_map(fn($v)=>str_field(['v'=>$v],'v',100),$variants)));$p['source']=$p['type']==='local'?'GOStore сонголт':'Хятад захиалга';
+        if($p['active'])product_policy_assert($p,400);
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
             $s=$db->prepare('SELECT data FROM products WHERE id=?');$s->execute([$id]);$existing=json_decode($s->fetchColumn()?:'{}',true);

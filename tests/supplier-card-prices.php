@@ -36,7 +36,7 @@ $sale['MasterQuantity']=10;unset($sale['Price']['PriceWithoutDiscountAndDelivery
 check(supplier_card_price($card,$expires)['card_discount']===null,'Fresh detail without a promotion supersedes old search discount');
 $records=[];foreach(supplier_warm_queries() as $i=>$q){$products=[];for($j=0;$j<3;$j++)$products[]=['id'=>'tb-'.(100000+$i*3+$j),'name'=>$q,'cny'=>10+$i,'mnt'=>1,'price_status'=>'available'];$records[$q]=['products'=>$products,'fetched'=>gmdate('c'),'cache_expires'=>time()+7200,'more'=>false];}
 $records['bag']['products'][0]=$records['home storage']['products'][0];
-$snapshot=['version'=>1,'generated_at'=>time(),'next_refresh_at'=>time()+7200,'records'=>$records];supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
+$snapshot=['version'=>1,'product_policy'=>PRODUCT_POLICY_VERSION,'generated_at'=>time(),'next_refresh_at'=>time()+7200,'records'=>$records];supplier_snapshot_write(supplier_snapshot_dir().'/current.json',$snapshot);
 $a=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'default'],true);$b=supplier_search(['q'=>'__all__','page'=>2,'sort'=>'default'],true);
 $mix=supplier_search(['q'=>'__all__','page'=>1,'sort'=>'-updated_time'],true);
 check(count($mix['products'])===12&&count(array_unique(array_column($mix['products'],'name')))===12,'All shows diverse departments');

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 $root=__DIR__.'/../tmp/freight-test-'.bin2hex(random_bytes(6));mkdir($root.'/server',0700,true);
-foreach(['bootstrap.php','qpay.php','logistics.php','freight-payment.php','config.example.php','seed.json'] as $file)copy(__DIR__.'/../server/'.$file,$root.'/server/'.$file);
+foreach(['product-policy.php','bootstrap.php','qpay.php','logistics.php','freight-payment.php','config.example.php','seed.json'] as $file)copy(__DIR__.'/../server/'.$file,$root.'/server/'.$file);
 file_put_contents($root.'/server/config.local.php','<?php return '.var_export(['data_dir'=>$root.'/data','site_url'=>'https://example.test','qpay'=>['enabled'=>true,'environment'=>'sandbox','client_id'=>'fake','client_secret'=>'fake','invoice_code'=>'TEST']],true).';');
 putenv('GOSTORE_DATA_DIR');putenv('GOSTORE_DISABLE_QPAY=0');
 $rows=[];$creates=0;$timeout=false;

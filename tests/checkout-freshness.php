@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // A copied application with fake credentials and fake QPay transport; no real payments.
 $root=__DIR__.'/../tmp/checkout-freshness-'.bin2hex(random_bytes(5));mkdir($root.'/server',0700,true);
-foreach(['bootstrap','shipping','supplier','supplier-brands','supplier-titles','supplier-budget','supplier-snapshot','checkout','qpay','config.example'] as $f)copy(__DIR__.'/../server/'.$f.'.php',$root.'/server/'.$f.'.php');
+foreach(['product-policy','bootstrap','shipping','supplier','supplier-brands','supplier-titles','supplier-budget','supplier-snapshot','checkout','qpay','config.example'] as $f)copy(__DIR__.'/../server/'.$f.'.php',$root.'/server/'.$f.'.php');
 copy(__DIR__.'/../server/seed.json',$root.'/server/seed.json');
 file_put_contents($root.'/server/config.local.php','<?php return '.var_export(['data_dir'=>$root.'/data','site_url'=>'https://example.test','otcommerce'=>['api_key'=>'fake'],'qpay'=>['enabled'=>true,'environment'=>'sandbox','client_id'=>'fake','client_secret'=>'fake','invoice_code'=>'TEST']],true).';');
 putenv('GOSTORE_DATA_DIR='.$root.'/data');putenv('GOSTORE_DISABLE_SUPPLIER_NETWORK=1');putenv('GOSTORE_DISABLE_QPAY=0');
@@ -21,4 +21,9 @@ seed(11,5);denied(fn()=>qpay_invoice('GS-FRESH'),409);check(!$calls,'Changed pri
 seed(10,1);denied(fn()=>qpay_invoice('GS-FRESH'),400);check(!$calls,'Insufficient stock does not reach QPay');
 seed(10,5);$ready=qpay_invoice('GS-FRESH');check($ready['invoice']['state']==='ready'&&$ready['amount']===$total&&count($calls)===2,'Validated invoice uses agreed total');
 seed(20,0,3600);$again=qpay_invoice('GS-FRESH');check($again['invoice']['id']==='fake-invoice'&&count($calls)===2,'Existing invoice remains idempotent and unchanged');
+foreach(['cart','supplier','checkout'] as $type){
+    $restricted=$o;$restricted['id']='GS-POLICY-'.$type;$restricted['type']=$type;$restricted['title']='Knife';
+    db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$restricted['id'],hash('sha256','token'),$restricted['id'],json_encode($restricted),$o['created'],$o['created']]);
+    denied(fn()=>qpay_invoice($restricted['id']),409);check(count($calls)===2,'Restricted order must not reach QPay');
+}
 echo "PASS invoice freshness: old data, changed price and insufficient stock block before QPay; current agreed price creates one invoice; issued invoice is immutable.\n";

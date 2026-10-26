@@ -2,7 +2,7 @@
 // Product comparison (up to four Taobao items) and header search suggestions.
 window.productCompare=(()=>{
   const KEY='gostore-compare-v1',MAX=4;
-  const read=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(p=>p&&/^(?:tb|abb)-[0-9]{5,20}$/.test(p.id)).slice(0,MAX):[];}catch{return [];}};
+  const read=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(p=>p&&/^(?:tb|abb)-[0-9]{5,20}$/.test(p.id)&&!window.productPolicyBlocked(p)).slice(0,MAX):[];}catch{return [];}};
   const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Хөтөч харьцуулах жагсаалт хадгалах боломжгүй байна.');return false;}sync();return true;};
   const has=id=>read().some(p=>p.id===id);
   function sync(){
@@ -60,7 +60,7 @@ window.productCompare=(()=>{
   const KEY='gostore-recent-searches-v1',list=document.createElement('div');
   list.id='search-suggest';list.className='search-suggest';list.setAttribute('role','listbox');list.setAttribute('aria-label','Хайлтын санал');list.hidden=true;form.append(list);
   input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-controls','search-suggest');input.setAttribute('aria-expanded','false');
-  const recent=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(s=>typeof s==='string'&&s.length<=100).slice(0,6):[];}catch{return [];}};
+  const recent=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(s=>typeof s==='string'&&s.length<=100&&!window.productPolicyBlocked(s)).slice(0,6):[];}catch{return [];}};
   const remember=q=>{q=q.trim();if(!q||/^https?:/i.test(q))return;try{localStorage.setItem(KEY,JSON.stringify([q,...recent().filter(s=>s.toLocaleLowerCase('mn')!==q.toLocaleLowerCase('mn'))].slice(0,6)));}catch{}};
   let options=[],active=-1;
   function build(){

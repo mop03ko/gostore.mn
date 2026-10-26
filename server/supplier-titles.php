@@ -84,7 +84,8 @@ function supplier_english_titles(array $cache,string $path,array $query,bool $di
     }
     $cache['data']=supplier_title_map($cache['data'],static function($item)use($titles,$provider){
         $id=supplier_title_id($item,$provider);
-        if($id!==null&&isset($titles[$id]))$item['Title']=$titles[$id];
+        // Keep restricted source titles intact so translation cannot bypass catalog policy.
+        if($id!==null&&isset($titles[$id])&&!product_policy_blocked($item))$item['Title']=$titles[$id];
         return $item;
     });
     return $cache;
