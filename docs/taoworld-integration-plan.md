@@ -4,6 +4,10 @@ Recommendation: introduce direct TaoWorld procurement alongside the existing OT 
 
 This is a research and implementation plan, not an enabled integration. Repository baseline: `aab9151`. The supplied welcome email confirms partner approval; it does not establish developer-app approval, API permissions, buyer authorization or payment-channel eligibility. No private credentials, live account configuration, real orders or payments were inspected or changed.
 
+## Status update — 2026-10-26
+
+Reported by the owner, not verified from the repository: the OT Commerce API subscription is active, and the TaoWorld purchasing account is ready with Alipay linked. This resolves the supplier-payment channel question for stage 0 (Alipay, not WorldFirst). It also makes the operator pilot's fallback concrete: the operator pays on the TaoWorld website with the linked Alipay, and GOStore records/queries that payment. Still open: developer-app registration and AppKey/AppSecret, granted API groups, buyer OAuth authorization, and whether `/purchase/order/batch/pay` can charge the linked Alipay via API.
+
 ## Business model and onboarding
 
 All four supplied Yuque guides were read in Chrome after the web reader could not access them. Their intended uses differ:
