@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Store release: copy, speed, cart sync, payment confirmation — 2026-10-27
+
+- Owner-authorized deployment of `aacc819` (store copy), `05fc926` (WOFF2 font and layout-shift fixes), `cfce7c8` (cross-device cart/saved sync, unpaid-order reminder, automatic payment confirmation) and the pending admin fixes `07806a2`/`97fb74f`. 25 runtime files: 22 changed, 3 new (`customer-sync.js`, `server/customer-state.php`, `assets/fonts/arimo-variable.woff2`). `coming-soon/index.html` is not on the live server and was not uploaded; `server/taobao-purchase.php` was already live.
+- All 22 live files matched `1565e63` before publishing; new paths did not exist. Published server files first and `index.html` last. Verified FTPS backup: `/gostore-backups/store-release-20261027-5169c85606`; staged and published bytes matched. The `customer_state` table is created by the existing `CREATE TABLE IF NOT EXISTS` bootstrap; no other schema, configuration, order or payment data changed.
+- Live HTTPS: 13 public files byte-identical to Git; private PHP 403; catalog API 200; `customer-state` 401 without a session; WOFF2 served as `font/woff2` with one-year immutable caching; `/v/…`, `/brands/nike`, `/cart`, `/help`, `/account` 200.
+- Live Chrome (390px with 4x CPU and ~2 MB/s throttling, plus 1440px): CLS 0 on home and product pages (previously 0.39 and 0.78), font transfer 87 KB (previously 269 KB), no JavaScript errors; warm mobile home FCP/LCP 0.72 s. Mobile product LCP remains 2.6–3.2 s because the 800px Taobao image dominates. Screenshots reviewed. No live orders, payments or accounts were created.
+- Tests: new `tests/customer-state.php` and `tests/customer-sync-ui.cjs`, plus 19 browser and 4 PHP regression suites, passed. Payment confirmation was exercised with a mocked paid response, not a real QPay transaction. `catalog-navigation-ui` still has its earlier stale 10-brand assumption.
+
 ## Taobao provider error details — 2026-10-27
 
 - Deployed only `server/taobao-purchase.php` from `b650b3e` after an admin saw `Missing parameter` from «Taobao тооцоо харах». Admin errors now include provider detail fields (`sub_msg`, `message`, `detail`…) next to `reason`, so the missing field can be identified. Request payloads were not changed.
