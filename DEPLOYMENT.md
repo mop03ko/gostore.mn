@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Early product request — 2026-10-27
+
+- Owner-authorized deployment of `fa1d3f7`: `store-server.js`, `product-page.js`, then `index.html`. Live files matched `cfce7c8` before publishing. Verified FTPS backup: `/gostore-backups/product-early-20261027-98be65f6dd`; staged, published and HTTPS bytes matched. No server, schema, configuration, order or payment changes.
+- Live Chrome at 390px with 4x CPU and ~2 MB/s throttling, two products, three runs: the single `supplier-product` request now starts at 0.26 s (previously 1.39–1.52 s), LCP 1.78–1.84 s (previously 2.77–2.79 s) and options are usable at 1.99–2.05 s (previously 2.26–2.84 s). Remaining LCP is bounded by deferred scripts executing.
+- Tests: new `tests/product-early-ui.cjs` and 17 related suites passed.
+
 ## Store release: copy, speed, cart sync, payment confirmation — 2026-10-27
 
 - Owner-authorized deployment of `aacc819` (store copy), `05fc926` (WOFF2 font and layout-shift fixes), `cfce7c8` (cross-device cart/saved sync, unpaid-order reminder, automatic payment confirmation) and the pending admin fixes `07806a2`/`97fb74f`. 25 runtime files: 22 changed, 3 new (`customer-sync.js`, `server/customer-state.php`, `assets/fonts/arimo-variable.woff2`). `coming-soon/index.html` is not on the live server and was not uploaded; `server/taobao-purchase.php` was already live.
