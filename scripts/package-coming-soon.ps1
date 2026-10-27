@@ -13,6 +13,7 @@ try {
         'assets/logo.png' = 'assets/logo.png'
         'assets/fonts/fonts.css' = 'assets/fonts/fonts.css'
         'assets/fonts/arimo-variable.ttf' = 'assets/fonts/arimo-variable.ttf'
+        'assets/fonts/arimo-variable.woff2' = 'assets/fonts/arimo-variable.woff2'
         'assets/fonts/OFL-Arimo.txt' = 'assets/fonts/OFL-Arimo.txt'
         '.htaccess' = '.htaccess'
     }

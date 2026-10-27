@@ -13,10 +13,11 @@
   font-weight: 700;
   font-display: swap;
 }
-/* Arimo by Google Fonts, SIL OFL 1.1; license: OFL-Arimo.txt. */
+/* Arimo by Google Fonts, SIL OFL 1.1; license: OFL-Arimo.txt.
+   The WOFF2 file keeps Latin, Cyrillic (incl. Mongolian), punctuation, currency and arrows. */
 @font-face {
   font-family: 'GOStore Sans';
-  src: url('./arimo-variable.ttf') format('truetype');
+  src: url('./arimo-variable.woff2?v=20261027-woff2') format('woff2'), url('./arimo-variable.ttf') format('truetype');
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
