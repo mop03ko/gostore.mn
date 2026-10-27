@@ -43,7 +43,9 @@ window.supplierApi=(()=>{
         const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taobao-policy1'});
         let response,result;
         for(let attempt=0;attempt<3;attempt++){
-          response=await fetch(url,{credentials:'omit'});result=await response.json();
+          // The first attempt may reuse the request index.html started before scripts loaded.
+          const early=attempt===0&&window.earlySupplierProduct?.url===url?window.earlySupplierProduct:null;if(early)window.earlySupplierProduct=null;
+          response=await(early?early.response.catch(()=>fetch(url,{credentials:'omit'})):fetch(url,{credentials:'omit'}));result=await response.json();
           if(response.ok||response.status!==503||result.code!=='supplier_busy'||attempt===2)break;
           // Retry only read-only lookups with a typed contention response, never orders/payments.
           await new Promise(resolve=>setTimeout(resolve,Math.min(4,Math.max(1,Number(result.retry_after)||2))*(attempt+1)*1000));

@@ -4,6 +4,18 @@
   <script>document.documentElement.classList.toggle("brand-page-view", /^\/brands\/(?:nike|adidas|puma|newbalance|uniqlo|zara|hm|thenorthface|sony|xiaomi|lego|ikea)\/?$/.test(location.pathname));document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script>
+  // Product pages: request the product and its main image while deferred scripts download.
+  // supplierApi() adopts this response; the resize rule mirrors supplierImageUrl() in store-server.js.
+  (()=>{const m=location.pathname.match(/^\/v\/((?:tb-)?[0-9]{5,20})\/?$/);if(!m||!window.fetch)return;
+  const id=m[1].startsWith('tb-')?m[1]:'abb-'+m[1],brand=new URLSearchParams(location.search).get('brand'),payload=brand?{id,brand}:{id};
+  const key='supplier-product:'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
+  try{if(JSON.parse(sessionStorage.getItem('gostore-supplier-cache-v5-policy1')||'[]').some(e=>e&&e.key===key&&e.expires>Date.now()&&e.data&&e.data.stale===false))return;}catch{}
+  const url='/api/index.php?'+new URLSearchParams({action:'supplier-product',...payload,catalog:'taobao-policy1'}),response=fetch(url,{credentials:'omit'});
+  window.earlySupplierProduct={url,response};
+  window.earlySupplierImageUrl=source=>{const original=String(source||'');try{const u=new URL(original);if(u.protocol!=='https:'||!/(^|\.)alicdn\.com$/.test(u.hostname)||u.search||u.hash||!/^\/(?:imgextra|bao|tfs)\//.test(u.pathname)||!/\.(?:jpe?g|png)$/i.test(u.pathname)||/_[0-9]+x[0-9]+/.test(u.pathname))return original;return original+'_800x800q80.jpg_.webp';}catch{return original;}};
+  response.then(r=>r.ok?r.clone().json():null).then(d=>{const p=d&&d.product,src=p&&((p.images&&p.images[0])||p.image);if(!src||!/^https:\/\//.test(src))return;const img=new Image();img.fetchPriority='high';img.referrerPolicy='no-referrer';img.src=window.earlySupplierImageUrl(src);}).catch(()=>{});})();
+  </script>
   <meta name="facebook-domain-verification" content="ebt236r27oijorkmps2m2pz9vkr4t7" />
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-WLC1E39628"></script>
@@ -18,10 +30,10 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/styles.css?v=20261020-help">
-  <script src="/product-policy.js?v=20261026-policy1" defer></script><script src="/script.js?v=20261027-store" defer></script><script src="/commerce-ui.js?v=20261027-store" defer></script><script src="/store-server.js?v=20261027-sync" defer></script><script src="/account.js?v=20261019-commerce" defer></script><link rel="stylesheet" href="/catalog-navigation.css?v=20261027-cls"><script src="/catalog-navigation.js?v=20261027-cls" defer></script><link rel="stylesheet" href="/brand-page.css?v=20261020-clothing-brands"><script src="/brand-page.js?v=20261027-store" defer></script><script src="/supplier.js?v=20261027-sync" defer></script>
+  <script src="/product-policy.js?v=20261026-policy1" defer></script><script src="/script.js?v=20261027-store" defer></script><script src="/commerce-ui.js?v=20261027-store" defer></script><script src="/store-server.js?v=20261027-early" defer></script><script src="/account.js?v=20261019-commerce" defer></script><link rel="stylesheet" href="/catalog-navigation.css?v=20261027-cls"><script src="/catalog-navigation.js?v=20261027-cls" defer></script><link rel="stylesheet" href="/brand-page.css?v=20261020-clothing-brands"><script src="/brand-page.js?v=20261027-store" defer></script><script src="/supplier.js?v=20261027-sync" defer></script>
 <link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/fonts/fonts.css?v=20261027-woff2">
-<script src="/barcode.js?v=20261013-logistics" defer></script><script src="/cargo.js?v=20261027-sync" defer></script><script src="/checkout.js?v=20261027-store" defer></script><script src="/shop-tools.js?v=20261027-store" defer></script><script src="/account-page.js?v=20261017-account" defer></script><script src="/store-pages.js?v=20261027-sync" defer></script><link rel="stylesheet" href="/product-page.css?v=20261027-cls"><script src="/product-page.js?v=20261027-store" defer></script><script src="/customer-sync.js?v=20261027-sync" defer></script><link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=20261017-brand"><link rel="stylesheet" href="/commerce-ui.css?v=20261027-sync"></head>
+<script src="/barcode.js?v=20261013-logistics" defer></script><script src="/cargo.js?v=20261027-sync" defer></script><script src="/checkout.js?v=20261027-store" defer></script><script src="/shop-tools.js?v=20261027-store" defer></script><script src="/account-page.js?v=20261017-account" defer></script><script src="/store-pages.js?v=20261027-sync" defer></script><link rel="stylesheet" href="/product-page.css?v=20261027-cls"><script src="/product-page.js?v=20261027-early" defer></script><script src="/customer-sync.js?v=20261027-sync" defer></script><link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=20261017-brand"><link rel="stylesheet" href="/commerce-ui.css?v=20261027-sync"></head>
 <body>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
