@@ -8,6 +8,7 @@ const listing=spawnSync('git',['ls-files','-z'],{cwd:root,encoding:'utf8'});if(l
 const files=[...new Set([...listing.stdout.split('\0'),...fs.readdirSync(__dirname).map(f=>'tests/'+f)])].filter(f=>/\.(php|js|mjs|cjs)$/.test(f));
 for(const file of files){const result=spawnSync(file.endsWith('.php')?php:node,file.endsWith('.php')?['-l',file]:['--check',file],{cwd:root,encoding:'utf8',windowsHide:true});if(result.status!==0){failures++;console.error('FAIL syntax '+file+'\n'+result.stdout+result.stderr);}}
 console.log('Syntax checked '+files.length+' PHP/JavaScript files.');
+run(node,['scripts/bundle.cjs','--check'],'bundle-current');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/supplier-retry.cjs'],'supplier-retry');

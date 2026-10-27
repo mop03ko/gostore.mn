@@ -91,6 +91,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1
 
 ```text
 index.html / styles.css / script.js   Дэлгүүр, статик fallback
+app.js / app.css                    Дэлгүүрийн 16 скрипт, 6 stylesheet-ийн нэгтгэл (scripts/bundle.cjs)
 store-server.js                     Дэлгүүр ↔ PHP API
 admin/                              Удирдлагын дэлгэц
 api/index.php                       JSON API, эрхийн шалгалт
@@ -103,6 +104,16 @@ assets/uploads/                     Админы оруулсан зураг (Gi
 scripts/                            Ажиллуулах, багцлах хэрэгсэл
 tests/                              API ба төлбөрийн логикийн шалгалт
 ```
+
+## Скрипт ба CSS нэгтгэл
+
+Хостинг HTTP/1.1 (нэг домэйнд 6 зэрэг холболт) тул `index.html` нь эх файлуудыг биш `app.js`, `app.css`-ийг ачаална. Эх файлыг (`script.js`, `supplier.js`, `styles.css` г.м.) засаад дараах командыг заавал ажиллуулна; агуулгын hash-аар хувилбарын дугаар автоматаар шинэчлэгдэнэ. `tests/run-all.cjs` хуучирсан нэгтгэлийг алдаа гэж үзнэ.
+
+```powershell
+./tmp/tooling/node.exe scripts/bundle.cjs
+```
+
+Байршуулахдаа `app.js`, `app.css`, `index.html`-ийг нийтэлнэ. Admin, агуулахын панел, coming-soon хуудас тусдаа файлаа хэвээр ашиглана.
 
 ## Туршилт
 
