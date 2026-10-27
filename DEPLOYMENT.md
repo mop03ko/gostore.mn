@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## QPay bank grid and fit fixes — 2026-10-28
+
+- Owner-authorized deployment of `29d57b7` (`app.css`, `app.js`, `index.html`). Live files matched `fc96768` before publishing. Verified FTPS backup: `/gostore-backups/fit-20261028-e1321ee4af`; staged, published and HTTPS bytes matched; `/`, `/v/…`, `/brands/nike`, `/cart`, `/help`, `/account` 200.
+- Fixed: from 768px up, QPay bank buttons overflowed to the left of the invoice modal where most banks could not be reached; phones listed them in reverse. Live check rendered an 18-bank invoice client-side only (no order or payment): all 18 inside the modal, 2 columns at 320px, 4 at 768/1440px, `qPay хэтэвч` first. Also fixed the 761–1099px product buy bar, 320px account menu, cart remove target and the 320px progress label.
+- `tests/layout-audit-ui.cjs` (part of run-all) found no issues locally; the same audit on live home, two products, brand, cart and help pages at six widths found none. Real QPay bank lists may differ in names/count; the grid wraps any number.
+
 ## Bundled assets, lazy hidden images, brand shift — 2026-10-27
 
 - Owner-authorized deployments: `0215c09`/`896da2c` (one `app.js` + `app.css` instead of 16 scripts and 6 stylesheets, because the host serves HTTP/1.1; in-flight cart sync fix). Backup `/gostore-backups/bundle-20261027-bb41e4ab1a`. Then `fc96768` (lazy hero images/brand logos, homepage hero preload, brand page shift fix). Backup `/gostore-backups/lazy-20261027-1b0f08a6a4`. Each time live files matched the previous release before publishing; staged, published and HTTPS bytes matched. Source scripts remain on the server but are no longer referenced. No server, schema, configuration, order or payment changes.

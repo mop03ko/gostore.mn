@@ -16,9 +16,10 @@ function audit(){
     const cs=getComputedStyle(el);if(cs.display==='none'||cs.visibility==='hidden'||cs.opacity==='0')continue;
     const r=el.getBoundingClientRect();if(r.width<1||r.height<1)continue;
     // Find the nearest ancestor that clips horizontally; content outside it is not visible.
-    let clip=null;for(let p=el.parentElement;p&&p!==document.documentElement;p=p.parentElement){if(/(auto|scroll|hidden|clip)/.test(getComputedStyle(p).overflowX)){clip=p;break;}}
+    // Visible span is the intersection with every clipping ancestor (e.g. a thumbnail button inside a scroll row).
+    let clip=null,visibleRight=r.right,visibleLeft=r.left;
+    for(let p=el.parentElement;p&&p!==document.documentElement;p=p.parentElement){if(/(auto|scroll|hidden|clip)/.test(getComputedStyle(p).overflowX)){const pr=p.getBoundingClientRect();clip??=p;visibleRight=Math.min(visibleRight,pr.right);visibleLeft=Math.max(visibleLeft,pr.left);}}
     const c=clip?.getBoundingClientRect();
-    const visibleRight=c?Math.min(r.right,c.right):r.right,visibleLeft=c?Math.max(r.left,c.left):r.left;
     if(visibleRight>W+1||visibleLeft<-1)found.push('outside viewport: '+name(el)+' ['+Math.round(r.left)+'..'+Math.round(r.right)+']');
     if(modal&&modal.contains(el)&&el!==modal&&(visibleRight>box.right+1||visibleLeft<box.left-1))found.push('outside modal: '+name(el));
     const decorative=!!el.closest('[aria-hidden="true"]');
