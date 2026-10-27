@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Bundled assets, lazy hidden images, brand shift — 2026-10-27
+
+- Owner-authorized deployments: `0215c09`/`896da2c` (one `app.js` + `app.css` instead of 16 scripts and 6 stylesheets, because the host serves HTTP/1.1; in-flight cart sync fix). Backup `/gostore-backups/bundle-20261027-bb41e4ab1a`. Then `fc96768` (lazy hero images/brand logos, homepage hero preload, brand page shift fix). Backup `/gostore-backups/lazy-20261027-1b0f08a6a4`. Each time live files matched the previous release before publishing; staged, published and HTTPS bytes matched. Source scripts remain on the server but are no longer referenced. No server, schema, configuration, order or payment changes.
+- Live checks: `app.js` 59.5 KB and `app.css` 27 KB with Brotli and immutable caching; `/`, `/v/…`, `/brands/nike`, `/cart`, `/help`, `/account` 200. Chrome at 390px (4x CPU, ~2 MB/s) and 1440px: CLS 0 on home, product and brand pages, no JavaScript errors; product and brand pages no longer request homepage hero images. Mobile scripts finish at 0.64–0.69 s (previously 1.4–1.5 s); product options visible at 0.75 s on a cached product; home LCP 0.73 s mobile / 0.19 s desktop; brand LCP 0.77–0.86 s in repeat runs (one cold 2.8 s run).
+- After editing storefront JS/CSS run `node scripts/bundle.cjs`; `tests/run-all.cjs` fails on a stale bundle. Full suite passed except the known stale `catalog-navigation-ui`.
+
 ## Early product request — 2026-10-27
 
 - Owner-authorized deployment of `fa1d3f7`: `store-server.js`, `product-page.js`, then `index.html`. Live files matched `cfce7c8` before publishing. Verified FTPS backup: `/gostore-backups/product-early-20261027-98be65f6dd`; staged, published and HTTPS bytes matched. No server, schema, configuration, order or payment changes.
