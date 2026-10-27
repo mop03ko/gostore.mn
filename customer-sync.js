@@ -24,9 +24,12 @@
     window.updateCounts?.();
   }
   async function push(lists){
-    const body={};for(const k of lists)body[k===CART?'cart':'favorites']=outgoing(k,read(k));
+    const body={},sent={};for(const k of lists){const items=read(k);sent[k]=hash(items);body[k===CART?'cart':'favorites']=outgoing(k,items);}
     const r=await shopApi('customer-state-save',body);
-    const m=mark();if(m&&m.customer===user?.id){m.version=r.version;for(const k of lists)m[k]=hash(read(k));setMark(m);}
+    // Mark what was sent, not what is stored now: edits made while the request was in flight
+    // must still differ from the mark so the next debounce pushes them.
+    const m=mark();if(m&&m.customer===user?.id){m.version=r.version;Object.assign(m,sent);setMark(m);}
+    if(lists.some(k=>hash(read(k))!==sent[k]))changedLocally();
   }
   async function sync(){
     if(!user||syncing)return syncing;

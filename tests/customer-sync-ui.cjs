@@ -31,6 +31,14 @@ const CART='gostore-taobao-cart-v1',FAV='gostore-taobao-favorites-v1';
  const server=await(await b.request.get(base+'/api/index.php?action=customer-state')).json();
  assert.deepEqual(server.cart.map(i=>i.id),['tb-987654321'],'Server keeps the removal');
 
+ // An edit made while a save is in flight must still reach the server.
+ await b.route(/action=customer-state-save/,async route=>{await new Promise(r=>setTimeout(r,1500));await route.continue();});
+ const first=saved(b);await b.evaluate(l=>taobaoCart.save([...taobaoCart.items(),l]),line('tb-555555555','In-flight bag'));
+ await b.waitForRequest(r=>r.url().includes('action=customer-state-save'));
+ const second=b.waitForResponse(r=>r.url().includes('action=customer-state-save')&&r.request().postData().includes('"cart":[{"id":"tb-987654321"')&&!r.request().postData().includes('tb-555555555'));
+ await b.evaluate(()=>taobaoCart.save(taobaoCart.items().filter(i=>i.id!=='tb-555555555')));await first;await second;await b.unroute(/action=customer-state-save/);
+ assert.deepEqual((await(await b.request.get(base+'/api/index.php?action=customer-state')).json()).cart.map(i=>i.id),['tb-987654321'],'In-flight edit is pushed afterwards');
+
  // Explicit logout leaves synced lists in the account, not on the device.
  await a.goto(base+'/account');const logout=a.locator('.account-logout');await logout.waitFor();await logout.click();
  await a.waitForFunction(()=>!customerAccount.user);
