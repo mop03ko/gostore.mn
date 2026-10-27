@@ -42,3 +42,6 @@
 .pd-buybar .pd-add{background:#eef0f4;border-color:#eef0f4;color:#263042}
 .pd-buybar .pd-buy{background:#ea580c;border-color:#ea580c;color:#fff}.pd-buybar .pd-buy:hover:not(:disabled){background:#c2410c;border-color:#c2410c}
 @media(max-width:760px){.pd-variant{grid-template-columns:auto 40px minmax(0,1fr) auto;gap:8px;padding:7px 8px}.pd-variant img,.pd-variant-noimg{width:40px;height:40px}.pd-variant-name{font-size:13px}}
+/* Between the stacked mobile bar and the wide desktop column the buy bar wraps: price on its own row. */
+.pd-buybar strong{white-space:nowrap}
+@media(min-width:761px) and (max-width:1099px){.pd-buybar{flex-wrap:wrap}.pd-buybar>div{flex:1 1 100%}.pd-buybar .button{flex:1 1 0;white-space:nowrap}}

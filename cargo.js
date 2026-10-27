@@ -19,7 +19,7 @@ const cargoGroup=o=>o.status==='cancelled'?'cancelled':o.status==='quoted'&&!o.p
 function cargoProgress(o){
   const stage={new:0,reviewing:0,quoted:0,confirmed:0,shipping:0,erenhot:1,erenhot_ready:1,erenhot_dispatched:2,zamyn_uud:2,ulaanbaatar_unsorted:3,ulaanbaatar:3,ready_pickup:3,ready_delivery:3,out_for_delivery:3,completed:4}[o.status];
   if(stage===undefined)return '';
-  return '<ol class="cargo-progress" aria-label="Ачааны явц">'+['Захиалсан',o.warehouse_names?.erenhot||'Эрээнд ирсэн','Замд',o.warehouse_names?.ulaanbaatar||'УБ-д ирсэн','Хүлээн авсан'].map((label,i)=>`<li class="${i<stage?'done':i===stage?'current':'pending'}" ${i===stage?'aria-current="step"':''}><span aria-hidden="true">${i<stage?'✓':i+1}</span>${esc(label)}</li>`).join('')+'</ol>';
+  return '<ol class="cargo-progress" aria-label="Ачааны явц">'+['Захиалсан',o.warehouse_names?.erenhot||'Эрээнд ирсэн','Замд',o.warehouse_names?.ulaanbaatar||'УБ-д ирсэн','Хүлээн авсан'].map((label,i)=>`<li class="${i<stage?'done':i===stage?'current':'pending'}" ${i===stage?'aria-current="step"':''} title="${esc(label)}"><span aria-hidden="true">${i<stage?'✓':i+1}</span>${esc(label.replace(/^Улаанбаатар(?= |$)/,'УБ'))}</li>`).join('')+'</ol>';
 }
 function cargoCards(){
   const rows=cargoList.filter(o=>(cargoFilter==='all'||cargoGroup(o)===cargoFilter)&&(!cargoQuery||(o.id+' '+o.title).toLowerCase().includes(cargoQuery.toLowerCase())));
@@ -37,7 +37,7 @@ storeServer.orders=async(offset=0)=>{
     refreshCargoNotifications().catch(()=>{});
   }catch(e){toast(e.message);}
 };
-function cargoPaymentHtml(invoice){return invoice?.state==='ready'?`<div class="cargo-payment"><img alt="QPay төлбөрийн QR" src="data:image/png;base64,${esc((invoice.qr_image||'').replace(/[^a-zA-Z0-9+/=]/g,''))}"><div class="form-actions">${(invoice.urls||[]).filter(x=>bankUrl(x.link)).map(x=>`<a class="button outline" href="${esc(bankUrl(x.link))}" rel="noopener noreferrer">${esc(x.description||x.name)}</a>`).join('')}</div></div>`:invoice?'<p class="form-error">Нэхэмжлэлийг админ шалгаж байна. Давтан төлбөр бүү үүсгээрэй.</p>':'';}
+function cargoPaymentHtml(invoice){return invoice?.state==='ready'?`<div class="cargo-payment"><img alt="QPay төлбөрийн QR" src="data:image/png;base64,${esc((invoice.qr_image||'').replace(/[^a-zA-Z0-9+/=]/g,''))}"><div class="bank-links" aria-label="Банкны аппаар төлөх">${(invoice.urls||[]).filter(x=>bankUrl(x.link)).map(x=>`<a class="button outline" href="${esc(bankUrl(x.link))}" rel="noopener noreferrer">${String(x.logo||'').startsWith('https://')?`<img src="${esc(x.logo)}" alt="" width="24" height="24" loading="lazy" referrerpolicy="no-referrer">`:''}<span>${esc(x.description||x.name)}</span></a>`).join('')}</div></div>`:invoice?'<p class="form-error">Нэхэмжлэлийг админ шалгаж байна. Давтан төлбөр бүү үүсгээрэй.</p>':'';}
 viewServerOrder=async(id,requestInvoice=false,action=null)=>{
   const request=++cargoRequest,r=savedRequests().find(x=>x.id===id)||{id,token:''};
   try{
