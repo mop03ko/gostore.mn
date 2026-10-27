@@ -20,7 +20,7 @@
   function saveForLater(items){
     let saved=[];try{saved=JSON.parse(localStorage.getItem(FAVORITES)||'[]');if(!Array.isArray(saved))saved=[];}catch{}
     const add=items.filter(i=>/^tb-/.test(i.id)&&!saved.some(s=>s.id===i.id)).map(i=>({id:i.id,name:i.name,image:i.image,mnt:null,approx_mnt:taobaoCart.unitMnt(i),price_status:'unverified'}));
-    try{localStorage.setItem(FAVORITES,JSON.stringify([...add,...saved].slice(0,100)));}catch{toast('Хөтөч хадгалах боломжгүй байна.');return false;}
+    try{localStorage.setItem(FAVORITES,JSON.stringify([...add,...saved].slice(0,100)));window.dispatchEvent(new Event('gostore-favorites-changed'));}catch{toast('Хөтөч хадгалах боломжгүй байна.');return false;}
     updateCounts();return true;
   }
   function renderCart(){

@@ -38,6 +38,7 @@ function db(): PDO {
         CREATE INDEX IF NOT EXISTS customer_orders_owner ON customer_orders(customer_id, created);
         CREATE TABLE IF NOT EXISTS customer_addresses (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(id), label TEXT NOT NULL, recipient TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL, updated TEXT NOT NULL);
         CREATE INDEX IF NOT EXISTS customer_addresses_owner ON customer_addresses(customer_id, created);
+        CREATE TABLE IF NOT EXISTS customer_state (customer_id TEXT PRIMARY KEY REFERENCES customers(id), cart TEXT NOT NULL, favorites TEXT NOT NULL, version INTEGER NOT NULL, updated TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS shipment_batches (id TEXT PRIMARY KEY, request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL, created TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS shipment_batch_orders (order_id TEXT PRIMARY KEY REFERENCES orders(id), batch_id TEXT NOT NULL REFERENCES shipment_batches(id));
         CREATE INDEX IF NOT EXISTS shipment_batch_members ON shipment_batch_orders(batch_id);

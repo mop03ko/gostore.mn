@@ -4,6 +4,7 @@ require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
+require __DIR__.'/../server/customer-state.php';
 require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
 require __DIR__.'/../server/ot-operator-http.php';
