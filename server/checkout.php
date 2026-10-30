@@ -33,12 +33,12 @@ function checkout_quote(array $lines): array {
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$shipping?false:$domestic<=0]+($shipping?['domestic'=>$shipping]:[]);
 }
 function checkout_public_quote(array $q): array {
-    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'cny_rate'=>$q['rates']['cny_rate'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
+    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'domestic_cny'=>$q['inputs']['domestic_cny'],'cny_rate'=>$q['rates']['cny_rate'],'service_percent'=>$q['rates']['service_percent'],'service_fee_mnt'=>$q['rates']['service_fee_mnt'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
 }
 function checkout_preview(array $b): array {
     customer_required();limit_attempts('checkout-quote:'.($_SERVER['REMOTE_ADDR']??''),60,3600);
     $lines=checkout_items($b,$verifiedUntil);$quote=checkout_quote($lines);if($verifiedUntil<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
-    return ['quote'=>checkout_public_quote($quote),'items'=>array_map(fn($l)=>array_intersect_key($l,array_flip(['id','sku','qty','unit_cny','price'])),$lines)];
+    return ['quote'=>checkout_public_quote($quote),'items'=>array_map(fn($l)=>array_intersect_key($l,array_flip(['id','sku','name','variant','qty','unit_cny','goods_cny','price'])),$lines)];
 }
 // Fills a new order with priced items; the shared order-create path assigns the ID and saves it.
 function checkout_order(array $b,array $o): array {

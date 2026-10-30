@@ -21,8 +21,9 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.locator('[data-tb-remove="2"]').click();await page.waitForFunction(()=>document.querySelectorAll('.cart-row').length===2);
  await open('522222222');await page.locator('[data-pd-add]').click();
  await page.locator('.header-actions [data-action=cart]').click();await page.locator('[data-tb-checkout]').click();await page.locator('#taobao-checkout-form').waitFor();
- // Goods 2×10 + 2×12 + 30 = 74 CNY = 40,700₮ (shown only in MNT); two sellers; domestic shipping is billed at cost on arrival by default.
- const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('40,700')&&!totals.includes('¥')&&totals.includes('2 дэлгүүр')&&totals.includes('УБ-д ирэхэд бодит дүнгээр'),totals);
+ // Goods 2×10 + 2×12 + 30 = 74 CNY = 40,700₮; show the source-price calculation and defer unknown shipping.
+ const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('40,700')&&totals.includes('¥74 × 550')&&totals.includes('2 дэлгүүр')&&totals.includes('Дараа тооцно'),totals);
+ assert.match(totals,/¥12 × 2 = ¥24/);assert.equal(await page.locator('.checkout-totals .calculation-items li').count(),3);
  assert.ok(await page.locator('#taobao-checkout-form [data-action=cart]').isVisible(),'Cart checkout can return to the cart');
  assert.equal(await page.locator('#taobao-checkout-form [name=address]').isVisible(),false,'Pickup is the default');
  for(const box of [await page.locator('.fulfillment-choice input').first().boundingBox(),await page.locator('.fulfillment-choice label').first().boundingBox()])assert.ok(box);const radio=await page.locator('.fulfillment-choice input').first().boundingBox(),label=await page.locator('.fulfillment-choice label').first().boundingBox();assert.ok(radio.width<=24&&radio.x-label.x<30,'Radio keeps native size at the start of its label');await page.locator('.fulfillment-choice').screenshot({path:'tmp/checkout-fulfillment.png'});
@@ -35,6 +36,7 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.waitForFunction(()=>document.querySelector('#cart-count').textContent==='0');
  assert.ok((await page.locator('.cargo-card').innerText()).includes('Төлбөр хүлээж байна'));await page.locator('.cargo-card [data-server-order]').first().click();await page.locator('.cargo-detail').waitFor();assert.ok((await page.locator('.cargo-detail').innerText()).includes('Төлөх хугацаа'));assert.equal(await page.locator('.cargo-items li').count(),3);assert.ok((await page.locator('.cargo-detail').innerText()).includes('Шуудангийн код: 14252-0024'),'Order shows the pickup address');
  assert.ok((await page.locator('#modal').innerText()).includes('Улаанбаатарт ирэхэд бодит жингээр'),'Cargo is billed later');
+ assert.match(await page.locator('.order-calculation').innerText(),/¥74 × 550/);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth));
  assert.deepEqual(errors,[]);console.log('PASS checkout: product add/buy-now buttons, cart lines/quantity/remove, seller-based domestic fee, upfront total, order with cargo later, 24 h due date, cart cleared, mobile modal.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

@@ -1,6 +1,6 @@
 // Customer estimates must match checkout rounding without replacing server validation.
 const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
-const ctx={window:{},document:{addEventListener(){}},money:n=>String(n)};
+const ctx={window:{},document:{addEventListener(){}},money:n=>String(n),esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')};
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../commerce-ui.js'),'utf8'),ctx);
 const ui=ctx.window.commerceUI,s={cny_rate:550,service_percent:5,service_fee_mnt:1000,domestic_default_cny:10};
 const items=[{id:'tb-111111',vendor_id:'a',cny:10,qty:2},{id:'tb-222222',vendor_id:'a',cny:12.5,qty:1}];
@@ -15,4 +15,9 @@ assert.ok(!ui.paymentText(s).includes('Дараа: Хятад доторх хү�
 q=ui.estimate(items,{...s,catalog_provider:'taoworld'});assert.equal(q.domestic,null);assert.equal(q.total,null);assert.equal(q.domesticLater,false,'Native shipping must be quoted before payment');
 assert.ok(!ui.paymentText({...s,catalog_provider:'taoworld',domestic_default_cny:0}).includes('Дараа: Хятад доторх хүргэлт'));
 assert.ok(!ui.unit.includes('ширхэг'),'SKU quantity must not pretend to be individual pieces');
+const snapshot={inputs:{goods_cny:32.5,domestic_cny:10,vendors:1},rates:s,breakdown:{goods_mnt:17875,domestic_mnt:5500,service_mnt:1894},total:25269};
+let html=ui.calculationHtml(snapshot,[{name:'<img onerror=alert(1)>',variant:'<b>test</b>',unit_cny:10,qty:2,goods_cny:20}]);
+assert.match(html,/17875 × 5% \+ 1000/);assert.match(html,/¥32.5 × 550/);assert.match(html,/1894/);assert.ok(!html.includes('<img')&&html.includes('&lt;img'),'Customer item names must remain text');
+ctx.window.storeServer={shipping:{...s,cny_rate:999}};assert.match(ui.calculationHtml(snapshot),/¥32.5 × 550/,'Orders show the saved rate');
+assert.match(ui.calculationHtml({...snapshot,domestic_later:true}),/Дараа тооцно/);assert.equal(ui.calculationHtml({breakdown:{},rates:{cny_rate:550},inputs:{}}),'','Incomplete old quotes must not display NaN');
 console.log('PASS commerce estimates: seller grouping, service fee, later domestic fee, old carts, rounding, payment copy and SKU units.');

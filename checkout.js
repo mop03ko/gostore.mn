@@ -7,7 +7,7 @@ window.taobaoCart=(()=>{
   const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Хөтөч сагс хадгалах боломжгүй байна.');return false;}updateCounts();window.dispatchEvent(new Event('gostore-cart-changed'));return true;};
   const rate=()=>Number(window.storeServer?.shipping?.cny_rate)||0;
   const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(Number((i.cny*rate()*i.qty).toFixed(8))):null;
-  let quote=null,checkoutToken='',selected=null;
+  let quote=null,quoteItems=[],checkoutToken='',selected=null;
   const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??''});
   function add(p,variant,qty){
     if(window.productPolicyBlocked(p)||window.productPolicyBlocked(variant)){toast('Энэ бараа худалдаанд байхгүй байна.');return false;}
@@ -36,7 +36,7 @@ window.taobaoCart=(()=>{
     if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
     openModal('Миний сагс',items.map(row).join('')+commerceUI.estimateHtml(items)+`<div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
   }
-  function breakdown(q){const b=q.breakdown;return `<div class="cart-totals checkout-totals"><div><span>Барааны үнэ</span><strong>${money(b.goods_mnt)}</strong></div><div><span>Хятад доторх хүргэлт · ${q.vendors} дэлгүүр</span>${q.domestic_later?'<span>УБ-д ирэхэд бодит дүнгээр</span>':`<strong>${money(b.domestic_mnt)}</strong>`}</div><div><span>Үйлчилгээний хураамж</span><strong>${money(b.service_mnt)}</strong></div><div><span>Олон улсын карго</span><span>УБ-д ирэхэд бодит жингээр</span></div><div class="total"><span>Одоо төлөх</span><strong>${money(q.total)}</strong></div></div>`;}
+  function breakdown(q){return `<div class="checkout-totals">${commerceUI.calculationHtml(q,quoteItems)}</div>`;}
   // «Худалдан авах» orders only the shown item; the cart button orders the saved cart.
   const ordering=()=>selected||read();
   const payload=()=>ordering().map(i=>({id:i.id,sku:i.sku,qty:i.qty}));
@@ -46,7 +46,7 @@ window.taobaoCart=(()=>{
     if(!ordering().length)return show();
     try{
       await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
-      quote=(await shopApi('checkout-quote',{items:payload()})).quote;
+      const priced=await shopApi('checkout-quote',{items:payload()});quote=priced.quote;quoteItems=priced.items;
     }catch(e){if(selected){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}show();const footer=$('.cart-footer');if(footer)footer.insertAdjacentHTML('beforebegin',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
     checkoutToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
     openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Улаанбаатар агуулахаас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Хүргэлтээр авах · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${pickupHtml()}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. ${quote.payment_window_hours} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. ${quote.domestic_later?'Хятад доторх хүргэлт болон олон улсын каргог':'Олон улсын каргог'} Улаанбаатарт ирэхэд бодит дүнгээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Төлөх · ${money(quote.total)}</button></div></form>`);

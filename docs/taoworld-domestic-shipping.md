@@ -24,6 +24,12 @@ Order creation verifies the displayed total and the receiver/account snapshot. B
 
 The paid-order worker still performs its independent final product/SKU/stock/render check before supplier purchase. Its existing goods-plus-domestic-shipping ceiling, approval requirement for excess cost, account/address pins and durable create/pay guards remain intact. A successful checkout quote does not itself create or pay a TaoWorld order.
 
+## Customer calculation display
+
+The cart shows the current indicative CNY conversion and service-fee formula. Checkout displays server-validated item names/options, unit CNY price × quantity, total goods CNY × the applied rate, domestic CNY × that rate, service percentage plus fixed fee, and the initial MNT payment total. Displayed totals come from the server; whole-MNT upward rounding is explained. Unknown domestic delivery remains explicitly deferred and known zero shipping remains zero.
+
+The order detail includes the original calculation using that order's saved rates and items, independent of current settings. Once final settlement exists, the original calculation is collapsed under its own label; the existing final bill continues to show charges, paid amount, outstanding balance and any overpayment. International cargo and optional UB delivery remain marked as later charges until measured/confirmed; they are not presented as free or as part of the initial payment. Supplier procurement costs and private account/receiver proofs are not displayed.
+
 ## Validation and remaining permission
 
 - Live logistics request: HTTP 200 with `code=API_CAN_NOT_USE`, no fee data. TaoWorld must enable or otherwise resolve access to this endpoint for GOStore's application. Successful live logistics output and its multi-item behavior remain unverified until access works.

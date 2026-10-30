@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Customer calculation details — 2026-10-30
+
+- Cart estimates now explain currency conversion and service fees. Checkout shows server-validated item/variant unit CNY × quantity, applied exchange rate, goods and domestic conversions, service percentage/fixed fee, rounded initial total and deferred cargo/UB delivery. The public quote adds only customer-facing values and selected item labels/totals.
+- Order details show the original calculation with saved rates, alongside the existing payment/final-settlement breakdown. Older incomplete quotes retain the existing bill without displaying invalid formulas. Supplier costs and private procurement proof remain hidden; monetary calculations, QPay and purchase rules are unchanged.
+- Passed checkout/native storefront/commerce/account browser suites; calculation rounding, saved-rate, escaped-label and incomplete-quote checks; native domestic/payment guards, PHP syntax, bundle and diff checks. Mobile calculation inspected visually, with overflow checks at 320/390/1280 px.
+- Deployed `server/checkout.php`, `app.css`, `app.js`, `index.html` with baseline/backup/hash checks. Backup: `/gostore-backups/customer-calculation-20261030-ea22e4b1a8`. Live read-only saved-quote audit confirmed public fields, unchanged historical total, redacted proof and four matching hashes. No orders, invoices or payments created; temporary audit endpoint removed.
+
 ## Native domestic shipping at checkout — 2026-10-30
 
 - Verified the logistics endpoint's documented address/identifier inputs and CNY-fen output. It has no SKU, quantity or cart aggregation inputs. Current app returns `API_CAN_NOT_USE`; requesting access remains necessary for successful reference queries. Checkout uses the working `/purchase/order/render` with exact mapped SKUs, quantities and stored Erenhot destination, summing shipping once per returned seller group. See `docs/taoworld-domestic-shipping.md` for evidence and limits.
