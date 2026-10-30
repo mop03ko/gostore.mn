@@ -17,5 +17,6 @@ const products=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday
  const more=page.locator('#category-suggestions > .discovery-more');if(await more.count()){await more.click();assert.equal(await more.getAttribute('aria-expanded'),'true');assert.ok(await page.locator('.category-photo-link:visible').count()>6);}
  await page.locator('[data-department=tech]').click();await page.locator('.category-recommendations .discovery-product').first().waitFor();assert.match(await page.locator('.category-suggestion-heading').innerText(),/Электроник/);
  fs.mkdirSync('output/discovery',{recursive:true});await page.screenshot({path:'output/discovery/web-categories.png'});await page.keyboard.press('Escape');await page.locator('[role=tab][data-discovery-tab=explore]').click();await page.locator('.discovery-home').scrollIntoViewIfNeeded();await page.screenshot({path:'output/discovery/web-home.png'});
+ await page.goto(base+'/cart');assert.equal(await page.locator('.discovery-home').count(),0,'Home discovery does not leak into cart routes');
  assert.deepEqual(errors,[]);console.log('PASS shared web discovery: photo categories, expansion, navigation, scoped free/unknown results, phone/desktop layout.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -19,7 +19,7 @@
  }
  if(suggestions)new MutationObserver(()=>{if(!suggestions.querySelector('.category-photo-link'))current='';decorateCategories();}).observe(suggestions,{childList:true});
  const flyout=document.querySelector('#hub-flyout');if(flyout)new MutationObserver(()=>{flyout.querySelectorAll('[data-hub-query]:not(.discovery-flyout-photo)').forEach(a=>{a.classList.add('discovery-flyout-photo');a.insertAdjacentHTML('afterbegin',image(photo(a.dataset.hubQuery)));});}).observe(flyout,{childList:true});
- const hub=document.querySelector('#home-hub');if(!hub)return;
+ const hub=document.querySelector('#home-hub');if(!hub||!/^\/(?:index\.html)?$/.test(location.pathname))return;
  const section=document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
  const tabs=[['explore','Танд зориулсан'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
  section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;hub.after(section);
