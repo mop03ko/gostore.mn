@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Site audit and native catalog fixes — 2026-10-30
+
+- Audited storefront, account/cart/checkout, QPay, native procurement, admin and warehouse paths with isolated API/browser suites. Added a native catalog-to-checkout browser fixture and provider-specific admin assertions; updated obsolete brand navigation expectations. See `docs/site-audit-2026-10-30.md` for scope and remaining limits.
+- Native catalog now honors the disabled switch even on cache hits, and applies per-IP limits before provider calls while retaining daily-budget reservation. Admin native mode reports current TTLs and hides legacy OT connection/purchase cards.
+- Deployed `server/taoworld-catalog.php`, `server/supplier-snapshot.php`, `admin/admin.js`, `admin/index.html` with baseline comparison, backup/stage verification and final SHA-256 comparison. Backup: `/gostore-backups/site-audit-20261030-faee952a7c`.
+- Live: nine routes and 36 assets passed; unauthenticated admin/warehouse/connect GET requests returned 401; private paths returned 403; database quick/foreign-key checks passed. QPay production, native authorization and automatic procurement remain enabled; scheduled worker heartbeat observed. No new live orders, invoices or payments created during this audit. Temporary audit endpoint removed.
+
 ## TaoWorld automation activation and paid pilot — 2026-10-30
 
 - Installed the two-minute CLI cron using the hosting user's `proc_open`/`crontab` access, preserving all three existing crontab lines. Backed up the original privately at `/gostore-data/taoworld/cron-before-20261030.txt`; verified the installed text and PHP 8.3.36 CLI. Observed independent scheduled heartbeats at 13:10:02, 13:12:09 and 13:14:02 (Asia/Ulaanbaatar).

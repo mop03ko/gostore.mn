@@ -3,6 +3,9 @@ declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
+function tw_catalog_require_ready(): void {
+    if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
+}
 
 function tw_catalog_dir(): string {
     $dir=taoworld_dir().'/catalog-'.substr(hash('sha256',taoworld_binding().':'.(taoworld_state()['account_id']??'')),0,16);
@@ -10,7 +13,7 @@ function tw_catalog_dir(): string {
     return $dir;
 }
 function tw_catalog_call(string $path,array $params,bool $purchase=false): array {
-    supplier_budget_take(false,$purchase);
+    supplier_limits(false,$purchase);
     $r=taoworld_http($path,$params+['access_token'=>taoworld_access_token()]);
     return tw_catalog_data($r);
 }
@@ -50,7 +53,7 @@ function tw_catalog_search_pages(array $params,int $first,int $last): array {
         }
         if($pending){
             $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT tw_catalog_batch_budget');
-            try{foreach($pending as $_)supplier_budget_take(false);$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
+            try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
             catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT tw_catalog_batch_budget');$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');throw $e;}
             $queries=array_map(fn($v)=>$v['query']+['access_token'=>$token],array_values($pending));$responses=taoworld_http_search_batch($queries);$failure=null;
             foreach(array_keys($pending) as $i=>$n){
@@ -108,6 +111,7 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
 }
 function tw_catalog_response(array $data,int $time,int $ttl): array {return $data+['fetched'=>gmdate('c',$time),'stale'=>false,'cache_expires'=>$time+$ttl,'cache_ttl'=>max(0,$time+$ttl-time()),'shipping'=>shipping_public()];}
 function tw_catalog_detail(string $id,bool $purchase=false,string $brand=''): array {
+    tw_catalog_require_ready();
     if($brand!=='')supplier_brand($brand);
     product_policy_assert(['id'=>$id]);$resource=tw_catalog_resource($id);
     $c=tw_catalog_cached('/traffic/item/get',$resource+['item_resource'=>'taobao','language'=>'en'],$purchase,['id'=>$id,'language'=>'en']);
@@ -120,6 +124,7 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
     return $cards;
 }
 function tw_catalog_search(array $b): array {
+    tw_catalog_require_ready();
     $limit=supplier_page_size($b);$page=int_field($b,'page',1,100);$q=str_field($b,'q',100,false)?:'home storage';
     if(($b['brand']??'')!=='')$q=supplier_brand(str_field($b,'brand',30))['name'];
     if($q==='__all__')$q='home storage';
@@ -138,6 +143,7 @@ function tw_catalog_search(array $b): array {
     return tw_catalog_response(['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_image(string $hash,int $page,int $limit): array {
+    tw_catalog_require_ready();
     $cache=tw_catalog_dir().'/image-'.$hash.'.json';$c=supplier_snapshot_read($cache);$h=null;
     try{
         if(!tw_catalog_fresh($c,600)){

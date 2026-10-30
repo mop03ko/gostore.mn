@@ -98,6 +98,7 @@ function supplier_snapshot_run(int $maxJobs=26): array {
     return $result;
 }
 function supplier_snapshot_health(): array {
+    if(tw_catalog_enabled())return ['provider'=>'taoworld','enabled'=>supplier_ready(),'budget'=>supplier_budget_status(),'search_ttl'=>TW_CATALOG_SEARCH_TTL,'detail_ttl'=>300,'image_ttl'=>600,'checkout_ttl'=>SUPPLIER_PURCHASE_MAX_AGE];
     $dir=supplier_snapshot_dir();$run=supplier_snapshot_read($dir.'/health.json')??[];$cron=supplier_snapshot_read($dir.'/cron.json')??[];
     $snapshot=supplier_snapshot_current();$work=supplier_snapshot_read($dir.'/work.json')??[];
     return ['budget'=>supplier_budget_status(),'refresh_interval'=>supplier_snapshot_interval(),'last_run'=>$run['last_run']??null,'last_success'=>$run['last_success']??null,'status'=>$run['status']??'unknown','duration_ms'=>$run['duration_ms']??null,'cron_last_run'=>$cron['last_run']??null,'cron_status'=>$cron['status']??'unknown','cron_overdue'=>empty($cron['last_run'])||$cron['last_run']<time()-1800,'snapshot_generated'=>$snapshot['generated_at']??null,'next_refresh'=>$snapshot['next_refresh_at']??null,'building_categories'=>count($work['records']??[]),'errors'=>count($work['errors']??[])];
