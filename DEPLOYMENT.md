@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Taobao marketplace home and shop-grouped cart — 2026-10-31
+
+- Home first screen: category rows with hover/keyboard flyout, popular searches, banner and customer panel (order-stage shortcuts to ); phones get a two-row category grid and five tabs (Нүүр, Ангилал, Захиалга, Сагс, Миний). Brands follow the first screen; how-it-works/editorial blocks removed from the home page. Cart groups lines by shop with line/shop/all selection, estimates and orders only selected lines, and pins the total above the tab bar on phones. Cart lines keep , now whitelisted in .
+- New  suite plus updated storefront, mobile, collection, catalog-navigation and customer-state tests passed; layout audit 320–1440 px passed. Known unrelated failures remain in commerce-continuation, product-page-ui and store-pages-ui (they predate this change and expect the checkout breakdown text from before 4d7fab6).
+- Deployed , , ,  with baseline/backup/hash verification. Backup: . Public homepage at 1440/390 px showed 12 category rows / 10 phone tiles, 50 products, no overflow or JS errors;  returns 401 for guests.
+
 ## Compact homepage brands — 2026-10-30
 
 - Replaced tall brand tiles with compact logo/name links: six columns/two rows on desktop, four columns/three rows on mobile. All 12 brands remain visible without horizontal scrolling, with full-card touch targets and keyboard focus. Removed repeated action labels and the redundant subtitle; brand destinations remain unchanged.
