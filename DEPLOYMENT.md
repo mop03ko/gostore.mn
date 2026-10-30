@@ -1,5 +1,10 @@
 # cPanel суулгалт
 
+## Distinguish direct TaoWorld from OT authorization - 2026-10-30
+
+- Added a prominent direct TaoWorld connection card at the top of admin integrations, linking to `/api/taoworld/connect.php`. Explicitly labeled the existing OT purchase card and its connect/reconnect buttons as OT Commerce. The reported `apiauth.otdev.net` callback belongs to that existing OT flow; its authorization code was not opened, replayed or exchanged.
+- Updated the admin script cache version; isolated `ot-operator-ui` passed with direct-link and OT-label checks plus mobile layout. Deployed only `admin/admin.js` and `admin/index.html`; FTPS and HTTPS bytes matched. Backup: `/gostore-backups/taoworld-entry-20261030-f08ae2b068`. The direct connection page remains admin-gated (unauthenticated HTTP 401). The underlying OT callback-service error was not reproduced or claimed fixed.
+
 ## Direct TaoWorld authorization - 2026-10-30
 
 - Added an admin-only connection page at `/api/taoworld/connect.php` and the registered callback path `/api/taoworld/callback.php`. Supports one-use, session-bound OAuth state, signed code exchange, private token storage and explicit serialized refresh. The transport cannot call purchase/payment endpoints. Existing OT catalog and purchasing behavior are unchanged.
