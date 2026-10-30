@@ -22,7 +22,20 @@ const args=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','ex
   r=await ctx.request.post(base+'/api/taoworld/connect.php',{form:{action:'authorize',csrf:'wrong'},maxRedirects:0});assert.equal(r.status(),403);
   const csrf=await page.locator('[name=csrf]').first().inputValue();
   r=await ctx.request.post(base+'/api/taoworld/connect.php',{form:{action:'authorize',csrf},maxRedirects:0});assert.equal(r.status(),303);const auth=new URL(r.headers().location);assert.equal(auth.origin,'https://api.taobao.global');assert.equal(auth.searchParams.get('redirect_uri'),'https://gostore.mn/api/taoworld/callback.php');assert.ok(!auth.href.includes('PRIVATE-SENTINEL'));
-  const state=auth.searchParams.get('state');const other=await browser.newContext();await other.request.get(base+'/api/taoworld/callback.php?state='+state+'&code=synthetic');assert.ok(!fs.existsSync(path.join(fixture,'data/taoworld/auth.json')),'Different browser cannot authorize');await other.close();
+  // Exercise a real form click: APIRequestContext does not enforce browser CSP on redirects.
+  // CDP also intercepts redirected requests; Playwright route() only sees the first URL.
+  const cdp=await ctx.newCDPSession(page);await cdp.send('Fetch.enable',{patterns:[{urlPattern:'https://api.taobao.global/*',requestStage:'Request'}]});
+  cdp.on('Fetch.requestPaused',event=>cdp.send('Fetch.fulfillRequest',{requestId:event.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:'text/html'}],body:Buffer.from('<h1>Fixture authorization provider</h1>').toString('base64')}));
+  const violations=[];page.on('console',msg=>{if(msg.type()==='error')violations.push(msg.text());});
+  await page.exposeFunction('recordPolicyViolation',directive=>violations.push(directive));
+  await page.evaluate(()=>document.addEventListener('securitypolicyviolation',event=>window.recordPolicyViolation(event.effectiveDirective+': '+event.blockedURI)));
+  try{await Promise.all([
+   page.waitForURL('https://api.taobao.global/oauth/authorize?**',{timeout:5000}),
+   page.getByRole('button',{name:'TaoWorld дансаа холбох',exact:true}).click()
+  ]);}catch(e){await new Promise(resolve=>setTimeout(resolve,200));throw new Error('Authorization button did not reach provider: '+violations.join('\n')+'\n'+e.message);}
+  const clickedAuth=new URL(page.url());assert.equal(clickedAuth.searchParams.get('redirect_uri'),'https://gostore.mn/api/taoworld/callback.php');assert.doesNotMatch(clickedAuth.href,/PRIVATE-SENTINEL/);
+  assert.equal(await page.locator('h1').innerText(),'Fixture authorization provider');
+  const state=clickedAuth.searchParams.get('state');const other=await browser.newContext();await other.request.get(base+'/api/taoworld/callback.php?state='+state+'&code=synthetic');assert.ok(!fs.existsSync(path.join(fixture,'data/taoworld/auth.json')),'Different browser cannot authorize');await other.close();
   r=await ctx.request.get(base+'/api/taoworld/callback.php?state='+state+'&code=synthetic',{maxRedirects:0});assert.equal(r.status(),303);assert.equal(r.headers().location,'/api/taoworld/connect.php');assert.equal(r.headers()['referrer-policy'],'no-referrer');
   await page.goto(base+'/api/taoworld/connect.php');assert.match(await page.locator('main').innerText(),/холбогдсон/);assert.doesNotMatch(await page.content(),/PRIVATE-SENTINEL/);assert.match((await page.request.get(base+'/api/taoworld/connect.php')).headers()['cache-control'],/no-store/);
   const saved=fs.readFileSync(path.join(fixture,'data/taoworld/auth.json'),'utf8');await ctx.request.get(base+'/api/taoworld/callback.php?state='+state+'&code=synthetic');assert.equal(fs.readFileSync(path.join(fixture,'data/taoworld/auth.json'),'utf8'),saved,'Replay does not change tokens');

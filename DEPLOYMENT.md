@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## TaoWorld authorization button redirect - 2026-10-30
+
+- Reproduced the inert connect button in Chrome: `form-action 'self'` blocked the POST's cross-origin OAuth redirect. Allowed the fixed `https://api.taobao.global` origin in the TaoWorld page's form policy.
+- Added an actual browser button-click regression check with an intercepted provider response, retaining admin/CSRF, callback, replay and private-token checks. The old policy failed with a CSP violation; the updated flow passed. PHP syntax and Git whitespace checks passed.
+- Deployed only `server/taoworld-web.php` after comparing the live baseline; backup `/gostore-backups/taoworld-csp-20261030-e16b040ae6`. Published bytes and the live HTTPS CSP header were verified. Unauthenticated access remains HTTP 401. Real buyer authorization and token exchange still require the owner's provider login.
+
 ## Distinguish direct TaoWorld from OT authorization - 2026-10-30
 
 - Added a prominent direct TaoWorld connection card at the top of admin integrations, linking to `/api/taoworld/connect.php`. Explicitly labeled the existing OT purchase card and its connect/reconnect buttons as OT Commerce. The reported `apiauth.otdev.net` callback belongs to that existing OT flow; its authorization code was not opened, replayed or exchanged.
