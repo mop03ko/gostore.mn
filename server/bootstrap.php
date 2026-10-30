@@ -16,6 +16,9 @@ function config(): array {
 function fail(string $message, int $status = 400): never { throw new ApiError($message, $status); }
 class ApiError extends RuntimeException {}
 function json_out(array $data, int $status = 200): never {
+    if(defined('GOSTORE_MOBILE_API')&&session_status()===PHP_SESSION_ACTIVE){
+        header('X-GOStore-Mobile-Token: '.session_id());$data['csrf']=$_SESSION['csrf']??null;
+    }
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -85,6 +88,10 @@ function limit_attempts(string $key, int $max, int $seconds): void {
 }
 function session_boot(string $realm = 'admin'): void {
     if (session_status()===PHP_SESSION_ACTIVE) return;
+    if(defined('GOSTORE_MOBILE_API')){
+        if($realm!=='customer')fail('Mobile action unavailable',403);
+        mobile_session_boot();return;
+    }
     session_name(match($realm){'customer'=>'gostore_customer','warehouse'=>'gostore_warehouse',default=>'gostore_session'});
     ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);

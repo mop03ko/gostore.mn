@@ -146,6 +146,22 @@ function customer_post(string $action,array $b): never {
         $_SESSION=[];session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
     }
     $c=customer_required();
+    if($action==='customer-delete'){
+        limit_attempts('customer-delete:'.$c['id'],5,900);
+        if(($b['confirmation']??'')!=='DELETE'||!password_verify(customer_password($b,'password'),$c['password_hash']))fail('Устгах баталгаажуулалт эсвэл нууц үг буруу.',400);
+        $db=db();$db->exec('BEGIN IMMEDIATE');
+        try{
+            // Keep the order relationship for fulfilment/accounting, but remove the login and profile.
+            // No deleted account can be recovered by re-registering the same email address.
+            $s=$db->prepare('UPDATE customers SET email=?,name=?,phone=?,address=?,password_hash=?,auth_version=auth_version+1,updated=? WHERE id=? AND auth_version=?');
+            $s->execute(['deleted-'.bin2hex(random_bytes(16)).'@invalid.example','Deleted account','','',password_hash(bin2hex(random_bytes(32)),PASSWORD_BCRYPT),gmdate('c'),$c['id'],$c['auth_version']]);
+            if($s->rowCount()!==1)fail('Дахин нэвтэрч оролдоно уу.',401);
+            $db->prepare('DELETE FROM customer_addresses WHERE customer_id=?')->execute([$c['id']]);
+            $db->prepare('DELETE FROM customer_state WHERE customer_id=?')->execute([$c['id']]);
+            $db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        $_SESSION=[];session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
+    }
     if($action==='customer-notifications-read'){
         $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);json_out(['ok'=>true]);
     }

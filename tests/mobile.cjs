@@ -1,0 +1,35 @@
+const assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;if(!base||!/^http:\/\/127\.0\.0\.1:\d+$/.test(base))throw Error('Isolated server required');
+function client(){let token='',csrf='';return {get token(){return token;},get csrf(){return csrf;},async call(action,body,options={}){const r=await fetch(base+'/api/mobile.php?action='+action,{method:body?'POST':'GET',headers:{...(token?{'X-GOStore-Mobile-Token':token}:{}),...(body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{}),...options},body:body?JSON.stringify(body):undefined});const t=r.headers.get('X-GOStore-Mobile-Token');if(t)token=t;const data=await r.json();if(data.csrf)csrf=data.csrf;return {status:r.status,data,headers:r.headers};}};}
+(async()=>{
+ const a=client(),b=client(),email='mobile-fixture@example.test',password='Mobile-fixture-2026';
+ let r=await a.call('customer-me');assert.equal(r.status,200);assert.equal(r.data.customer,null);assert.match(a.token,/^[a-zA-Z0-9,-]{26,128}$/);assert.equal(r.headers.get('set-cookie'),null);
+ const guest=a.token;
+ assert.equal((await a.call('dashboard')).status,404);assert.equal((await a.call('login',{email,password})).status,404);assert.equal((await a.call('taoworld-settings')).status,404);
+ assert.equal((await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'},{'X-CSRF-Token':'bad'})).status,403);
+ r=await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'});assert.equal(r.status,201);const customer=r.data.customer;assert.notEqual(a.token,guest);const first=a.token;
+ assert.equal((await fetch(base+'/api/mobile.php?action=customer-me',{headers:{'X-GOStore-Mobile-Token':guest}})).status,401);
+ r=await fetch(base+'/api/mobile.php?action=customer-me',{headers:{Cookie:'gostore_mobile='+a.token}});assert.equal((await r.json()).customer,null);
+ assert.equal((await a.call('customer-address-save',{label:'Home',recipient:'Fixture',phone:'99112233',address:'Test address',is_default:true})).status,200);
+ await b.call('customer-me');assert.equal((await b.call('customer-addresses')).status,401);
+ r=await a.call('checkout-quote',{items:[{id:'tb-123456789',sku:'blue',qty:2}]});assert.equal(r.status,200,JSON.stringify(r.data));const quote=r.data.quote;assert.equal(quote.breakdown.goods_mnt,11000);
+ const body={type:'checkout',title:'Mobile test',customer:'Fixture',family_name:'Test',phone:'99112233',fulfillment:'pickup',items:[{id:'tb-123456789',sku:'blue',qty:2}],expected_total:quote.total,require_account:true,token:'a'.repeat(64)};
+ assert.equal((await a.call('order-create',{...body,expected_total:1})).status,409);
+ r=await a.call('order-create',body);assert.equal(r.status,201,JSON.stringify(r.data));const order=r.data.order;assert.equal(order.paid,false);assert.equal(order.invoice,undefined);
+ r=await a.call('order-create',body);assert.equal(r.status,200);assert.equal(r.data.order.id,order.id);
+ assert.equal((await b.call('order-get',{id:order.id})).status,403);
+ assert.equal((await a.call('invoice',{id:order.id})).status,503,'QPay disabled in isolated test');
+ assert.equal((await a.call('customer-orders')).data.orders.length,1);
+ assert.equal((await b.call('customer-login',{email,password})).status,200);
+ assert.equal((await a.call('customer-password',{current_password:password,password:password+'new',password_confirm:password+'new'})).status,200);assert.notEqual(a.token,first);
+ assert.equal((await b.call('customer-addresses')).status,401);
+ assert.equal((await a.call('customer-delete',{password:'wrong',confirmation:'DELETE'})).status,400);
+ assert.equal((await a.call('customer-delete',{password:password+'new',confirmation:'DELETE'})).status,200);
+ assert.equal((await a.call('customer-me')).data.customer,null);
+ assert.equal((await a.call('customer-login',{email,password:password+'new'})).status,401);
+ assert.equal((await a.call('customer-register',{name:'New person',email,password,password_confirm:password,phone:'99112233'})).status,201);
+ assert.notEqual((await a.call('customer-me')).data.customer.id,customer.id);
+ assert.deepEqual((await a.call('customer-addresses')).data.addresses,[]);
+ assert.deepEqual((await a.call('customer-orders')).data.orders,[]);
+ console.log('PASS mobile session isolation, CSRF, rotation, checkout totals/idempotency, ownership, account deletion; no live payments');
+})().catch(e=>{console.error(e);process.exitCode=1;});

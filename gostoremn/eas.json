@@ -1,0 +1,9 @@
+{
+  "cli": { "version": ">= 18.0.0", "appVersionSource": "remote" },
+  "build": {
+    "preview": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } },
+    "simulator": { "extends": "preview", "ios": { "simulator": true } },
+    "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } }
+  },
+  "submit": { "production": { "android": { "track": "internal", "releaseStatus": "draft" } } }
+}
