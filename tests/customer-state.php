@@ -13,12 +13,13 @@ $c1=['id'=>'c1'];$c2=['id'=>'c2'];
 $empty=customer_state_get($c1);
 check($empty===['cart'=>[],'favorites'=>[],'version'=>0,'pending'=>[]],'New customer must start empty');
 
-$line=['id'=>'tb-123456789','sku'=>'555','qty'=>2,'name'=>"Үүргэвч\x07",'image'=>'https://img.alicdn.com/a.jpg','variant'=>'Хар','cny'=>12.5,'min_qty'=>1,'step'=>1,'stock'=>10,'vendor_id'=>'v1','extra'=>'drop'];
+$line=['id'=>'tb-123456789','sku'=>'555','qty'=>2,'name'=>"Үүргэвч\x07",'image'=>'https://img.alicdn.com/a.jpg','variant'=>'Хар','cny'=>12.5,'min_qty'=>1,'step'=>1,'stock'=>10,'vendor_id'=>'v1','vendor_name'=>"Hangzhou Store",'extra'=>'drop'];
 $r=customer_state_save($c1,['cart'=>[$line,$line,['id'=>'bad','sku'=>'1','qty'=>1,'min_qty'=>1,'step'=>1],['id'=>'tb-987654321','sku'=>'','qty'=>1,'min_qty'=>1,'step'=>1],
     ['id'=>'tb-111111111','sku'=>'1','qty'=>1,'min_qty'=>1,'step'=>1,'image'=>'javascript:alert(1)','name'=>'Plain']]]);
 check($r['version']===1&&count($r['cart'])===2,'Invalid and duplicate lines must be dropped');
 check($r['cart'][0]['name']==='Үүргэвч'&&!isset($r['cart'][0]['extra'])&&$r['cart'][0]['cny']===12.5,'Line fields must be whitelisted and cleaned');
 check($r['cart'][1]['image']==='','Only HTTPS image URLs are kept');
+check($r['cart'][0]['vendor_name']==='Hangzhou Store'&&$r['cart'][1]['vendor_name']==='','The shop name used by the grouped cart syncs, cleaned');
 check(customer_state_get($c1)['favorites']===[],'Saving the cart must keep favorites');
 
 // Restricted listings never sync back to another device.

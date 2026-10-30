@@ -11,7 +11,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    assert.equal(await page.locator('.mobile-notifications').isVisible(),true);assert.equal(await page.locator('.header-actions [data-action=account]').isVisible(),false);
    for(const selector of ['.mobile-notifications','#search-form button[type=submit]','.mobile-nav [data-action=cart]']){const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44&&box.width>=44,'Touch target '+selector);}
    assert.ok((await page.locator('#search').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16,'Input avoids iOS focus zoom');
-   await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=catalog]').getAttribute('aria-current')==='page');
+   await page.locator('.mobile-nav [data-open-categories]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=categories]').getAttribute('aria-current')==='page');await page.locator('#close-category-menu').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=home]').getAttribute('aria-current')==='page');await page.locator('#catalog').scrollIntoViewIfNeeded();
    assert.equal(Math.round((await page.locator('.header').boundingBox()).y),0,'Search header remains reachable');
    const input=await page.locator('#search').boundingBox(),button=await page.locator('#search-form button[type=submit]').boundingBox();assert.ok(Math.abs((input.y+input.height/2)-(button.y+button.height/2))<2,'Search action stays beside input');
    await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
@@ -22,8 +22,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-cargo.png'});
    await page.locator('#close-modal').click();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'cart','Close restores focus');
  }
- await page.setViewportSize({width:390,height:844});await page.locator('.mobile-nav [data-action=favorites]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=saved]').getAttribute('aria-current')==='page');
- await page.locator('.mobile-nav [data-mobile-tab=catalog]').click();await page.locator('.supplier-card').first().waitFor();assert.equal(await page.locator('#catalog [data-filter=all]').getAttribute('aria-pressed'),'true','Catalog tab exits saved filter');
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.mobile-nav [data-mobile-tab]').count(),5,'Five tabs');assert.equal(await page.locator('.mobile-nav [data-mobile-tab=orders]').getAttribute('href'),'/account');
  await page.locator('.mobile-nav [data-mobile-tab=home]').click();await page.screenshot({path:'tmp/mobile-redesign-home.png'});
  // Signed-in customers open the account page; its profile form must fit a short narrow screen.
  await page.locator('.mobile-nav [data-action=account]').click();await page.waitForURL(url=>url.pathname==='/account');await page.locator('.account-menu').waitFor();await page.screenshot({path:'tmp/mobile-redesign-account.png'});

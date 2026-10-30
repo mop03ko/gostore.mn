@@ -214,20 +214,19 @@ document.addEventListener('submit',event=>{
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){Object.assign(state,readState());updateCounts();renderProducts();if($('#modal').open)closeModal();}});
 $('#year').textContent=new Date().getFullYear();renderCategories();renderProducts();updateCounts();
 
-// Keep the mobile location indicator aligned with the visible catalog or dialog.
+// Keep the mobile tab bar (home, categories, orders, cart, account) aligned with the open page or dialog.
 (()=>{
- const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal');let scheduled=false;
+ const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal'),menu=document.querySelector('#category-menu');let scheduled=false;
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
-   const bounds=document.querySelector('#catalog').getBoundingClientRect();
-   let tab=bounds.top<innerHeight*.65&&bounds.bottom>140?(document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true'?'saved':'catalog'):'home';
+   let tab='home';
    if(location.pathname==='/cart')tab='cart';
-   if(location.pathname.startsWith('/account'))tab='account';
-   if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='account';else if(modal.querySelector('.account-form'))tab='account';}
+   if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
+   if(menu?.open)tab='categories';
+   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
- nav.addEventListener('click',e=>{if(e.target.closest('[data-mobile-tab=catalog]')&&document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true')window.supplierBrowse?.(document.querySelector('#supplier-query').value||'bag');});
- addEventListener('scroll',syncMobileNav,{passive:true});addEventListener('resize',syncMobileNav);addEventListener('hashchange',syncMobileNav);
- new MutationObserver(syncMobileNav).observe(modal,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
+ addEventListener('hashchange',syncMobileNav);
+ for(const dialog of [modal,menu].filter(Boolean))new MutationObserver(syncMobileNav).observe(dialog,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
 })();
 
 // Accessible category browser. Opening a department does not call the supplier API.
@@ -742,6 +741,61 @@ async function supplierImageSearch(file){
 document.addEventListener('click',e=>{if(e.target.closest('[data-image-search]')){$('#image-search-input').value='';$('#image-search-input').click();}});
 $('#image-search-input').addEventListener('change',e=>{const file=e.target.files?.[0];if(file)supplierImageSearch(file);});
 ;
+/* ==== home-hub.js ==== */
+'use strict';
+// Marketplace-style first screen: category rows with a hover flyout, popular searches,
+// the customer's order shortcuts and, on phones, a two-row grid of category shortcuts.
+// Every link is a real URL; plain clicks browse the catalog in place without a reload.
+(()=>{
+  const hub=document.querySelector('#home-hub');if(!hub)return;
+  const byId=id=>categories.find(c=>c.id===id);
+  // Each row reads as one phrase ("Эмэгтэй / Эрэгтэй хувцас"), so the labels are shorter than the category names.
+  const rows=[[['women','Эмэгтэй'],['men','Эрэгтэй хувцас']],[['women-shoes','Эмэгтэй'],['shoes','Эрэгтэй гутал']],[['bags','Цүнх'],['accessories','Аксессуар']],[['beauty','Гоо сайхан'],['health','Арчилгаа']],[['tech','Электроник'],['appliances','Цахилгаан']],[['home','Гэр ахуй'],['kitchen','Гал тогоо']],[['furniture','Тавилга'],['decor','Чимэглэл'],['lighting','Гэрэл']],[['baby','Нярай'],['kids','Хүүхэд'],['toys','Тоглоом']],[['sports','Спорт'],['outdoor','Аялал, амралт']],[['auto','Авто'],['tools','Багаж, засвар']],[['garden','Цэцэрлэг'],['pets','Амьтны хэрэгсэл']],[['office','Бичиг хэрэг, оффис']]]
+    .map(r=>r.map(([id,label])=>byId(id)&&{...byId(id),label}).filter(Boolean)).filter(r=>r.length);
+  // Short labels keep the phone grid to one line per tile.
+  const channels=[['women','👗','Эмэгтэй'],['men','👔','Эрэгтэй'],['shoes','👟','Гутал'],['bags','👜','Цүнх'],['beauty','💄','Гоо сайхан'],['tech','🎧','Техник'],['home','🏠','Гэр ахуй'],['kids','🧸','Хүүхэд'],['sports','🏃','Спорт']].filter(([id])=>byId(id));
+  const hot=[['Пүүз','men sneakers'],['Чихэвч','headphones'],['Үүргэвч','backpack'],['Даашинз','dress'],['Ухаалаг цаг','smart watch'],['Агаар шарагч','air fryer'],['Хадгалах хайрцаг','storage box'],['Арьс арчилгаа','skincare']];
+  const categoryHref=id=>'/?category='+encodeURIComponent(id)+'#catalog',queryHref=q=>'/?q='+encodeURIComponent(q)+'#catalog';
+
+  const cats=hub.querySelector('#hub-cats'),flyout=hub.querySelector('#hub-flyout');
+  cats.innerHTML=`<h2 class="hub-cats-title">${icon('grid')}Ангилал</h2><ul>${rows.map((r,i)=>`<li data-hub-row="${i}">${r.map(c=>`<a href="${categoryHref(c.id)}" data-hub-category="${esc(c.id)}"${c.label===c.name?'':` aria-label="${esc(c.name)}"`}>${esc(c.label)}</a>`).join('<span aria-hidden="true">/</span>')}</li>`).join('')}</ul>`;
+  hub.querySelector('#hub-channels').innerHTML=channels.map(([id,emoji,label])=>`<a href="${categoryHref(id)}" data-hub-category="${esc(id)}"><span aria-hidden="true">${emoji}</span>${esc(label)}</a>`).join('')+`<button type="button" data-hub-all-categories><span aria-hidden="true">${icon('grid')}</span>Бүгд</button>`;
+  hub.querySelector('#hub-hot').innerHTML=`<span>Түгээмэл хайлт</span>`+hot.map(([label,q])=>`<a href="${queryHref(q)}" data-hub-query="${esc(q)}">${esc(label)}</a>`).join('');
+
+  // Flyout: the row under the pointer (or keyboard focus) lists its subcategories.
+  let open=null,closeTimer=0;
+  function show(index){
+    clearTimeout(closeTimer);if(open===index)return;open=index;
+    cats.querySelectorAll('[data-hub-row]').forEach(li=>li.classList.toggle('active',li.dataset.hubRow===String(index)));
+    flyout.innerHTML=rows[index].map(c=>`<section><h3><a href="${categoryHref(c.id)}" data-hub-category="${esc(c.id)}">${esc(c.name)} ${icon('arrow')}</a></h3><div>${c.children.map(x=>`<a href="${queryHref(x.query)}" data-hub-query="${esc(x.query)}">${esc(x.name)}</a>`).join('')}</div></section>`).join('');
+    flyout.hidden=false;
+  }
+  function hide(){clearTimeout(closeTimer);open=null;flyout.hidden=true;cats.querySelectorAll('.active').forEach(li=>li.classList.remove('active'));}
+  const hideSoon=()=>{clearTimeout(closeTimer);closeTimer=setTimeout(hide,180);};
+  const hoverable=()=>matchMedia('(hover: hover) and (min-width: 761px)').matches;
+  cats.addEventListener('mouseover',e=>{const li=e.target.closest('[data-hub-row]');if(li&&hoverable())show(Number(li.dataset.hubRow));});
+  cats.addEventListener('focusin',e=>{const li=e.target.closest('[data-hub-row]');if(li&&getComputedStyle(cats).display!=='none')show(Number(li.dataset.hubRow));});
+  for(const el of [cats,flyout]){el.addEventListener('mouseleave',hideSoon);el.addEventListener('mouseenter',()=>clearTimeout(closeTimer));}
+  hub.addEventListener('focusout',e=>{if(!cats.contains(e.relatedTarget)&&!flyout.contains(e.relatedTarget))hide();});
+  hub.addEventListener('keydown',e=>{if(e.key==='Escape'&&!flyout.hidden){const row=cats.querySelector('.active a');hide();row?.focus();}});
+
+  hub.addEventListener('click',e=>{
+    if(e.target.closest('[data-hub-all-categories]')){document.querySelector('#category-trigger')?.click();return;}
+    const link=e.target.closest('[data-hub-category],[data-hub-query]');
+    if(!link||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||typeof window.supplierBrowse!=='function')return;
+    e.preventDefault();hide();
+    const c=link.dataset.hubCategory&&byId(link.dataset.hubCategory);
+    if(c)window.supplierBrowse(c.query,false,c.id);else window.supplierBrowse(link.dataset.hubQuery);
+    scrollCatalog();
+  });
+  hub.querySelector('[data-hub-register]')?.addEventListener('click',()=>window.customerAccount?customerAccount.open('register'):runAction('account'));
+
+  // Cart and saved counts follow the header badges.
+  const counts=()=>{for(const [key,source] of [['cart','#cart-count'],['favorites','#favorite-count']]){const from=document.querySelector(source),to=hub.querySelector(`[data-hub-count="${key}"]`);if(from&&to){to.textContent=from.hidden?'':from.textContent;}}};
+  for(const source of ['#cart-count','#favorite-count']){const el=document.querySelector(source);if(el)new MutationObserver(counts).observe(el,{childList:true,attributes:true,attributeFilter:['hidden']});}
+  counts();
+})();
+;
 /* ==== barcode.js ==== */
 'use strict';
 // Code 39: locally rendered, readable by standard USB/Bluetooth barcode scanners.
@@ -856,7 +910,7 @@ window.taobaoCart=(()=>{
   const rate=()=>Number(window.storeServer?.shipping?.cny_rate)||0;
   const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(Number((i.cny*rate()*i.qty).toFixed(8))):null;
   let quote=null,quoteItems=[],checkoutToken='',selected=null;
-  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??''});
+  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??'',vendor_name:String(p.vendor_name??'').slice(0,200)});
   function add(p,variant,qty){
     if(window.productPolicyBlocked(p)||window.productPolicyBlocked(variant)){toast('Энэ бараа худалдаанд байхгүй байна.');return false;}
     const items=read(),existing=items.find(i=>i.id===p.id&&i.sku===variant.id),next=(existing?.qty||0)+qty;
@@ -1064,7 +1118,8 @@ window.productCompare=(()=>{
   window.accountPage={active:!!match,go,show:()=>{}};
   if(!match)return;
   const groups={all:'Бүгд',payment:'Төлбөр хүлээж буй',transit:'Замд / Бэлтгэж байна',ready:'Авах / Хүргүүлэх',done:'Хүлээн авсан',cancelled:'Цуцлагдсан'};
-  let section=sections[match[1]]?match[1]:'orders',orders=null,filter='all',query='',editing=null;
+  const status=new URLSearchParams(location.search).get('status');
+  let section=sections[match[1]]?match[1]:'orders',orders=null,filter=Object.hasOwn(groups,status)?status:'all',query='',editing=null;
   const root=document.createElement('section');root.id='account-page';root.className='container account-page';document.querySelector('#main').prepend(root);
   document.title='Миний бүртгэл · gostore.mn';
   const content=()=>root.querySelector('#account-content');
@@ -1175,9 +1230,28 @@ window.productCompare=(()=>{
     try{localStorage.setItem(FAVORITES,JSON.stringify([...add,...saved].slice(0,100)));window.dispatchEvent(new Event('gostore-favorites-changed'));}catch{toast('Хөтөч хадгалах боломжгүй байна.');return false;}
     updateCounts();return true;
   }
+  // Lines are grouped by shop with a checkbox per line, per shop and for the whole cart; only
+  // the selected lines are estimated and ordered. Unchecked lines stay in the cart.
+  const lineKey=i=>i.id+'|'+i.sku,shopKey=i=>i.vendor_id?'v:'+i.vendor_id:'p:'+i.id;
+  const unpicked=new Set();
+  const picked=items=>items.filter(i=>!unpicked.has(lineKey(i)));
+  function cartLine(l){
+    const on=!unpicked.has(lineKey(l)),index=l.index;
+    return `<article class="store-cart-line"><label class="cart-check"><input type="checkbox" data-cart-pick="${index}" ${on?'checked':''} aria-label="${esc(l.name)} сонгох"></label>${/^https:\/\//i.test(l.image||'')?`<a href="${href(l.id)}" aria-label="${esc(l.name)}"><img src="${esc(l.image)}" alt="" referrerpolicy="no-referrer" loading="lazy"></a>`:'<span class="store-cart-noimage"></span>'}<div class="store-cart-info"><h3><a href="${href(l.id)}">${esc(l.name)}</a></h3><p>${esc(l.variant)}</p><p class="store-cart-unit">${l.unit===null?'Үнэ тооцоолно':money(l.unit)+' / ш'}</p><div class="store-cart-actions"><button type="button" class="text-button" data-compare-toggle="${esc(l.id)}" data-name="${esc(l.name)}" data-image="${esc(l.image||'')}">Харьцуулах</button>${/^tb-/.test(l.id)?`<button type="button" class="text-button" data-cart-save="${index}">Хадгалах</button>`:''}<button type="button" class="text-button danger" data-cart-remove="${index}">Хасах</button></div></div><div class="store-cart-qty"><div class="quantity-controls"><button type="button" data-cart-qty="${index}" data-delta="-1" aria-label="${esc(l.name)} тоог бууруулах" ${l.qty-l.step<l.min_qty?'disabled':''}>−</button><span>${l.qty}</span><button type="button" data-cart-qty="${index}" data-delta="1" aria-label="${esc(l.name)} тоог нэмэх" ${l.qty+l.step>Math.min(9999,l.stock??9999)?'disabled':''}>+</button></div><strong>${l.total===null?'—':money(l.total)}</strong></div></article>`;
+  }
   function renderCart(){
-    const items=taobaoCart.items(),lines=items.map(i=>{const unit=taobaoCart.unitMnt(i);return {...i,unit,total:unit===null?null:Math.ceil(Number((i.cny*Number(settings().cny_rate)*i.qty).toFixed(8)))};});
-    root.innerHTML=crumbs('Миний сагс')+`<h1 class="store-title">Миний сагс <span>${items.length} бараа</span></h1>`+(items.length?`<div class="store-cart"><div class="store-cart-lines"><p class="account-hint">${esc(commerceUI.unitHelp)}</p><div class="store-cart-tools"><button type="button" class="text-button" data-cart-save-all>Бүх барааг хадгалах</button><button type="button" class="text-button danger" data-cart-clear>Бүгдийг хасах</button></div>${lines.map((l,index)=>`<article class="store-cart-line">${/^https:\/\//i.test(l.image||'')?`<a href="${href(l.id)}" aria-label="${esc(l.name)}"><img src="${esc(l.image)}" alt="" referrerpolicy="no-referrer" loading="lazy"></a>`:'<span class="store-cart-noimage"></span>'}<div class="store-cart-info"><h3><a href="${href(l.id)}">${esc(l.name)}</a></h3><p>${esc(l.variant)}</p><p class="store-cart-unit">${l.unit===null?'Үнэ тооцоолно':money(l.unit)+' / ш'}</p><div class="store-cart-actions"><button type="button" class="text-button" data-compare-toggle="${esc(l.id)}" data-name="${esc(l.name)}" data-image="${esc(l.image||'')}">Харьцуулах</button>${/^tb-/.test(l.id)?`<button type="button" class="text-button" data-cart-save="${index}">Хадгалах</button>`:''}<button type="button" class="text-button danger" data-cart-remove="${index}">Хасах</button></div></div><div class="store-cart-qty"><div class="quantity-controls"><button type="button" data-cart-qty="${index}" data-delta="-1" aria-label="${esc(l.name)} тоог бууруулах" ${l.qty-l.step<l.min_qty?'disabled':''}>−</button><span>${l.qty}</span><button type="button" data-cart-qty="${index}" data-delta="1" aria-label="${esc(l.name)} тоог нэмэх" ${l.qty+l.step>Math.min(9999,l.stock??9999)?'disabled':''}>+</button></div><strong>${l.total===null?'—':money(l.total)}</strong></div></article>`).join('')}</div><aside class="store-cart-summary"><h2>Захиалгын хураангуй</h2>${commerceUI.estimateHtml(items,settings())}<button type="button" class="button blue store-cart-checkout" data-tb-checkout>Захиалга үргэлжлүүлэх ${icon('arrow')}</button><p class="account-hint">Захиалахад QPay-ээр ${Number(settings().payment_window_hours)||24} цагийн дотор төлнө. Бараагаа Улаанбаатар агуулахаас авах эсвэл хүргүүлж болно.</p><div class="store-help-card"><strong>Тусламж хэрэгтэй юу?</strong><p>Захиалгатай холбоотой асуултаа бидэнд илгээгээрэй.</p>${phone()?`<a class="text-button" href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:''}<a class="text-button" href="mailto:shop@gostore.mn">shop@gostore.mn</a></div></aside></div>`:`<div class="account-empty">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><a class="button blue" href="/#catalog">Бараа үзэх</a></div>`);
+    const items=taobaoCart.items(),lines=items.map((i,index)=>{const unit=taobaoCart.unitMnt(i);return {...i,index,unit,total:unit===null?null:Math.ceil(Number((i.cny*Number(settings().cny_rate)*i.qty).toFixed(8)))};});
+    for(const k of [...unpicked])if(!items.some(i=>lineKey(i)===k))unpicked.delete(k);
+    const shops=[];for(const l of lines){const k=shopKey(l);let g=shops.find(x=>x.key===k);if(!g)shops.push(g={key:k,name:'',lines:[]});g.lines.push(l);g.name||=String(l.vendor_name||'').trim();}
+    const chosen=picked(items),all=chosen.length===items.length,q=chosen.length?commerceUI.estimate(chosen,settings()):null,pay=q?.total??q?.goods??null;
+    const checkbox=(attr,list,label)=>{const on=list.filter(i=>!unpicked.has(lineKey(i))).length;return `<input type="checkbox" ${attr} ${on===list.length?'checked':''} ${on&&on<list.length?'data-mixed':''} aria-label="${esc(label)}">`;};
+    const checkout=chosen.length?`<button type="button" class="button blue store-cart-checkout" ${all?'data-tb-checkout':'data-cart-checkout-picked'}>Төлбөр тооцох (${chosen.length}) ${icon('arrow')}</button>`:'<button type="button" class="button blue store-cart-checkout" disabled>Бараа сонгоно уу</button>';
+    // The pinned phone bar repeats the summary action under its own class; it orders the same selection.
+    const barCheckout=`<button type="button" class="button blue store-cart-bar-go" data-cart-checkout-picked ${chosen.length?'':'disabled'}>Төлбөр тооцох${chosen.length?' ('+chosen.length+')':''}</button>`;
+    const shop=g=>`<section class="store-cart-shop"><header><label class="cart-check">${checkbox(`data-cart-shop="${esc(g.key)}"`,g.lines,(g.name||'Дэлгүүр')+' — бүх барааг сонгох')}<span>${icon('bag')}${esc(g.name||'Нийлүүлэгчийн дэлгүүр')}</span></label><small>${g.lines.length} бараа</small></header>${g.lines.map(cartLine).join('')}</section>`;
+    root.innerHTML=crumbs('Миний сагс')+`<h1 class="store-title">Миний сагс <span>${items.length} бараа</span></h1>`+(items.length?`<div class="store-cart"><div class="store-cart-lines"><p class="account-hint">${esc(commerceUI.unitHelp)}</p><div class="store-cart-tools"><label class="cart-check cart-check-all">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгдийг сонгох</span></label><button type="button" class="text-button" data-cart-save-all>Бүх барааг хадгалах</button><button type="button" class="text-button danger" data-cart-clear>Бүгдийг хасах</button></div>${shops.map(shop).join('')}</div><aside class="store-cart-summary"><h2>Захиалгын хураангуй</h2><p class="store-cart-picked">Сонгосон: <strong>${chosen.length}</strong> / ${items.length} бараа</p>${chosen.length?commerceUI.estimateHtml(chosen,settings()):'<p class="account-hint">Тооцоо хийх бараагаа сонгоно уу.</p>'}${checkout}<p class="account-hint">Захиалахад QPay-ээр ${Number(settings().payment_window_hours)||24} цагийн дотор төлнө. Бараагаа Улаанбаатар агуулахаас авах эсвэл хүргүүлж болно.</p><div class="store-help-card"><strong>Тусламж хэрэгтэй юу?</strong><p>Захиалгатай холбоотой асуултаа бидэнд илгээгээрэй.</p>${phone()?`<a class="text-button" href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:''}<a class="text-button" href="mailto:shop@gostore.mn">shop@gostore.mn</a></div></aside></div><div class="store-cart-bar"><label class="cart-check">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгд</span></label><p><small>${q?.total!=null?'Одоо төлөх':'Барааны дүн'}</small><strong>${pay===null?'—':money(pay)}</strong></p>${barCheckout}</div>`:`<div class="account-empty">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><a class="button blue" href="/#catalog">Бараа үзэх</a></div>`);
+    root.querySelectorAll('[data-mixed]').forEach(i=>i.indeterminate=true);
+    document.documentElement.classList.toggle('store-cart-filled',!!items.length);
   }
   // ---------- Help & delivery ----------
   function renderHelp(){
@@ -1282,9 +1356,20 @@ window.productCompare=(()=>{
     if(b.dataset.cartRemove!==undefined){items.splice(Number(b.dataset.cartRemove),1);taobaoCart.save(items);renderCart();toast('Сагснаас хаслаа');return;}
     if(b.dataset.cartSave!==undefined){const index=Number(b.dataset.cartSave);if(saveForLater([items[index]])){items.splice(index,1);taobaoCart.save(items);renderCart();toast('Хадгалсан бараанд шилжүүллээ');}return;}
     if(b.hasAttribute('data-cart-save-all')){const rest=items.filter(i=>!/^tb-/.test(i.id));if(saveForLater(items)){taobaoCart.save(rest);renderCart();toast('Сагсны барааг хадгалсан бараанд шилжүүллээ');}return;}
+    if(b.hasAttribute('data-cart-checkout-picked')){const chosen=picked(items);if(chosen.length)taobaoCart.checkout('',chosen.length===items.length?null:chosen);return;}
     if(b.hasAttribute('data-cart-clear')){if(!confirm('Сагсны бүх барааг хасах уу?'))return;taobaoCart.save([]);renderCart();toast('Сагс хоосорлоо');}
   });
   root.addEventListener('input',e=>{if(e.target.id==='help-search')filterHelp();});
+  root.addEventListener('change',e=>{
+    const box=e.target;if(page!=='cart'||box.type!=='checkbox')return;
+    const items=taobaoCart.items(),set=(list,on)=>list.forEach(i=>on?unpicked.delete(lineKey(i)):unpicked.add(lineKey(i)));
+    if(box.hasAttribute('data-cart-all'))set(items,box.checked);
+    else if(box.dataset.cartShop)set(items.filter(i=>shopKey(i)===box.dataset.cartShop),box.checked);
+    else if(box.dataset.cartPick!==undefined){const i=items[Number(box.dataset.cartPick)];if(i)set([i],box.checked);}
+    else return;
+    // Re-rendering replaces the controls; keep keyboard focus on the same checkbox.
+    const focus=[...root.querySelectorAll('input[type=checkbox]')].indexOf(box);renderCart();root.querySelectorAll('input[type=checkbox]')[focus]?.focus({preventScroll:true});
+  });
   // The cart page stays in sync with changes from other tabs and from a completed checkout.
   window.addEventListener('storage',e=>{if(page==='cart'&&e.key===taobaoCart.key)renderCart();});
   window.addEventListener('gostore-cart-changed',()=>{if(page==='cart')renderCart();});

@@ -201,20 +201,19 @@ document.addEventListener('submit',event=>{
 window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){Object.assign(state,readState());updateCounts();renderProducts();if($('#modal').open)closeModal();}});
 $('#year').textContent=new Date().getFullYear();renderCategories();renderProducts();updateCounts();
 
-// Keep the mobile location indicator aligned with the visible catalog or dialog.
+// Keep the mobile tab bar (home, categories, orders, cart, account) aligned with the open page or dialog.
 (()=>{
- const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal');let scheduled=false;
+ const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal'),menu=document.querySelector('#category-menu');let scheduled=false;
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
-   const bounds=document.querySelector('#catalog').getBoundingClientRect();
-   let tab=bounds.top<innerHeight*.65&&bounds.bottom>140?(document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true'?'saved':'catalog'):'home';
+   let tab='home';
    if(location.pathname==='/cart')tab='cart';
-   if(location.pathname.startsWith('/account'))tab='account';
-   if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='account';else if(modal.querySelector('.account-form'))tab='account';}
+   if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
+   if(menu?.open)tab='categories';
+   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
- nav.addEventListener('click',e=>{if(e.target.closest('[data-mobile-tab=catalog]')&&document.querySelector('#catalog [data-filter=saved]').getAttribute('aria-pressed')==='true')window.supplierBrowse?.(document.querySelector('#supplier-query').value||'bag');});
- addEventListener('scroll',syncMobileNav,{passive:true});addEventListener('resize',syncMobileNav);addEventListener('hashchange',syncMobileNav);
- new MutationObserver(syncMobileNav).observe(modal,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
+ addEventListener('hashchange',syncMobileNav);
+ for(const dialog of [modal,menu].filter(Boolean))new MutationObserver(syncMobileNav).observe(dialog,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
 })();
 
 // Accessible category browser. Opening a department does not call the supplier API.

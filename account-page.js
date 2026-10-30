@@ -8,7 +8,8 @@
   window.accountPage={active:!!match,go,show:()=>{}};
   if(!match)return;
   const groups={all:'Бүгд',payment:'Төлбөр хүлээж буй',transit:'Замд / Бэлтгэж байна',ready:'Авах / Хүргүүлэх',done:'Хүлээн авсан',cancelled:'Цуцлагдсан'};
-  let section=sections[match[1]]?match[1]:'orders',orders=null,filter='all',query='',editing=null;
+  const status=new URLSearchParams(location.search).get('status');
+  let section=sections[match[1]]?match[1]:'orders',orders=null,filter=Object.hasOwn(groups,status)?status:'all',query='',editing=null;
   const root=document.createElement('section');root.id='account-page';root.className='container account-page';document.querySelector('#main').prepend(root);
   document.title='Миний бүртгэл · gostore.mn';
   const content=()=>root.querySelector('#account-content');

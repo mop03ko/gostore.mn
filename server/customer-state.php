@@ -34,7 +34,7 @@ function customer_state_cart(mixed $items): array {
         if($sku===''||$qty===null||$min===null||$step===null||isset($seen[$key]))continue;
         $line=['id'=>$i['id'],'sku'=>$sku,'qty'=>$qty,'name'=>customer_state_text($i['name']??null,500),'image'=>customer_state_url($i['image']??null),
             'variant'=>customer_state_text($i['variant']??null,300),'cny'=>customer_state_money($i['cny']??null),'min_qty'=>$min,'step'=>$step,
-            'stock'=>customer_state_int($i['stock']??null,0,100000000),'vendor_id'=>customer_state_text($i['vendor_id']??null,100)];
+            'stock'=>customer_state_int($i['stock']??null,0,100000000),'vendor_id'=>customer_state_text($i['vendor_id']??null,100),'vendor_name'=>customer_state_text($i['vendor_name']??null,200)];
         if(customer_state_blocked($line))continue;
         $seen[$key]=true;$out[]=$line;
     }

@@ -10,7 +10,7 @@ The storefront now exposes the cart to guests, keeps the selected SKU through si
 - Sign-in resumes cart checkout or buy-now with the selected SKU and quantity. Closing sign-in cancels that continuation. Account authentication remains required; this release does not add SMS or guest order ownership.
 - Supplier quantities are labelled as order units, not assumed individual pieces. Raw SKU pack descriptions remain visible. No pack size is inferred from titles and no order quantity conversion is performed.
 - Recommended home order preserves the mixed department feed; search preserves supplier relevance. Ascending price is an explicit option. Unavailable items go last on the home feed.
-- Shorter hero, a horizontally scrolling brand row first on the home page, visible card actions, two-line names, category refinements and supplier-attributed sales counts.
+- Marketplace first screen (category rows with flyout, popular searches, banner, customer order shortcuts; phone category grid and five tabs), the brand row directly after it, visible card actions, two-line names, category refinements and supplier-attributed sales counts.
 - Compact, expandable SKU options without nested scrolling; selected SKU remains visible in the mobile purchase bar. Human-readable breadcrumbs and key facts near the description.
 - Delivery/returns/cancellation links near purchase controls, clear unknown-arrival wording and a tariff calculator. The calculator uses user-provided measurements and current rates; it is not a shipping quote or a promised final total.
 - Help explains evidence to submit for damage/shortage and identifies unknown refund outcomes without inventing a refund entitlement or deadline.

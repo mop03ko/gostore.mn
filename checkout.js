@@ -8,7 +8,7 @@ window.taobaoCart=(()=>{
   const rate=()=>Number(window.storeServer?.shipping?.cny_rate)||0;
   const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(Number((i.cny*rate()*i.qty).toFixed(8))):null;
   let quote=null,quoteItems=[],checkoutToken='',selected=null;
-  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??''});
+  const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??'',vendor_name:String(p.vendor_name??'').slice(0,200)});
   function add(p,variant,qty){
     if(window.productPolicyBlocked(p)||window.productPolicyBlocked(variant)){toast('Энэ бараа худалдаанд байхгүй байна.');return false;}
     const items=read(),existing=items.find(i=>i.id===p.id&&i.sku===variant.id),next=(existing?.qty||0)+qty;
