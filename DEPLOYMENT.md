@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Compact homepage brands — 2026-10-30
+
+- Replaced tall brand tiles with compact logo/name links: six columns/two rows on desktop, four columns/three rows on mobile. All 12 brands remain visible without horizontal scrolling, with full-card touch targets and keyboard focus. Removed repeated action labels and the redundant subtitle; brand destinations remain unchanged.
+- Passed existing 12-brand storefront and catalog-navigation browser suites at desktop/mobile sizes, including 320 px. Inspected 1440/390 px screenshots. Bundle and diff checks passed.
+- Deployed `app.css`, `app.js`, `index.html` with baseline/backup/hash verification. Backup: `/gostore-backups/compact-brands-20261030-8a102aba6b`. Public homepage confirmed all 12 links and current asset hashes.
+
 ## Customer calculation details — 2026-10-30
 
 - Cart estimates now explain currency conversion and service fees. Checkout shows server-validated item/variant unit CNY × quantity, applied exchange rate, goods and domestic conversions, service percentage/fixed fee, rounded initial total and deferred cargo/UB delivery. The public quote adds only customer-facing values and selected item labels/totals.
