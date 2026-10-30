@@ -9,10 +9,11 @@ if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base||''))throw Error('Isolated backend r
  await page.getByRole('button',{name:'Тест үүргэвч',exact:true}).waitFor({timeout:120000});
  fs.mkdirSync('output/mobile',{recursive:true});await page.screenshot({path:'output/mobile/home.png',fullPage:true});
  await page.getByRole('button',{name:'Тест үүргэвч',exact:true}).click();
+ await page.getByRole('button',{name:'Хувилбар сонгох',exact:true}).click();
  await page.getByRole('button',{name:/Стандарт · ¥10/}).click({timeout:60000});
- await page.getByRole('button',{name:'Сагсанд нэмэх',exact:true}).click();
+ await page.getByRole('button',{name:'Сагсанд нэмэх',exact:true}).last().click();
  await page.getByRole('button',{name:'Сагсанд нэмэгдлээ ✓'}).waitFor();
- await page.getByRole('button',{name:'Сагс руу очих'}).click();
+ await page.getByRole('button',{name:'Сагс руу очих'}).last().click();
  await page.getByRole('button',{name:/Тооцоо шалгах|Нэвтэрч үргэлжлүүлэх/}).click();
  await page.getByRole('button',{name:'Шинэ бүртгэл үүсгэх'}).click();
  await page.getByRole('textbox',{name:'Нэр',exact:true}).fill('Expo Fixture');
@@ -38,7 +39,7 @@ if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base||''))throw Error('Isolated backend r
  await page.goto(web+'/cart');await page.getByText('Сагс тань хоосон байна',{exact:true}).waitFor();
  const boot=page.waitForResponse(r=>r.url().includes('action=catalog'));await page.goto(web+'/login');await boot;await page.getByRole('button',{name:'Шинэ бүртгэл үүсгэх'}).click();
  await page.getByRole('textbox',{name:'Нэр',exact:true}).fill('Second customer');await page.getByRole('textbox',{name:'Утас',exact:true}).fill('99223344');await page.getByRole('textbox',{name:'Имэйл',exact:true}).fill('expo-second@example.test');await page.getByLabel('Нууц үг',{exact:true}).fill('Second-fixture-2026');await page.getByLabel('Нууц үг давтах',{exact:true}).fill('Second-fixture-2026');await page.getByRole('button',{name:'Зөвшөөрч бүртгүүлэх'}).click();
- await page.getByRole('button',{name:'Миний хаягууд'}).waitFor();assert.equal(await page.getByRole('textbox',{name:'Нэр',exact:true}).inputValue(),'Second customer');
+ await page.getByRole('button',{name:'Миний хаягууд'}).waitFor();await page.getByRole('button',{name:'Хувийн мэдээлэл засах',exact:true}).last().click();assert.equal(await page.getByRole('textbox',{name:'Нэр',exact:true}).inputValue(),'Second customer');
  await page.goto(web+'/orders');await page.getByText('Одоогоор захиалга байхгүй.',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Дэлгэрэнгүй харах'}).count(),0);
  assert.deepEqual(errors,[]);assert.equal(calls.includes('payment-check'),false);console.log('PASS Expo web mobile viewport: browse, SKU, cart, guest merge, register, server quote, order, address, logout/account switch isolation; no external payment');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

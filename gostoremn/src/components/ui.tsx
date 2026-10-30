@@ -11,12 +11,12 @@ import {
 import type { ReactNode } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 export const colors = {
-  navy: "#182348",
-  orange: "#ed681f",
-  ink: "#182331",
-  muted: "#617086",
-  line: "#e2e7ef",
-  bg: "#f6f8fc",
+  navy: "#252525",
+  orange: "#ff5000",
+  ink: "#252525",
+  muted: "#737373",
+  line: "#ededed",
+  bg: "#f5f5f5",
 };
 export const money = (n: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n) + " ₮";
@@ -28,9 +28,9 @@ export function Page({ children }: { children: ReactNode }) {
       contentInsetAdjustmentBehavior="automatic"
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{
-        padding: 18,
+        padding: 12,
         paddingBottom: Math.max(inset.bottom, 16) + 24,
-        gap: 16,
+        gap: 12,
         width: "100%",
         maxWidth: 820,
         alignSelf: "center",
@@ -53,7 +53,7 @@ export function Card({
         {
           backgroundColor: "white",
           padding: 16,
-          borderRadius: 18,
+          borderRadius: 12,
           gap: 12,
           borderWidth: 1,
           borderColor: colors.line,
@@ -67,7 +67,7 @@ export function Card({
 }
 export function Title({ children }: { children: ReactNode }) {
   return (
-    <Text style={{ fontSize: 21, fontWeight: "700", color: colors.navy }}>
+    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.navy }}>
       {children}
     </Text>
   );
@@ -106,10 +106,10 @@ export function Button({
         minHeight: 48,
         paddingHorizontal: 16,
         paddingVertical: 13,
-        borderRadius: 12,
+        borderRadius: 24,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: secondary ? "#edf1f8" : colors.orange,
+        backgroundColor: secondary ? "#f0f0f0" : colors.orange,
         opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
       })}
     >

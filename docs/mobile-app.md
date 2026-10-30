@@ -6,6 +6,8 @@ Source: `gostoremn/`. Expo SDK 58, Expo Router, React Native. EAS project: `@mor
 
 Catalog, brand/category/price search, camera/gallery image search (when server-enabled), gallery/SKUs, customer-scoped persistent cart, registration/login, profile/password, addresses, in-app order notifications and account deletion. Guest selections merge on login without replacing existing customer quantities.
 
+The shopping layout follows the Taobao browsing pattern: persistent rounded search bar, two-row category shortcuts, two-column product feed, price sorting, dedicated category navigation, five bottom tabs, full-width gallery, SKU bottom sheet and persistent cart/order actions. GOStore naming, Mongolian UI, English catalog titles and the existing shipping/payment flow are retained. Campaign tiles open actual category searches; they do not advertise invented discounts, sales counts or shipping guarantees. Account profile/password fields expand from the customer dashboard.
+
 Checkout displays server-validated goods, CNY rate, China delivery, service fee and payable total. Cargo and optional Ulaanbaatar delivery remain payable after measurement. A pending order request is persisted and reused after interruption to prevent duplicates. QPay invoice creation is an explicit separate action; QR/bank links, manual payment verification, verification on bank-app return, order history, final billing, weight/volume and pickup code are included.
 
 ## Backend and security
@@ -31,6 +33,8 @@ npx expo export --platform all --output-dir ../output/mobile-export
 ```
 
 From repository root, `node tests/run-logistics.cjs mobile customers api` uses disposable SQLite data with QPay and supplier network disabled. With Expo web on 8081, `node tests/run-logistics.cjs expo-ui` proxies only to the isolated backend and checks catalog → SKU → guest cart → registration → quote → order → addresses → logout at a 390px viewport. No live purchases/payments are made. Screenshots are in ignored `output/mobile/`.
+
+`node tests/run-logistics.cjs expo-design` additionally checks category navigation, price sort parameters, persistent search, SKU selection and quantity controls, with screenshots at 390px and 320px in ignored `output/mobile-design/`. Those screenshots use isolated sample data, not live customer orders.
 
 The Zod override removes the Expo CLI high-severity advisory; review it when upgrading Expo. Remaining low-severity findings come from Expo tooling → deepmerge; [upstream has no patched release](https://github.com/advisories/GHSA-gcqx-w48m-w2h4). Do not downgrade Expo/deepmerge simply to hide audit findings.
 

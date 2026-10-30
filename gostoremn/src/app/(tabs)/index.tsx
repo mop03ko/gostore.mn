@@ -6,60 +6,35 @@ import {
   Text,
   View,
   useWindowDimensions,
+  TextInput,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Icon, IconButton } from "@/components/shop-ui";
+import { brands, departments } from "@/lib/departments";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import {
-  Button,
-  Busy,
-  Card,
-  Copy,
-  ErrorBox,
-  Field,
-  Title,
-  colors,
-  money,
-} from "@/components/ui";
-const brands = [
-  "Nike",
-  "adidas",
-  "Puma",
-  "New Balance",
-  "UNIQLO",
-  "ZARA",
-  "H&M",
-  "The North Face",
-  "Sony",
-  "Xiaomi",
-  "LEGO",
-  "IKEA",
-];
-const categories = [
-  ["Бүгд", "storage box"],
-  ["Хувцас", "clothing"],
-  ["Гутал", "shoes"],
-  ["Цүнх", "bag"],
-  ["Гэр ахуй", "home storage"],
-  ["Гоо сайхан", "beauty"],
-  ["Тоглоом", "toys"],
-];
+import { Button, Busy, Copy, ErrorBox, colors, money } from "@/components/ui";
 type Results = {
   products: Product[];
   more: boolean;
   revalidate?: boolean;
   stale?: boolean;
 };
-export default function Shop() {
+function Shop({ initialQuery }: { initialQuery: string }) {
+  const inset = useSafeAreaInsets();
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
     { width } = useWindowDimensions(),
     columns = width >= 800 ? 4 : 2;
-  const [draft, setDraft] = useState(""),
-    [query, setQuery] = useState("storage box"),
+  const [draft, setDraft] = useState(initialQuery),
+    [query, setQuery] = useState(initialQuery || "storage box"),
     [sort, setSort] = useState("default"),
     [image, setImage] = useState(""),
     [page, setPage] = useState(1),
@@ -126,7 +101,10 @@ export default function Shop() {
         if (!controller.signal.aborted && g === generation.current)
           setError((e as Error).message);
       } finally {
-        if (g === generation.current) setBusy(false);
+        if (g === generation.current) {
+          setBusy(false);
+          nextPageLock.current = false;
+        }
       }
     })();
     return () => controller.abort();
@@ -187,203 +165,460 @@ export default function Shop() {
       setUploading(false);
     }
   }
+
+  const nextPage = () => {
+    if (!busy && more && !error && !nextPageLock.current) {
+      nextPageLock.current = true;
+      setPage((x) => x + 1);
+    }
+  };
+  const orderBy = (value: string) => {
+    setPage(1);
+    setSort(value);
+    setItems([]);
+    setRetry((x) => x + 1);
+  };
   return (
-    <FlatList
-      ref={list}
-      key={columns}
-      numColumns={columns}
-      data={items}
-      keyExtractor={(p) => p.id}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 14, paddingBottom: 28, gap: 10 }}
-      columnWrapperStyle={{ gap: 10 }}
-      style={{ backgroundColor: colors.bg }}
-      ListHeaderComponent={
-        <View style={{ gap: 14, marginBottom: 10 }}>
-          <Card
-            style={{ backgroundColor: colors.navy, borderColor: colors.navy }}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View
+        style={{
+          backgroundColor: "white",
+          paddingTop: inset.top,
+          paddingHorizontal: 12,
+          paddingBottom: 9,
+          gap: 5,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 23,
+              fontWeight: "900",
+              color: colors.orange,
+              fontStyle: "italic",
+            }}
           >
-            <Text style={{ color: "white", fontSize: 25, fontWeight: "800" }}>
-              Сонголт нэг дор.
+            GOStore
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800" }}>
+              Танд зориулсан
             </Text>
-            <Text style={{ color: "#d6dff3", lineHeight: 22 }}>
-              Бараагаа сонгоод, захиалгаа Эрээнээс Улаанбаатар хүртэл хянаарай.
-            </Text>
-          </Card>
-          <Field
-            label="Бараа хайх"
+            <IconButton
+              name="message"
+              label="Захиалгын мэдэгдлүүд"
+              onPress={() => router.push("/notifications")}
+            />
+          </View>
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            borderWidth: 2,
+            borderColor: colors.orange,
+            borderRadius: 25,
+            paddingLeft: 12,
+            paddingRight: 3,
+            height: 48,
+            gap: 7,
+          }}
+        >
+          <Icon name="search" size={20} color={colors.muted} />
+          <TextInput
+            accessibilityLabel="Бараа хайх"
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={() => search(draft)}
             returnKeyType="search"
-            placeholder="Нэр эсвэл брэндээр хайх"
-          />
-          <Button
-            title="Хайх"
-            onPress={() => search(draft)}
-            disabled={uploading}
+            placeholder="Нэр, брэндээр хайх"
+            placeholderTextColor="#858585"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 15,
+              color: colors.ink,
+              height: 44,
+            }}
           />
           {shipping?.image_search_enabled && (
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title={uploading ? "Зураг уншиж байна…" : "Зургаар хайх"}
-                  secondary
-                  disabled={uploading}
-                  onPress={() => void photo(false)}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title="Камер"
-                  secondary
-                  disabled={uploading}
-                  onPress={() => void photo(true)}
-                />
-              </View>
-            </View>
+            <IconButton
+              name="camera"
+              label="Зургаар хайх"
+              onPress={() => setPhotoMenu(true)}
+            />
           )}
-          <Title>Дэлхийн брэндүүд</Title>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 6 }}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Хайх"
+            disabled={uploading}
+            onPress={() => search(draft)}
+            style={{
+              backgroundColor: colors.orange,
+              borderRadius: 22,
+              height: 38,
+              paddingHorizontal: 17,
+              justifyContent: "center",
+            }}
           >
-            {brands.map((b) => (
-              <Pressable
-                accessibilityRole="button"
-                key={b}
-                onPress={() => search(b)}
+            <Text style={{ fontWeight: "700", color: colors.ink }}>Хайх</Text>
+          </Pressable>
+        </View>
+      </View>
+      <FlatList
+        ref={list}
+        key={columns}
+        numColumns={columns}
+        data={items}
+        keyExtractor={(p) => p.id}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ padding: 8, paddingBottom: 20, gap: 8 }}
+        columnWrapperStyle={{ gap: 8 }}
+        onEndReached={nextPage}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={
+          <View style={{ gap: 10, marginBottom: 4 }}>
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 14,
+                paddingVertical: 12,
+                flexDirection: "row",
+                flexWrap: "wrap",
+                rowGap: 10,
+              }}
+            >
+              {departments.map((d) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={d.query}
+                  accessibilityLabel={d.name}
+                  onPress={() => search(d.query)}
+                  style={{
+                    width: "20%",
+                    alignItems: "center",
+                    gap: 5,
+                    minHeight: 68,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 15,
+                      backgroundColor: d.color,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 28 }}>{d.icon}</Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: colors.ink }}>
+                    {d.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Хүргэлтийн нөхцөл харах"
+              onPress={() => router.push("/help")}
+              style={{
+                backgroundColor: "#fff0e6",
+                borderRadius: 12,
+                padding: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Icon name="box" color="#c94100" size={20} />
+              <Text
                 style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: "white",
-                  borderColor: colors.line,
-                  borderWidth: 1,
+                  fontSize: 12,
+                  color: "#9c3500",
+                  flex: 1,
+                  fontWeight: "600",
                 }}
               >
-                <Text style={{ color: colors.navy, fontWeight: "600" }}>
-                  {b}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            {categories.map(([label, q]) => (
+                Эрээн → Улаанбаатар · Захиалгаа нэг дор хяна
+              </Text>
+              <Icon name="chevron" color="#c94100" size={15} />
+            </Pressable>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {[
+                {
+                  title: "Өдөр тутмын сонголт",
+                  subtitle: "Гэрээ илүү тухтай",
+                  q: "home storage",
+                  emoji: "🛋️",
+                  bg: "#ffefe8",
+                },
+                {
+                  title: "Өөрийн хэв маяг",
+                  subtitle: "Хувцас · Гутал · Цүнх",
+                  q: "clothing",
+                  emoji: "👟",
+                  bg: "#fff6df",
+                },
+              ].map((p) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={p.q}
+                  onPress={() => search(p.q)}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    backgroundColor: p.bg,
+                    padding: 12,
+                    minHeight: 88,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800", fontSize: 14 }}>
+                    {p.title}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 3,
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: "#7b6257", flex: 1 }}>
+                      {p.subtitle}
+                    </Text>
+                    <Text style={{ fontSize: 32 }}>{p.emoji}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 12,
+                padding: 10,
+                gap: 8,
+              }}
+            >
+              <Text style={{ fontWeight: "700", fontSize: 13 }}>
+                Дэлхийн брэндүүд
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 7 }}
+              >
+                {brands.map((b) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={b}
+                    onPress={() => search(b)}
+                    style={{
+                      minHeight: 44,
+                      paddingHorizontal: 12,
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      backgroundColor: "#f7f7f7",
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600" }}>{b}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: "white",
+                borderRadius: 10,
+              }}
+            >
+              {[
+                ["default", "Санал болгох"],
+                ["price", "Үнэ ↑"],
+                ["-price", "Үнэ ↓"],
+              ].map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: sort === value }}
+                  onPress={() => orderBy(value)}
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderBottomWidth: 2,
+                    borderBottomColor:
+                      sort === value ? colors.orange : "transparent",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: sort === value ? "700" : "400",
+                      color: sort === value ? "#c44000" : colors.ink,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {!!image && (
               <Button
-                key={q}
-                title={label}
-                secondary={query !== q}
-                onPress={() => search(q)}
+                title="Зурагт хайлтыг цэвэрлэх"
+                secondary
+                onPress={() => search("storage box")}
               />
-            ))}
-          </ScrollView>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Button
-              title="Санал болгох"
-              secondary={sort !== "default"}
-              onPress={() => {
-                setPage(1);
-                setSort("default");
-                setItems([]);
-                setRetry((x) => x + 1);
-              }}
+            )}
+            {uploading && <Busy />}
+            {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}
+            <ErrorBox
+              message={bootError}
+              retry={() => void refresh().catch(() => {})}
             />
-            <Button
-              title="Үнэ өсөхөөр"
-              secondary={sort !== "price"}
-              onPress={() => {
-                setPage(1);
-                setSort("price");
-                setItems([]);
-                setRetry((x) => x + 1);
-              }}
-            />
+            <ErrorBox message={error} retry={() => setRetry((x) => x + 1)} />
           </View>
-          {!!image && (
-            <Button
-              title="Зурагт хайлтыг цэвэрлэх"
-              secondary
-              onPress={() => search("storage box")}
+        }
+        renderItem={({ item: p }) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={p.name}
+            onPress={() =>
+              router.push({ pathname: "/product/[id]", params: { id: p.id } })
+            }
+            style={{
+              flex: 1,
+              maxWidth: columns === 4 ? "25%" : "50%",
+              backgroundColor: "white",
+              borderRadius: 11,
+              overflow: "hidden",
+            }}
+          >
+            <Image
+              source={p.image || undefined}
+              contentFit="cover"
+              recyclingKey={p.id}
+              transition={160}
+              style={{ width: "100%", aspectRatio: 1 }}
             />
-          )}
-          <Copy>
-            Үнэ нь хүргэлтгүй лавлах дүн. Сонгосон хувилбар, хүргэлтийг төлөхөөс
-            өмнө шалгана.
-          </Copy>
-          {stale && <Copy>Өмнөх мэдээллийг шинэчилж байна…</Copy>}
-          <ErrorBox
-            message={bootError}
-            retry={() => void refresh().catch(() => {})}
-          />
-          <ErrorBox message={error} retry={() => setRetry((x) => x + 1)} />
-        </View>
-      }
-      renderItem={({ item: p }) => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={p.name}
-          onPress={() =>
-            router.push({ pathname: "/product/[id]", params: { id: p.id } })
-          }
+            <View style={{ padding: 9, gap: 5 }}>
+              <Text
+                numberOfLines={2}
+                style={{
+                  fontSize: 13,
+                  lineHeight: 18,
+                  color: colors.ink,
+                  minHeight: 36,
+                }}
+              >
+                {p.name}
+              </Text>
+              <Text
+                selectable
+                style={{ fontWeight: "800", fontSize: 21, color: "#d84500" }}
+              >
+                {p.mnt
+                  ? money(p.mnt)
+                  : p.approx_mnt
+                    ? "≈ " + money(p.approx_mnt)
+                    : "Үнэ шалгах"}
+              </Text>
+              <Text style={{ fontSize: 10, color: colors.muted }}>
+                Хүргэлт тусдаа · Хувилбар сонгох
+              </Text>
+            </View>
+          </Pressable>
+        )}
+        ListFooterComponent={
+          <View style={{ paddingVertical: 12, gap: 8 }}>
+            {busy ? (
+              <Busy />
+            ) : more ? (
+              <Button title="Дараагийн бараанууд" onPress={nextPage} />
+            ) : !items.length && !error ? (
+              <Copy>Бараа олдсонгүй. Өөр нэрээр хайгаарай.</Copy>
+            ) : null}
+            <Text
+              style={{ fontSize: 11, textAlign: "center", color: colors.muted }}
+            >
+              Эцсийн үнэ, хүргэлтийг захиалахын өмнө шалгана.
+            </Text>
+          </View>
+        }
+      />
+      <Modal
+        visible={photoMenu}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPhotoMenu(false)}
+      >
+        <View
           style={{
             flex: 1,
-            maxWidth: `${100 / columns}%`,
-            backgroundColor: "white",
-            borderWidth: 1,
-            borderColor: colors.line,
-            borderRadius: 16,
-            overflow: "hidden",
+            justifyContent: "flex-end",
+            backgroundColor: "#00000055",
           }}
         >
-          <Image
-            source={p.image || undefined}
-            contentFit="cover"
-            style={{ width: "100%", aspectRatio: 1 }}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Зурагт хайлтыг хаах"
+            onPress={() => setPhotoMenu(false)}
+            style={{ flex: 1 }}
           />
-          <View style={{ padding: 12, gap: 8 }}>
-            <Text
-              numberOfLines={2}
-              style={{ lineHeight: 20, color: colors.ink, minHeight: 40 }}
-            >
-              {p.name}
+          <View
+            style={{
+              backgroundColor: "white",
+              padding: 20,
+              paddingBottom: Math.max(inset.bottom, 16) + 16,
+              borderTopLeftRadius: 22,
+              borderTopRightRadius: 22,
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 19, fontWeight: "700" }}>
+              Зургаар хайх
             </Text>
-            <Text
-              style={{ fontWeight: "800", fontSize: 17, color: colors.navy }}
-            >
-              {p.mnt
-                ? money(p.mnt)
-                : p.approx_mnt
-                  ? "≈ " + money(p.approx_mnt)
-                  : "Үнэ шалгах"}
-            </Text>
-          </View>
-        </Pressable>
-      )}
-      ListFooterComponent={
-        <View style={{ gap: 12, marginTop: 12 }}>
-          {busy ? (
-            <Busy />
-          ) : more ? (
+            <Copy>Таалагдсан барааныхаа зургийг сонгоорой.</Copy>
             <Button
-              title="Дараагийн бараанууд"
-              onPress={() => setPage((x) => x + 1)}
+              title="Зургийн сангаас сонгох"
+              onPress={() => {
+                setPhotoMenu(false);
+                void photo(false);
+              }}
             />
-          ) : !items.length && !error ? (
-            <Copy>Бараа олдсонгүй. Өөр нэрээр хайгаарай.</Copy>
-          ) : null}
-          <Button
-            title="Хүргэлт, үйлчилгээний тухай"
-            secondary
-            onPress={() => router.push("/help")}
-          />
+            <Button
+              title="Камер"
+              secondary
+              onPress={() => {
+                setPhotoMenu(false);
+                void photo(true);
+              }}
+            />
+            <Button
+              title="Хаах"
+              secondary
+              onPress={() => setPhotoMenu(false)}
+            />
+          </View>
         </View>
-      }
-    />
+      </Modal>
+    </View>
   );
+}
+export default function ShopRoute() {
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const query = typeof q === "string" ? q : "";
+  return <Shop key={query} initialQuery={query} />;
 }
