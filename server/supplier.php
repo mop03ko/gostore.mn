@@ -341,7 +341,7 @@ function supplier_page_size(array $b): int {
     return $limit;
 }
 function supplier_search(array $b,bool $display=false): array {
-    if(tw_catalog_enabled())return tw_catalog_search($b);
+    if(tw_catalog_enabled())return tw_catalog_search($b,$display);
     $limit=supplier_page_size($b);
     if(($b['brand']??'')!=='')return supplier_brand_search($b,$display);
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';

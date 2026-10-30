@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Progressive native catalog and stale-while-revalidate — 2026-10-30
+
+- The first native 50-item search batch now renders up to 20 items before requesting completion; fresh complete browser-cache hits skip both reads. Existing 50-item pagination, image search and OT fallback selection are unchanged. Partial failures retain visible cards and retry completion.
+- Display-only native lists may reuse 30–60-minute-old snapshots, explicitly stale and `no-store`, while the browser revalidates in a separate GET. Fresh data replaces the list; failure does not renew stale timestamps. Product/checkout freshness and all payment/procurement paths are unchanged.
+- Passed new native PHP/HTTP/browser tests for progressive completion, stale display/revalidation, failure retention, cache boundaries, DOM/navigation/saved-view races, invalid flags and mobile fit. Existing native checkout, catalog scroll/cache, shared cache, batch API, collection, image search, filters, checkout/mobile UI, supplier retry, invoice freshness and native procurement checks passed. Bundle/syntax/diff checks passed.
+- Deployed five runtime files (`server/taoworld-catalog.php`, `server/supplier.php`, `api/index.php`, `app.js`, `index.html`) with baseline comparison, backup/stage/hash verification. The storefront uses the generated bundle; individual JS sources are retained in Git. Backup: `/gostore-backups/catalog-progressive-20261030-4cca330af3`.
+- Live file hashes matched. A warm-cache public API sample returned 20 items with `partial=true` in 171 ms, then 50 complete items in 86 ms; repeat full list 91 ms. These are individual network/API samples, not cold-provider or complete-image-load guarantees. Stale/revalidation behavior was verified with isolated expired fixtures; the live sample was fresh. No live orders, invoices or payments created; temporary private audit endpoint removed.
+
 ## Site audit and native catalog fixes — 2026-10-30
 
 - Audited storefront, account/cart/checkout, QPay, native procurement, admin and warehouse paths with isolated API/browser suites. Added a native catalog-to-checkout browser fixture and provider-specific admin assertions; updated obsolete brand navigation expectations. See `docs/site-audit-2026-10-30.md` for scope and remaining limits.

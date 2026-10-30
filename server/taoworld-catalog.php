@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
+const TW_CATALOG_SEARCH_MAX_AGE = 3600;
 function tw_catalog_require_ready(): void {
     if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
 }
@@ -24,9 +25,10 @@ function tw_catalog_data(array $r): array {
 function tw_catalog_fresh(?array $c,int $ttl): bool {return is_array($c)&&is_array($c['data']??null)&&is_int($c['time']??null)&&$c['time']<=time()&&$c['time']>time()-$ttl;}
 // A separate cache prevents any OT payload from being reused as native product data.
 // Checkout never accepts stale data. Concurrent requests share one provider lookup.
-function tw_catalog_cached(string $path,array $params,bool $purchase=false,?array $keyParams=null): array {
+function tw_catalog_cached(string $path,array $params,bool $purchase=false,?array $keyParams=null,bool $display=false): array {
     $keyParams??=$params;
     $file=tw_catalog_dir().'/'.supplier_cache_key($path,$keyParams).'.json';$ttl=$purchase?SUPPLIER_PURCHASE_MAX_AGE:($path==='/traffic/item/get'?300:TW_CATALOG_SEARCH_TTL);
+    if($display&&!$purchase&&$path==='/traffic/item/search')$ttl=TW_CATALOG_SEARCH_MAX_AGE;
     // Atomic rename makes complete fresh snapshots safe to read while a writer holds the lock.
     $c=supplier_snapshot_read($file);if(tw_catalog_fresh($c,$ttl))return $c;
     $h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);
@@ -38,16 +40,17 @@ function tw_catalog_cached(string $path,array $params,bool $purchase=false,?arra
 }
 // First page is fetched separately to stop empty/short searches without spending extra quota.
 // Remaining page locks are acquired in numeric order and all released on any failure.
-function tw_catalog_search_pages(array $params,int $first,int $last): array {
+function tw_catalog_search_pages(array $params,int $first,int $last,bool $display=false): array {
     $pages=[];$pending=[];$locks=[];$deadline=microtime(true)+2;
+    $ttl=$display?TW_CATALOG_SEARCH_MAX_AGE:TW_CATALOG_SEARCH_TTL;
     try{
         for($n=$first;$n<=$last;$n++){
             $query=$params+['page_no'=>(string)$n,'page_size'=>'20'];$file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
             $c=supplier_snapshot_read($file);
-            if(!tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL)){
+            if(!tw_catalog_fresh($c,$ttl)){
                 $h=supplier_acquire_lock([$file.'.lock'],$deadline);if(!$h)throw new SupplierBusy();$locks[]=$h;
                 $c=supplier_snapshot_read($file);
-                if(!tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL)){$pending[$n]=['query'=>$query,'file'=>$file];continue;}
+                if(!tw_catalog_fresh($c,$ttl)){$pending[$n]=['query'=>$query,'file'=>$file];continue;}
             }
             $pages[$n]=$c;if(count($c['data']['data']??[])<20)break;
         }
@@ -123,9 +126,13 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
     $cards=[];foreach($rows as $p){if(!is_array($p))continue;try{$cards[]=tw_catalog_product($p,false,$fetched);}catch(ApiError){}}
     return $cards;
 }
-function tw_catalog_search(array $b): array {
+function tw_catalog_search(array $b,bool $display=false): array {
     tw_catalog_require_ready();
     $limit=supplier_page_size($b);$page=int_field($b,'page',1,100);$q=str_field($b,'q',100,false)?:'home storage';
+    $refresh=isset($b['refresh'])?int_field($b,'refresh',0,1):0;
+    $preview=isset($b['preview'])?int_field($b,'preview',0,1):0;
+    $display=$display&&!$refresh;
+    $partial=$preview&&$page===1&&$limit===50;
     if(($b['brand']??'')!=='')$q=supplier_brand(str_field($b,'brand',30))['name'];
     if($q==='__all__')$q='home storage';
     $sort=str_field($b,'sort',20,false)?:'default';$sorts=['default'=>'','price'=>'PRICE_ASC','-price'=>'PRICE_DESC','-volume'=>'SALE_QTY_DESC','-updated_time'=>''];
@@ -137,10 +144,13 @@ function tw_catalog_search(array $b): array {
     $params=['keyword'=>$departments[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
     // Native pages contain at most 20 items. Keep the storefront's 12/50-item contract.
     $start=($page-1)*$limit;$first=(int)floor($start/20)+1;$last=(int)floor(($start+$limit-1)/20)+1;$rows=[];$time=time();
-    $c=tw_catalog_cached('/traffic/item/search',$params+['page_no'=>(string)$first,'page_size'=>'20']);$time=min($time,$c['time']);$rows=$c['data']['data']??null;if(!is_array($rows))fail('TaoWorld хайлтын хариу дутуу.',502);
-    if(count($rows)===20&&$first<$last)foreach(tw_catalog_search_pages($params,$first+1,$last) as $c){$time=min($time,$c['time']);$part=$c['data']['data']??null;if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);$rows=array_merge($rows,$part);if(count($part)<20)break;}
+    if($partial)$last=$first;
+    $c=tw_catalog_cached('/traffic/item/search',$params+['page_no'=>(string)$first,'page_size'=>'20'],false,null,$display);$time=min($time,$c['time']);$rows=$c['data']['data']??null;if(!is_array($rows))fail('TaoWorld хайлтын хариу дутуу.',502);
+    $partial=$partial&&count($rows)===20;
+    if(count($rows)===20&&$first<$last)foreach(tw_catalog_search_pages($params,$first+1,$last,$display) as $c){$time=min($time,$c['time']);$part=$c['data']['data']??null;if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);$rows=array_merge($rows,$part);if(count($part)<20)break;}
     $rows=array_slice($rows,$start%20,$limit);$more=count($rows)===$limit&&$page<100;
-    return tw_catalog_response(['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$time,TW_CATALOG_SEARCH_TTL);
+    $stale=$time<=time()-TW_CATALOG_SEARCH_TTL;
+    return tw_catalog_response(['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more,'partial'=>$partial,'stale'=>$stale,'revalidate'=>$stale],$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_image(string $hash,int $page,int $limit): array {
     tw_catalog_require_ready();

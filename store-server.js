@@ -31,16 +31,18 @@ window.supplierApi=(()=>{
     let json=JSON.stringify(entries);while(json.length*2>maxBytes&&entries.length){entries.shift();json=JSON.stringify(entries);}
     try{sessionStorage.setItem(key,json);}catch{/* Memory cache still works if storage is full or unavailable. */}
   }
-  const api=async(action,payload)=>{
+  const api=async(action,payload,options={})=>{
     if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
     if(action==='supplier-search'&&payload.image){if(!/^[a-f0-9]{32}$/.test(payload.image))throw Error('Зургийн дугаар буруу.');payload={image:payload.image,page:payload.page,...(payload.limit?{limit:payload.limit}:{})};}
     else if(action==='supplier-search')payload={...payload,q:String(payload.q||'__all__').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'__all__'};
     const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
-    const found=entries.find(e=>e.key===request&&valid(e));
+    const preview=action==='supplier-search'&&!payload.image&&options.preview===true,refresh=action==='supplier-search'&&!payload.image&&options.refresh===true;
+    const workKey=request+(refresh?':refresh':preview?':preview':'');
+    const found=!refresh&&entries.find(e=>e.key===request&&valid(e));
     if(found){entries=entries.filter(e=>e!==found);entries.push(found);persist();return clone(found.data);}
-    if(!pending.has(request)){
+    if(!pending.has(workKey)){
       const work=(async()=>{
-        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,catalog:'taoworld-catalog1'});
+        const started=Date.now(),url='/api/index.php?'+new URLSearchParams({action,...payload,...(refresh?{refresh:1}:preview?{preview:1}:{}),catalog:'taoworld-catalog1'});
         let response,result;
         for(let attempt=0;attempt<3;attempt++){
           // The first attempt may reuse the request index.html started before scripts loaded.
@@ -53,16 +55,16 @@ window.supplierApi=(()=>{
         if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
-        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null});
+        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null,partial:result.partial===true,revalidate:result.revalidate===true});
         else data.product=result.product;
         const ttl=Math.min(action==='supplier-search'?600:300,Number(result.cache_ttl)||0);
         const shaped=action==='supplier-search'?Array.isArray(data.products):data.product?.id===payload.id;
-        if(shaped&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:Math.min(started+ttl*1000,Number(result.cache_expires)>0?Number(result.cache_expires)*1000:Infinity),data:clone(data)});persist();}
+        if(shaped&&!data.partial&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:Math.min(started+ttl*1000,Number(result.cache_expires)>0?Number(result.cache_expires)*1000:Infinity),data:clone(data)});persist();}
         return data;
       })();
-      pending.set(request,work);work.finally(()=>pending.delete(request)).catch(()=>{});
+      pending.set(workKey,work);work.finally(()=>pending.delete(workKey)).catch(()=>{});
     }
-    return clone(await pending.get(request));
+    return clone(await pending.get(workKey));
   };
   api.previewProduct=id=>{for(const entry of [...entries].reverse()){if(!valid(entry))continue;const product=entry.data.products?.find(p=>p.id===id)||entry.data.product?.related?.find(p=>p.id===id);if(product)return clone({id:product.id,name:product.name,image:product.image,mnt:product.mnt});}return null;};
   return api;

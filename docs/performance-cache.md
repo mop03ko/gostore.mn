@@ -4,6 +4,18 @@
 
 ## Native catalog optimization — 2026-10-30
 
+### Progressive lists and stale-while-revalidate
+
+- The first 50-item keyword/category/brand batch requests `preview=1`. Native search returns the first upstream page (up to 20 items) without waiting for pages two and three. `partial=true` asks the browser to fetch the complete 50-item batch; the server reuses page one, so completion does not repeat that supplier call. Unchanged first cards retain their DOM nodes. A short first page needs no completion request. Later batches retain their existing 50-item offsets; image search is unchanged.
+- A fresh, complete browser-cache hit skips both network steps. Partial responses never enter that full-result cache. A failed completion keeps visible cards and offers a retry of the completion request. Changing query, filter or saved view invalidates older responses.
+- Native search snapshots remain fresh for 30 minutes. Display-only reads may serve a snapshot up to 60 minutes old, labelled `stale=true`, `revalidate=true`, with zero cache TTL and HTTP `no-store`. The browser displays it immediately, then requests the same query with `refresh=1` and replaces the list when fresh results arrive. This is a separate read while the page remains usable, not a new cron or server shutdown job. There is no polling loop. If completion itself is required, it runs before the full-list revalidation.
+- Revalidation bypasses the stale allowance, not valid fresh snapshots: cache locks/rechecks and existing API/IP budgets still apply. Refresh failures preserve the old snapshot and its original timestamp. Stale data is never persisted as fresh in browser storage. More-than-one-hour-old, future-dated or malformed snapshots cannot use the stale display allowance.
+- The allowance applies only to search lists. Product detail, image results, checkout's 120-second validation, invoice creation and procurement checks retain their existing rules. Prices displayed in search remain indicative.
+- Validation: native progressive PHP and real HTTP tests cover one-page preview, 50-item offsets, no quota for stale display, lock-free stale reads, explicit refresh, failed refresh retention, expiry and invalid flags. Browser tests cover blocked completion, retries, DOM retention, updated prices, saved-view/navigation races and mobile fit. Existing cache, infinite-scroll, native checkout, image-search, filtering, mobile, shared-cache and invoice-freshness regressions pass.
+- Live warm-cache sample after deployment: first 20-item preview 171 ms; subsequent complete 50-item response 86 ms; repeat complete response 91 ms. This confirms the response contract on production, not a cold-load speed guarantee. Live snapshots were fresh; the stale/revalidation path was tested with isolated expired fixtures.
+
+### Earlier native cache and transport improvements
+
 - Fresh search, detail and image snapshots bypass writer locks. Cache misses still lock and recheck; checkout retains its strict 120-second freshness rule. Re-reading a product does not rewrite an unchanged `mi_id` file.
 - Keyword list cache increased from 10 to 30 minutes. Detail remains 5 minutes, image results 10 minutes, browser session cache at most 10 minutes, public HTTP cache at most 60 seconds. Longer keyword caching reduces cold provider reads without extending checkout validity.
 - The first native search page is read before requesting further pages; empty/short results stop there. Remaining missing pages run in batches of at most three with `curl_multi`, individual response/error checks and existing timeouts/size limits. Only search reads enter this transport. Partial successes are cached; quota reservations for an unsent batch roll back together.
