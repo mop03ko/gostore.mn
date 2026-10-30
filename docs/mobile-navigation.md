@@ -17,4 +17,6 @@ node tests/expo-navigation-ui.cjs
 
 The test uses the repository's Playwright tooling in `tmp/tooling`, intercepts all mobile API calls and verifies 320/390/430 px layouts, category queries, login return navigation, order filters/pagination/retry, and profile saving. Its preview screenshots contain synthetic data and must not be uploaded to App Store Connect.
 
-The EAS `screenshots` profile captures actual native screens with public catalog data, including guest orders and profile. Use a fresh simulator archive after app changes; the older `screenshots-capture` archive does not include the new SVG native module or screens.
+The EAS `screenshots` profile captures actual native screens with public catalog data, including guest orders and profile. On 2026-10-31, simulator build `a7b39010-2982-4ad1-bb4a-41e412976c4d` passed the Maestro flow on iPhone 18 Pro Max and produced six visually verified 1320 × 2868 screenshots. The `screenshots-capture` profile now reuses that verified archive with the new SVG native module. Replace the archive after subsequent app changes.
+
+Typecheck, lint, the web navigation integration test and Android release bundle export passed. iOS production build 5 (`a471921f-1153-4d05-bc89-cd7b6b9fbc78`) was scheduled with automatic TestFlight submission. App Store public review/release is separate.

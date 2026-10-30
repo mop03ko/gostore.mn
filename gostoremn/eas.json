@@ -4,7 +4,7 @@
     "preview": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } },
     "simulator": { "extends": "preview", "ios": { "simulator": true } },
     "screenshots": { "extends": "simulator", "config": "build-store-screenshots.yml", "env": { "GOSTORE_CAPTURE_SCREENSHOTS": "1" } },
-    "screenshots-capture": { "extends": "simulator", "config": "capture-existing-ios.yml", "env": { "GOSTORE_CAPTURE_SCREENSHOTS": "1", "GOSTORE_SIMULATOR_ARCHIVE_URL": "https://expo.dev/artifacts/eas/r4KpoUctTEZFKcEqRbB_8fvoTpKZZr3JcfFxsVA_iB0.tar.gz" } },
+    "screenshots-capture": { "extends": "simulator", "config": "capture-existing-ios.yml", "env": { "GOSTORE_CAPTURE_SCREENSHOTS": "1", "GOSTORE_SIMULATOR_ARCHIVE_URL": "https://expo.dev/artifacts/eas/voM9W_XxWy1YMkk4TXEUGxi0Q2pnSQxWv-j9wQW4wXc.tar.gz" } },
     "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } }
   },
   "submit": { "production": { "ios": { "ascAppId": "6828991827" }, "android": { "track": "internal", "releaseStatus": "draft" } } }
