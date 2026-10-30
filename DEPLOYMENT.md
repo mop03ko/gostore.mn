@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Product page facts, shop rating and recommendations — 2026-10-31
+
+- Product pages show short facts instead of the attribute table, the Taobao shop rating (search `shopDsr`) as stars, and «Танд санал болгох» from `supplier-recommend` mixing all departments. Reviews are not shown: TaoWorld has no review API and OT reviews/`ProviderReviews` returned empty for live items.
+- Full suite passed, plus new `taoworld-recommend` and native product-page UI checks. Deployed `api/index.php`, `server/supplier.php`, `server/taoworld-catalog.php`, `app.css`, `app.js`, `index.html` with baseline/backup/hash verification. Backup: `/gostore-backups/product-recommend-20261031-49ddd56bd4`.
+- Live check found every recommendation from the one warm homepage department. Follow-up `51b48ff` fetches one uncached department per request while fewer than four are cached; deployed `server/taoworld-catalog.php`, backup `/gostore-backups/recommend-mix-20261031-d6d3a4e20e`. After four requests the live lists mixed cleaning, shoes, appliances and storage (24 products each). Live product page at 1440/390 px: rating 4.8 stars, brief facts, no attribute table, no overflow or JS errors.
+
 ## Checkout total label and Миний ачаа on load — 2026-10-31
 
 - Checkout calculation names the upfront amount «Одоо төлөх» like the cart, help page and app; order history keeps «Захиалгын эхний төлбөр». Opening Миний ачаа right after page load no longer does nothing when `refresh()` signs the customer in (sign-in bumps alone do not cancel the list).
