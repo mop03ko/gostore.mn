@@ -31,6 +31,11 @@ appId: mn.gostore.app
 - extendedWaitUntil:
     visible: "12 брэнд.*"
     timeout: 15000
+- waitForAnimationToEnd
+- tapOn: "Технологи"
+- assertVisible: "2 брэнд.*"
+- tapOn: "Бүгд"
+- assertVisible: "12 брэнд.*"
 - takeScreenshot: 07-brands
 - openLink: gostoremn://product/tb-1022951227321
 - tapOn:
