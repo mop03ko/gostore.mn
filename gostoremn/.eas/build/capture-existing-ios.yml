@@ -1,0 +1,31 @@
+build:
+  name: Capture iOS App Store screenshots
+  steps:
+    - eas/checkout
+    - eas/install_maestro:
+        inputs:
+          maestro_version: latest
+    - run:
+        name: Reuse compiled iOS simulator app
+        command: |
+          mkdir -p ios/build
+          curl --fail --location "$GOSTORE_SIMULATOR_ARCHIVE_URL" --output simulator.tar.gz
+          tar -xzf simulator.tar.gz -C ios/build
+    - run:
+        name: Capture native iPhone screens
+        id: capture
+        outputs: [archive, screenshots]
+        command: |
+          node scripts/capture-store-screenshots.cjs
+          set-output archive "$(pwd)/simulator.tar.gz"
+          set-output screenshots "$(pwd)/store-screenshots"
+    - eas/upload_artifact:
+        name: Simulator application
+        inputs:
+          type: application-archive
+          path: ${ steps.capture.archive }
+    - eas/upload_artifact:
+        name: App Store screenshots
+        inputs:
+          type: build-artifact
+          path: ${ steps.capture.screenshots }

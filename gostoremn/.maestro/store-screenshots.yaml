@@ -1,0 +1,26 @@
+appId: mn.gostore.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Үнэ ↑"
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: 01-home
+- tapOn:
+    point: "30%,94%"
+- extendedWaitUntil:
+    visible: "Ангиллаар үзэх"
+    timeout: 15000
+- takeScreenshot: 02-categories
+- openLink: gostoremn://product/tb-1022951227321
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Хувилбар сонгох"
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: 03-product
+- tapOn: "Хувилбар сонгох"
+- waitForAnimationToEnd
+- takeScreenshot: 04-options

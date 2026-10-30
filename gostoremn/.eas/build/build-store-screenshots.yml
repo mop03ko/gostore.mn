@@ -1,0 +1,19 @@
+build:
+  name: Build and capture iOS App Store screenshots
+  steps:
+    - eas/build
+    - eas/install_maestro:
+        inputs:
+          maestro_version: latest
+    - run:
+        name: Capture native iPhone screens
+        id: capture
+        outputs: [screenshots]
+        command: |
+          node scripts/capture-store-screenshots.cjs
+          set-output screenshots "$(pwd)/store-screenshots"
+    - eas/upload_artifact:
+        name: App Store screenshots
+        inputs:
+          type: build-artifact
+          path: ${ steps.capture.screenshots }

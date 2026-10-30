@@ -1,0 +1,35 @@
+{
+  "attributes": {
+    "advertising": true,
+    "ageAssurance": false,
+    "parentalControls": false,
+    "messagingAndChat": false,
+    "unrestrictedWebAccess": false,
+    "userGeneratedContent": true,
+    "socialMedia": false,
+    "socialMediaAgeRestricted": false,
+    "gambling": false,
+    "lootBox": false,
+    "contests": "NONE",
+    "gamblingSimulated": "NONE",
+    "healthOrWellnessTopics": true,
+    "alcoholTobaccoOrDrugUseOrReferences": "INFREQUENT_OR_MILD",
+    "matureOrSuggestiveThemes": "INFREQUENT_OR_MILD",
+    "medicalOrTreatmentInformation": "NONE",
+    "profanityOrCrudeHumor": "NONE",
+    "sexualContentGraphicAndNudity": "NONE",
+    "sexualContentOrNudity": "NONE",
+    "horrorOrFearThemes": "NONE",
+    "violenceCartoonOrFantasy": "NONE",
+    "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    "violenceRealistic": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "ageRatingOverrideV2": "THIRTEEN_PLUS",
+    "koreaAgeRatingOverride": "NONE"
+  },
+  "basis": "Owner instructed using Taobao rules on 2026-10-31. Taobao seller agreement section 3.3.2 prohibits pornographic, violent, gambling and terror content, and 3.3.3 excludes prohibited/restricted goods. Current Taobao China App Store listing is 13+. GOStore has seller-provided product content and product promotions, but no chat, social feed, contests, gambling or unrestricted in-app browser. Infrequent alcohol references and mature/suggestive themes are conservatively declared for the broad shopping catalog, rather than assuming those references are filtered. This is a policy-based declaration, not an exhaustive catalog audit; review it if the catalog or features change.",
+  "sources": [
+    "https://terms.alicdn.com/legal-agreement/terms/suit_bu1_taobao/suit_bu1_taobao201908081502_44434.html",
+    "https://apps.apple.com/cn/app/id387682726"
+  ]
+}

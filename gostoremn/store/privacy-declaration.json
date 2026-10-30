@@ -1,0 +1,7 @@
+{
+  "purpose": "APP_FUNCTIONALITY",
+  "tracking": false,
+  "linked": ["NAME", "EMAIL_ADDRESS", "PHONE_NUMBER", "PHYSICAL_ADDRESS", "USER_ID", "PURCHASE_HISTORY", "PHOTOS_OR_VIDEOS", "CUSTOMER_SUPPORT"],
+  "notLinked": ["SEARCH_HISTORY"],
+  "basis": "Customer profiles, saved delivery addresses, order records, optional uploaded images and support. Public search cache stores queries without a customer account key. The native app has no advertising identifier or analytics SDK. Website Google/Facebook tags are not embedded in the native app. Payment bank credentials are entered in the bank app, not collected by gostore.mn."
+}

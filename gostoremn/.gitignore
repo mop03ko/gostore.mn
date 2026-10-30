@@ -7,6 +7,9 @@ node_modules/
 .expo/
 dist/
 web-build/
+store-screenshots/
+store-maestro-output/
+simulator.tar.gz
 expo-env.d.ts
 
 # Native

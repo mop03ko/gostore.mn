@@ -1,0 +1,19 @@
+{
+  "appId": "6828991827",
+  "locale": "en-US",
+  "name": "gostore.mn",
+  "subtitle": "Захиалга, хүргэлт нэг дор",
+  "description": "gostore.mn — бараагаа сонгож, захиалж, хүргэлтээ нэг дор хянаарай.\n\n• Ангилал болон түлхүүр үгээр бараа хайх\n• Камер эсвэл зургийн сангаас зургаар хайх\n• Барааны зураг, үнэ, өнгө, хэмжээ болон бусад хувилбарыг харах\n• Сонгосон бараагаа сагсанд хадгалах\n• Захиалахын өмнө барааны үнэ, Хятад доторх хүргэлт, үйлчилгээний төлбөрийн задаргааг шалгах\n• QPay ашиглан банкны апп-аар төлөх\n• Захиалга, төлбөр, хүргэлтийн төлөвөө хянах\n• Хүлээн авах хаяг болон бүртгэлээ удирдах\n\nАппын цэс монгол хэлээр, барааны нэр англи хэлээр харагдана. Үйлчилгээ Монгол Улсын хэрэглэгчдэд зориулагдсан.\n\nАнхаарах зүйл: Эрээнээс Монгол руу тээвэрлэх каргоны эцсийн төлбөрийг агуулахад жин, эзэлхүүнийг хэмжсэний дараа тооцно. Улаанбаатар доторх хүргэлтийн төлбөр сонгосон нөхцөлөөс хамаарч нэмэгдэнэ.\n\nТусламж: https://gostore.mn/help\nХолбоо барих: shop@gostore.mn\n\ngostore.mn is a shopping app for Mongolia. Browse products, search by image, choose variants, review checkout charges, pay for physical goods with QPay and follow your orders. The interface is in Mongolian and product titles are in English. International cargo charges are finalized after warehouse measurement.",
+  "keywords": "худалдаа,захиалга,хүргэлт,карго,бараа,shopping,mongolia",
+  "promotionalText": "Бараагаа хайж, хувилбараа сонгон, төлбөрийн задаргаагаа шалгаад захиалаарай. Захиалга, хүргэлтийн төлөвөө апп-аасаа хянана.",
+  "supportUrl": "https://gostore.mn/help",
+  "marketingUrl": "https://gostore.mn",
+  "privacyPolicyUrl": "https://gostore.mn/mobile-privacy.html",
+  "copyright": "2026 Enkhbat Tungalagtamir",
+  "primaryCategory": "SHOPPING",
+  "secondaryCategory": "LIFESTYLE",
+  "territories": ["MNG"],
+  "price": "0",
+  "releaseType": "MANUAL",
+  "reviewNotes": "This is a Mongolian-language shopping app for physical goods, with English product titles. Browse without signing in. Use the supplied review account for cart checkout, addresses and account features. There is no OTP or email verification. QPay opens a Mongolian bank app to pay for physical goods; no digital goods or subscriptions are sold. Do not make a real payment during review. Cargo charges are calculated after warehouse weight/volume measurement. The account can be deleted under Миний > Бүртгэл устгах; password and DELETE confirmation are required. Camera/photo access is optional and used only for image search. Support: shop@gostore.mn."
+}
