@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Checkout total label and Миний ачаа on load — 2026-10-31
+
+- Checkout calculation names the upfront amount «Одоо төлөх» like the cart, help page and app; order history keeps «Захиалгын эхний төлбөр». Opening Миний ачаа right after page load no longer does nothing when `refresh()` signs the customer in (sign-in bumps alone do not cancel the list).
+- Full `tests/run-all.cjs` passed, including commerce-continuation, product-page-ui, store-pages-ui and a new deterministic logistics-ui check (fails on the previous `cargo.js`).
+- Deployed `app.js`, `index.html` with baseline/backup/hash verification. Backup: `/gostore-backups/checkout-label-20261031-e9ac8e9e77`. Public homepage serves `app.js?v=f69e5845070c`; 1440/390 px showed 12 category rows / 10 phone tiles, 50 products, no overflow or JS errors.
+
 ## Taobao marketplace home and shop-grouped cart — 2026-10-31
 
 - Home first screen: category rows with hover/keyboard flyout, popular searches, banner and customer panel (order-stage shortcuts to `/account?status=…`); phones get a two-row category grid and five tabs (Нүүр, Ангилал, Захиалга, Сагс, Миний). Brands follow the first screen; how-it-works/editorial blocks removed from the home page. Cart groups lines by shop with line/shop/all selection, estimates and orders only selected lines, and pins the total above the tab bar on phones. Cart lines keep `vendor_name`, now whitelisted in `server/customer-state.php`.
