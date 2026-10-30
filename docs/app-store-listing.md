@@ -8,7 +8,7 @@ App Store Connect record: `6828991827`; bundle ID: `mn.gostore.app`. The listing
 - Primary/secondary categories: Shopping / Lifestyle.
 - Distribution: free download, Mongolia (`MNG`) only; new territories disabled.
 - Release: manual. Preparing the listing does not submit it for public App Review or release it.
-- Version: `1.0.0`, production iOS build `4`. Icon comes from the opaque 1024×1024 GOStore PNG embedded in that build.
+- Version: `1.0.0`, production iOS build `5`. Icon comes from the opaque 1024×1024 GOStore PNG embedded in that build. Build 5 includes the refreshed in-app branding and navigation; the four listing screenshots were replaced with verified native captures of that UI.
 - Review contact: Arvis Trans, `shop@gostore.mn`, `+97686079077` (owner confirmed the existing contact name).
 - A dedicated, ordinary customer review account is configured in Apple's review fields. Its password stays in ignored local storage and App Store Connect; never copy it into this repository. No purchases or payments were made while preparing the listing.
 - Privacy: `gostoremn/store/privacy-declaration.json` records the declared data categories and code-based rationale; the live privacy policy is `https://gostore.mn/mobile-privacy.html`.
