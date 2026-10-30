@@ -7,11 +7,12 @@ import type { Product } from "@/lib/types";
 import { Busy, colors, money } from "@/components/ui";
 import { Icon } from "@/components/shop-ui";
 import categories from "@/lib/discovery.json";
+import { categoryImages } from "@/lib/category-images";
 export { categories };
 export function CategoryPhoto({ image, size = 64 }: { image: string; size?: number }) {
   const [failed, setFailed] = useState(false);
   return <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center", borderRadius: 12, overflow: "hidden", backgroundColor: "#f7f7f7" }}>
-    {image && !failed ? <Image source={image} contentFit="contain" style={{ width: "100%", height: "100%" }} onError={() => setFailed(true)} /> : <Icon name="grid" size={24} color={colors.muted} />}
+    {image && !failed ? <Image source={categoryImages[image] || image} contentFit="contain" style={{ width: "100%", height: "100%" }} onError={() => setFailed(true)} /> : <Icon name="grid" size={24} color={colors.muted} />}
   </View>;
 }
 export function DiscoveryCard({ product: p }: { product: Product }) {

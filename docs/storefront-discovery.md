@@ -8,7 +8,7 @@ Home discovery includes Explore, domestic 0 CNY shipping, Clothing, Home and Tec
 
 `assets/category-photos.json` records illustrative catalog photos and their source product IDs/URLs. All 25 main categories have photos. There are 195 query mappings, using 165 distinct 200-pixel WebP thumbnails totaling approximately 1.3 MB. A few subcategories without a suitable verified photo retain a neutral fallback instead of displaying an unrelated product. Initial incidental title matches (for example, laptop “notebook” and bra “cup”) were removed during curation. A photo is category artwork, not a promise of that product's availability or price.
 
-Run `node scripts/sync-discovery.cjs` after changing the taxonomy in `script.js` or the photo mapping. This regenerates `catalog-discovery-data.js` and the app's `src/lib/discovery.json`. Then run `node scripts/bundle.cjs` to update the storefront bundles. Generated files are committed so app-only EAS archives include their data.
+Run `node scripts/sync-discovery.cjs` after changing the taxonomy in `script.js` or the photo mapping. This regenerates `catalog-discovery-data.js`, the app's `src/lib/discovery.json`, and a static bundled-image map. The same WebP thumbnails are copied into the app's assets so category pictures need no network request and work offline. Then run `node scripts/bundle.cjs` to update the storefront bundles. Generated files are committed so app-only EAS archives include their data.
 
 ## Domestic free-shipping channel
 
