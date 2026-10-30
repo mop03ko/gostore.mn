@@ -24,6 +24,14 @@ appId: mn.gostore.app
     visible: "Таны GOStore"
     timeout: 15000
 - takeScreenshot: 06-profile
+- openLink: gostoremn://brands
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "12 брэнд.*"
+    timeout: 15000
+- takeScreenshot: 07-brands
 - openLink: gostoremn://product/tb-1022951227321
 - tapOn:
     text: "Open"

@@ -382,4 +382,3 @@ export const departments: Department[] = [
     ]
   }
 ];
-export const brands = ["Nike", "adidas", "Puma", "New Balance", "UNIQLO", "ZARA", "H&M", "The North Face", "Sony", "Xiaomi", "LEGO", "IKEA"];

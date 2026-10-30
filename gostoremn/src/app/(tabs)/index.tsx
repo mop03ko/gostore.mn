@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
-  ScrollView,
   Text,
   View,
   useWindowDimensions,
@@ -15,7 +14,9 @@ import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
-import { brands, departments } from "@/lib/departments";
+import { departments } from "@/lib/departments";
+import { brands } from "@/lib/brands";
+import { BrandMark, BrandShelf } from "@/components/brands";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
@@ -29,6 +30,7 @@ type Results = {
 function Shop({ initialQuery }: { initialQuery: string }) {
   const inset = useSafeAreaInsets();
   const [photoMenu, setPhotoMenu] = useState(false);
+  const [searchMode, setSearchMode] = useState(!!initialQuery);
   const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
     { width } = useWindowDimensions(),
@@ -110,6 +112,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
     return () => controller.abort();
   }, [query, page, sort, image, retry]);
   const search = (value: string) => {
+    setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
     setQuery(value.trim() || "storage box");
@@ -158,6 +161,8 @@ function Shop({ initialQuery }: { initialQuery: string }) {
       setPage(1);
       setItems([]);
       setImage(r.image);
+      setSearchMode(true);
+      list.current?.scrollToOffset({ offset: 0, animated: true });
       setRetry((x) => x + 1);
     } catch (e) {
       setError((e as Error).message);
@@ -199,7 +204,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
           <BrandLogo width={132} />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
             <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", flexShrink: 1, color: colors.muted }}>
-              Танд зориулсан
+              {searchMode ? "Хайлтын үр дүн" : "Танд зориулсан"}
             </Text>
             <IconButton
               name="message"
@@ -245,6 +250,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
               onPress={() => setPhotoMenu(true)}
             />
           )}
+          {searchMode && <IconButton name="close" label="Нүүр хуудас руу буцах" onPress={() => search("")} />}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Хайх"
@@ -276,6 +282,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
+            {!searchMode && <>
             <View
               style={{
                 backgroundColor: "white",
@@ -391,40 +398,14 @@ function Shop({ initialQuery }: { initialQuery: string }) {
                 </Pressable>
               ))}
             </View>
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 10,
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "700", fontSize: 13 }}>
-                Дэлхийн брэндүүд
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 7 }}
-              >
-                {brands.map((b) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={b}
-                    onPress={() => search(b)}
-                    style={{
-                      minHeight: 44,
-                      paddingHorizontal: 12,
-                      justifyContent: "center",
-                      borderRadius: 8,
-                      backgroundColor: "#f7f7f7",
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "600" }}>{b}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
+            <BrandShelf onSelect={search} />
+            </>}
+            {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: "white" }}>
+              {brands.filter(b => b.name.toLowerCase() === query.toLowerCase()).map(b => <BrandMark key={b.id} brand={b} size={38} />)}
+              <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Брэнд солих" onPress={() => router.push("/brands")} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: 12, color: "#b43f0a" }}>Брэндүүд ›</Text></Pressable>
+            </View>}
             <View
               style={{
                 flexDirection: "row",

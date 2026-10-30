@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import type { ComponentRef } from "react";
-import { departments, brands } from "@/lib/departments";
+import { departments } from "@/lib/departments";
+import { brands } from "@/lib/brands";
+import { BrandTile } from "@/components/brands";
 import { Icon } from "@/components/shop-ui";
 import { colors } from "@/components/ui";
 export default function Categories() {
@@ -56,9 +58,7 @@ export default function Categories() {
           </View>
           <Text style={styles.section}>Брэндээр хайх</Text>
           <View style={styles.brands}>
-            {brands.map(b => <Pressable key={b} accessibilityRole="button" onPress={() => search(b)} style={styles.brand}>
-              <Text style={styles.brandLabel}>{b}</Text>
-            </Pressable>)}
+            {brands.map(b => <View key={b.id} style={{ width: "47%", flexGrow: 1 }}><BrandTile brand={b} onPress={() => search(b.name)} /></View>)}
           </View>
         </ScrollView>
       </View>
@@ -85,6 +85,4 @@ const styles = StyleSheet.create({
   tileIcon: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   tileLabel: { fontSize: 12, textAlign: "center", color: colors.ink, fontWeight: "500" },
   brands: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  brand: { paddingHorizontal: 12, paddingVertical: 12, minHeight: 44, borderWidth: 1, borderColor: colors.line, borderRadius: 12 },
-  brandLabel: { fontSize: 11, fontWeight: "600", color: colors.ink },
 });
