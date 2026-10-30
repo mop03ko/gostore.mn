@@ -12,8 +12,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  const open=async id=>{await page.goto(base+'/v/tb-'+id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);};
  await open('711111111');assert.equal(await page.locator('.float-help').count(),1,'Floating help on product pages');
  // Variant attributes are merged into one row each; only the first 10 rows show before «Бүх үзүүлэлт».
- const specRows=await page.locator('#pd-specifications > dl.pd-spec-list > div').allInnerTexts();assert.equal(specRows.length,10);assert.ok(specRows[1].includes('38, 39, 40, 41, 42, 43, 44, 45'),specRows[1]);
- assert.equal(await page.locator('.pd-more-specs dl > div').count(),4);assert.ok((await page.locator('.pd-more-specs summary').innerText()).includes('+4'));
+ assert.equal(await page.locator('#pd-specifications,.pd-spec-list,.pd-more-specs').count(),0,'Supplier attribute tables are replaced by short facts');
  await page.locator('[data-pd-add]').click();await page.locator('#cart-flyout.visible').waitFor();
  assert.ok((await page.locator('#cart-flyout').innerText()).includes('Сагсанд нэмэгдлээ'));
  await page.locator('#pd-options [name=variant]').first().waitFor();await page.locator('[data-pd-delta="1"]').click();assert.equal(await page.locator('#pd-qty').inputValue(),'2','Flyout does not block the page');

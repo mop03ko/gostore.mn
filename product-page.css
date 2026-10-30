@@ -45,3 +45,15 @@
 /* Between the stacked mobile bar and the wide desktop column the buy bar wraps: price on its own row. */
 .pd-buybar strong{white-space:nowrap}
 @media(min-width:761px) and (max-width:1099px){.pd-buybar{flex-wrap:wrap}.pd-buybar>div{flex:1 1 100%}.pd-buybar .button{flex:1 1 0;white-space:nowrap}}
+/* Shop rating, short facts and the mixed recommendation grid (product-page.js). */
+.pd-vendor{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.pd-rating{display:inline-flex;align-items:center;gap:6px;color:var(--navy);font-size:13px}.pd-rating b{font-weight:700}
+.pd-stars{display:inline-flex;gap:1px;font-size:15px;line-height:1;letter-spacing:0}.pd-stars i{font-style:normal;color:#d5d9e1}.pd-stars i.on{color:#f59e0b}
+.pd-stars i.half{background:linear-gradient(90deg,#f59e0b 50%,#d5d9e1 50%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pd-brief{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0 4px}
+.pd-brief>div{background:#f5f6f8;border-radius:10px;padding:10px 12px;min-width:0}
+.pd-brief dt{font-size:12px;color:#5f6b7d}.pd-brief dd{margin:4px 0 0;font-size:14px;font-weight:600;color:var(--navy);overflow-wrap:anywhere}
+#pd-recommend-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1180px){#pd-recommend-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){.pd-brief{grid-template-columns:repeat(2,minmax(0,1fr))}#pd-recommend-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:340px){.pd-brief{grid-template-columns:1fr}}

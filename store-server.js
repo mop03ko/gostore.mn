@@ -32,7 +32,7 @@ window.supplierApi=(()=>{
     try{sessionStorage.setItem(key,json);}catch{/* Memory cache still works if storage is full or unavailable. */}
   }
   const api=async(action,payload,options={})=>{
-    if(!['supplier-search','supplier-product'].includes(action))throw Error('Unsupported public cache action');
+    if(!['supplier-search','supplier-product','supplier-recommend'].includes(action))throw Error('Unsupported public cache action');
     if(action==='supplier-search'&&payload.image){if(!/^[a-f0-9]{32}$/.test(payload.image))throw Error('Зургийн дугаар буруу.');payload={image:payload.image,page:payload.page,...(payload.limit?{limit:payload.limit}:{})};}
     else if(action==='supplier-search')payload={...payload,q:String(payload.q||'__all__').trim().replace(/\s+/g,' ').toLocaleLowerCase()||'__all__'};
     const request=action+':'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
@@ -56,9 +56,10 @@ window.supplierApi=(()=>{
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
         if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null,partial:result.partial===true,revalidate:result.revalidate===true});
+        else if(action==='supplier-recommend')data.products=result.products;
         else data.product=result.product;
-        const ttl=Math.min(action==='supplier-search'?600:300,Number(result.cache_ttl)||0);
-        const shaped=action==='supplier-search'?Array.isArray(data.products):data.product?.id===payload.id;
+        const list=action!=='supplier-product',ttl=Math.min(list?600:300,Number(result.cache_ttl)||0);
+        const shaped=list?Array.isArray(data.products):data.product?.id===payload.id;
         if(shaped&&!data.partial&&data.stale===false&&ttl>0){entries=entries.filter(e=>e.key!==request);entries.push({key:request,expires:Math.min(started+ttl*1000,Number(result.cache_expires)>0?Number(result.cache_expires)*1000:Infinity),data:clone(data)});persist();}
         return data;
       })();

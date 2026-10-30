@@ -12,6 +12,12 @@ GOStore can use `shipping_settings.catalog_provider = taoworld` for the public c
 
 The public data shape, SKU IDs, cart and checkout routes remain compatible. Long numeric SKU IDs remain strings. Knife restrictions apply to raw Chinese titles, translated titles, categories, variants and blocked IDs.
 
+## Seller facts and recommendations
+
+Search rows include `shopDsr` (shop rating out of 5), `shippingOrigin` (Chinese region text) and sometimes `deliveryTimes: 48shipping`; `/traffic/item/get` has none of them. `tw_catalog_remember()` stores these next to the `mi_id` mapping (keeping them when a detail refresh rotates the identifier, rewriting only on change), and the detail response exposes `shop_rating`, `ship_from` (Mongolian province name) and `ships_48h`. Invalid ratings are ignored.
+
+`supplier-recommend` returns up to 24 products under a product page: page one of every storefront department, interleaved so no category (including the product's own) dominates, starting at a department chosen by the product ID. Only display-fresh snapshots are read; when fewer than 12 products are cached one uncached department is fetched through the normal quota and locks. Provider failure returns an empty list. TaoWorld has no product review API; `/product/recommend` exists but is not enabled for this application.
+
 ## Cache and limits
 
 Native caches are separate from OT caches and scoped to the connected account. Keyword search results are fresh for 30 minutes; display-only list reads may show snapshots up to 60 minutes old while the browser refreshes them with a separate request. Stale responses have `revalidate=true`, zero cache TTL and HTTP `no-store`; they cannot enter the fresh browser cache. Failed refreshes never extend their age. Image results last 10 minutes, details 5 minutes, and checkout accepts at most 120-second-old details. Search prices remain indicative; checkout revalidates the chosen SKU. A provider error cannot use stale data to create a payment quote. Fresh snapshots are read without taking the writer lock; cache misses lock and recheck before calling the provider. Identical identifier mappings are not rewritten on cache hits.

@@ -414,6 +414,11 @@ function supplier_search_result(array $c,int $page,int $limit=12): array {
     $pages=min(100,max($page,(int)($block['MaximumPageCount']??100)),$total===false?100:max($page,(int)ceil($total/$limit)));
     return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($block['Items']['Content']??[])===$limit&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*$limit<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
+// The OT catalog already returns related items inside the product detail.
+function supplier_recommend(string $id): array {
+    if(tw_catalog_enabled())return tw_catalog_recommend($id);
+    return ['products'=>[],'fetched'=>gmdate('c'),'stale'=>false,'cache_ttl'=>0,'shipping'=>shipping_public()];
+}
 function supplier_detail(string $id,bool $display=false,string $brandId='',bool $purchase=false): array {
     if(tw_catalog_enabled())return tw_catalog_detail($id,$purchase,$brandId);
     $identity=supplier_identity($id);
