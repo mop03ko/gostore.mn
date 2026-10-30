@@ -8,7 +8,7 @@ App Store Connect record: `6828991827`; bundle ID: `mn.gostore.app`. The listing
 - Primary/secondary categories: Shopping / Lifestyle.
 - Distribution: free download, Mongolia (`MNG`) only; new territories disabled.
 - Release: manual. Preparing the listing does not submit it for public App Review or release it.
-- Version: `1.0.0`, production iOS build `5`. Icon comes from the opaque 1024×1024 GOStore PNG embedded in that build. Build 5 includes the refreshed in-app branding and navigation; the four listing screenshots were replaced with verified native captures of that UI.
+- Version: `1.0.0`, production iOS build `7`. Icon comes from the opaque 1024×1024 GOStore PNG embedded in that build. Build 7 adds the website's twelve brand logos, compact two-row discovery, a searchable brand directory and direct product results. It is valid and available to the internal TestFlight group. The four listing screenshots were replaced with verified native captures of home, categories, product details and the brand directory.
 - Review contact: Arvis Trans, `shop@gostore.mn`, `+97686079077` (owner confirmed the existing contact name).
 - A dedicated, ordinary customer review account is configured in Apple's review fields. Its password stays in ignored local storage and App Store Connect; never copy it into this repository. No purchases or payments were made while preparing the listing.
 - Privacy: `gostoremn/store/privacy-declaration.json` records the declared data categories and code-based rationale; the live privacy policy is `https://gostore.mn/mobile-privacy.html`.
@@ -28,4 +28,4 @@ The `screenshots-capture` profile can reuse the specific simulator archive recor
 
 Capture output is excluded from Git. Download the build artifact to `output/app-store/`, inspect native UI and pixel dimensions, then upload only complete, representative screens. Keep bank QR codes, personal customer details and real orders out of listing images.
 
-On 2026-10-31, four visually inspected native screenshots (home, categories, product details and variant selection) were uploaded at 1320 × 2868 pixels to the iPhone screenshot set. The capture flow passed on an iPhone 18 Pro Max simulator. Apple processing must finish before the version can be added to an App Review draft; uploading images alone does not submit the app.
+On 2026-10-31, four visually inspected native screenshots (home, categories, product details and the brand directory) were uploaded at 1320 × 2868 pixels to the iPhone screenshot set. All four completed Apple processing. The capture flow passed on an iPhone 18 Pro Max simulator, including taps on the Technology and All brand filters. Build 7 is selected in the unsubmitted App Review draft; release remains manual. Uploading images or preparing the draft does not submit the app.
