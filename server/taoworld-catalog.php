@@ -154,8 +154,9 @@ function tw_catalog_departments(): array {
 }
 // «Танд санал болгох» under a product: first pages of every department, interleaved so no single
 // category dominates and the product's own category gets no preference. Only display-fresh cached
-// pages are read; when fewer than 12 products are cached, one uncached department (chosen by the
-// product ID) is fetched, which also warms it for later visitors. Failures leave the list shorter.
+// pages are read; while fewer than four departments (or 12 products) are cached, each request fetches
+// one uncached department chosen by the product ID, warming it for later visitors, so the mix widens
+// after a few views. Failures leave the list shorter.
 function tw_catalog_recommend(string $id,int $limit=24): array {
     if(!preg_match('/^tb-\d{5,20}$/D',$id))fail('Барааны дугаар буруу.');
     tw_catalog_require_ready();product_policy_assert(['id'=>$id]);
@@ -166,7 +167,7 @@ function tw_catalog_recommend(string $id,int $limit=24): array {
         $k=$keywords[($start+$i)%$count];$c=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query($k)).'.json');
         if(tw_catalog_fresh($c,TW_CATALOG_SEARCH_MAX_AGE)&&is_array($c['data']['data']??null)){$lists[]=$c['data']['data'];$time=min($time,$c['time']);}else $missing[]=$k;
     }
-    if($missing&&array_sum(array_map('count',$lists))<12){
+    if($missing&&(count($lists)<4||array_sum(array_map('count',$lists))<12)){
         try{$c=tw_catalog_cached('/traffic/item/search',$query($missing[0]),false,null,true);if(is_array($c['data']['data']??null)){$lists[]=$c['data']['data'];$time=min($time,$c['time']);}}
         catch(ApiError){}
     }
