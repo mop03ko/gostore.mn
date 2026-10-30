@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## TaoWorld automation activation and paid pilot — 2026-10-30
+
+- Installed the two-minute CLI cron using the hosting user's `proc_open`/`crontab` access, preserving all three existing crontab lines. Backed up the original privately at `/gostore-data/taoworld/cron-before-20261030.txt`; verified the installed text and PHP 8.3.36 CLI. Observed independent scheduled heartbeats at 13:10:02, 13:12:09 and 13:14:02 (Asia/Ulaanbaatar).
+- The owner approved a CNY 12.21 cap for the existing paid pilot. Refreshed its exact native identifier, verified SKU/quantity/receiver and current render total, then queued it with the approved per-order budget. The scheduled worker created it; one explicit API payment was confirmed by a subsequent supplier query as `WAIT_SELLER_SEND_GOODS`. Original customer QPay amount was unchanged. Supplier IDs are stored privately on the order; shipment/tracking is still pending.
+- Enabled automatic creation and payment for newly confirmed payments at 13:14:30 local time, channel `PANAMA_DG`. Prior procurement settings are private at `/gostore-data/taoworld/procurement-before-activation-20261030.json`. Over-budget orders remain held for operator approval; the pilot's extra budget is not a global shipping allowance.
+- Added sanitized payment-result persistence, retaining only success/error codes while preserving query-based confirmation and no duplicate payment. Native procurement regression passed, including timeout recording/redaction. Deployed and verified `server/taoworld-purchase.php`; backup `/gostore-backups/taoworld-automation-20261030-c9aab0b55d`. Temporary operational endpoints were removed after every action.
+
 ## TaoWorld read performance — 2026-10-30
 
 - Added concurrent remaining search pages (at most three), lock-free reads of fresh atomic cache snapshots, retained successful pages on partial failures, and eliminated identical identifier rewrites. Search lists now cache for 30 minutes; detail/image/checkout freshness is unchanged. English names and current API budget remain unchanged.

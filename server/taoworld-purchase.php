@@ -22,6 +22,11 @@ function tw_data(array $response): array {
 function tw_id(mixed $id): string {if((!is_string($id)&&!is_int($id))||!preg_match('/^[0-9]{1,30}$/D',(string)$id))fail('TaoWorld бараа/захиалгын дугаар буруу.',502);return (string)$id;}
 function tw_fen(mixed $n): int {if((!is_int($n)&&!is_string($n))||!preg_match('/^[0-9]{1,9}$/D',(string)$n))fail('TaoWorld үнийн дүн буруу.',502);return (int)$n;}
 function tw_money(array $m): int {if(($m['currency']??'')!=='CNY')fail('Зөвхөн CNY тооцоогоор худалдан авна.',409);return tw_fen($m['amount']??null);}
+// Store only structured outcome codes; signed requests and provider messages stay private.
+function tw_submission_result(array $response): array {
+    $r=$response['result']??$response;$code=(string)($r['error_code']??$r['biz_error_code']??'');
+    return ['success'=>is_bool($r['success']??null)?$r['success']:null,'code'=>preg_match('/^[A-Za-z0-9_-]{1,64}$/D',$code)?$code:null];
+}
 function tw_eligible(array $o): void {
     product_policy_order_assert($o);
     if(($o['type']??'')!=='checkout'||empty($o['paid'])||!in_array($o['status'],['confirmed','shipping'],true)||!empty($o['demo']))fail('Төлбөр төлөгдсөн, идэвхтэй сагсны захиалга шаардлагатай.',409);
@@ -174,8 +179,9 @@ function tw_pay_locked(string $id): array {
     if(count($p['provider_order_ids'])>10)fail('10-аас олон нийлүүлэгчийн захиалгыг TaoWorld сайтад төлнө үү.',409);
     $token=taoworld_access_token();
     tw_update($id,static function(&$fresh){tw_eligible($fresh);tw_assert_pinned($fresh);$fresh['purchase']['state']='paying';$fresh['purchase']['pay_submitted_at']=gmdate('c');$fresh['purchase']['next_at']=time()+30;});
-    try{tw_data(taoworld_http('/purchase/order/batch/pay',['purchaseOrderIdList'=>tw_json($p['provider_order_ids']),'access_token'=>$token]));}catch(Throwable $e){/* Query, never blindly repeat a payment. */}
-    return order_row($id)['order'];
+    $result=['success'=>null,'code'=>'TRANSPORT_UNCERTAIN'];
+    try{$response=taoworld_http('/purchase/order/batch/pay',['purchaseOrderIdList'=>tw_json($p['provider_order_ids']),'access_token'=>$token]);$result=tw_submission_result($response);tw_data($response);}catch(Throwable $e){/* Query, never blindly repeat a payment. */}
+    return tw_update($id,static function(&$fresh)use($result){$fresh['purchase']['payment_result']=$result;});
 }
 function tw_run_order(string $id,bool $pay=false): array {
     return tw_order_lock($id,static function()use($id,$pay){

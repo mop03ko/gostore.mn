@@ -67,6 +67,7 @@ $queryMode='partial';$o=tw_run_order('GS-FLOW');check($o['purchase']['state']===
 $queryMode='foreign';$o=tw_run_order('GS-FLOW');check($o['purchase']['state']==='review','Foreign external id accepted');
 $queryMode='pages';$o=tw_run_order('GS-FLOW');check($o['purchase']['state']==='awaiting_payment'&&count($o['purchase']['children'])===2,'Paginated split orders missing');
 $o=tw_run_order('GS-FLOW',true);check($o['purchase']['state']==='paying'&&$paymentCalls===1,'Payment intent not persisted');
+check($o['purchase']['payment_result']===['success'=>null,'code'=>'TRANSPORT_UNCERTAIN'],'Uncertain payment outcome not recorded safely');
 tw_run_order('GS-FLOW',true);check($paymentCalls===1,'Uncertain payment repeated');
 $nativeStatus='WAIT_SELLER_SEND_GOODS';$o=tw_run_order('GS-FLOW');check($o['purchase']['state']==='supplier_paid'&&$o['paid']===true,'Supplier/customer payment conflated');
 $nativeStatus='WAIT_BUYER_CONFIRM_GOODS';$o=tw_run_order('GS-FLOW');$o=tw_run_order('GS-FLOW');
@@ -106,6 +107,8 @@ foreach(db()->query('SELECT id FROM orders')->fetchAll() as $row)tw_update($row[
 foreach(['GS-LATER','GS-OVERDUE'] as $id){seed($id);tw_update($id,function(&$o){$o['quote']['inputs']['goods_cny']=20;});tw_queue($id);}
 tw_update('GS-OVERDUE',function(&$o){$o['purchase']['next_at']=time()-120;});check(tw_worker(1)===['GS-OVERDUE'],'Recurring old polls starved an overdue job');
 require_once $fixture.'/server/supplier.php';require_once $fixture.'/server/taoworld-catalog.php';
+check(tw_submission_result(['success'=>false,'error_code'=>'B-1','error_msg'=>'private-token'])===['success'=>false,'code'=>'B-1'],'Payment outcome must retain only safe business codes');
+check(tw_submission_result(['result'=>['success'=>false,'error_code'=>'unsafe / token']])===['success'=>false,'code'=>null],'Unsafe provider code leaked');
 tw_catalog_remember(['item_id'=>'538452788616','mi_id'=>'native-source-mi']);seed('GS-NATIVE-SOURCE');$o=order_row('GS-NATIVE-SOURCE')['order'];$o['items'][0]['catalog_provider']='taoworld';
 tw_map($o);$last=end($calls);check($last[0]==='/product/get'&&($last[1]['mi_id']??'')==='native-source-mi'&&!isset($last[1]['item_url']),'Native checkout must use persisted mi_id even after catalog setting changes');
 echo "PASS: QPay durable queue, Erenhot waiting/address, native SKU/stock/render, budget hold, stable idempotency, timeout/crash recovery, split/paginated orders, one payment attempt, all parcel deduplication, account/address/provider guards, locks, cancellation, disabled mode, token rotation, native catalog mi_id.\n";

@@ -26,7 +26,7 @@ The old OT snapshot cron exits without provider work in native mode. The native 
 
 Automated tests: `tests/taoworld-catalog.php` checks pagination, prices, native identifiers, cache/freshness, stock, policy and image search with a fake upstream. `tests/taoworld-purchase.php` includes the native catalog-to-procurement identifier path. Existing checkout, image-search and admin UI tests cover the unchanged customer controls.
 
-Catalog activation does not enable automatic procurement or automatic supplier payment. Those remain separate settings and require a configured worker cron. A real supplier purchase/payment was not performed as part of catalog development. Product availability and traffic quotas depend on the buyer's eligible pool and procurement history; API success does not imply access to every Taobao listing.
+Catalog activation does not itself enable automatic procurement or supplier payment. Those are separate settings. On 2026-10-30, after catalog development, the worker cron and automatic switches were activated following an owner-approved real purchase/payment pilot; see [procurement acceptance](taoworld-procurement.md#acceptance-status). Product availability and traffic quotas depend on the buyer's eligible pool and procurement history; API success does not imply access to every Taobao listing.
 
 Official references:
 
