@@ -5,6 +5,8 @@ function client(){let token='',csrf='';return {get token(){return token;},get cs
  const a=client(),b=client(),email='mobile-fixture@example.test',password='Mobile-fixture-2026';
  let r=await a.call('customer-me');assert.equal(r.status,200);assert.equal(r.data.customer,null);assert.match(a.token,/^[a-zA-Z0-9,-]{26,128}$/);assert.equal(r.headers.get('set-cookie'),null);
  const guest=a.token;
+ r=await a.call('supplier-recommend&id=tb-123456789');assert.equal(r.status,200);assert.ok(Array.isArray(r.data.products),'Public mobile recommendation endpoint');
+ assert.equal((await a.call('supplier-recommend',{id:'tb-123456789'})).status,404,'Recommendations remain read-only');
  assert.equal((await a.call('dashboard')).status,404);assert.equal((await a.call('login',{email,password})).status,404);assert.equal((await a.call('taoworld-settings')).status,404);
  assert.equal((await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'},{'X-CSRF-Token':'bad'})).status,403);
  r=await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'});assert.equal(r.status,201);const customer=r.data.customer;assert.notEqual(a.token,guest);const first=a.token;

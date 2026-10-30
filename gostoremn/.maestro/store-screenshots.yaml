@@ -42,10 +42,26 @@ appId: mn.gostore.app
     text: "Open"
     optional: true
 - extendedWaitUntil:
-    visible: "Хувилбар сонгох"
+    visible: "Тойм"
     timeout: 90000
 - waitForAnimationToEnd
 - takeScreenshot: 03-product
-- tapOn: "Хувилбар сонгох"
+- tapOn: "Үнэлгээ"
+- waitForAnimationToEnd
+- assertVisible: "Худалдан авагчдын сэтгэгдэл"
+- takeScreenshot: 08-reviews
+- tapOn: "Үзүүлэлт"
+- waitForAnimationToEnd
+- assertVisible: "Товч үзүүлэлт"
+- takeScreenshot: 09-specifications
+- tapOn: "Санал болгох"
+- extendedWaitUntil:
+    visible:
+      id: "recommendation-grid"
+    timeout: 60000
+- tapOn: "Санал болгох"
+- waitForAnimationToEnd
+- takeScreenshot: 10-recommendations
+- tapOn: "Сагсанд нэмэх"
 - waitForAnimationToEnd
 - takeScreenshot: 04-options

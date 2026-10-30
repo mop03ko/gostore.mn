@@ -26,6 +26,10 @@ export type Product = {
   variants: Variant[];
   vendor_id?: string;
   vendor_name?: string;
+  shop_rating?: number | null;
+  brand?: string;
+  ship_from?: string;
+  ships_48h?: boolean;
   description?: string;
   attributes?: { name: string; value: string }[];
 };

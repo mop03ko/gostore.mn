@@ -5,18 +5,17 @@ import {
   View,
   Pressable,
   Modal,
-  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon, IconButton, Choice, Quantity } from "@/components/shop-ui";
+import { IconButton, Choice, Quantity } from "@/components/shop-ui";
+import { ProductDetails } from "@/components/product-details";
 import { catalog } from "@/lib/api";
 import { addLine } from "@/lib/cart";
 import { useStore } from "@/lib/store";
 import type { Product } from "@/lib/types";
 import {
-  Card,
   Title,
   Copy,
   Button,
@@ -26,12 +25,9 @@ import {
   money,
 } from "@/components/ui";
 export default function ProductScreen() {
-  const inset = useSafeAreaInsets(),
-    { width } = useWindowDimensions(),
-    galleryWidth = Math.min(width, 820);
+  const inset = useSafeAreaInsets();
   const [sheet, setSheet] = useState(false),
-    [intent, setIntent] = useState<"cart" | "buy">("cart"),
-    [imageIndex, setImageIndex] = useState(0);
+    [intent, setIntent] = useState<"cart" | "buy">("cart");
   const { id } = useLocalSearchParams<{ id: string }>(),
     { cart, saveCart, shipping, cartReady } = useStore();
   const [product, setProduct] = useState<Product | null>(null),
@@ -80,11 +76,6 @@ export default function ProductScreen() {
     }
   }
 
-  const images = product
-    ? [...new Set([product.image, ...(product.images || [])])]
-        .filter(Boolean)
-        .slice(0, 12)
-    : [];
   const open = (mode: "cart" | "buy") => {
     setIntent(mode);
     setAdded(false);
@@ -92,211 +83,14 @@ export default function ProductScreen() {
   };
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{
-          paddingBottom: 20,
-          gap: 10,
-          maxWidth: 820,
-          width: "100%",
-          alignSelf: "center",
-        }}
-      >
-        <ErrorBox message={error} retry={() => setRetry((x) => x + 1)} />
-        {!product && !error ? (
-          <Busy />
-        ) : (
-          product && (
-            <>
-              <View style={{ backgroundColor: "white" }}>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={(e) =>
-                    setImageIndex(
-                      Math.round(e.nativeEvent.contentOffset.x / galleryWidth),
-                    )
-                  }
-                >
-                  {images.map((uri) => (
-                    <Image
-                      key={uri}
-                      source={uri}
-                      contentFit="contain"
-                      style={{ width: galleryWidth, height: galleryWidth }}
-                    />
-                  ))}
-                </ScrollView>
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 14,
-                    right: 14,
-                    backgroundColor: "#00000066",
-                    paddingHorizontal: 12,
-                    paddingVertical: 5,
-                    borderRadius: 18,
-                  }}
-                >
-                  <Text style={{ color: "white", fontSize: 12 }}>
-                    {Math.min(imageIndex + 1, images.length)} / {images.length}
-                  </Text>
-                </View>
-              </View>
-              <View style={{ backgroundColor: "white", padding: 16, gap: 10 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "baseline",
-                    gap: 8,
-                  }}
-                >
-                  <Text
-                    selectable
-                    style={{
-                      fontSize: 30,
-                      fontWeight: "800",
-                      color: "#d84500",
-                    }}
-                  >
-                    {variant?.cny && rate
-                      ? money(Math.ceil(variant.cny * rate))
-                      : product.mnt
-                        ? money(product.mnt)
-                        : "Үнэ шалгах"}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: colors.muted }}>
-                    {" "}
-                    / нэгж
-                  </Text>
-                </View>
-                <Text
-                  selectable
-                  style={{ fontSize: 18, fontWeight: "600", lineHeight: 26 }}
-                >
-                  {product.name}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>
-                  Барааны үнэ · Хүргэлт тусдаа тооцогдоно
-                </Text>
-              </View>
-              <View style={{ paddingHorizontal: 10, gap: 10 }}>
-                <Card>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Хувилбар сонгох"
-                    onPress={() => open("cart")}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                      minHeight: 48,
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, color: colors.muted }}>
-                      Сонголт
-                    </Text>
-                    <Text
-                      numberOfLines={2}
-                      style={{ flex: 1, fontSize: 14, fontWeight: "600" }}
-                    >
-                      {variant?.label || "Өнгө, хэмжээ, тоо сонгох"}
-                    </Text>
-                    <Icon name="chevron" size={18} />
-                  </Pressable>
-                  <View style={{ height: 1, backgroundColor: colors.line }} />
-                  <View style={{ flexDirection: "row", gap: 12 }}>
-                    <Text style={{ fontSize: 13, color: colors.muted }}>
-                      Хүргэлт
-                    </Text>
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <Text style={{ fontSize: 14 }}>
-                        Хятад → Эрээн → Улаанбаатар
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: colors.muted,
-                          lineHeight: 18,
-                        }}
-                      >
-                        Хятад хүргэлтийг захиалахын өмнө, каргоны төлбөрийг
-                        бодит хэмжилтээр тооцно.
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-                {!!product.vendor_name && (
-                  <Card>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <View
-                        style={{
-                          padding: 10,
-                          backgroundColor: "#fff1e8",
-                          borderRadius: 10,
-                        }}
-                      >
-                        <Icon name="home" color="#c44000" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: "700" }}>
-                          {product.vendor_name}
-                        </Text>
-                        <Copy>Taobao дэлгүүр</Copy>
-                      </View>
-                    </View>
-                  </Card>
-                )}
-                <Card>
-                  <Title>Барааны дэлгэрэнгүй</Title>
-                  {product.attributes?.length ? (
-                    product.attributes.slice(0, 30).map((p, i) => (
-                      <View
-                        key={i}
-                        style={{
-                          flexDirection: "row",
-                          gap: 10,
-                          borderBottomWidth: 1,
-                          borderColor: colors.line,
-                          paddingVertical: 8,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            width: "35%",
-                            fontSize: 12,
-                            color: colors.muted,
-                          }}
-                        >
-                          {p.name}
-                        </Text>
-                        <Text selectable style={{ flex: 1, fontSize: 13 }}>
-                          {p.value}
-                        </Text>
-                      </View>
-                    ))
-                  ) : (
-                    <Copy>
-                      Өнгө, хэмжээ, бүрдлийг сонгосон хувилбарын нэрээс шалгана
-                      уу.
-                    </Copy>
-                  )}
-                </Card>
-                <Copy>
-                  Үнэ, үлдэгдэл захиалга үүсгэхэд серверээр дахин шалгагдана.
-                </Copy>
-              </View>
-            </>
-          )
-        )}
-      </ScrollView>
+      <Stack.Screen options={{ headerTransparent: false,
+        headerTitle: () => <Pressable accessibilityRole="button" accessibilityLabel="Бараа хайх" onPress={() => router.push("/")}
+          style={{ backgroundColor: "#f5f5f5", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 }}><Text style={{ color: colors.muted, fontSize: 14 }}>Бараа хайх</Text></Pressable>,
+        headerRight: () => <IconButton name="cart" label="Сагс нээх" onPress={() => router.push("/cart")} />,
+      }} />
+      <ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
+      {!product ? <View style={{ flex: 1 }}>{!error && <Busy />}</View> :
+        <ProductDetails key={product.id} product={product} variant={variant} rate={rate} onChoose={() => open("cart")} />}
       <View
         style={{
           backgroundColor: "white",
