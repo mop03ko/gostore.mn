@@ -1,5 +1,12 @@
 # Cache and checkout freshness — 2026-10-20
 
+## Product page and first visit — 2026-10-31
+
+- Live baseline (390 px, 4x CPU, ~1.6 Mbps, 150 ms RTT): uncached product detail API 1.5–2.2 s versus 0.08 s cached, and detail snapshots lasted only 5 minutes, so a cold product page reached LCP at 5.4 s. Home cold LCP 2.0 s with 756 KB, of which gtag.js was 178 KB and the three hero JPEGs 250 KB.
+- Product pages (`GET supplier-product`) now show a native detail snapshot up to 30 minutes old and refresh it after the response through `fastcgi_finish_request` once it is older than 5 minutes (one background lock, five-minute pause after a failed refresh). Such responses have `cache_ttl=0`, so browsers and HTTP caches do not keep them. Checkout, the POST detail path and procurement still require details at most 120 seconds old, so a displayed price is always re-verified before payment.
+- gtag.js loads 1.2 s after the `load` event; earlier `gtag()` calls stay queued in `dataLayer`.
+- Hero photos are WebP at twice their largest displayed width (250 KB → 15 KB). `scripts/bundle.cjs` adds a content hash to every `/assets/` image in index.html, so logos and photos use the one-year immutable rule instead of revalidating on each visit.
+
 2026-10-30: Production catalog now uses direct TaoWorld traffic APIs and a separate account-scoped cache. The OT snapshot descriptions below remain historical/rollback behavior. See [TaoWorld catalog](taoworld-catalog.md) for native cache durations, quota use and checkout freshness.
 
 ## Native catalog optimization — 2026-10-30
@@ -10,7 +17,7 @@
 - A fresh, complete browser-cache hit skips both network steps. Partial responses never enter that full-result cache. A failed completion keeps visible cards and offers a retry of the completion request. Changing query, filter or saved view invalidates older responses.
 - Native search snapshots remain fresh for 30 minutes. Display-only reads may serve a snapshot up to 60 minutes old, labelled `stale=true`, `revalidate=true`, with zero cache TTL and HTTP `no-store`. The browser displays it immediately, then requests the same query with `refresh=1` and replaces the list when fresh results arrive. This is a separate read while the page remains usable, not a new cron or server shutdown job. There is no polling loop. If completion itself is required, it runs before the full-list revalidation.
 - Revalidation bypasses the stale allowance, not valid fresh snapshots: cache locks/rechecks and existing API/IP budgets still apply. Refresh failures preserve the old snapshot and its original timestamp. Stale data is never persisted as fresh in browser storage. More-than-one-hour-old, future-dated or malformed snapshots cannot use the stale display allowance.
-- The allowance applies only to search lists. Product detail, image results, checkout's 120-second validation, invoice creation and procurement checks retain their existing rules. Prices displayed in search remain indicative.
+- The allowance applies only to search lists (product pages gained their own 30-minute display allowance on 2026-10-31, above). Image results, checkout's 120-second validation, invoice creation and procurement checks retain their existing rules. Prices displayed in search remain indicative.
 - Validation: native progressive PHP and real HTTP tests cover one-page preview, 50-item offsets, no quota for stale display, lock-free stale reads, explicit refresh, failed refresh retention, expiry and invalid flags. Browser tests cover blocked completion, retries, DOM retention, updated prices, saved-view/navigation races and mobile fit. Existing cache, infinite-scroll, native checkout, image-search, filtering, mobile, shared-cache and invoice-freshness regressions pass.
 - Live warm-cache sample after deployment: first 20-item preview 171 ms; subsequent complete 50-item response 86 ms; repeat complete response 91 ms. This confirms the response contract on production, not a cold-load speed guarantee. Live snapshots were fresh; the stale/revalidation path was tested with isolated expired fixtures.
 

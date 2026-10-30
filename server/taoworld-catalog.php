@@ -4,6 +4,7 @@ require_once __DIR__.'/taoworld-auth.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
+const TW_CATALOG_DETAIL_DISPLAY_MAX = 1800;
 function tw_catalog_require_ready(): void {
     if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
 }
@@ -136,11 +137,32 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
     return $r;
 }
 function tw_catalog_response(array $data,int $time,int $ttl): array {return $data+['fetched'=>gmdate('c',$time),'stale'=>false,'cache_expires'=>$time+$ttl,'cache_ttl'=>max(0,$time+$ttl-time()),'shipping'=>shipping_public()];}
-function tw_catalog_detail(string $id,bool $purchase=false,string $brand=''): array {
+// After the visitor has received the cached page, one PHP-FPM worker refreshes it. A failed
+// refresh pauses that product's refreshes for five minutes; the cached page keeps being served.
+function tw_catalog_schedule_refresh(string $path,array $params,array $key): void {
+    if(!function_exists('fastcgi_finish_request')||getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')return;
+    $retry=tw_catalog_dir().'/'.supplier_cache_key($path,$key).'.retry';if(is_file($retry)&&(int)file_get_contents($retry)>time())return;
+    $lock=fopen(tw_catalog_dir().'/background.lock','c');if(!$lock)return;
+    if(!flock($lock,LOCK_EX|LOCK_NB)){fclose($lock);return;}
+    register_shutdown_function(static function()use($path,$params,$key,$retry,$lock){
+        ignore_user_abort(true);if(session_status()===PHP_SESSION_ACTIVE)session_write_close();fastcgi_finish_request();
+        try{tw_catalog_cached($path,$params,false,$key);if(is_file($retry))unlink($retry);}
+        catch(Throwable){file_put_contents($retry,(string)(time()+300),LOCK_EX);error_log('GOStore TaoWorld background refresh deferred');}
+        finally{flock($lock,LOCK_UN);fclose($lock);}
+    });
+}
+function tw_catalog_detail(string $id,bool $purchase=false,string $brand='',bool $display=false): array {
     tw_catalog_require_ready();
     if($brand!=='')supplier_brand($brand);
     product_policy_assert(['id'=>$id]);$resource=tw_catalog_resource($id);
-    $c=tw_catalog_cached('/traffic/item/get',$resource+['item_resource'=>'taobao','language'=>'en'],$purchase,['id'=>$id,'language'=>'en']);
+    $params=$resource+['item_resource'=>'taobao','language'=>'en'];$key=['id'=>$id,'language'=>'en'];$c=null;
+    // Product pages may show a detail up to 30 minutes old while it refreshes in the background;
+    // checkout still re-reads details at most 120 seconds old, so prices are re-verified before payment.
+    if($display&&!$purchase){
+        $old=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',$key).'.json');
+        if(tw_catalog_fresh($old,TW_CATALOG_DETAIL_DISPLAY_MAX)&&'tb-'.($old['data']['item_id']??'')===$id){$c=$old;if(!tw_catalog_fresh($old,300))tw_catalog_schedule_refresh('/traffic/item/get',$params,$key);}
+    }
+    $c??=tw_catalog_cached('/traffic/item/get',$params,$purchase,$key);
     if('tb-'.($c['data']['item_id']??'')!==$id)fail('Барааны дугаар зөрлөө.',502);
     $p=tw_catalog_product($c['data'],true,$c['time']);$p['price_expires']=$c['time']+($purchase?120:300);
     return tw_catalog_response(['product'=>$p],$c['time'],$purchase?120:300);

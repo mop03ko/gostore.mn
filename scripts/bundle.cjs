@@ -29,6 +29,9 @@ function build(){
     for(const [list,tag,app] of [[SCRIPTS,scriptTag,appJs],[STYLES,styleTag,appCss+'\n']])list.forEach((f,i)=>{const re=tag(f);if(!re.test(html))throw Error('Missing tag for '+f);html=html.replace(re,i===0?app:'');});
   }
   for(const f of [...SCRIPTS,...STYLES])if(html.includes('/'+f+'?v='))throw Error('index.html still references '+f);
+  // Images in index.html get a content hash, which .htaccess caches for a year; unversioned they
+  // were revalidated on every visit (about 20 logos and photos over HTTP/1.1's six connections).
+  html=html.replace(/(")\/assets\/([a-zA-Z0-9\/_-]+\.(?:svg|png|jpe?g|webp))(?:\?v=[A-Za-z0-9._-]+)?(?=")/g,(_,quote,file)=>`${quote}/assets/${file}?v=${v(fs.readFileSync(path.join(root,'assets',file))).slice(0,10)}`);
   return {js,css,html};
 }
 const out=build(),check=process.argv.includes('--check');

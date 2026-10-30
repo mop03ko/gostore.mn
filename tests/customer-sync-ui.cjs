@@ -25,7 +25,7 @@ const CART='gostore-taobao-cart-v1',FAV='gostore-taobao-favorites-v1';
 
  // A removal on B must not be resurrected by A's older copy.
  save=saved(b);await b.evaluate(()=>taobaoCart.save(taobaoCart.items().filter(i=>i.id!=='tb-123456789')));await save;
- await a.reload();await a.waitForFunction(k=>JSON.parse(localStorage.getItem(k)||'[]').length===1,CART);
+ await a.reload();await a.waitForFunction(k=>JSON.parse(localStorage.getItem(k)||'[]').map(i=>i.id).join()==='tb-987654321',CART);
  assert.deepEqual((await list(a,CART)).map(i=>i.id),['tb-987654321'],'Unchanged device takes the newer account cart');
  await a.waitForTimeout(1200);
  const server=await(await b.request.get(base+'/api/index.php?action=customer-state')).json();

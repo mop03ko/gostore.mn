@@ -420,7 +420,7 @@ function supplier_recommend(string $id): array {
     return ['products'=>[],'fetched'=>gmdate('c'),'stale'=>false,'cache_ttl'=>0,'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id,bool $display=false,string $brandId='',bool $purchase=false): array {
-    if(tw_catalog_enabled())return tw_catalog_detail($id,$purchase,$brandId);
+    if(tw_catalog_enabled())return tw_catalog_detail($id,$purchase,$brandId,$display);
     $identity=supplier_identity($id);
     product_policy_assert(['id'=>$id]);
     if($brandId!==''){
