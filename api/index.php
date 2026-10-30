@@ -26,7 +26,8 @@ try {
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.
-    if($method==='GET'&&in_array($action,['supplier-search','supplier-product','supplier-recommend'],true)){
+    if($method==='GET'&&in_array($action,['supplier-search','supplier-product','supplier-recommend','supplier-free-shipping'],true)){
+        if($action==='supplier-free-shipping'){require_once __DIR__.'/../server/discovery.php';supplier_public_json(discovery_free_shipping());}
         if($action==='supplier-recommend')supplier_public_json(supplier_recommend(str_field($_GET,'id',50)));
         if($action==='supplier-product')supplier_public_json(supplier_detail(str_field($_GET,'id',50),true,str_field($_GET,'brand',30,false)));
         $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);

@@ -9,7 +9,8 @@ appId: mn.gostore.app
 - tapOn:
     point: "30%,94%"
 - extendedWaitUntil:
-    visible: "Ангиллаар үзэх"
+    visible:
+      id: "category-photo-grid"
     timeout: 15000
 - takeScreenshot: 02-categories
 - tapOn:

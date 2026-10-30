@@ -14,7 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
-import { departments } from "@/lib/departments";
+import { HomeDiscovery } from "@/components/discovery";
 import { brands } from "@/lib/brands";
 import { BrandMark, BrandShelf } from "@/components/brands";
 import { api, catalog } from "@/lib/api";
@@ -27,9 +27,9 @@ type Results = {
   revalidate?: boolean;
   stale?: boolean;
 };
-function Shop({ initialQuery }: { initialQuery: string }) {
+function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; initialPhoto?: boolean }) {
   const inset = useSafeAreaInsets();
-  const [photoMenu, setPhotoMenu] = useState(false);
+  const [photoMenu, setPhotoMenu] = useState(initialPhoto);
   const [searchMode, setSearchMode] = useState(!!initialQuery);
   const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
@@ -283,121 +283,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 14,
-                paddingVertical: 12,
-                flexDirection: "row",
-                flexWrap: "wrap",
-                rowGap: 10,
-              }}
-            >
-              {departments.map((d) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={d.query}
-                  accessibilityLabel={d.name}
-                  onPress={() => search(d.query)}
-                  style={{
-                    width: "20%",
-                    alignItems: "center",
-                    gap: 5,
-                    minHeight: 68,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 15,
-                      backgroundColor: d.color,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Icon name={d.icon} size={25} color="#913c20" />
-                  </View>
-                  <Text style={{ fontSize: 11, color: colors.ink }}>
-                    {d.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Хүргэлтийн нөхцөл харах"
-              onPress={() => router.push("/help")}
-              style={{
-                backgroundColor: "#fff0e6",
-                borderRadius: 12,
-                padding: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <Icon name="box" color="#c94100" size={20} />
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: "#9c3500",
-                  flex: 1,
-                  fontWeight: "600",
-                }}
-              >
-                Эрээн → Улаанбаатар · Захиалгаа нэг дор хяна
-              </Text>
-              <Icon name="chevron" color="#c94100" size={15} />
-            </Pressable>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {[
-                {
-                  title: "Өдөр тутмын сонголт",
-                  subtitle: "Гэрээ илүү тухтай",
-                  q: "home storage",
-                  icon: "home" as const,
-                  bg: "#ffefe8",
-                },
-                {
-                  title: "Өөрийн хэв маяг",
-                  subtitle: "Хувцас · Гутал · Цүнх",
-                  q: "clothing",
-                  icon: "shoe" as const,
-                  bg: "#fff6df",
-                },
-              ].map((p) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={p.q}
-                  onPress={() => search(p.q)}
-                  style={{
-                    flex: 1,
-                    borderRadius: 12,
-                    backgroundColor: p.bg,
-                    padding: 12,
-                    minHeight: 88,
-                  }}
-                >
-                  <Text style={{ fontWeight: "800", fontSize: 14 }}>
-                    {p.title}
-                  </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 3,
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, color: "#7b6257", flex: 1 }}>
-                      {p.subtitle}
-                    </Text>
-                    <Icon name={p.icon} size={30} color="#a14926" />
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+            <HomeDiscovery onSearch={search} />
             <BrandShelf onSelect={search} />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: "white" }}>
@@ -590,7 +476,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
   );
 }
 export default function ShopRoute() {
-  const { q } = useLocalSearchParams<{ q?: string }>();
+  const { q, photo } = useLocalSearchParams<{ q?: string; photo?: string }>();
   const query = typeof q === "string" ? q : "";
-  return <Shop key={query} initialQuery={query} />;
+  return <Shop key={query + (photo || "")} initialQuery={query} initialPhoto={photo === "1"} />;
 }

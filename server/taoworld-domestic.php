@@ -21,7 +21,7 @@ function tw_domestic_cached(?array $cached,string $key,string $account,array $re
     return $q;
 }
 // This API has no SKU, quantity or cart/seller aggregation inputs. Its per-item fee is reference data only.
-function tw_domestic_reference(array $lines,array $receiver): array {
+function tw_domestic_reference(array $lines,array $receiver,bool $purchase=true): array {
     $dir=tw_catalog_dir();$cooldown=$dir.'/logistics-unavailable.json';$h=fopen($cooldown.'.lock','c');
     if(!$h)return ['status'=>'unavailable'];
     try{
@@ -30,7 +30,7 @@ function tw_domestic_reference(array $lines,array $receiver): array {
         $ids=[];foreach($lines as $line)$ids[$line['id']]=tw_catalog_resource($line['id'])['mi_id'];$fees=[];
         foreach(array_chunk($ids,10,true) as $chunk){
             $data=tw_catalog_call('/traffic/item/batchGetSourceItemLogisticPrice',['item_resource'=>'taobao','mi_id_list'=>tw_json(array_values($chunk)),
-                'address_info'=>tw_json(array_intersect_key($receiver,array_flip(['country','state','city','district'])))],true);
+                'address_info'=>tw_json(array_intersect_key($receiver,array_flip(['country','state','city','district'])))],$purchase);
             if(!array_is_list($data))fail('Хүргэлтийн лавлах хариу буруу.',502);
             foreach($data as $row){
                 if(!is_array($row)||($row['success']??false)!==true||($row['currency']??'')!=='CNY'||($row['item_resource']??'')!=='taobao')fail('Хүргэлтийн лавлах дутуу.',502);
