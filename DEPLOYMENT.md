@@ -2,9 +2,9 @@
 
 ## Taobao marketplace home and shop-grouped cart — 2026-10-31
 
-- Home first screen: category rows with hover/keyboard flyout, popular searches, banner and customer panel (order-stage shortcuts to ); phones get a two-row category grid and five tabs (Нүүр, Ангилал, Захиалга, Сагс, Миний). Brands follow the first screen; how-it-works/editorial blocks removed from the home page. Cart groups lines by shop with line/shop/all selection, estimates and orders only selected lines, and pins the total above the tab bar on phones. Cart lines keep , now whitelisted in .
-- New  suite plus updated storefront, mobile, collection, catalog-navigation and customer-state tests passed; layout audit 320–1440 px passed. Known unrelated failures remain in commerce-continuation, product-page-ui and store-pages-ui (they predate this change and expect the checkout breakdown text from before 4d7fab6).
-- Deployed , , ,  with baseline/backup/hash verification. Backup: . Public homepage at 1440/390 px showed 12 category rows / 10 phone tiles, 50 products, no overflow or JS errors;  returns 401 for guests.
+- Home first screen: category rows with hover/keyboard flyout, popular searches, banner and customer panel (order-stage shortcuts to `/account?status=…`); phones get a two-row category grid and five tabs (Нүүр, Ангилал, Захиалга, Сагс, Миний). Brands follow the first screen; how-it-works/editorial blocks removed from the home page. Cart groups lines by shop with line/shop/all selection, estimates and orders only selected lines, and pins the total above the tab bar on phones. Cart lines keep `vendor_name`, now whitelisted in `server/customer-state.php`.
+- New `home-hub-ui` suite plus updated storefront, mobile, collection, catalog-navigation and customer-state tests passed; layout audit 320–1440 px passed. Known unrelated failures remain in commerce-continuation, product-page-ui and store-pages-ui (they predate this change and expect the checkout breakdown text from before 4d7fab6).
+- Deployed `server/customer-state.php`, `app.css`, `app.js`, `index.html` with baseline/backup/hash verification. Backup: `/gostore-backups/taobao-structure-20261031-fb2d8d0b43`. Public homepage at 1440/390 px showed 12 category rows / 10 phone tiles, 50 products, no overflow or JS errors; `customer-state` returns 401 for guests.
 
 ## Compact homepage brands — 2026-10-30
 
