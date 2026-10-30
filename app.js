@@ -259,6 +259,7 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
 window.commerceUI = (() => {
   const settings = () => window.storeServer?.shipping || {};
   const paymentText = (s = settings()) => {
+    if(s.catalog_provider==='taoworld')return 'Одоо: барааны үнэ, Хятад доторх хүргэлт, үйлчилгээний хураамж. Хятад доторх хүргэлтийг төлбөр тооцох үед шалгана. Дараа: олон улсын карго, сонгосон бол УБ хүргэлт. Дараах төлбөрийг Улаанбаатарт ирэхэд бодит дүнгээр тооцно.';
     const domestic = Number(s.domestic_default_cny) > 0;
     return `Одоо: барааны үнэ, үйлчилгээний хураамж${domestic ? ', Хятад доторх хүргэлтийн урьдчилсан дүн' : ''}. Дараа: ${domestic ? '' : 'Хятад доторх хүргэлт, '}олон улсын карго, сонгосон бол УБ хүргэлт. Дараах төлбөрийг Улаанбаатарт ирэхэд бодит дүнгээр тооцно.`;
   };
@@ -273,10 +274,10 @@ window.commerceUI = (() => {
     const goods = Math.ceil(Number((goodsCny * rate).toFixed(8)));
     const service = Math.ceil(Number((goods * (Number(s.service_percent) || 0) / 100).toFixed(8))) + (Number(s.service_fee_mnt) || 0);
     // Older carts lack seller IDs: leave the domestic amount unknown until the server quote.
-    const domesticLater = !(Number(s.domestic_default_cny) > 0);
+    const native=s.catalog_provider==='taoworld',domesticLater = !native&&!(Number(s.domestic_default_cny) > 0);
     const sellersKnown = items.every(i => typeof i.vendor_id === 'string');
     const vendors = new Set(items.map(i => i.vendor_id ? 'v:' + i.vendor_id : 'p:' + i.id)).size;
-    const domestic = domesticLater ? 0 : sellersKnown ? Math.ceil(Number((vendors * Number(s.domestic_default_cny) * rate).toFixed(8))) : null;
+    const domestic = native?null:domesticLater ? 0 : sellersKnown ? Math.ceil(Number((vendors * Number(s.domestic_default_cny) * rate).toFixed(8))) : null;
     return {goods, service, domestic, domesticLater, total: domestic === null ? null : goods + service + domestic};
   }
   function estimateHtml(items, s = settings()) {

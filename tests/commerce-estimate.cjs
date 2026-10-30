@@ -12,5 +12,7 @@ assert.equal(ui.estimate(items,{...s,cny_rate:0}),null);assert.equal(ui.estimate
 q=ui.estimate([{id:'tb-444444',vendor_id:'a',cny:.01,qty:3}],{...s,service_percent:0,service_fee_mnt:0,domestic_default_cny:0});assert.equal(q.total,17,'Round the full goods amount like the server');
 assert.ok(ui.paymentText({...s,domestic_default_cny:0}).includes('Дараа: Хятад доторх хүргэлт'));
 assert.ok(!ui.paymentText(s).includes('Дараа: Хятад доторх хүргэлт'));
+q=ui.estimate(items,{...s,catalog_provider:'taoworld'});assert.equal(q.domestic,null);assert.equal(q.total,null);assert.equal(q.domesticLater,false,'Native shipping must be quoted before payment');
+assert.ok(!ui.paymentText({...s,catalog_provider:'taoworld',domestic_default_cny:0}).includes('Дараа: Хятад доторх хүргэлт'));
 assert.ok(!ui.unit.includes('ширхэг'),'SKU quantity must not pretend to be individual pieces');
 console.log('PASS commerce estimates: seller grouping, service fee, later domestic fee, old carts, rounding, payment copy and SKU units.');

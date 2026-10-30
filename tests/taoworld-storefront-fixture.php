@@ -13,4 +13,7 @@ $id='tb-'.$rows[0]['item_id'];tw_catalog_remember($rows[0]);$detail=$rows[0]+['p
 supplier_snapshot_write(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$id,'language'=>'en']).'.json',['time'=>time(),'data'=>$detail]);
 $hash=bin2hex(random_bytes(16));$images=supplier_image_search_dir();if(!is_dir($images))mkdir($images,0755,true);file_put_contents($images.'/'.$hash.'.jpg',file_get_contents($root.'/assets/backpack.jpg'));
 supplier_snapshot_write(tw_catalog_dir().'/image-'.$hash.'.json',['time'=>time(),'data'=>tw_catalog_cards(array_slice($rows,0,2))]);
+require_once $root.'/server/checkout.php';require_once $root.'/server/taoworld-domestic.php';
+$lines=checkout_items(['items'=>[['id'=>$id,'sku'=>'9000012','qty'=>2]]]);$receiver=tw_domestic_receiver();$key=tw_domestic_key($lines,$receiver);
+supplier_snapshot_write(tw_catalog_dir().'/domestic-'.$key.'.json',['time'=>time(),'data'=>['source'=>'taoworld_render','shipping_fen'=>1000,'supplier_total_fen'=>3468,'seller_count'=>1,'account'=>tw_account(),'receiver'=>$receiver,'key'=>$key,'reference'=>['status'=>'unavailable'],'expires_at'=>time()+120]]);
 echo json_encode(['id'=>$id,'image'=>$hash],JSON_THROW_ON_ERROR);

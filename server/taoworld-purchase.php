@@ -63,7 +63,8 @@ function tw_queue(string $id,bool $auto=false): array {
 function tw_after_payment(string $id): void {
     try{if(tw_settings()['enabled'])tw_queue($id,true);}catch(Throwable $e){error_log('GOStore TaoWorld queue deferred: '.get_class($e));}
 }
-function tw_map(array $o): array {
+function tw_map(array $o,?callable $call=null): array {
+    $call??='tw_call';
     $lines=[];
     foreach($o['items'] as $i=>$line){
         if(!preg_match('/^tb-([0-9]{5,20})$/D',$line['id']??'',$match))fail('TaoWorld автомат худалдан авалтад Taobao бараа шаардлагатай.',409);
@@ -72,7 +73,7 @@ function tw_map(array $o): array {
             require_once __DIR__.'/supplier.php';require_once __DIR__.'/taoworld-catalog.php';$resource=tw_catalog_resource($line['id']);
         }else $resource=['item_url'=>$line['url']??''];
         if(empty($resource['mi_id'])&&empty($resource['item_url']))fail('TaoWorld барааны холбоос дутуу.',409);
-        $p=tw_data(tw_call('/product/get',$resource));
+        $p=tw_data($call('/product/get',$resource));
         if(isset($p['item_id'])&&(string)$p['item_id']!==$match[1])fail('TaoWorld эх барааны дугаар зөрлөө.',409);
         product_policy_assert(['id'=>$line['id'],'name'=>$p['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]],409);
         if(($p['status']??'')!=='active')fail('TaoWorld бараа худалдаанд байхгүй.',409);
@@ -86,9 +87,9 @@ function tw_map(array $o): array {
     }
     return $lines;
 }
-function tw_render(array $o,array $p): array {
-    $lines=tw_map($o);$items=array_map(fn($l)=>['itemId'=>$l['mp_id'],'skuId'=>$l['mp_sku_id'],'quantity'=>$l['quantity']],$lines);
-    $r=tw_data(tw_call('/purchase/order/render',['need_supplychain_service'=>'false','recommend_similar'=>'false','render_item_List'=>tw_json($items),'warehouse_address'=>tw_json($p['receiver']),'receiver_address'=>tw_json($p['receiver'])]));
+function tw_render(array $o,array $p,?callable $call=null): array {
+    $call??='tw_call';$lines=tw_map($o,$call);$items=array_map(fn($l)=>['itemId'=>$l['mp_id'],'skuId'=>$l['mp_sku_id'],'quantity'=>$l['quantity']],$lines);
+    $r=tw_data($call('/purchase/order/render',['need_supplychain_service'=>'false','recommend_similar'=>'false','render_item_List'=>tw_json($items),'warehouse_address'=>tw_json($p['receiver']),'receiver_address'=>tw_json($p['receiver'])]));
     if(!empty($r['unavailable_sku_list']))fail('TaoWorld дээр захиалах боломжгүй бараа байна.',409);
     $total=tw_money($r['total_real_pay_price']??[]);if($total<1)fail('TaoWorld нийт үнэ тодорхойгүй.',409);
     $actual=[];$shipping=0;
@@ -97,7 +98,7 @@ function tw_render(array $o,array $p): array {
     }
     if(count($actual)!==count($lines))fail('TaoWorld тооцооны барааны тоо зөрлөө.',409);
     foreach($lines as &$line){$v=$actual[$line['mp_id'].'|'.$line['mp_sku_id']]??null;if(!$v||(int)($v['quantity']??0)!==$line['quantity'])fail('TaoWorld тооцооны хувилбар/тоо зөрлөө.',409);$line['price_fen']=tw_money($v['origin_price']??[]);}unset($line);
-    return ['total_fen'=>$total,'shipping_fen'=>$shipping,'currency'=>'CNY','lines'=>$lines,'rendered_at'=>time(),'expires_at'=>time()+120];
+    return ['total_fen'=>$total,'shipping_fen'=>$shipping,'seller_count'=>count($r['render_item_list']??[]),'currency'=>'CNY','lines'=>$lines,'rendered_at'=>time(),'expires_at'=>time()+120];
 }
 function tw_assert_pinned(array $o): void {
     $p=$o['purchase']??[];if(($p['provider']??'')!=='taoworld'||!hash_equals($p['account_binding'],tw_account()))fail('TaoWorld худалдан авагчийн данс өөрчлөгдсөн. Шалгана уу.',409);

@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Native domestic shipping at checkout — 2026-10-30
+
+- Verified the logistics endpoint's documented address/identifier inputs and CNY-fen output. It has no SKU, quantity or cart aggregation inputs. Current app returns `API_CAN_NOT_USE`; requesting access remains necessary for successful reference queries. Checkout uses the working `/purchase/order/render` with exact mapped SKUs, quantities and stored Erenhot destination, summing shipping once per returned seller group. See `docs/taoworld-domestic-shipping.md` for evidence and limits.
+- Added 120-second private shipping cache, 10-minute failed-reference cooldown, mapping read deduplication, account/address/price guards and pre-invoice shipping revalidation. Known free shipping remains zero. Supplier errors never substitute stale/flat shipping. Issued invoices retain their amount; the final supplier pre-purchase render/budget checks remain intact.
+- Passed native domestic fixtures; QPay/token/invoice/freight, shipping, checkout/freshness, native signature/auth/procurement, commerce estimates; native storefront, stale HTTP, checkout/commerce/account UI, shared cache, API and order-concurrency suites. Changed PHP syntax, JS syntax, bundle freshness and diff checks passed.
+- Nine runtime files deployed with baseline comparison, backup/stage verification and final SHA-256 matches. Backup: `/gostore-backups/domestic-shipping-20261030-a5992c8be3`. The generated `app.js` is deployed; individual frontend source remains in Git.
+- Live read-only checkout quote for the pilot's current catalog item: goods CNY 2.69, rendered domestic shipping CNY 10, total MNT 6,980. Its historical paid order/amount was not altered. First shipping quote took 6,688 ms, identical cached quote 3 ms; these are single server-side samples, excluding the prior catalog lookup. Private proof was redacted and all nine hashes matched. Earlier direct procurement renders for quantity 1/2 returned shipping CNY 10 in both cases. No live orders, invoices or payments created; temporary guarded audit endpoint removed.
+
 ## Progressive native catalog and stale-while-revalidate — 2026-10-30
 
 - The first native 50-item search batch now renders up to 20 items before requesting completion; fresh complete browser-cache hits skip both reads. Existing 50-item pagination, image search and OT fallback selection are unchanged. Partial failures retain visible cards and retry completion.

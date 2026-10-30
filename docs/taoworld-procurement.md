@@ -19,7 +19,7 @@ Implemented 2026-10-30. Customer payment, supplier order creation, supplier paym
 
 ## Validation and money
 
-The original budget is the checkout's goods plus estimated China shipping, converted from CNY to integer fen. Service fees and later cargo charges are excluded. No existing QPay amount is changed. If the live TaoWorld render total exceeds this budget, the job holds in `preflight_review` until an operator approves a new budget. A fresh product/SKU/stock check and render are required before create, with a 120-second quote window.
+The original budget is the checkout's goods plus China shipping, converted from CNY to integer fen. New native checkouts use a cart-level TaoWorld render for domestic shipping; older orders may contain an estimate. See [domestic checkout shipping](taoworld-domestic-shipping.md). Service fees and later cargo charges are excluded. No existing QPay amount is changed. If the live TaoWorld render total exceeds this budget, the job holds in `preflight_review` until an operator approves a new budget. A fresh product/SKU/stock check and render are required before create, with a 120-second quote window.
 
 The first read-only live check mapped the selected SKU of `GS-99EDB4`. Its customer quote allowed CNY 2.86 for procurement, while TaoWorld render returned CNY 12.21 including CNY 10 China shipping. On 2026-10-30 the owner explicitly approved a CNY 12.21 ceiling for this pilot. Its per-order budget was updated, the cron created the order, and one explicit supplier-payment API call was subsequently confirmed paid by an order query. The original MNT 1,573 QPay amount was unchanged. This approval applies to that pilot only; future over-budget purchases still require an operator's approval.
 

@@ -149,6 +149,7 @@ function save_order(array $o): void {
     if(function_exists('logistics_notify'))logistics_notify($o,$old);
 }
 function public_order(array $o): array {
+    unset($o['quote']['domestic'],$o['quote']['verified_until']);
     if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
     if(function_exists('warehouse_profile')&&(($o['fulfillment']['method']??'')==='pickup'||(($o['type']??'')==='checkout'&&!isset($o['fulfillment'])&&($o['fulfillment_request']['method']??'pickup')==='pickup')))$o['pickup_warehouse']=warehouse_profile(function_exists('warehouse_order_location')?warehouse_order_location($o,'ulaanbaatar'):'ulaanbaatar');
     if(function_exists('warehouse_order_location'))$o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];

@@ -21,22 +21,30 @@ function checkout_quote(array $lines): array {
     // Each seller ships separately to Erenhot; unknown sellers are counted per product.
     $vendors=count(array_unique(array_map(fn($l)=>$l['vendor_id']!==''?'v:'.$l['vendor_id']:'p:'.$l['id'],$lines)));
     $domestic=round($vendors*$s['domestic_default_cny'],2);
+    $native=count(array_filter($lines,fn($l)=>($l['catalog_provider']??'')==='taoworld'));$shipping=null;
+    if($native){
+        if($native!==count($lines))fail('Өөр өөр каталогийн барааг тусад нь захиална уу.',409);
+        require_once __DIR__.'/taoworld-domestic.php';$shipping=tw_domestic_quote($lines);$domestic=$shipping['shipping_fen']/100;$vendors=$shipping['seller_count'];
+    }
     $goodsMnt=(int)ceil(round($goods*$s['cny_rate'],8));
     $parts=['goods_mnt'=>$goodsMnt,'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goodsMnt*$s['service_percent']/100,8))+(int)$s['service_fee_mnt'],'cargo_mnt'=>0];
     $total=array_sum($parts);if($total<1||$total>100000000)fail('Захиалгын дүн зөвшөөрөх хязгаараас гарсан.');
     // OT does not report Taobao domestic shipping; with no admin estimate it is billed at cost in the final settlement.
-    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$domestic<=0];
+    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$shipping?false:$domestic<=0]+($shipping?['domestic'=>$shipping]:[]);
 }
 function checkout_public_quote(array $q): array {
-    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'cny_rate'=>$q['rates']['cny_rate'],'domestic_later'=>$q['domestic_later']??false,'payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
+    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'cny_rate'=>$q['rates']['cny_rate'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
 }
 function checkout_preview(array $b): array {
     customer_required();limit_attempts('checkout-quote:'.($_SERVER['REMOTE_ADDR']??''),60,3600);
-    $lines=checkout_items($b);return ['quote'=>checkout_public_quote(checkout_quote($lines)),'items'=>array_map(fn($l)=>array_intersect_key($l,array_flip(['id','sku','qty','unit_cny','price'])),$lines)];
+    $lines=checkout_items($b,$verifiedUntil);$quote=checkout_quote($lines);if($verifiedUntil<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
+    return ['quote'=>checkout_public_quote($quote),'items'=>array_map(fn($l)=>array_intersect_key($l,array_flip(['id','sku','qty','unit_cny','price'])),$lines)];
 }
 // Fills a new order with priced items; the shared order-create path assigns the ID and saves it.
 function checkout_order(array $b,array $o): array {
-    $lines=checkout_items($b);$quote=checkout_quote($lines);
+    $lines=checkout_items($b,$verifiedUntil);$quote=checkout_quote($lines);
+    $quote['verified_until']=min($verifiedUntil,$quote['domestic']['expires_at']??PHP_INT_MAX);
+    if($quote['verified_until']<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
     if(int_field($b,'expected_total',1,100000000)!==$quote['total'])fail('Үнэ шинэчлэгдсэн байна. Шинэ дүнг шалгаад дахин баталгаажуулна уу.',409);
     $now=time();$hours=(int)$quote['rates']['payment_window_hours'];
     // The customer chooses Ulaanbaatar warehouse pickup or delivery; delivery is billed in the final settlement.
@@ -60,6 +68,13 @@ function checkout_validate_payment(array $o): int {
     if(checkout_expired($o))fail('Төлбөрийн хугацаа дууссан. Сагсаа дахин шалгана уу.',409);
     $fresh=checkout_items(['items'=>$o['items']??[]],$verifiedUntil);
     foreach($fresh as $i=>$line){$old=$o['items'][$i];if((float)$line['unit_cny']!==(float)$old['unit_cny']||(float)$line['goods_cny']!==(float)$old['goods_cny'])fail('Үнэ шинэчлэгдсэн байна. Сагсаа дахин шалгаж шинэ захиалга үүсгэнэ үү.',409);}
+    if(count(array_filter($fresh,fn($l)=>($l['catalog_provider']??'')==='taoworld'))){
+        require_once __DIR__.'/taoworld-domestic.php';$old=$o['quote']['domestic']??null;
+        if(!$old||($o['warehouse_locations']['erenhot']??'erenhot')!=='erenhot'||!hash_equals($old['account'],tw_account()))fail('Хүргэлтийн тооцоог шинэчилж дахин захиална уу.',409);
+        $shipping=tw_domestic_quote($fresh,$o['warehouse']??null);
+        if($shipping['shipping_fen']!==(int)round($o['quote']['inputs']['domestic_cny']*100)||$shipping['receiver']!==$old['receiver'])fail('Хятад доторх хүргэлтийн үнэ эсвэл хаяг өөрчлөгдсөн. Дахин захиална уу.',409);
+        $verifiedUntil=min($verifiedUntil,$shipping['expires_at']);
+    }
     return $verifiedUntil;
 }
 // An issued invoice is checked with QPay first, so a late payment is recorded instead of cancelled.

@@ -151,6 +151,10 @@ try {
             }
             if($taken)fail('Захиалгын код үүсгэж чадсангүй. Дахин оролдоно уу.',503);
             if(isset($o['route'])){$o['warehouse']=warehouse_destination($o,$b);$o['customer']=$o['warehouse']['family_name'].' '.$o['warehouse']['given_name'];}
+            if($type==='checkout'){
+                if(($o['quote']['verified_until']??0)<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
+                if(isset($o['quote']['domestic']))tw_domestic_assert_warehouse($o['quote'],$o['warehouse']);
+            }
             if(!isset($o['route'])&&($b['family_name']??'')!=='')$o['customer']=str_field($b,'family_name',100).' '.$o['customer'];
             $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],hash('sha256',$token),$key,json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);
             if($customer)$db->prepare('INSERT INTO customer_orders VALUES (?,?,?)')->execute([$o['id'],$customer['id'],$o['created']]);
