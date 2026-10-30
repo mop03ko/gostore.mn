@@ -5,5 +5,5 @@
     "simulator": { "extends": "preview", "ios": { "simulator": true } },
     "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } }
   },
-  "submit": { "production": { "android": { "track": "internal", "releaseStatus": "draft" } } }
+  "submit": { "production": { "ios": { "ascAppId": "6828991827" }, "android": { "track": "internal", "releaseStatus": "draft" } } }
 }

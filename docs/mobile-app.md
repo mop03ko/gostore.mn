@@ -40,6 +40,10 @@ The Zod override removes the Expo CLI high-severity advisory; review it when upg
 
 ## Build and release
 
+The installed app name and App Store Connect name are `gostore.mn`. App Store Connect app ID: `6828991827`; `eas.json` pins submissions to this record. The EAS-hosted App Store Connect key is assigned for submission; no private key is stored in this repository. Internal TestFlight group: `Team (Expo)`.
+
+Submit an existing production iOS build with `npx eas-cli@latest submit --platform ios --profile production --id <build-id> --non-interactive`. Apple processing must finish before the build is available for testing. TestFlight: https://appstoreconnect.apple.com/apps/6828991827/testflight/ios.
+
 ```powershell
 npx eas-cli@latest build --platform android --profile preview
 npx eas-cli@latest build --platform ios --profile production
