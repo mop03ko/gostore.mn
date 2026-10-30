@@ -98,6 +98,7 @@ function taobao_purchase_preview(string $id): array {
     return ['render'=>taobao_trim_payload($r['body'])];
 }
 function taobao_purchase_check(array $o): void {
+    if(isset($o['purchase']['provider'])&&$o['purchase']['provider']!=='ot')fail('Энэ захиалга өөр худалдан авалтын холболтод хамаарна.',409);
     product_policy_order_assert($o);
     if(!$o['paid']||in_array($o['status'],['cancelled','completed'],true))fail('Зөвхөн төлбөр орсон идэвхтэй захиалгыг Taobao-д захиална.',409);
     if(in_array($o['purchase']['state']??'',['creating','created','review'],true))fail('Энэ захиалгыг Taobao-д захиалсан эсвэл шалгаж байна.',409);
@@ -129,7 +130,7 @@ function taobao_purchase_create(string $id,bool $auto=false): array {
 function taobao_purchase_resolve(string $id,array $b): array {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
-        $o=order_row($id)['order'];if(($o['purchase']['state']??'')!=='review')fail('Шийдвэрлэх шаардлагагүй.',409);
+        $o=order_row($id)['order'];if(isset($o['purchase']['provider'])&&$o['purchase']['provider']!=='ot')fail('Энэ захиалгыг TaoWorld-оор тулган шалгана.',409);if(($o['purchase']['state']??'')!=='review')fail('Шийдвэрлэх шаардлагагүй.',409);
         $outcome=str_field($b,'outcome',10);if(!in_array($outcome,['created','failed'],true))fail('Шийдвэр буруу.');
         $o['purchase']['state']=$outcome;$o['purchase']['resolved_at']=gmdate('c');
         if($outcome==='created'){$provider=str_field($b,'provider_order_id',64);if(!preg_match('/^[A-Za-z0-9_-]{4,64}$/',$provider))fail('Taobao захиалгын дугаар буруу.');$o['purchase']['provider_order_ids']=[$provider];$o['purchase']['created_at']=gmdate('c');unset($o['purchase']['error']);}
@@ -138,6 +139,7 @@ function taobao_purchase_resolve(string $id,array $b): array {
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
 function taobao_purchase_track(string $id): array {
+    if((order_row($id)['order']['purchase']['provider']??'')==='taoworld')return tw_run_order($id);
     $o=order_row($id)['order'];$provider=$o['purchase']['provider_order_ids'][0]??null;
     if(($o['purchase']['state']??'')!=='created'||!$provider)fail('Taobao захиалгын дугаар алга.',409);
     $r=taobao_http('GET','/v1/taobao/order/tracker/'.rawurlencode($provider),['access_token'=>taobao_access_token()]);
@@ -154,6 +156,7 @@ function taobao_purchase_track(string $id): array {
 // Called after QPay confirms the first payment. Failures stay on the order for the admin.
 function taobao_purchase_after_payment(string $id): void {
     try{
+        if(function_exists('tw_settings')&&tw_settings()['enabled'])return;
         if((taobao_buyer_state()['auto_purchase']??false)!==true)return;
         $o=order_row($id)['order'];if(!$o['paid']||isset($o['purchase'])||($o['type']??'')!=='checkout')return;
         taobao_purchase_create($id,true);
@@ -164,7 +167,7 @@ function taobao_admin_post(string $action,array $b): never {
     if($action==='taobao-buyer-authorize')json_out(['url'=>taobao_buyer_authorize_url()]);
     if($action==='taobao-buyer-connect')json_out(['taobao_buyer'=>taobao_buyer_connect(str_field($b,'code',2000))]);
     if($action==='taobao-buyer-disconnect'){$s=taobao_buyer_state();taobao_buyer_store(['auto_purchase'=>false]);json_out(['taobao_buyer'=>taobao_buyer_public()]);}
-    if($action==='taobao-buyer-auto'){$s=taobao_buyer_state();if(!is_bool($b['enabled']??null))fail('Тохиргоо буруу.');if($b['enabled']&&empty($s['access_token']))fail('Эхлээд Taobao данс холбоно уу.',409);$s['auto_purchase']=$b['enabled'];taobao_buyer_store($s);json_out(['taobao_buyer'=>taobao_buyer_public()]);}
+    if($action==='taobao-buyer-auto'){$s=taobao_buyer_state();if(!is_bool($b['enabled']??null))fail('Тохиргоо буруу.');if($b['enabled']&&function_exists('tw_settings')&&tw_settings()['enabled'])fail('Эхлээд TaoWorld автомат худалдан авалтыг унтраана уу.',409);if($b['enabled']&&empty($s['access_token']))fail('Эхлээд Taobao данс холбоно уу.',409);$s['auto_purchase']=$b['enabled'];taobao_buyer_store($s);json_out(['taobao_buyer'=>taobao_buyer_public()]);}
     $id=str_field($b,'id',50);
     if($action==='taobao-purchase-preview')json_out(taobao_purchase_preview($id));
     if($action==='taobao-purchase-create')json_out(['order'=>taobao_purchase_create($id)]);
@@ -212,7 +215,7 @@ function inbound_add_manual(string $id,array $b,?string $location=null): array {
 function inbound_public(array $o): array {
     $p=$o['purchase']??[];
     return ['numbers'=>array_map(fn($n)=>array_intersect_key($n,array_flip(['no','company','source'])),$o['inbound']['numbers']??[]),'status'=>$o['inbound']['status']??'','checked_at'=>$o['inbound']['checked_at']??null,
-        'provider_order_ids'=>$p['provider_order_ids']??[],'trackable'=>($p['state']??'')==='created'&&!empty($p['provider_order_ids'])];
+        'provider_order_ids'=>$p['provider_order_ids']??[],'trackable'=>(($p['provider']??'')==='taoworld'&&!empty($p['submitted_at']))||(($p['state']??'')==='created'&&!empty($p['provider_order_ids']))];
 }
 // Erenhot list views refresh a few stale purchases after the response has been sent.
 function inbound_schedule_refresh(): void {

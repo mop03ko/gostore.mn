@@ -37,6 +37,7 @@ function warehouse_assign_order(array $b): array {
     admin_required();$db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $o=order_row(str_field($b,'id',50))['order'];
+        if(($o['purchase']['provider']??'')==='taoworld')fail('TaoWorld худалдан авалт эхэлсэн тул агуулахын оноолтыг солихгүй.',409);
         if(isset($o['batch_id'])||!in_array($o['status'],['new','reviewing','quoted','confirmed','shipping','erenhot'],true)||!in_array('Эрээн',$o['route']??[],true))fail('Багцлахаас өмнө агуулах онооно.',409);
         if(str_field($b,'expected_status',30)!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна.',409);
         $defs=warehouse_definitions();$old=[];$next=[];

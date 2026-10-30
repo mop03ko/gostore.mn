@@ -1,5 +1,15 @@
 # cPanel суулгалт
 
+## Direct TaoWorld procurement - 2026-10-30
+
+- Added paid-checkout durable jobs, exact source-to-native SKU mapping, current product/render checks, CNY-fen budgets and pinned Erenhot receiver/account snapshots. Create and payment submission boundaries are persisted before network calls; unknown outcomes reconcile with the same external ID and never blindly resubmit. Split parent/child orders and all native domestic parcels are stored and exposed to warehouse tracking. Legacy OT purchasing is guarded against native attempts.
+- Added admin quote/budget/queue/process/pay/reconcile controls and separate automatic creation/payment switches. Automatic activation requires a recent worker invocation; initial live settings remain `enabled=false`, `auto_pay=false`. Existing paid orders were not queued. CLI worker and cron instructions: `docs/taoworld-procurement.md`.
+- Passed isolated native procurement/worker tests, authorization/signing/browser flow, new admin UI and CSRF tests, existing QPay/checkout/OT/warehouse/branch/logistics/API regressions and syntax checks. Live source product lookup and native render succeeded for `GS-99EDB4` (CNY 12.21, including CNY 10 shipping, versus its original CNY 2.86 procurement budget). No create or payment request was sent.
+- Deployed eleven runtime files with baseline comparison, backup/stage/hash verification and per-file rename. Backup: `/gostore-backups/taoworld-procurement-20261030-802b416ac3`. Initial staging found that `/public_html/scripts` did not exist; it was created before retrying, with no files published by the failed attempt. Published PHP hashes and public admin asset bytes match local source. Storefront/catalog HTTP 200, private dashboard/connect HTTP 401, worker URL HTTP 403. The live preview left the existing order byte-for-byte unchanged; temporary probes were removed.
+- Recurring cron is not configured or verified: cPanel API access returned 403 and the Windows computer-use tool stopped because it could not determine the current browser URL. No fake worker heartbeat was written. A controlled real create/payment/shipment pilot is still required before claiming end-to-end production procurement.
+- Final review added persistent evidence of paid child orders, so stale unpaid responses cannot offer another supplier payment after an observed website/API payment. Regression passed; the single-file update was verified with backup `/gostore-backups/taoworld-paid-guard-20261030-eb67e90082`.
+- The worker prioritizes the oldest due job to prevent recurring polls from starving new procurement. Its regression passed; final module hash verified with backup `/gostore-backups/taoworld-worker-fair-20261030-b65d2d927a`.
+
 ## TaoWorld authorization button redirect - 2026-10-30
 
 - Reproduced the inert connect button in Chrome: `form-action 'self'` blocked the POST's cross-origin OAuth redirect. Allowed the fixed `https://api.taobao.global` origin in the TaoWorld page's form policy.

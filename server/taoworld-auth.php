@@ -75,3 +75,15 @@ function taoworld_refresh(): void {
         taoworld_store(taoworld_token_state($data,$s));
     });
 }
+
+// The worker and administrator share the same serialized token rotation.
+function taoworld_access_token(): string {
+    $s=taoworld_state();
+    if(!empty($s['access_token'])&&($s['expires_at']??0)>time()+60)return $s['access_token'];
+    taoworld_locked(static function(){
+        $s=taoworld_state();if(!empty($s['access_token'])&&($s['expires_at']??0)>time()+60)return;
+        if(empty($s['refresh_token'])||($s['refresh_expires_at']??0)<=time())fail('TaoWorld дансаа дахин холбоно уу.',409);
+        taoworld_store(taoworld_token_state(taoworld_http('/auth/token/refresh',['refresh_token'=>$s['refresh_token']]),$s));
+    });
+    return taoworld_state()['access_token'];
+}

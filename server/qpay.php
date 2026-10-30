@@ -86,6 +86,7 @@ function qpay_callback(string $id,string $key): array {
         try { $fresh=order_row($id)['order']; if(!$fresh['paid']){$fresh['paid']=true;$fresh['paid_at']=gmdate('c');if($fresh['status']==='quoted'||($fresh['status']==='cancelled'&&($fresh['cancel_reason']??'')==='payment_timeout')){$fresh['status']='confirmed';unset($fresh['cancel_reason']);$fresh['history'][]=['status'=>'confirmed','at'=>gmdate('c')];}save_order($fresh);} $db->exec('COMMIT'); }
         catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         // Buying from Taobao never delays or fails the payment confirmation itself.
+        if(function_exists('tw_after_payment'))tw_after_payment($id);
         if(function_exists('taobao_purchase_after_payment'))taobao_purchase_after_payment($id);
     }
     return ['ok'=>true];

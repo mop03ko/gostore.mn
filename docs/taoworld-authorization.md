@@ -1,9 +1,9 @@
 # Direct TaoWorld authorization
 
-The initial direct integration supports buyer authorization and explicit token refresh
-only. It does not replace the OT catalog, create purchases, submit supplier payments,
-or enable automatic procurement. Catalog API permissions still require verification
-after the buyer authorizes the app.
+The connection page handles buyer authorization and token refresh. Connecting a
+buyer does not itself create purchases or enable automatic procurement. The OT
+catalog remains in use. For the separately implemented procurement worker,
+payment controls and activation steps, see [TaoWorld procurement](taoworld-procurement.md).
 
 ## Operator steps
 

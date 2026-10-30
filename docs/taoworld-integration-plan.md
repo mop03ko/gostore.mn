@@ -1,5 +1,7 @@
 # TaoWorld integration plan — 2026-10-22
 
+Implementation update (2026-10-30): direct buyer authorization is live. Procurement, durable jobs, supplier-payment controls and native tracking are implemented; see [the current operator and recovery guide](taoworld-procurement.md). The original research below is retained for API/channel context. Live create/payment and recurring cron still need verification; this is not a claim that automatic purchasing is active.
+
 Recommendation: introduce direct TaoWorld procurement alongside the existing OT catalog, validate it with a small operator-controlled pilot, then evaluate migrating catalog reads. GOStore already has checkout, QPay, procurement controls and warehouse tracking to build on. Direct TaoWorld requires its own adapter and order lifecycle; changing the OT base URL or replacing its API key is insufficient.
 
 This is a research and implementation plan, not an enabled integration. Repository baseline: `aab9151`. The supplied welcome email confirms partner approval; it does not establish developer-app approval, API permissions, buyer authorization or payment-channel eligibility. No private credentials, live account configuration, real orders or payments were inspected or changed.

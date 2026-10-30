@@ -1,0 +1,20 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const context=await browser.newContext(),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const session=await(await context.request.get(base+'/api/index.php?action=session')).json();
+ let r=await context.request.post(base+'/api/index.php?action=taoworld-settings',{headers:{'X-CSRF-Token':session.csrf},data:{enabled:false,auto_pay:false,channel:'PANAMA_DG'}});assert.equal(r.status(),401);
+ r=await context.request.post(base+'/api/index.php?action=login',{headers:{'X-CSRF-Token':session.csrf},data:JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8'))});assert.equal(r.status(),200);
+ await page.goto(base+'/admin/');await page.locator('#app').waitFor({state:'visible'});await page.locator('nav [data-page=integrations]').click();await page.locator('#tw-settings-form').waitFor();
+ const save=page.waitForResponse(r=>r.url().includes('action=taoworld-settings'));await page.locator('#tw-settings-form button').click();r=await save;assert.equal(r.status(),200);assert.equal((await r.json()).taoworld.enabled,false,'Disabled settings save failed with admin session');
+ r=await context.request.post(base+'/api/index.php?action=taoworld-settings',{headers:{'X-CSRF-Token':'wrong'},data:{enabled:true,auto_pay:true,channel:'PANAMA_DG'}});assert.equal(r.status(),403);
+ // Render representative private procurement states without contacting a provider.
+ const id='GS-UI-TW';await page.evaluate(id=>{const o={...data.orders[0],id,type:'checkout',paid:true,status:'confirmed',items:[{id:'tb-123456789',sku:'123',name:'Paper',variant:'White',qty:1,price:1000}],warehouse_locations:undefined,warehouse:undefined,purchase:{provider:'taoworld',state:'awaiting_payment',submitted_at:new Date().toISOString(),budget_fen:1500,supplier_total_fen:1221,outer_purchase_id:'GS0123456789ABCDEF',provider_order_ids:['2000000000001'],quote:{total_fen:1221,shipping_fen:1000},children:[{sub_purchase_order_id:'3000000000001',status:'WAIT_BUYER_P',parcels:[]}]}};data.orders.unshift(o);editOrder(id);},id);
+ assert.match(await page.locator('#tw-purchase').innerText(),/Нийлүүлэгчийн төлбөр хүлээж байна/);assert.equal(await page.locator('[data-purchase-create]').count(),0,'Native order offered legacy purchasing');
+ assert.equal(await page.locator('[data-tw-action=pay]').count(),1);assert.equal(await page.locator('[data-tw-action=queue]').count(),0);
+ const calls=[];await page.route('**/api/index.php?action=taoworld-pay',async route=>{calls.push(route.request().postDataJSON());const o=await page.evaluate(id=>data.orders.find(o=>o.id===id),id);o.purchase.state='paying';o.purchase.pay_submitted_at=new Date().toISOString();await route.fulfill({json:{order:o}});});
+ page.once('dialog',d=>d.dismiss());await page.locator('[data-tw-action=pay]').click();assert.equal(calls.length,0,'Dismissed payment was sent');
+ page.once('dialog',d=>d.accept());await page.locator('[data-tw-action=pay]').click();await page.locator('#tw-purchase').getByText('Нийлүүлэгчийн төлбөрийг шалгаж байна',{exact:true}).waitFor();assert.deepEqual(calls,[{id}]);assert.equal(await page.locator('[data-tw-action=pay]').count(),0,'Uncertain payment can be repeated');
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'tmp/taoworld-procurement-mobile.png'});assert.deepEqual(errors,[]);
+ console.log('PASS: TaoWorld admin session/CSRF, settings save, native order panel, explicit payment confirmation, uncertain-payment guard, mobile layout.');
+}finally{await browser.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
