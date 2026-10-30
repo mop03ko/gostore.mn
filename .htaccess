@@ -20,7 +20,7 @@ AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript appl
 </IfModule>
 Options -Indexes
 DirectoryIndex index.html
-<FilesMatch "^(config.*|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
+<FilesMatch "^(config.*|open taobao keys\.txt|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
 Require all denied
 </FilesMatch>
 <IfModule mod_rewrite.c>

@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Direct TaoWorld authorization - 2026-10-30
+
+- Added an admin-only connection page at `/api/taoworld/connect.php` and the registered callback path `/api/taoworld/callback.php`. Supports one-use, session-bound OAuth state, signed code exchange, private token storage and explicit serialized refresh. The transport cannot call purchase/payment endpoints. Existing OT catalog and purchasing behavior are unchanged.
+- Imported the owner's credentials without displaying them into ignored `server/taoworld.local.php`. The original key file is ignored and explicitly denied over HTTP. Eight runtime/configuration files were deployed with FTPS staging and hash verification; the live `.htaccess` received only the filename-denial addition, preserving its cPanel handler. Backup: `/gostore-backups/taoworld-auth-20261030-49321d101c`.
+- Passed official HMAC signing vector, isolated authorization tests and an isolated browser flow using fake credentials/transport: admin/CSRF gates, expiry/replay/cross-session rejection, key/account binding, rotating token persistence, locks, failed-refresh preservation, redacted UI and mobile layout. PHP syntax and Git whitespace checks passed.
+- Live unauthenticated checks: connect page 401 with no-store, callback 303 to the clean connection page, private configuration and original key filename 403, storefront 200. The owner must still authorize the TaoWorld purchasing account. No real buyer token exchange, catalog permission test, purchase or payment was performed. Operator instructions: `docs/taoworld-authorization.md`.
+
 ## QPay bank grid and fit fixes — 2026-10-28
 
 - Owner-authorized deployment of `29d57b7` (`app.css`, `app.js`, `index.html`). Live files matched `fc96768` before publishing. Verified FTPS backup: `/gostore-backups/fit-20261028-e1321ee4af`; staged, published and HTTPS bytes matched; `/`, `/v/…`, `/brands/nike`, `/cart`, `/help`, `/account` 200.
