@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Direct TaoWorld catalog and image search - 2026-10-30
+
+- Activated `catalog_provider=taoworld`, English output and image search; disabled legacy snapshot refresh. Existing rates and the 800-call daily application budget were preserved. Procurement creation/payment switches were not changed.
+- Catalog search/detail use the traffic APIs directly. Native `mi_id` mapping is private and scoped to the app and buyer. Image search uploads re-encoded JPEG bytes through `/upload/image`, then queries `/traffic/item/imgsearch`. Checkout revalidates exact SKU/stock/price and records native provenance for the procurement worker. See `docs/taoworld-catalog.md`.
+- Passed native catalog/procurement tests, checkout/shipping/snapshot/auth/signature tests and API, checkout, image-search, admin, product-page, early-loading, browser-cache and product-policy browser regressions. Updating the browser cache namespace required updating the inline early loader and cache test fixtures; those checks passed afterward.
+- Deployed 12 runtime files with baseline comparison, backup/stage/hash verification. Backup: `/gostore-backups/taoworld-native-catalog-20261030-38cf5eb8e5`. Live standalone `store-server.js` was an older unbundled copy; it was reviewed and left untouched. The served `app.js` bundle and `index.html` were updated and verified. Previous shipping settings are private at `/gostore-data/taoworld/catalog-settings-before-20261030.json`.
+- Live checks returned 50 native public search cards, a sellable product with 18 SKUs, and 35 image-search matches from its provider photo. A read-only checkout calculation for one SKU returned CNY 21.76 / MNT 11,968. All published file hashes matched; temporary probe endpoints and the probe image were removed. No live order, invoice or supplier payment was created. Recurring procurement cron and a controlled real purchase/payment pilot remain outstanding as described below.
+
 ## Direct TaoWorld procurement - 2026-10-30
 
 - Added paid-checkout durable jobs, exact source-to-native SKU mapping, current product/render checks, CNY-fen budgets and pinned Erenhot receiver/account snapshots. Create and payment submission boundaries are persisted before network calls; unknown outcomes reconcile with the same external ID and never blindly resubmit. Split parent/child orders and all native domestic parcels are stored and exposed to warehouse tracking. Legacy OT purchasing is guarded against native attempts.

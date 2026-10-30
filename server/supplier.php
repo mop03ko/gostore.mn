@@ -4,6 +4,10 @@ require_once __DIR__.'/product-policy.php';
 require_once __DIR__.'/supplier-brands.php';
 require_once __DIR__.'/supplier-titles.php';
 require_once __DIR__.'/supplier-budget.php';
+function tw_catalog_enabled(): bool {
+    if((shipping_settings()['catalog_provider']??'otcommerce')!=='taoworld')return false;
+    require_once __DIR__.'/taoworld-catalog.php';return true;
+}
 const SUPPLIER_PURCHASE_MAX_AGE = 120;
 class SupplierBusy extends ApiError {
     public function __construct(){parent::__construct('Барааны мэдээлэл ачаалахад удаж байна. Дахин ачаална уу.',503);}
@@ -29,7 +33,7 @@ function supplier_identity(string $id): array {
 }
 // Language for OT titles and attributes. The OT key must have the language enabled; otherwise OT keeps returning Mongolian.
 function supplier_language(): string { return (shipping_settings()['catalog_language']??'mn')==='en'?'en':'mn'; }
-function supplier_ready(): bool { return !empty(config()['otcommerce']['api_key']) && shipping_settings()['supplier_enabled']; }
+function supplier_ready(): bool { return shipping_settings()['supplier_enabled'] && (tw_catalog_enabled()? !empty(taoworld_state()['access_token']):!empty(config()['otcommerce']['api_key'])); }
 function supplier_cache_key(string $path,array $query): string { ksort($query);return hash('sha256',$path.'?'.http_build_query($query)); }
 // At most one post-response refresh runs across all PHP workers.
 function supplier_schedule_refresh(string $path,array $query,string $dir): void {
@@ -337,6 +341,7 @@ function supplier_page_size(array $b): int {
     return $limit;
 }
 function supplier_search(array $b,bool $display=false): array {
+    if(tw_catalog_enabled())return tw_catalog_search($b);
     $limit=supplier_page_size($b);
     if(($b['brand']??'')!=='')return supplier_brand_search($b,$display);
     $q=mb_strtolower(preg_replace('/\s+/u',' ',str_field($b,'q',100,false)?:'bag'));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'default';
@@ -396,6 +401,7 @@ function supplier_image_search(string $hash,int $page,bool $display=false,int $l
     if(!shipping_settings()['image_search_enabled'])fail('Зургаар хайх үйлчилгээ түр идэвхгүй байна.',503);
     if(!is_file(supplier_image_search_dir().'/'.$hash.'.jpg'))fail('Хайлтын зургийн хугацаа дууссан. Зургаа дахин оруулна уу.',404);
     if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
+    if(tw_catalog_enabled())return tw_catalog_image($hash,$page,$limit);
     $c=supplier_request('/v1/taobao/search',['language'=>supplier_language(),'image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>$page,'limit'=>$limit],$display);
     return supplier_search_result($c,$page,$limit)+['image'=>$hash];
 }
@@ -409,6 +415,7 @@ function supplier_search_result(array $c,int $page,int $limit=12): array {
     return ['products'=>$items,'page'=>$page,'total'=>$total===false?null:$total,'pages'=>$pages,'more'=>count($block['Items']['Content']??[])===$limit&&$page<min(100,(int)($block['MaximumPageCount']??100))&&$page*$limit<(int)($block['Items']['TotalCount']??PHP_INT_MAX),'fetched'=>$c['fetched'],'stale'=>$c['stale'],'cache_expires'=>(int)$c['expires'],'cache_ttl'=>$c['stale']?0:max(0,(int)$c['expires']-time()),'shipping'=>shipping_public()];
 }
 function supplier_detail(string $id,bool $display=false,string $brandId='',bool $purchase=false): array {
+    if(tw_catalog_enabled())return tw_catalog_detail($id,$purchase,$brandId);
     $identity=supplier_identity($id);
     product_policy_assert(['id'=>$id]);
     if($brandId!==''){
@@ -435,7 +442,7 @@ function supplier_order(array $b): array {
     if(!$variant||$variant['cny']===null)fail('Барааны хувилбар эсвэл үнэ тодорхойгүй байна.',409);
     $qty=int_field($b,'qty',1,9999);if($qty<$p['min_qty']||($qty-$p['min_qty'])%$p['step']!==0||($variant['stock']!==null&&$qty>$variant['stock']))fail('Багцын тоо эсвэл үлдэгдлийг шалгана уу.');
     // Supplier variants and quantity discounts require an operator's final quote.
-    return ['id'=>$p['id'],'provider'=>$p['provider'],'sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'vendor_id'=>$p['vendor_id']??'','fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
+    return ['id'=>$p['id'],'provider'=>$p['provider'],'catalog_provider'=>$p['catalog_provider']??'otcommerce','sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'vendor_id'=>$p['vendor_id']??'','fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
 }
 
 require_once __DIR__.'/supplier-snapshot.php';

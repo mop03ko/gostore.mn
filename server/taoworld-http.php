@@ -8,7 +8,7 @@ function taoworld_signature(string $path,array $params,string $secret): string {
 }
 // Fixed provider endpoints only; business-level success is checked by the caller.
 function taoworld_http(string $path,array $params): array {
-    if(!in_array($path,['/auth/token/create','/auth/token/refresh','/product/get','/purchase/order/render','/purchase/order/create','/purchase/orders/query','/purchase/order/batch/pay'],true))fail('TaoWorld үйлдэл идэвхгүй.',403);
+    if(!in_array($path,['/auth/token/create','/auth/token/refresh','/product/get','/purchase/order/render','/purchase/order/create','/purchase/orders/query','/purchase/order/batch/pay','/traffic/item/search','/traffic/item/get','/traffic/item/imgsearch','/upload/image'],true))fail('TaoWorld үйлдэл идэвхгүй.',403);
     if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд гадаад холболт хаалттай.',503);
     $cfg=taoworld_config();taoworld_require_config();
     $params=array_merge($params,['app_key'=>$cfg['app_key'],'timestamp'=>(string)(int)floor(microtime(true)*1000),'sign_method'=>'sha256']);

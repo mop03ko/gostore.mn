@@ -12,7 +12,7 @@ run(node,['scripts/bundle.cjs','--check'],'bundle-current');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/supplier-retry.cjs'],'supplier-retry');
-for(const test of ['taoworld-signature','taoworld-auth','taoworld-purchase'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
+for(const test of ['taoworld-signature','taoworld-auth','taoworld-purchase','taoworld-catalog'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
 run(node,['tests/taoworld-web.cjs'],'taoworld-web');
 run(node,['tests/run-logistics.cjs','taoworld-admin-ui'],'taoworld-admin-ui');
 for(const test of ['qpay','qpay-flow','freight-payment','shipping','supplier-snapshot','supplier-batches','supplier-performance','checkout-freshness','supplier-card-prices','supplier-errors','supplier-english-titles','checkout','catalog-filters','customer-addresses','customer-state','taobao-purchase','ot-operator','configure-admin','warehouse-overview'])run(php,[...phpArgs,'tests/'+test+'.php'],test);

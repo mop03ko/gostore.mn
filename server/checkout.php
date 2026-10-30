@@ -11,7 +11,7 @@ function checkout_items(array $b,?int &$verifiedUntil=null): array {
         $s=supplier_order(['product_id'=>$item['id']??'','sku'=>$item['sku']??'','qty'=>$item['qty']??null]);
         $verifiedUntil=min($verifiedUntil,(strtotime($s['fetched'])?:0)+SUPPLIER_PURCHASE_MAX_AGE);
         $key=$s['id'].'|'.$s['sku'];if(isset($seen[$key]))fail('Сагсанд давхардсан бараа байна.');$seen[$key]=true;
-        $lines[]=['id'=>$s['id'],'provider'=>$s['provider'],'sku'=>$s['sku'],'name'=>$s['name'],'variant'=>$s['variant'],'qty'=>$s['qty'],'unit_cny'=>$s['unit_cny'],'goods_cny'=>$s['goods_cny'],'price'=>(int)ceil(round($s['unit_cny']*$rate,8)),'url'=>$s['url'],'image'=>$s['image'],'vendor_id'=>$s['vendor_id']];
+        $lines[]=['id'=>$s['id'],'provider'=>$s['provider'],'catalog_provider'=>$s['catalog_provider'],'sku'=>$s['sku'],'name'=>$s['name'],'variant'=>$s['variant'],'qty'=>$s['qty'],'unit_cny'=>$s['unit_cny'],'goods_cny'=>$s['goods_cny'],'price'=>(int)ceil(round($s['unit_cny']*$rate,8)),'url'=>$s['url'],'image'=>$s['image'],'vendor_id'=>$s['vendor_id']];
     }
     if($verifiedUntil<=time())fail('Сагсны үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
     return $lines;

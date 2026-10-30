@@ -62,7 +62,12 @@ function tw_map(array $o): array {
     $lines=[];
     foreach($o['items'] as $i=>$line){
         if(!preg_match('/^tb-([0-9]{5,20})$/D',$line['id']??'',$match))fail('TaoWorld автомат худалдан авалтад Taobao бараа шаардлагатай.',409);
-        $p=tw_data(tw_call('/product/get',['item_url'=>'https://item.taobao.com/item.htm?id='.$match[1]]));
+        // Native catalog stores the provider-issued mi_id; never construct an item URL.
+        if(($line['catalog_provider']??'')==='taoworld'||(shipping_settings()['catalog_provider']??'otcommerce')==='taoworld'){
+            require_once __DIR__.'/supplier.php';require_once __DIR__.'/taoworld-catalog.php';$resource=tw_catalog_resource($line['id']);
+        }else $resource=['item_url'=>$line['url']??''];
+        if(empty($resource['mi_id'])&&empty($resource['item_url']))fail('TaoWorld барааны холбоос дутуу.',409);
+        $p=tw_data(tw_call('/product/get',$resource));
         if(isset($p['item_id'])&&(string)$p['item_id']!==$match[1])fail('TaoWorld эх барааны дугаар зөрлөө.',409);
         product_policy_assert(['id'=>$line['id'],'name'=>$p['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]],409);
         if(($p['status']??'')!=='active')fail('TaoWorld бараа худалдаанд байхгүй.',409);

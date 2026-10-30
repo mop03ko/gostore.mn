@@ -15,7 +15,7 @@ const cases=require('./product-policy-cases.json'),base=process.env.TEST_BASE;as
  await page.goto(base+'/');await page.locator('.supplier-card').waitFor();
  for(const [group,texts] of Object.entries(cases))for(const text of texts)assert.equal(await page.evaluate(t=>window.productPolicyBlocked(t),text),group==='blocked',text);
  assert.equal(await page.evaluate(()=>window.productPolicyBlocked({id:'tb-820391759756',name:'Renamed item'})),true);
- assert.equal(await page.locator('.supplier-card').count(),1);assert.ok(calls.some(u=>u.includes('taobao-policy1')),'Fresh cache namespace');
+ assert.equal(await page.locator('.supplier-card').count(),1);assert.ok(calls.some(u=>u.includes('taoworld-catalog1')),'Fresh cache namespace');
  assert.equal(await page.evaluate(()=>JSON.stringify(categories).includes('kitchen knife')),false);
  assert.equal(await page.evaluate(()=>window.taobaoCart.items().length),1);
  await page.evaluate(()=>window.supplierBrowse(null,true));assert.equal(await page.locator('.supplier-card').count(),1);

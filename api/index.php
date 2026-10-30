@@ -16,8 +16,8 @@ require __DIR__.'/../server/freight-payment.php';
 require __DIR__.'/../server/checkout.php';
 require __DIR__.'/../server/taobao-http.php';
 require __DIR__.'/../server/taobao-purchase.php';
-require __DIR__.'/../server/taoworld-auth.php';
-require __DIR__.'/../server/taoworld-http.php';
+require_once __DIR__.'/../server/taoworld-auth.php';
+require_once __DIR__.'/../server/taoworld-http.php';
 require __DIR__.'/../server/taoworld-purchase.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);

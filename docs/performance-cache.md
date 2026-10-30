@@ -1,5 +1,7 @@
 # Cache and checkout freshness — 2026-10-20
 
+2026-10-30: Production catalog now uses direct TaoWorld traffic APIs and a separate account-scoped cache. The OT snapshot descriptions below remain historical/rollback behavior. See [TaoWorld catalog](taoworld-catalog.md) for native cache durations, quota use and checkout freshness.
+
 ## Observed baseline
 
 Production served Brotli for HTML/JavaScript but no explicit static Cache-Control. A gzip-only JavaScript request was uncompressed (25,254 bytes); Brotli transferred 8,004 bytes for the same file. The actual configured supplier budget was 800/day and snapshots were enabled, not the source default of 40/day. These are HTTP/config observations, not field Core Web Vitals measurements.

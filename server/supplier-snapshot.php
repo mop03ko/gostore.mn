@@ -87,6 +87,7 @@ function supplier_snapshot_all(int $page,string $sort,array $range=[],int $limit
     return ['products'=>$items,'page'=>$page,'more'=>$page*$limit<$total,'total'=>$total,'pages'=>max(1,(int)ceil($total/$limit)),'fetched'=>$fetched,'stale'=>$expires<=time(),'cache_expires'=>$expires,'cache_ttl'=>max(0,$expires-time()),'shipping'=>shipping_public()];
 }
 function supplier_snapshot_run(int $maxJobs=26): array {
+    if(tw_catalog_enabled())return ['status'=>'native-catalog','errors'=>0];
     $start=microtime(true);
     try{$result=supplier_snapshot_build($maxJobs);}
     catch(Throwable $e){$previous=supplier_snapshot_read(supplier_snapshot_dir().'/health.json')??[];supplier_snapshot_write(supplier_snapshot_dir().'/health.json',['last_run'=>time(),'last_success'=>$previous['last_success']??null,'status'=>'failed','error_code'=>(int)$e->getCode()]);throw $e;}
@@ -140,6 +141,7 @@ function supplier_snapshot_build(int $maxJobs=26): array {
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
 function supplier_snapshot_schedule(): void {
+    if(tw_catalog_enabled())return;
     if(!function_exists('fastcgi_finish_request')||empty(shipping_settings()['catalog_snapshot_enabled']))return;
     $current=supplier_snapshot_current();if($current&&($current['title_language']??'')==='en'&&$current['next_refresh_at']>time())return;
     $state=supplier_snapshot_read(supplier_snapshot_dir().'/work.json');if(($state['retry_at']??0)>time())return;

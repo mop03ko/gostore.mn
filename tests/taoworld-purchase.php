@@ -41,7 +41,7 @@ function seed(string $id,bool $paid=true): void {
     global $currentId;$currentId=$id;
     $o=['id'=>$id,'type'=>'checkout','status'=>$paid?'confirmed':'quoted','paid'=>$paid,'amount'=>10000,'demo'=>false,'title'=>'Paper labels','customer'=>'Fixture','phone'=>'99112233','history'=>[],'route'=>['Эрээн','Замын-Үүд','Улаанбаатар'],'created'=>gmdate('c'),
         'warehouse'=>['address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','phone'=>'18047981132'],
-        'items'=>[['id'=>'tb-538452788616','sku'=>'3368335904668','qty'=>2,'name'=>'Paper labels','variant'=>'White','goods_cny'=>2.86]],'quote'=>['inputs'=>['goods_cny'=>2.86,'domestic_cny'=>0]],
+        'items'=>[['id'=>'tb-538452788616','url'=>'https://item.taobao.com/item.htm?id=538452788616','sku'=>'3368335904668','qty'=>2,'name'=>'Paper labels','variant'=>'White','goods_cny'=>2.86]],'quote'=>['inputs'=>['goods_cny'=>2.86,'domestic_cny'=>0]],
         'invoice'=>['id'=>'fake-invoice','state'=>'ready'],'callback_token'=>'private-callback'];
     db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$id,hash('sha256',$id),$id,tw_json($o),gmdate('c'),gmdate('c')]);
 }
@@ -105,4 +105,7 @@ check(!isset(order_row('GS-OFF')['order']['purchase']),'Worker backfilled paymen
 foreach(db()->query('SELECT id FROM orders')->fetchAll() as $row)tw_update($row['id'],function(&$o){if(isset($o['purchase']))$o['purchase']['next_at']=0;});
 foreach(['GS-LATER','GS-OVERDUE'] as $id){seed($id);tw_update($id,function(&$o){$o['quote']['inputs']['goods_cny']=20;});tw_queue($id);}
 tw_update('GS-OVERDUE',function(&$o){$o['purchase']['next_at']=time()-120;});check(tw_worker(1)===['GS-OVERDUE'],'Recurring old polls starved an overdue job');
-echo "PASS: QPay durable queue, Erenhot waiting/address, native SKU/stock/render, budget hold, stable idempotency, timeout/crash recovery, split/paginated orders, one payment attempt, all parcel deduplication, account/address/provider guards, locks, cancellation, disabled mode, token rotation.\n";
+require_once $fixture.'/server/supplier.php';require_once $fixture.'/server/taoworld-catalog.php';
+tw_catalog_remember(['item_id'=>'538452788616','mi_id'=>'native-source-mi']);seed('GS-NATIVE-SOURCE');$o=order_row('GS-NATIVE-SOURCE')['order'];$o['items'][0]['catalog_provider']='taoworld';
+tw_map($o);$last=end($calls);check($last[0]==='/product/get'&&($last[1]['mi_id']??'')==='native-source-mi'&&!isset($last[1]['item_url']),'Native checkout must use persisted mi_id even after catalog setting changes');
+echo "PASS: QPay durable queue, Erenhot waiting/address, native SKU/stock/render, budget hold, stable idempotency, timeout/crash recovery, split/paginated orders, one payment attempt, all parcel deduplication, account/address/provider guards, locks, cancellation, disabled mode, token rotation, native catalog mi_id.\n";
