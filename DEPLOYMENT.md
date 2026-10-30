@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## TaoWorld read performance — 2026-10-30
+
+- Added concurrent remaining search pages (at most three), lock-free reads of fresh atomic cache snapshots, retained successful pages on partial failures, and eliminated identical identifier rewrites. Search lists now cache for 30 minutes; detail/image/checkout freshness is unchanged. English names and current API budget remain unchanged.
+- Passed native catalog, transport/signature, procurement, authorization/web and checkout freshness tests, syntax/whitespace and bundle checks. Live serial/concurrent search returned equivalent page counts; public bootstrap, 50-card search and 18-SKU detail passed after rollout. Timing samples and their limits are recorded in `docs/performance-cache.md`.
+- Two runtime files deployed with baseline/backup/stage/hash verification: `/gostore-backups/taoworld-speed-20261030-3b66e7dbd6`. Follow-up search-TTL change: `/gostore-backups/taoworld-speed-ttl-20261030-69e829156c`. Temporary benchmark endpoint removed. No orders, invoices or payments created.
+
 ## Direct TaoWorld catalog and image search - 2026-10-30
 
 - Activated `catalog_provider=taoworld`, English output and image search; disabled legacy snapshot refresh. Existing rates and the 800-call daily application budget were preserved. Procurement creation/payment switches were not changed.

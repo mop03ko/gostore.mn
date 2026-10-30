@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
+const TW_CATALOG_SEARCH_TTL = 1800;
 
 function tw_catalog_dir(): string {
     $dir=taoworld_dir().'/catalog-'.substr(hash('sha256',taoworld_binding().':'.(taoworld_state()['account_id']??'')),0,16);
@@ -11,26 +12,64 @@ function tw_catalog_dir(): string {
 function tw_catalog_call(string $path,array $params,bool $purchase=false): array {
     supplier_budget_take(false,$purchase);
     $r=taoworld_http($path,$params+['access_token'=>taoworld_access_token()]);
+    return tw_catalog_data($r);
+}
+function tw_catalog_data(array $r): array {
     if(!in_array($r['biz_error_code']??null,[null,'','null'],true)||!is_array($r['data']??null))fail('TaoWorld барааны мэдээлэл авах боломжгүй. Дахин оролдоно уу.',502);
     return $r['data'];
 }
+function tw_catalog_fresh(?array $c,int $ttl): bool {return is_array($c)&&is_array($c['data']??null)&&is_int($c['time']??null)&&$c['time']<=time()&&$c['time']>time()-$ttl;}
 // A separate cache prevents any OT payload from being reused as native product data.
 // Checkout never accepts stale data. Concurrent requests share one provider lookup.
 function tw_catalog_cached(string $path,array $params,bool $purchase=false,?array $keyParams=null): array {
     $keyParams??=$params;
-    $file=tw_catalog_dir().'/'.supplier_cache_key($path,$keyParams).'.json';$h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);
+    $file=tw_catalog_dir().'/'.supplier_cache_key($path,$keyParams).'.json';$ttl=$purchase?SUPPLIER_PURCHASE_MAX_AGE:($path==='/traffic/item/get'?300:TW_CATALOG_SEARCH_TTL);
+    // Atomic rename makes complete fresh snapshots safe to read while a writer holds the lock.
+    $c=supplier_snapshot_read($file);if(tw_catalog_fresh($c,$ttl))return $c;
+    $h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);
     if(!$h)throw new SupplierBusy();
     try{
-        $c=supplier_snapshot_read($file);$ttl=$purchase?SUPPLIER_PURCHASE_MAX_AGE:($path==='/traffic/item/get'?300:600);
-        if(is_array($c)&&($c['time']??0)>time()-$ttl)return $c;
+        $c=supplier_snapshot_read($file);if(tw_catalog_fresh($c,$ttl))return $c;
         $data=tw_catalog_call($path,$params,$purchase);$c=['time'=>time(),'data'=>$data];supplier_snapshot_write($file,$c);return $c;
     }finally{flock($h,LOCK_UN);fclose($h);}
+}
+// First page is fetched separately to stop empty/short searches without spending extra quota.
+// Remaining page locks are acquired in numeric order and all released on any failure.
+function tw_catalog_search_pages(array $params,int $first,int $last): array {
+    $pages=[];$pending=[];$locks=[];$deadline=microtime(true)+2;
+    try{
+        for($n=$first;$n<=$last;$n++){
+            $query=$params+['page_no'=>(string)$n,'page_size'=>'20'];$file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
+            $c=supplier_snapshot_read($file);
+            if(!tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL)){
+                $h=supplier_acquire_lock([$file.'.lock'],$deadline);if(!$h)throw new SupplierBusy();$locks[]=$h;
+                $c=supplier_snapshot_read($file);
+                if(!tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL)){$pending[$n]=['query'=>$query,'file'=>$file];continue;}
+            }
+            $pages[$n]=$c;if(count($c['data']['data']??[])<20)break;
+        }
+        if($pending){
+            $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT tw_catalog_batch_budget');
+            try{foreach($pending as $_)supplier_budget_take(false);$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
+            catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT tw_catalog_batch_budget');$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');throw $e;}
+            $queries=array_map(fn($v)=>$v['query']+['access_token'=>$token],array_values($pending));$responses=taoworld_http_search_batch($queries);$failure=null;
+            foreach(array_keys($pending) as $i=>$n){
+                try{
+                    $r=$responses[$i]??null;if($r instanceof ApiError)throw $r;if(!is_array($r))fail('TaoWorld хайлтын хариу дутуу.',502);
+                    $data=tw_catalog_data($r);if(!is_array($data['data']??null))fail('TaoWorld хайлтын хариу дутуу.',502);
+                    $pages[$n]=['time'=>time(),'data'=>$data];supplier_snapshot_write($pending[$n]['file'],$pages[$n]);
+                }catch(ApiError $e){$failure??=$e;}
+            }
+            if($failure)throw $failure;
+        }
+        ksort($pages,SORT_NUMERIC);return $pages;
+    }finally{foreach($locks as $h){flock($h,LOCK_UN);fclose($h);}}
 }
 function tw_catalog_remember(array $p,?int $fetched=null): string {
     $id=(string)($p['item_id']??'');$mi=(string)($p['mi_id']??'');
     if(!preg_match('/^\d{5,20}$/D',$id)||$mi===''||strlen($mi)>500)fail('TaoWorld барааны таних мэдээлэл дутуу.',502);
     $file=tw_catalog_dir().'/item-'.$id.'.json';$old=supplier_snapshot_read($file);$fetched??=time();
-    if(($old['time']??0)<=$fetched)supplier_snapshot_write($file,['mi_id'=>$mi,'time'=>$fetched]);return 'tb-'.$id;
+    if(($old['time']??0)<$fetched||(($old['time']??0)===$fetched&&($old['mi_id']??'')!==$mi))supplier_snapshot_write($file,['mi_id'=>$mi,'time'=>$fetched]);return 'tb-'.$id;
 }
 function tw_catalog_resource(string $id): array {
     $identity=supplier_identity($id);
@@ -93,21 +132,24 @@ function tw_catalog_search(array $b): array {
     $params=['keyword'=>$departments[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
     // Native pages contain at most 20 items. Keep the storefront's 12/50-item contract.
     $start=($page-1)*$limit;$first=(int)floor($start/20)+1;$last=(int)floor(($start+$limit-1)/20)+1;$rows=[];$time=time();
-    for($n=$first;$n<=$last;$n++){$c=tw_catalog_cached('/traffic/item/search',$params+['page_no'=>(string)$n,'page_size'=>'20']);$time=min($time,$c['time']);$part=$c['data']['data']??null;if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);$rows=array_merge($rows,$part);if(count($part)<20)break;}
+    $c=tw_catalog_cached('/traffic/item/search',$params+['page_no'=>(string)$first,'page_size'=>'20']);$time=min($time,$c['time']);$rows=$c['data']['data']??null;if(!is_array($rows))fail('TaoWorld хайлтын хариу дутуу.',502);
+    if(count($rows)===20&&$first<$last)foreach(tw_catalog_search_pages($params,$first+1,$last) as $c){$time=min($time,$c['time']);$part=$c['data']['data']??null;if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);$rows=array_merge($rows,$part);if(count($part)<20)break;}
     $rows=array_slice($rows,$start%20,$limit);$more=count($rows)===$limit&&$page<100;
-    return tw_catalog_response(['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$time,600);
+    return tw_catalog_response(['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_image(string $hash,int $page,int $limit): array {
-    // Upload re-encoded bytes, never an arbitrary URL or the user's original EXIF.
-    $file=supplier_image_search_dir().'/'.$hash.'.jpg';$jpeg=file_get_contents($file);
-    if(strlen($jpeg)>3*1024*1024)fail('Хайлтын зураг 3 MB-аас бага байх ёстой.');
-    $cache=tw_catalog_dir().'/image-'.$hash.'.json';$h=supplier_acquire_lock([$cache.'.lock'],microtime(true)+2);if(!$h)throw new SupplierBusy();
+    $cache=tw_catalog_dir().'/image-'.$hash.'.json';$c=supplier_snapshot_read($cache);$h=null;
     try{
-        $c=supplier_snapshot_read($cache);
-        if(!$c||($c['time']??0)<time()-600){
+        if(!tw_catalog_fresh($c,600)){
+            $h=supplier_acquire_lock([$cache.'.lock'],microtime(true)+2);if(!$h)throw new SupplierBusy();$c=supplier_snapshot_read($cache);
+        }
+        if(!tw_catalog_fresh($c,600)){
+            // Upload re-encoded bytes, never an arbitrary URL or the user's original EXIF.
+            $jpeg=file_get_contents(supplier_image_search_dir().'/'.$hash.'.jpg');
+            if(strlen($jpeg)>3*1024*1024)fail('Хайлтын зураг 3 MB-аас бага байх ёстой.');
             $up=tw_catalog_call('/upload/image',['image_base64'=>base64_encode($jpeg)]);$image=(string)($up['image_id']??'');if(!preg_match('/^\d{1,40}$/D',$image))fail('TaoWorld зураг хүлээж авсангүй.',502);
             $rows=tw_catalog_call('/traffic/item/imgsearch',['image_id'=>$image,'language'=>'en']);$c=['time'=>time(),'data'=>tw_catalog_cards($rows)];supplier_snapshot_write($cache,$c);
         }
         $rows=$c['data'];$total=count($rows);return tw_catalog_response(['products'=>array_slice($rows,($page-1)*$limit,$limit),'page'=>$page,'total'=>$total,'pages'=>max(1,(int)ceil($total/$limit)),'more'=>$page*$limit<$total,'image'=>$hash],$c['time'],600);
-    }finally{flock($h,LOCK_UN);fclose($h);}
+    }finally{if($h){flock($h,LOCK_UN);fclose($h);}}
 }

@@ -2,6 +2,15 @@
 
 2026-10-30: Production catalog now uses direct TaoWorld traffic APIs and a separate account-scoped cache. The OT snapshot descriptions below remain historical/rollback behavior. See [TaoWorld catalog](taoworld-catalog.md) for native cache durations, quota use and checkout freshness.
 
+## Native catalog optimization — 2026-10-30
+
+- Fresh search, detail and image snapshots bypass writer locks. Cache misses still lock and recheck; checkout retains its strict 120-second freshness rule. Re-reading a product does not rewrite an unchanged `mi_id` file.
+- Keyword list cache increased from 10 to 30 minutes. Detail remains 5 minutes, image results 10 minutes, browser session cache at most 10 minutes, public HTTP cache at most 60 seconds. Longer keyword caching reduces cold provider reads without extending checkout validity.
+- The first native search page is read before requesting further pages; empty/short results stop there. Remaining missing pages run in batches of at most three with `curl_multi`, individual response/error checks and existing timeouts/size limits. Only search reads enter this transport. Partial successes are cached; quota reservations for an unsent batch roll back together.
+- One live paired measurement of two 20-item reads: sequential 6,779 ms, concurrent 6,089 ms. Both returned 20 items per page. A separate uncached 50-item page took 8,471 ms, then 75 ms on the server on repeat. Provider latency remains variable; this is not a guaranteed speedup or a field Core Web Vitals result.
+- Client-side HTTP samples after rollout: cached 50-item search 223 ms initially / 94 ms repeat; refreshed detail 2,135 ms / cached repeat 67 ms. The search reused a 12-minute-old native snapshot, which previously would have needed a provider refresh. These measurements include network time and are not directly comparable to server-only timings.
+- Tests cover ordered pagination, short-page early exit, partial failure/retry, unchanged daily/checkout budget, batch lock cleanup, fresh readers under a held writer lock, no repeated identifier write, 30-minute expiration, exact SKU/stock and invoice freshness. Real purchases and payments were not part of performance testing.
+
 ## Observed baseline
 
 Production served Brotli for HTML/JavaScript but no explicit static Cache-Control. A gzip-only JavaScript request was uncompressed (25,254 bytes); Brotli transferred 8,004 bytes for the same file. The actual configured supplier budget was 800/day and snapshots were enabled, not the source default of 40/day. These are HTTP/config observations, not field Core Web Vitals measurements.
