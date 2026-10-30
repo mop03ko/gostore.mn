@@ -11,7 +11,7 @@
   if(!suggestions)return;const id=suggestions.querySelector('[data-menu-category]')?.dataset.menuCategory;if(!id||current===id)return;current=id;
   controller?.abort();controller=new AbortController();const c=taxonomy.find(c=>c.id===id);if(!c)return;
   const heading=suggestions.querySelector('.category-suggestion-heading img');if(heading){heading.src=c.image||'';heading.hidden=!c.image;}
-  const links=[...suggestions.querySelectorAll('[data-menu-query]')];links.forEach((a,n)=>{const src=photo(a.dataset.menuQuery);a.classList.add('category-photo-link');a.innerHTML=image(src)+`<span>${esc(a.textContent)}</span>`;a.hidden=n>=6;});
+  const links=[...suggestions.querySelectorAll('[data-menu-query]')];links.forEach((a,n)=>{const src=photo(a.dataset.menuQuery);a.classList.add('category-photo-link');a.innerHTML=(src?image(src):'<span class="category-photo-fallback" aria-hidden="true">'+icon('grid')+'</span>')+`<span>${esc(a.textContent)}</span>`;a.hidden=n>=6;});
   if(links.length>6){const more=document.createElement('button');more.type='button';more.className='discovery-more';more.textContent='Цааш үзэх ∨';more.setAttribute('aria-expanded','false');suggestions.querySelector('.category-suggestion-grid').after(more);more.onclick=()=>{const expanded=more.getAttribute('aria-expanded')!=='true';more.setAttribute('aria-expanded',String(expanded));links.forEach((a,n)=>a.hidden=!expanded&&n>=6);more.textContent=expanded?'Хураах ∧':'Цааш үзэх ∨';};}
   const shelf=document.createElement('section');shelf.className='category-recommendations';shelf.innerHTML='<h3>Танд санал болгох</h3><p role="status">Ачаалж байна…</p>';suggestions.append(shelf);suggestions.scrollTop=0;
   const own=controller;
