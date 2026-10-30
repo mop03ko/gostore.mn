@@ -1,3 +1,18 @@
+import type { Order } from "./types";
+export const orderFilters = [
+  { key: "all", label: "Бүгд" },
+  { key: "unpaid", label: "Төлбөр хүлээж буй" },
+  { key: "active", label: "Явцад байгаа" },
+  { key: "completed", label: "Дууссан" },
+  { key: "cancelled", label: "Цуцлагдсан" },
+] as const;
+export type OrderFilter = typeof orderFilters[number]["key"];
+export function matchesOrderFilter(order: Order, filter: OrderFilter) {
+  if (filter === "all") return true;
+  if (filter === "completed" || filter === "cancelled") return order.status === filter;
+  if (["completed", "cancelled"].includes(order.status)) return false;
+  return filter === "unpaid" ? !order.paid : order.paid;
+}
 export const statusName = (s: string) =>
   ({
     new: "Шинэ",

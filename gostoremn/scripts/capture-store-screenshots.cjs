@@ -37,7 +37,7 @@ async function main() {
   const maestroOutput = path.resolve('store-maestro-output');
   execFileSync('maestro', ['--device', device.udid, 'test', '--test-output-dir', maestroOutput, '.maestro/store-screenshots.yaml'], { stdio: 'inherit', timeout: 600000 });
   const screenshots = run('find', [maestroOutput, '-name', '*.png', '-type', 'f']).split('\n');
-  for (const name of ['01-home', '02-categories', '03-product', '04-options']) {
+  for (const name of ['01-home', '02-categories', '03-product', '04-options', '05-orders', '06-profile']) {
     const file = screenshots.find(f => path.basename(f) === name + '.png');
     if (!file) throw Error('Missing screenshot: ' + name);
     fs.copyFileSync(file, path.join(dir, name + '.png'));

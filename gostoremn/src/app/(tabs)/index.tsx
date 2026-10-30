@@ -14,7 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon, IconButton } from "@/components/shop-ui";
+import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
 import { brands, departments } from "@/lib/departments";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
@@ -196,18 +196,9 @@ function Shop({ initialQuery }: { initialQuery: string }) {
             justifyContent: "space-between",
           }}
         >
-          <Text
-            style={{
-              fontSize: 23,
-              fontWeight: "900",
-              color: colors.orange,
-              fontStyle: "italic",
-            }}
-          >
-            GOStore
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
-            <Text style={{ fontSize: 17, fontWeight: "800" }}>
+          <BrandLogo width={132} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
+            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", flexShrink: 1, color: colors.muted }}>
               Танд зориулсан
             </Text>
             <IconButton
@@ -318,7 +309,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={{ fontSize: 28 }}>{d.icon}</Text>
+                    <Icon name={d.icon} size={25} color="#913c20" />
                   </View>
                   <Text style={{ fontSize: 11, color: colors.ink }}>
                     {d.name}
@@ -358,14 +349,14 @@ function Shop({ initialQuery }: { initialQuery: string }) {
                   title: "Өдөр тутмын сонголт",
                   subtitle: "Гэрээ илүү тухтай",
                   q: "home storage",
-                  emoji: "🛋️",
+                  icon: "home" as const,
                   bg: "#ffefe8",
                 },
                 {
                   title: "Өөрийн хэв маяг",
                   subtitle: "Хувцас · Гутал · Цүнх",
                   q: "clothing",
-                  emoji: "👟",
+                  icon: "shoe" as const,
                   bg: "#fff6df",
                 },
               ].map((p) => (
@@ -395,7 +386,7 @@ function Shop({ initialQuery }: { initialQuery: string }) {
                     <Text style={{ fontSize: 11, color: "#7b6257", flex: 1 }}>
                       {p.subtitle}
                     </Text>
-                    <Text style={{ fontSize: 32 }}>{p.emoji}</Text>
+                    <Icon name={p.icon} size={30} color="#a14926" />
                   </View>
                 </Pressable>
               ))}

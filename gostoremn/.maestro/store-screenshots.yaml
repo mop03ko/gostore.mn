@@ -12,6 +12,18 @@ appId: mn.gostore.app
     visible: "Ангиллаар үзэх"
     timeout: 15000
 - takeScreenshot: 02-categories
+- tapOn:
+    point: "50%,94%"
+- extendedWaitUntil:
+    visible: "Захиалга бүрээ нэг дор"
+    timeout: 30000
+- takeScreenshot: 05-orders
+- tapOn:
+    point: "90%,94%"
+- extendedWaitUntil:
+    visible: "Таны GOStore"
+    timeout: 15000
+- takeScreenshot: 06-profile
 - openLink: gostoremn://product/tb-1022951227321
 - tapOn:
     text: "Open"

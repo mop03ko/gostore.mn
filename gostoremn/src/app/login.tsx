@@ -62,7 +62,10 @@ export default function Login() {
       await refresh();
       setPassword("");
       setConfirm("");
-      router.replace(next === "checkout" ? "/checkout" : "/account");
+      const destination = next === "checkout" || next === "/checkout" ? "/checkout"
+        : next === "/orders" ? "/orders" : next === "/addresses" ? "/addresses"
+        : next === "/notifications" ? "/notifications" : "/account";
+      router.replace(destination);
     } catch (e) {
       setError((e as Error).message);
     } finally {

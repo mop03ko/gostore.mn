@@ -3,11 +3,11 @@ import { Text, View, ScrollView, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Icon, Quantity } from "@/components/shop-ui";
+import { EmptyState } from "@/components/account-ui";
 import { useStore } from "@/lib/store";
 import type { CartLine } from "@/lib/types";
 import {
   Card,
-  Title,
   Copy,
   Button,
   ErrorBox,
@@ -179,12 +179,8 @@ export default function Cart() {
             ))}
           </Card>
         ) : (
-          <Card style={{ alignItems: "center", paddingVertical: 44 }}>
-            <Icon name="cart" size={55} color="#bcbcbc" />
-            <Title>Сагс тань хоосон байна</Title>
-            <Copy>Таалагдсан бараагаа сонгоод нэмээрэй.</Copy>
-            <Button title="Бараа үзэх" onPress={() => router.push("/")} />
-          </Card>
+          <EmptyState icon="cart" title="Сагс тань хоосон байна" description="Таалагдсан барааныхаа өнгө, хэмжээг сонгоод сагсандаа нэмээрэй."
+            action="Бараа үзэх" onPress={() => router.navigate("/")} />
         )}
         {!!cart.length && (
           <Card>

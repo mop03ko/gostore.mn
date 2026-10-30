@@ -7,6 +7,7 @@ import {
   View,
   type TextInputProps,
   type ViewStyle,
+  type ScrollViewProps,
 } from "react-native";
 import type { ReactNode } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,10 +21,11 @@ export const colors = {
 };
 export const money = (n: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n) + " ₮";
-export function Page({ children }: { children: ReactNode }) {
+export function Page({ children, refreshControl }: { children: ReactNode; refreshControl?: ScrollViewProps["refreshControl"] }) {
   const inset = useSafeAreaInsets();
   return (
     <ScrollView
+      refreshControl={refreshControl}
       keyboardShouldPersistTaps="handled"
       contentInsetAdjustmentBehavior="automatic"
       style={{ flex: 1, backgroundColor: colors.bg }}

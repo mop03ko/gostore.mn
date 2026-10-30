@@ -10,6 +10,7 @@ export default function Root() {
         screenOptions={{
           headerTintColor: colors.navy,
           headerShadowVisible: false,
+          headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: colors.bg },
         }}
       >
