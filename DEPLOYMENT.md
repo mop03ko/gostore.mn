@@ -4,7 +4,7 @@
 
 - Deployed `20d3fa3` server files and hero WebP images, plus HEAD `index.html`: live already ran HEAD's bundle (`app.js?v=240cefcd6e15`, deployed separately), and HEAD's index differed from live only by this change. Baseline/backup/hash verification; backup `/gostore-backups/speed-20261031-60c3f1b43b`. New images serve `max-age=31536000, immutable`.
 - Same throttled live sample (390 px, 4x CPU, ~1.6 Mbps, 150 ms RTT): home cold transfer 756 → 393 KB, load event 5.0 → 2.35 s, content ready 5.2 → 2.8 s; desktop home cold 992 → 735 KB, load 1.43 → 0.29 s. Server-cold product page on mobile: options at 2.9 s, main photo at 3.7 s; within 30 minutes of a previous view the detail is served from the display cache.
-- Live CLS rose after the separately deployed `.discovery-home` section (inserted by JS between the hub and brands, about 445 px). Follow-up `f9591be` reserves the hub's own size (22 px desktop / 12 px phone growth) and fixes a stale account view race; it is not yet deployed.
+- Live CLS rose after the separately deployed `.discovery-home` section (inserted by JS between the hub and brands, about 445 px). Follow-up `f9591be` reserves the hub's own size (22 px desktop / 12 px phone growth) and fixes a stale account view race. Deployed `app.css`, `app.js`, `index.html` from `f9591be` (live bundle `e334d917aeb9`), backup `/gostore-backups/hubfix-20261031-cecdaedc99`. Live hub height is identical with and without JS at 1440/1024/390 px; throttled mobile CLS 0.000. Desktop CLS 0.118 remains, all from the JS-inserted `.discovery-home` section. Home/product pages: no overflow or JS errors.
 
 ## Product page facts, shop rating and recommendations — 2026-10-31
 
