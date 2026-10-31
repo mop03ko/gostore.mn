@@ -39,6 +39,8 @@ fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/
  page.once('dialog',d=>d.accept());await page.locator('.account-address:has-text("Гэр") [data-address-delete]').click();await page.waitForFunction(()=>document.querySelectorAll('.account-address').length===1);
  // Profile save keeps the email read-only.
  await page.locator('[data-account-section=profile]').click();await page.locator('#account-profile-form').waitFor();
+ // A slow orders reply must not replace the section chosen while it was loading.
+ await page.locator('[data-account-section=orders]').click();let release;const held=new Promise(r=>release=r);await page.route('**/api/index.php?action=customer-orders*',async r=>{await held;await r.continue();});await page.reload();await page.locator('.account-menu').waitFor();await page.locator('[data-account-section=profile]').click();await page.locator('#account-profile-form').waitFor();release();await page.waitForResponse(r=>r.url().includes('action=customer-orders')).catch(()=>{});await page.waitForTimeout(300);assert.equal(await page.locator('#account-profile-form').count(),1,'Late orders reply keeps the profile view');await page.unroute('**/api/index.php?action=customer-orders*');
  assert.equal(await page.locator('#account-profile-form [disabled]').inputValue(),customer.email);
  await page.locator('#account-profile-form [name=name]').fill('Шинэ Нэр');await page.locator('#account-profile-form [type=submit]').click();
  await page.waitForFunction(()=>document.querySelector('.account-summary h3').textContent==='Шинэ Нэр');

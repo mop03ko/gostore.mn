@@ -66,6 +66,9 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  assert.equal(await page.locator('.mobile-nav [data-mobile-tab=cart]').getAttribute('aria-current'),'page');
  await page.screenshot({path:'tmp/home-hub-cart-390.png'});
  assert.deepEqual(errors,[]);
+ // The hub is filled after first paint; its reserved size must not change, or the page jumps (CLS).
+ for(const width of [1440,1024,390,320]){const sizes=[];for(const javaScriptEnabled of [false,true]){const ctx=await browser.newContext({viewport:{width,height:900},javaScriptEnabled});const p=await ctx.newPage();await p.route('**/api/index.php?action=supplier-*',r=>r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}}));await p.goto(base+'/');if(javaScriptEnabled)await p.locator(width>760?'#hub-cats li':'#hub-channels a').first().waitFor();sizes.push(await p.evaluate(()=>['#home-hub','.hub-main .hero-banner'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [Math.round(r.y),Math.round(r.height)];})));await ctx.close();}
+  assert.deepEqual(sizes[1],sizes[0],'Hub keeps its reserved size at '+width);}
  // index.html serves every route; the first screen belongs to the home page only.
  for(const path of ['/brands/nike','/account','/cart']){await page.goto(base+path);await page.waitForLoadState('load');assert.equal(await page.locator('#home-hub').isVisible(),false,'Hub hidden on '+path);}
  console.log('PASS home hub: category rows and flyout (hover, keyboard, Escape), popular searches, guest panel, phone category grid and tabs, shop-grouped cart selection, estimate, mixed states and pinned phone bar.');

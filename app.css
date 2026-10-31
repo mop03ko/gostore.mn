@@ -699,10 +699,12 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 /* ==== home-hub.css ==== */
 /* Marketplace first screen (home-hub.js): categories | banner | customer panel. */
 .home-hub{position:relative;display:grid;grid-template-columns:236px minmax(0,1fr) 240px;gap:16px;padding-top:20px;align-items:stretch}
-.hub-cats{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 0;min-width:0}
-.hub-cats-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--navy);padding:4px 16px 8px}.hub-cats-title .icon{width:18px;height:18px;color:#ea580c}
+/* home-hub.js fills the hub after first paint; fixed row and title heights let the space be reserved
+   (1+10+34+12×26+10+1 = 368 px), so filling it never pushes the page down. */
+.hub-cats{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 0;min-width:0;min-height:368px;box-sizing:border-box}
+.hub-cats-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;line-height:22px;height:34px;margin:0;box-sizing:border-box;color:var(--navy);padding:4px 16px 8px}.hub-cats-title .icon{width:18px;height:18px;color:#ea580c}
 .hub-cats ul{list-style:none;margin:0;padding:0}
-.hub-cats li{display:flex;align-items:center;gap:6px;padding:0 16px;min-height:26px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9aa3b2}
+.hub-cats li{display:flex;align-items:center;gap:6px;padding:0 16px;height:26px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9aa3b2}
 .hub-cats li a{color:var(--navy);text-decoration:none;overflow:hidden;text-overflow:ellipsis}
 .hub-cats li a:hover,.hub-cats li a:focus-visible{color:#ea580c;text-decoration:underline}
 .hub-cats li.active{background:#fff3eb}
@@ -740,12 +742,12 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
  .home-hub{grid-template-columns:minmax(0,1fr);padding-top:12px;gap:12px}
  .hub-cats,.hub-flyout,.hub-user{display:none}
  .hub-main{gap:12px}
- .hub-channels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 4px;min-height:152px}
- .hub-channels a,.hub-channels button{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;line-height:1.2;color:var(--navy);text-decoration:none;text-align:center;min-height:70px}
+ .hub-channels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 4px;min-height:164px}
+ .hub-channels a,.hub-channels button{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;line-height:12px;color:var(--navy);text-decoration:none;text-align:center;height:76px;overflow:hidden}
  .hub-channels span{width:46px;height:46px;border-radius:16px;background:#fff3eb;display:grid;place-items:center;font-size:24px;line-height:1}
  .hub-channels a:nth-child(5n+2) span{background:#fff4df}.hub-channels a:nth-child(5n+3) span{background:#eaf6f0}.hub-channels a:nth-child(5n+4) span{background:#eef2ff}.hub-channels a:nth-child(5n) span{background:#fdeef6}
  .hub-channels button span{background:#f1f3f7;color:var(--navy)}.hub-channels .icon{width:22px;height:22px}
- .hub-hot{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.hub-hot::-webkit-scrollbar{display:none}
+ .hub-hot{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;min-height:32px;box-sizing:border-box}.hub-hot::-webkit-scrollbar{display:none}
  .hub-hot a{flex-shrink:0;background:#f6f8fb;border-radius:14px;padding:0 12px;line-height:30px;min-height:30px}
  .hub-hot span{flex-shrink:0}
  .home-hub~.brand-section{padding-top:20px}
