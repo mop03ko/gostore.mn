@@ -28,6 +28,7 @@ export type Product = {
   vendor_name?: string;
   shop_rating?: number | null;
   brand?: string;
+  brand_id?: string;
   ship_from?: string;
   ships_48h?: boolean;
   description?: string;

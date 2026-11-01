@@ -1,9 +1,10 @@
+import { usePalette } from "@/lib/palette";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/shop-ui";
 import { useStore } from "@/lib/store";
-import { colors } from "@/components/ui";
 export default function TabLayout() {
+  const colors = usePalette();
   const { cart } = useStore();
   const inset = useSafeAreaInsets();
   return (
@@ -12,11 +13,12 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.orange,
         tabBarInactiveTintColor: colors.muted,
         headerTintColor: colors.navy,
+        headerStyle: { backgroundColor: colors.surface },
         headerShadowVisible: false,
-        tabBarStyle: { borderTopColor: colors.line, backgroundColor: "white", height: 64 + inset.bottom, paddingBottom: Math.max(inset.bottom, 6), paddingTop: 4 },
+        tabBarStyle: { borderTopColor: colors.line, backgroundColor: colors.surface, height: 64 + inset.bottom, paddingBottom: Math.max(inset.bottom, 6), paddingTop: 4 },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarItemStyle: { paddingTop: 0 },
-        tabBarBadgeStyle: { backgroundColor: colors.orange, color: "white", fontSize: 10 },
+        tabBarBadgeStyle: { backgroundColor: colors.orange, color: colors.onPrimary, fontSize: 10 },
         headerTitleStyle: { fontWeight: "700", fontSize: 18 },
         headerTitleAlign: "left",
       }}

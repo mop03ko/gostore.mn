@@ -1,3 +1,4 @@
+import { usePalette, type Palette } from "@/lib/palette";
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Icon, BrandLogo } from "@/components/shop-ui";
@@ -5,8 +6,10 @@ import { MenuRow, EmptyState } from "@/components/account-ui";
 import { router } from "expo-router";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { Page, Card, Copy, Field, Button, Busy, ErrorBox, colors } from "@/components/ui";
+import { Page, Card, Copy, Field, Button, Busy, ErrorBox } from "@/components/ui";
 function Account() {
+  const colors = usePalette();
+  const styles = createStyles(colors);
   const { customer, ready, refresh, logout, cart, error: bootError } = useStore();
   const [panel, setPanel] = useState<"profile" | "password" | null>(null);
   const [name, setName] = useState<string | null>(null), [phone, setPhone] = useState<string | null>(null);
@@ -41,12 +44,12 @@ function Account() {
       <View style={styles.identity}>
         <View style={styles.avatar}><Text style={styles.initial}>{(customer.name.trim()[0] || "G").toUpperCase()}</Text></View>
         <View style={{ flex: 1, gap: 5 }}><Text style={styles.name}>{customer.name}</Text><Text style={styles.email}>{customer.email}</Text></View>
-        <Pressable onPress={() => toggle("profile")} accessibilityRole="button" accessibilityLabel="Хувийн мэдээлэл засах" style={styles.edit}><Icon name="settings" color="#76513d" /></Pressable>
+        <Pressable onPress={() => toggle("profile")} accessibilityRole="button" accessibilityLabel="Хувийн мэдээлэл засах" style={styles.edit}><Icon name="settings" color={colors.accentText} /></Pressable>
       </View>
       <View style={styles.shortcuts}>
-        <Pressable onPress={() => router.navigate("/cart")} accessibilityRole="button" style={styles.shortcut}><Icon name="cart" color="#a14620" /><Text style={styles.shortcutLabel}>Сагс · {cart.length}</Text></Pressable>
-        <Pressable onPress={() => router.navigate("/orders")} accessibilityRole="button" style={styles.shortcut}><Icon name="box" color="#a14620" /><Text style={styles.shortcutLabel}>Захиалга</Text></Pressable>
-        <Pressable onPress={() => router.push("/addresses")} accessibilityRole="button" style={styles.shortcut}><Icon name="pin" color="#a14620" /><Text style={styles.shortcutLabel}>Миний хаяг</Text></Pressable>
+        <Pressable onPress={() => router.navigate("/cart")} accessibilityRole="button" style={styles.shortcut}><Icon name="cart" color={colors.accentText} /><Text style={styles.shortcutLabel}>Сагс · {cart.length}</Text></Pressable>
+        <Pressable onPress={() => router.navigate("/orders")} accessibilityRole="button" style={styles.shortcut}><Icon name="box" color={colors.accentText} /><Text style={styles.shortcutLabel}>Захиалга</Text></Pressable>
+        <Pressable onPress={() => router.push("/addresses")} accessibilityRole="button" style={styles.shortcut}><Icon name="pin" color={colors.accentText} /><Text style={styles.shortcutLabel}>Миний хаяг</Text></Pressable>
       </View>
     </View> : <EmptyState icon="user" title="Таны GOStore" description="Бүртгэлээрээ нэвтэрч захиалга, хүргэлт, хаягуудаа нэг дор удирдаарай." action="Нэвтрэх / Бүртгүүлэх" onPress={login} />}
     <Text style={styles.section}>Захиалга ба хүргэлт</Text>
@@ -58,7 +61,7 @@ function Account() {
       <MenuRow icon="bell" title="Захиалгын мэдэгдэл" subtitle="Захиалгын шинэ мэдээллүүд" onPress={() => protectedRoute("/notifications")} />
     </Card>
     <ErrorBox message={error} />
-    {!!message && <View accessibilityLiveRegion="polite" style={styles.success}><Icon name="check" color="#276444" size={18} /><Text style={{ color: "#276444", flex: 1 }}>{message}</Text></View>}
+    {!!message && <View accessibilityLiveRegion="polite" style={styles.success}><Icon name="check" color={colors.success} size={18} /><Text style={{ color: colors.success, flex: 1 }}>{message}</Text></View>}
     {customer && <>
       <Text style={styles.section}>Бүртгэлийн тохиргоо</Text>
       <Card style={{ gap: 0, paddingVertical: 4 }}>
@@ -76,7 +79,7 @@ function Account() {
           <Field label="Шинэ нууц үг" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
           <Copy>10-аас доошгүй тэмдэгт ашиглаарай.</Copy>
           <Field label="Шинэ нууц үг давтах" value={confirm} onChangeText={setConfirm} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
-          {!!confirm && password !== confirm && <Text style={{ color: "#b33128", fontSize: 12 }}>Нууц үгүүд таарахгүй байна.</Text>}
+          {!!confirm && password !== confirm && <Text style={{ color: colors.danger, fontSize: 12 }}>Нууц үгүүд таарахгүй байна.</Text>}
           <Button title={busy ? "Шинэчилж байна…" : "Нууц үг шинэчлэх"} disabled={busy || !old || password.length < 10 || password !== confirm}
             onPress={() => void save("customer-password", { current_password: old, password, password_confirm: confirm })} />
         </View>}
@@ -92,19 +95,19 @@ function Account() {
   </Page>;
 }
 export default function AccountRoute() { const { customer } = useStore(); return <Account key={customer?.id || "guest"} />; }
-const styles = StyleSheet.create({
-  hero: { backgroundColor: "#fff0e6", borderRadius: 22, padding: 18, gap: 20 },
+const createStyles = (colors: Palette) => StyleSheet.create({
+  hero: { backgroundColor: colors.accentSurface, borderRadius: 22, padding: 18, gap: 20 },
   identity: { flexDirection: "row", alignItems: "center", gap: 12 },
-  avatar: { width: 56, height: 56, borderRadius: 20, backgroundColor: "white", alignItems: "center", justifyContent: "center" },
-  initial: { fontSize: 25, fontWeight: "800", color: "#a14620" },
-  name: { fontSize: 20, fontWeight: "700", color: colors.ink }, email: { fontSize: 12, color: "#785c4c" },
+  avatar: { width: 56, height: 56, borderRadius: 20, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  initial: { fontSize: 25, fontWeight: "800", color: colors.accentText },
+  name: { fontSize: 20, fontWeight: "700", color: colors.ink }, email: { fontSize: 12, color: colors.accentText },
   edit: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
-  shortcuts: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#f5d7c6", paddingTop: 16 },
+  shortcuts: { flexDirection: "row", borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
   shortcut: { flex: 1, minHeight: 50, alignItems: "center", gap: 8 },
-  shortcutLabel: { color: "#714b36", fontWeight: "600", fontSize: 12 },
-  section: { color: "#67636e", fontSize: 12, fontWeight: "700", marginTop: 8, marginLeft: 6 },
+  shortcutLabel: { color: colors.accentText, fontWeight: "600", fontSize: 12 },
+  section: { color: colors.muted, fontSize: 12, fontWeight: "700", marginTop: 8, marginLeft: 6 },
   divider: { height: 1, backgroundColor: colors.line, marginLeft: 52 },
   form: { paddingTop: 10, paddingBottom: 18, gap: 12 },
-  success: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#eaf6ef", padding: 14, borderRadius: 12 },
+  success: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.successSurface, padding: 14, borderRadius: 12 },
   footer: { alignItems: "center", gap: 10, padding: 20 }, footerText: { fontSize: 11, color: colors.muted },
 });

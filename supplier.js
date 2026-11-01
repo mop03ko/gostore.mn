@@ -108,6 +108,8 @@ async function loadSupplier(page=1,append=false){
     supplierPartialKey=r.partial?partialKey:null;
     supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&incoming.length>0;
     const total=Number.isSafeInteger(r.total)?r.total:null;
+    const shopLabel=document.querySelector('[data-brand-store-name]');
+    if(shopLabel&&r.brand?.id===brand&&r.brand.store_name)shopLabel.textContent=r.brand.store_name;
     $('#supplier-status').textContent=(supplierResults.length?supplierResults.length+' бараа харуулж байна'+(total!==null?' · нийт '+new Intl.NumberFormat('en-US').format(total)+' үр дүн':''):'Тохирох бараа олдсонгүй.')+(range.price_min||range.price_max?' · Үнэ: '+(range.price_min?money(Number(range.price_min)):'0 ₮')+' – '+(range.price_max?money(Number(range.price_max)):'дээд хязгааргүй'):'')+(brand?' · Хямдрал, урамшууллын мэдээллийг бараа дээр дарж үзнэ.':'')+(r.stale?' · Хадгалсан мэдээлэл. Үнэ, үлдэгдлийг барааны хуудаснаас шалгана уу.':'');
     $('#shipping-rates').textContent=supplierRateText(r.shipping)+' Бараа, Хятад доторх хүргэлт, үйлчилгээний шимтгэл тусдаа тооцогдоно.';
     $('#supplier-search button').disabled=false;

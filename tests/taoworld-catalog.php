@@ -16,6 +16,10 @@ function taoworld_http(string $path,array $params): array {
     if($path==='/traffic/item/search'){
         if((int)$params['page_no']===$failPage)throw new ApiError('Fake page failure',502);
         $rows=[];for($i=0;$i<($short?3:20);$i++){$id=(string)(700000000000+((int)$params['page_no']-1)*20+$i);$rows[]=['item_id'=>$id,'mi_id'=>'opaque-'.$id,'title'=>'收纳盒','main_image_url'=>'https://img.alicdn.com/example.jpg','multi_language_info'=>['title'=>'Storage box'],'price'=>'14.47'];}
+        if(isset($params['shop_id'])){
+            $brand=array_values(array_filter(supplier_brands(),fn($b)=>$b['shop_id']===$params['shop_id']))[0];
+            foreach($rows as $i=>&$row){$row['shop_name']=$i===1?'Unrelated reseller':$brand['vendor'];if($i===2)$row['shop_id']='999999';if($i===3)unset($row['shop_name']);}unset($row);
+        }
         return ['code'=>'0','data'=>['data'=>$rows]];
     }
     if($path==='/traffic/item/get')return ['code'=>'0','data'=>['item_id'=>'700000000000','mi_id'=>'rotated-id','title'=>'Storage box','pic_urls'=>['https://img.alicdn.com/example.jpg'],'price'=>500,'promotion_price'=>$price,'coupon_price'=>1,'shop_id'=>'123','sku_list'=>[['sku_id'=>'999999999999999999999','quantity'=>$unknown?null:$stock,'price'=>500,'promotion_price'=>$price,'coupon_price'=>1,'properties'=>[['prop_name'=>'Color','value_name'=>'Blue']]]]]];
@@ -32,6 +36,21 @@ $r=supplier_search(['q'=>'box','page'=>1,'limit'=>12]);check(count($r['products'
 $r2=supplier_search(['q'=>'box','page'=>2,'limit'=>12]);check($r2['products'][0]['id']==='tb-700000000012'&&end($r2['products'])['id']==='tb-700000000023','12-item pagination across native pages');
 $r3=supplier_search(['q'=>'box','page'=>2,'limit'=>50]);check(count($r3['products'])===50&&$r3['products'][0]['id']==='tb-700000000050','50-item pagination');
 $before=count($calls);supplier_search(['q'=>'box','page'=>1,'limit'=>12]);check(count($calls)===$before,'Search cache missed');
+$_SERVER['REMOTE_ADDR']='192.0.2.56';
+foreach(supplier_brands() as $brandId=>$brand){
+    $r=supplier_search(['brand'=>$brandId,'q'=>'wrong unrelated keyword','page'=>1,'limit'=>12]);$query=end($calls)[1];
+    check(($query['shop_id']??'')===$brand['shop_id']&&!isset($query['keyword']),'Brand must request exact shop ID without keyword fallback');
+    check(count($r['products'])===9&&$r['more']&&$r['brand']['store_name']===$brand['vendor'],'Wrong/missing seller must be omitted without breaking pagination');
+    check($r['products'][0]['brand_id']===$brandId,'Brand context missing from cards');
+}
+unset($_SERVER['REMOTE_ADDR']);
+$legacy=supplier_search(['q'=>'UNIQLO','page'=>1,'limit'=>12]);
+check(($legacy['brand']['id']??'')==='uniqlo'&&count($legacy['products'])===9,'Older app exact brand queries must also use the verified shop');
+$brand=supplier_brand('uniqlo');
+check(!tw_catalog_brand_matches(['shop_name'=>$brand['vendor'],'shop_id'=>$brand['seller']],$brand,true),'Seller ID must not be mistaken for shop ID');
+check(!tw_catalog_brand_matches(['shop_name'=>$brand['vendor']],$brand,true),'Details must include shop ID');
+check(tw_catalog_brand_matches(['shop_name'=>$brand['vendor'],'shop_id'=>$brand['shop_id']],$brand,true),'Exact shop detail rejected');
+$before=count($calls);supplier_search(['q'=>'box','page'=>1,'limit'=>12]);
 $searchFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',['keyword'=>'box','language'=>'en','page_no'=>'1','page_size'=>'20']).'.json';$searchCache=supplier_snapshot_read($searchFile);$searchCache['time']=time()-1200;supplier_snapshot_write($searchFile,$searchCache);
 $r=supplier_search(['q'=>'box','page'=>1,'limit'=>12]);check(count($calls)===$before&&$r['cache_ttl']<=600&&$r['cache_ttl']>590,'20-minute search should reuse list cache');
 $searchCache['time']=time()-1801;supplier_snapshot_write($searchFile,$searchCache);supplier_search(['q'=>'box','page'=>1,'limit'=>12]);check(count($calls)===$before+1,'Expired 30-minute search must refresh');
@@ -44,6 +63,7 @@ $before=count($calls);denied(fn()=>supplier_search(['q'=>'budget test','page'=>1
 check(count(supplier_search(['q'=>'budget test','page'=>1,'limit'=>50])['products'])===50,'Failed batch did not release page locks');
 $before=count($calls);denied(fn()=>supplier_detail('tb-123456789'),409);check(count($calls)===$before,'Unknown old OT ID must not reach API');
 $d=supplier_detail('tb-700000000000');check($d['product']['cny']===3.93&&$d['product']['variants'][0]['id']==='999999999999999999999','Fen conversion, coupon exclusion and exact long SKU');
+denied(fn()=>supplier_detail('tb-700000000000',false,'uniqlo'),409);
 $mixed=tw_catalog_product(['item_id'=>'700000000008','mi_id'=>'mixed','title'=>'Box','sku_list'=>[['sku_id'=>'1','price'=>100,'quantity'=>5],['sku_id'=>'2','price'=>50]]],true);check($mixed['sellable']&&$mixed['variants'][1]['cny']===null,'Unknown-stock SKU must be disabled even when another variant is available');
 check(end($calls)[1]['mi_id']==='opaque-700000000000'&&!isset(end($calls)[1]['item_id']),'Detail must use mi_id');
 $before=count($calls);supplier_detail('tb-700000000000');check(count($calls)===$before,'Rotated mi_id must not invalidate cache');

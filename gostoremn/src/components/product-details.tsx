@@ -1,3 +1,4 @@
+import { usePalette, type Palette } from "@/lib/palette";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
@@ -5,7 +6,7 @@ import { router } from "expo-router";
 import { catalog } from "@/lib/api";
 import type { Product, Variant } from "@/lib/types";
 import { Icon } from "./shop-ui";
-import { Busy, Button, Card, Copy, ErrorBox, colors, money } from "./ui";
+import { Busy, Button, Card, Copy, ErrorBox, money } from "./ui";
 
 const tabs = [
   { id: "overview", label: "Тойм" }, { id: "reviews", label: "Үнэлгээ" },
@@ -14,6 +15,8 @@ const tabs = [
 type Section = typeof tabs[number]["id"];
 
 function Recommendations({ id }: { id: string }) {
+  const colors = usePalette();
+  const styles = createStyles(colors);
   const [items, setItems] = useState<Product[]>([]), [loading, setLoading] = useState(true);
   const [error, setError] = useState(""), [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -36,12 +39,14 @@ function Recommendations({ id }: { id: string }) {
         onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })} style={styles.product}>
         <Image source={p.image || undefined} recyclingKey={p.id} contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />
         <View style={{ padding: 10, gap: 6 }}><Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 19, minHeight: 38, color: colors.ink }}>{p.name}</Text>
-          <Text style={{ fontSize: 19, fontWeight: "800", color: "#c44000" }}>{p.mnt ? money(p.mnt) : "Үнэ шалгах"}</Text></View>
+          <Text style={{ fontSize: 19, fontWeight: "800", color: colors.accentText }}>{p.mnt ? money(p.mnt) : "Үнэ шалгах"}</Text></View>
       </Pressable>)}</View>}
   </View>;
 }
 
 export function ProductDetails({ product, variant, rate, onChoose }: { product: Product; variant?: Variant; rate: number; onChoose: () => void }) {
+  const colors = usePalette();
+  const styles = createStyles(colors);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null), positions = useRef<Partial<Record<Section, number>>>({ overview: 0 });
   const [active, setActive] = useState<Section>("overview"), [expanded, setExpanded] = useState(false), [fullName, setFullName] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
@@ -61,7 +66,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
   return <View style={{ flex: 1 }}>
     <View style={styles.tabs}>{tabs.map(tab => <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{ selected: active === tab.id }}
       onPress={() => jump(tab.id)} style={[styles.tab, active === tab.id && { borderBottomColor: colors.orange }]}>
-      <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: active === tab.id ? "700" : "500", color: active === tab.id ? "#c44000" : colors.muted }}>{tab.label}</Text>
+      <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: active === tab.id ? "700" : "500", color: active === tab.id ? colors.accentText : colors.muted }}>{tab.label}</Text>
     </Pressable>)}</View>
     <ScrollView ref={scroll} testID="product-content" scrollEventThrottle={80} contentInsetAdjustmentBehavior="never"
       onScroll={e => {
@@ -72,7 +77,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         if (current) setActive(current.id);
       }} contentContainerStyle={{ paddingBottom: 24, gap: 10, maxWidth: 820, width: "100%", alignSelf: "center" }}>
       <View onLayout={e => { positions.current.overview = e.nativeEvent.layout.y; }} style={{ gap: 10 }}>
-        <View style={{ backgroundColor: "white" }}>
+        <View style={{ backgroundColor: colors.surface }}>
           <ScrollView key={width} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={e => setImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))}>
             {images.map(uri => <Image key={uri} source={uri} contentFit="contain" style={{ width, height: width }} />)}
@@ -89,24 +94,24 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         </View>
         <View style={styles.inset}><Card>
           <Pressable accessibilityRole="button" accessibilityLabel="Хувилбар сонгох" onPress={onChoose} style={styles.row}>
-            <Text style={styles.muted}>Сонголт</Text><Text numberOfLines={2} style={{ flex: 1, fontSize: 14, fontWeight: "600" }}>{variant?.label || "Өнгө, хэмжээ, тоо сонгох"}</Text><Icon name="chevron" size={18} />
+            <Text style={styles.muted}>Сонголт</Text><Text numberOfLines={2} style={{ color: colors.ink, flex: 1, fontSize: 14, fontWeight: "600" }}>{variant?.label || "Өнгө, хэмжээ, тоо сонгох"}</Text><Icon name="chevron" size={18} />
           </Pressable>
           <View style={styles.separator} />
-          <View style={styles.row}><Icon name="truck" color="#168267" /><View style={{ flex: 1, gap: 5 }}>
-            <Text style={{ fontWeight: "600" }}>Хятад → Эрээн → Улаанбаатар</Text><Text style={styles.muted}>Хятад хүргэлтийг захиалахын өмнө, каргоны төлбөрийг бодит хэмжилтээр тооцно.</Text>
+          <View style={styles.row}><Icon name="truck" color={colors.success} /><View style={{ flex: 1, gap: 5 }}>
+            <Text style={{ color: colors.ink, fontWeight: "600" }}>Хятад → Эрээн → Улаанбаатар</Text><Text style={styles.muted}>Хятад хүргэлтийг захиалахын өмнө, каргоны төлбөрийг бодит хэмжилтээр тооцно.</Text>
           </View></View>
           <View style={styles.separator} />
-          <Pressable accessibilityRole="button" onPress={() => router.push("/help")} style={styles.row}><Icon name="shield" color="#168267" />
-            <Text style={{ flex: 1, fontSize: 14 }}>Хүргэлт, төлбөрийн нөхцөл</Text><Icon name="chevron" size={18} /></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/help")} style={styles.row}><Icon name="shield" color={colors.success} />
+            <Text style={{ color: colors.ink, flex: 1, fontSize: 14 }}>Хүргэлт, төлбөрийн нөхцөл</Text><Icon name="chevron" size={18} /></Pressable>
         </Card></View>
       </View>
       <View onLayout={e => { positions.current.reviews = e.nativeEvent.layout.y; }} style={styles.inset} testID="product-reviews"><Card>
         <Text style={styles.heading}>Үнэлгээ, сэтгэгдэл</Text>
-        {!!product.vendor_name && <View style={styles.row}><Icon name="home" size={22} color="#b43f0a" /><Text style={{ flex: 1, fontWeight: "600" }}>{product.vendor_name}</Text></View>}
-        {rating !== null && <View style={styles.rating}><Text style={{ fontSize: 27, fontWeight: "800", color: "#b43f0a" }}>★ {rating.toFixed(1)}<Text style={{ fontSize: 14 }}> / 5</Text></Text>
-          <View style={{ flex: 1 }}><Text style={{ fontWeight: "600" }}>Дэлгүүрийн үнэлгээ</Text><Text style={styles.muted}>Taobao дэлгүүрийн нийт үзүүлэлт</Text></View></View>}
+        {!!product.vendor_name && <View style={styles.row}><Icon name="home" size={22} color={colors.accentText} /><Text style={{ color: colors.ink, flex: 1, fontWeight: "600" }}>{product.vendor_name}</Text></View>}
+        {rating !== null && <View style={styles.rating}><Text style={{ fontSize: 27, fontWeight: "800", color: colors.accentText }}>★ {rating.toFixed(1)}<Text style={{ color: colors.ink, fontSize: 14 }}> / 5</Text></Text>
+          <View style={{ flex: 1 }}><Text style={{ color: colors.ink, fontWeight: "600" }}>Дэлгүүрийн үнэлгээ</Text><Text style={styles.muted}>Taobao дэлгүүрийн нийт үзүүлэлт</Text></View></View>}
         <View style={styles.separator} />
-        <Text style={{ fontWeight: "600", fontSize: 14 }}>Худалдан авагчдын сэтгэгдэл</Text>
+        <Text style={{ color: colors.ink, fontWeight: "600", fontSize: 14 }}>Худалдан авагчдын сэтгэгдэл</Text>
         <Text style={styles.muted}>Энэ барааны худалдан авагчдын сэтгэгдлийг одоогоор харуулах боломжгүй байна.</Text>
       </Card></View>
       <View onLayout={e => { positions.current.details = e.nativeEvent.layout.y; }} style={styles.inset} testID="product-specifications"><Card>
@@ -124,21 +129,21 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
     </ScrollView>
   </View>;
 }
-const styles = StyleSheet.create({
-  tabs: { flexDirection: "row", backgroundColor: "white", borderBottomWidth: 1, borderColor: colors.line },
+const createStyles = (colors: Palette) => StyleSheet.create({
+  tabs: { flexDirection: "row", backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.line },
   tab: { flex: 1, minHeight: 46, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
-  summary: { backgroundColor: "white", padding: 16, gap: 10 },
-  price: { fontSize: 30, fontWeight: "800", color: "#d84500" },
+  summary: { backgroundColor: colors.surface, padding: 16, gap: 10 },
+  price: { fontSize: 30, fontWeight: "800", color: colors.accentText },
   inset: { paddingHorizontal: 10 },
   heading: { fontSize: 17, fontWeight: "700", color: colors.ink },
   muted: { fontSize: 12, lineHeight: 19, color: colors.muted },
-  more: { fontSize: 12, color: "#b43f0a", marginTop: 5 },
+  more: { fontSize: 12, color: colors.accentText, marginTop: 5 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 },
   separator: { height: 1, backgroundColor: colors.line },
-  rating: { flexDirection: "row", gap: 16, alignItems: "center", backgroundColor: "#fff4eb", borderRadius: 10, padding: 12 },
+  rating: { flexDirection: "row", gap: 16, alignItems: "center", backgroundColor: colors.accentSurface, borderRadius: 10, padding: 12 },
   fact: { flexDirection: "row", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line, paddingVertical: 8 },
   expand: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   counter: { position: "absolute", bottom: 12, right: 12, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#00000080" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  product: { width: "48%", flexGrow: 1, maxWidth: "50%", backgroundColor: "white", borderRadius: 12, overflow: "hidden" },
+  product: { width: "48%", flexGrow: 1, maxWidth: "50%", backgroundColor: colors.surface, borderRadius: 12, overflow: "hidden" },
 });

@@ -1,3 +1,4 @@
+import { usePalette, type Palette } from "@/lib/palette";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
@@ -5,10 +6,12 @@ import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 import { statusName, dateText, matchesOrderFilter, orderFilters, type OrderFilter } from "@/lib/orders";
-import { Page, Button, Busy, ErrorBox, colors, money } from "@/components/ui";
+import { Page, Button, Busy, ErrorBox, money } from "@/components/ui";
 import { Icon, IconButton } from "@/components/shop-ui";
 import { EmptyState } from "@/components/account-ui";
 function Orders() {
+  const colors = usePalette();
+  const styles = createStyles(colors);
   const { customer, ready, error: bootError, refresh } = useStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderFilter>("all");
@@ -39,14 +42,14 @@ function Orders() {
   const visible = orders.filter(o => matchesOrderFilter(o, filter));
   return <Page refreshControl={<RefreshControl refreshing={busy && loaded} onRefresh={() => void load()} tintColor={colors.orange} />}>
     <View style={styles.summary}>
-      <View style={styles.summaryIcon}><Icon name="truck" size={28} color="#ad421b" /></View>
+      <View style={styles.summaryIcon}><Icon name="truck" size={28} color={colors.accentText} /></View>
       <View style={{ flex: 1, gap: 4 }}><Text style={styles.heading}>Захиалгын явц</Text><Text style={styles.muted}>Төлбөр · Тээвэр · Хүлээн авах</Text></View>
       <IconButton name="refresh" label="Захиалга шинэчлэх" onPress={() => void load()} />
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
       {orderFilters.map(f => <Pressable key={f.key} accessibilityRole="tab" accessibilityState={{ selected: filter === f.key }}
         onPress={() => setFilter(f.key)} style={[styles.filter, filter === f.key && styles.selectedFilter]}>
-        <Text style={[styles.filterText, filter === f.key && { color: "#ad3c10" }]}>{f.label}</Text>
+        <Text style={[styles.filterText, filter === f.key && { color: colors.accentText }]}>{f.label}</Text>
       </Pressable>)}
     </ScrollView>
     <ErrorBox message={error} retry={() => void load()} />
@@ -56,16 +59,16 @@ function Orders() {
         onPress={() => router.push({ pathname: "/order/[id]", params: { id: o.id } })}
         style={({ pressed }) => [styles.order, { opacity: pressed ? 0.75 : 1 }]}>
         <View style={styles.orderTop}><Text style={styles.orderId}>{o.id}</Text>
-          <View style={[styles.status, o.status === "completed" && { backgroundColor: "#eaf6ef" }]}>
-            <Text style={[styles.statusText, o.status === "completed" && { color: "#276444" }]}>{statusName(o.status)}</Text>
+          <View style={[styles.status, o.status === "completed" && { backgroundColor: colors.successSurface }]}>
+            <Text style={[styles.statusText, o.status === "completed" && { color: colors.success }]}>{statusName(o.status)}</Text>
           </View>
         </View>
         <Text numberOfLines={2} style={styles.product}>{o.title || "Таны захиалга"}</Text>
         <Text style={styles.muted}>{dateText(o.created)}</Text>
         <View style={styles.orderBottom}>
           <View style={{ gap: 4 }}><Text style={styles.amount}>{money(o.amount)}</Text>
-            <Text style={{ fontSize: 12, color: o.paid ? "#276444" : colors.muted }}>{o.paid ? "Төлбөр төлөгдсөн" : "Төлбөр төлөгдөөгүй"}</Text></View>
-          <View style={styles.detail}><Text style={styles.detailText}>{!o.paid && !terminal ? "Төлбөр харах" : "Дэлгэрэнгүй"}</Text><Icon name="chevron" size={16} color="#ad3c10" /></View>
+            <Text style={{ fontSize: 12, color: o.paid ? colors.success : colors.muted }}>{o.paid ? "Төлбөр төлөгдсөн" : "Төлбөр төлөгдөөгүй"}</Text></View>
+          <View style={styles.detail}><Text style={styles.detailText}>{!o.paid && !terminal ? "Төлбөр харах" : "Дэлгэрэнгүй"}</Text><Icon name="chevron" size={16} color={colors.accentText} /></View>
         </View>
       </Pressable>;
     })}
@@ -79,20 +82,20 @@ function Orders() {
   </Page>;
 }
 export default function OrdersRoute() { const { customer } = useStore(); return <Orders key={customer?.id || "guest"} />; }
-const styles = StyleSheet.create({
-  summary: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: "#fff0e6", borderRadius: 20 },
-  summaryIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: "white", borderRadius: 16 },
+const createStyles = (colors: Palette) => StyleSheet.create({
+  summary: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: colors.accentSurface, borderRadius: 20 },
+  summaryIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, borderRadius: 16 },
   heading: { fontSize: 17, fontWeight: "700", color: colors.ink }, muted: { fontSize: 12, color: colors.muted, lineHeight: 18 },
-  filter: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, justifyContent: "center", backgroundColor: "white", borderWidth: 1, borderColor: colors.line },
-  selectedFilter: { backgroundColor: "#fff0e7", borderColor: "#f7c5ac" }, filterText: { fontSize: 13, color: colors.muted, fontWeight: "600" },
-  order: { padding: 16, borderRadius: 18, backgroundColor: "white", gap: 10 },
+  filter: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  selectedFilter: { backgroundColor: colors.accentSurface, borderColor: colors.line }, filterText: { fontSize: 13, color: colors.muted, fontWeight: "600" },
+  order: { padding: 16, borderRadius: 18, backgroundColor: colors.surface, gap: 10 },
   orderTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   orderId: { fontSize: 14, fontWeight: "700", color: colors.ink },
-  status: { backgroundColor: "#f4f3f8", paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
-  statusText: { color: "#615579", fontSize: 11, fontWeight: "600" },
+  status: { backgroundColor: colors.subtle, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
+  statusText: { color: colors.muted, fontSize: 11, fontWeight: "600" },
   product: { fontSize: 14, lineHeight: 21, color: colors.ink },
   orderBottom: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   amount: { fontSize: 19, fontWeight: "800", color: colors.ink, fontVariant: ["tabular-nums"] },
-  detail: { flexDirection: "row", alignItems: "center", gap: 4 }, detailText: { color: "#ad3c10", fontWeight: "600", fontSize: 12 },
+  detail: { flexDirection: "row", alignItems: "center", gap: 4 }, detailText: { color: colors.accentText, fontWeight: "600", fontSize: 12 },
   footnote: { color: colors.muted, fontSize: 12, textAlign: "center", lineHeight: 18 },
 });

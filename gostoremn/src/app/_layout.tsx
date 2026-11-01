@@ -1,14 +1,16 @@
+import { usePalette } from "@/lib/palette";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { StoreProvider } from "@/lib/store";
-import { colors } from "@/components/ui";
 export default function Root() {
+  const colors = usePalette();
   return (
     <StoreProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={colors.dark ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerTintColor: colors.navy,
+          headerStyle: { backgroundColor: colors.surface },
           headerShadowVisible: false,
           headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: colors.bg },
@@ -16,6 +18,7 @@ export default function Root() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="brands" options={{ title: "Дэлхийн брэндүүд", headerTransparent: false }} />
+        <Stack.Screen name="brand/[id]" options={{ title: "Албан ёсны дэлгүүр" }} />
         <Stack.Screen
           name="product/[id]"
           options={{ title: "Барааны дэлгэрэнгүй" }}

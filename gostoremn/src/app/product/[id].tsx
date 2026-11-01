@@ -1,3 +1,4 @@
+import { usePalette } from "@/lib/palette";
 import { useEffect, useState } from "react";
 import {
   ScrollView,
@@ -21,14 +22,14 @@ import {
   Button,
   Busy,
   ErrorBox,
-  colors,
   money,
 } from "@/components/ui";
 export default function ProductScreen() {
+  const colors = usePalette();
   const inset = useSafeAreaInsets();
   const [sheet, setSheet] = useState(false),
     [intent, setIntent] = useState<"cart" | "buy">("cart");
-  const { id } = useLocalSearchParams<{ id: string }>(),
+  const { id, brand } = useLocalSearchParams<{ id: string; brand?: string }>(),
     { cart, saveCart, shipping, cartReady } = useStore();
   const [product, setProduct] = useState<Product | null>(null),
     [sku, setSku] = useState(""),
@@ -43,7 +44,7 @@ export default function ProductScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProduct(null);
     setError("");
-    void catalog<{ product: Product }>("supplier-product", { id }, c.signal)
+    void catalog<{ product: Product }>("supplier-product", { id, ...(brand ? { brand } : {}) }, c.signal)
       .then((r) => {
         if (c.signal.aborted) return;
         setProduct(r.product);
@@ -55,7 +56,7 @@ export default function ProductScreen() {
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [id, retry]);
+  }, [id, brand, retry]);
   const variant = product?.variants.find((v) => v.id === sku),
     rate = shipping?.cny_rate || 0;
   async function add() {
@@ -85,7 +86,7 @@ export default function ProductScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ headerTransparent: false,
         headerTitle: () => <Pressable accessibilityRole="button" accessibilityLabel="Бараа хайх" onPress={() => router.push("/")}
-          style={{ backgroundColor: "#f5f5f5", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 }}><Text style={{ color: colors.muted, fontSize: 14 }}>Бараа хайх</Text></Pressable>,
+          style={{ backgroundColor: colors.subtle, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 }}><Text style={{ color: colors.muted, fontSize: 14 }}>Бараа хайх</Text></Pressable>,
         headerRight: () => <IconButton name="cart" label="Сагс нээх" onPress={() => router.push("/cart")} />,
       }} />
       <ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
@@ -93,7 +94,7 @@ export default function ProductScreen() {
         <ProductDetails key={product.id} product={product} variant={variant} rate={rate} onChoose={() => open("cart")} />}
       <View
         style={{
-          backgroundColor: "white",
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderColor: colors.line,
           padding: 10,
@@ -154,7 +155,7 @@ export default function ProductScreen() {
           />
           <View
             style={{
-              backgroundColor: "white",
+              backgroundColor: colors.surface,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               maxHeight: "82%",
@@ -172,7 +173,7 @@ export default function ProductScreen() {
               />
               <View style={{ flex: 1, gap: 6 }}>
                 <Text
-                  style={{ fontSize: 24, fontWeight: "800", color: "#d84500" }}
+                  style={{ fontSize: 24, fontWeight: "800", color: colors.accentText }}
                 >
                   {variant?.cny && rate
                     ? money(Math.ceil(variant.cny * rate))
@@ -230,7 +231,7 @@ export default function ProductScreen() {
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: "600" }}>
+                  <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "600" }}>
                     Тоо ширхэг
                   </Text>
                   <Quantity

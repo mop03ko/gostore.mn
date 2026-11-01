@@ -1,7 +1,7 @@
+import { usePalette } from "@/lib/palette";
 import { Image } from "expo-image";
 import Svg, { Path } from "react-native-svg";
 import { Platform, Pressable, Text, View, type ColorValue } from "react-native";
-import { colors } from "./ui";
 const paths = {
   home: "M3 10 12 3l9 7v11h-6v-7H9v7H3Z",
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
@@ -52,12 +52,13 @@ export type IconName = keyof typeof paths;
 export function Icon({
   name,
   size = 24,
-  color = colors.ink,
+  color,
 }: {
   name: IconName;
   size?: number;
   color?: ColorValue | null;
 }) {
+  const colors = usePalette();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color || colors.ink} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"
@@ -67,15 +68,15 @@ export function Icon({
   );
 }
 export function BrandLogo({ width = 142 }: { width?: number }) {
-  return <Image source={require("../../assets/images/gostore-wordmark.png")}
+  return <View style={{ backgroundColor: "white", padding: 5, borderRadius: 6 }}><Image source={require("../../assets/images/gostore-wordmark.png")}
     contentFit="contain" style={{ width, height: width * 324 / 2133 }}
-    accessibilityLabel="gostore.mn" accessible />;
+    accessibilityLabel="gostore.mn" accessible /></View>;
 }
 export function IconButton({
   name,
   label,
   onPress,
-  color = colors.ink,
+  color,
 }: {
   name: IconName;
   label: string;
@@ -109,6 +110,7 @@ export function Choice({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const colors = usePalette();
   return (
     <Pressable
       accessibilityRole="button"
@@ -121,11 +123,11 @@ export function Choice({
         padding: 12,
         borderWidth: 1,
         borderColor: selected ? colors.orange : "transparent",
-        backgroundColor: selected ? "#fff2e9" : "#f5f5f5",
+        backgroundColor: selected ? colors.accentSurface : colors.subtle,
         opacity: disabled ? 0.4 : 1,
       }}
     >
-      <Text style={{ color: selected ? "#b83a00" : colors.ink, fontSize: 13 }}>
+      <Text style={{ color: selected ? colors.accentText : colors.ink, fontSize: 13 }}>
         {label}
       </Text>
     </Pressable>
@@ -146,6 +148,7 @@ export function Quantity({
   onChange: (v: number) => void;
   disabled?: boolean;
 }) {
+  const colors = usePalette();
   return (
     <View
       style={{
@@ -161,7 +164,7 @@ export function Quantity({
           <Text
             key={d}
             selectable
-            style={{
+            style={{ color: colors.ink,
               minWidth: 34,
               textAlign: "center",
               fontVariant: ["tabular-nums"],
@@ -187,7 +190,7 @@ export function Quantity({
                   : 1,
             }}
           >
-            <Text style={{ fontSize: 21 }}>{d < 0 ? "−" : "+"}</Text>
+            <Text style={{ color: colors.ink, fontSize: 21 }}>{d < 0 ? "−" : "+"}</Text>
           </Pressable>
         ),
       )}

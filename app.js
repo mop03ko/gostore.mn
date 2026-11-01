@@ -528,7 +528,7 @@ customerAccount.setUser(customerAccount.user);
 ;
 /* ==== brand-page.js ==== */
 'use strict';
-// Brand pages show keyword search results; seller identity is shown on product detail.
+// Brand pages request a server-allowlisted official shop, never a keyword fallback.
 const storefrontMatch=location.pathname.match(/^\/brands\/([a-z]+)\/?$/);
 const storefrontBrand=window.supplierBrands?.find(b=>b.id===storefrontMatch?.[1]);
 window.brandStorefront=storefrontBrand?.id||'';
@@ -550,19 +550,19 @@ window.brandStorefront=storefrontBrand?.id||'';
     ikea:['ГЭР. ТАВ ТУХ. ТАНЫ ОРОН ЗАЙ.','Гэрийнхээ өнгийг','өөрийнхөөрөө','бүтээ.','ТАВ ТУХТАЙ ГЭРИЙН СОНГОЛТ.']
   }[id];
   document.title=name+' — Брэндийн дэлгүүр | GOStore';
-  document.querySelector('meta[name="description"]').content=name+' брэндийн нэрээр бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
+  document.querySelector('meta[name="description"]').content=name+' албан ёсны дэлгүүрийн бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
   const canonical=document.createElement('link');canonical.rel='canonical';canonical.href='https://gostore.mn'+path;document.head.append(canonical);
   const section=document.createElement('section');section.id='brand-storefront';section.className='container storefront-page';section.dataset.brand=id;section.setAttribute('aria-labelledby','storefront-title');
   section.innerHTML=`
     <nav class="storefront-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span aria-hidden="true">/</span><a href="/#brands">Брэндүүд</a><span aria-hidden="true">/</span><span aria-current="page">${esc(name)}</span></nav>
-    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><strong>${esc(name)}</strong><p>Брэндийн нэрээр хайх</p></div></div><span class="storefront-store-label">GOStore брэндийн хуудас</span></div>
+    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><strong>${esc(name)}</strong><p data-brand-store-name>Албан ёсны дэлгүүр</p></div></div><span class="storefront-store-label">Tmall · GOStore</span></div>
     <div class="storefront-hero">
       <div class="storefront-hero-copy"><span class="section-kicker">${copy[0]}</span><h1 id="storefront-title">${copy[1]}<br>${copy[2]} <em>${copy[3]}</em></h1><p>${esc(name)} брэндийн барааг нэг дороос сонгож,<br>GOStore-оор Монголд захиалаарай.</p><div class="storefront-hero-actions"><a class="button yellow" href="#catalog">${esc(name)} бараа үзэх ${icon('arrow')}</a><a class="storefront-new-link" href="${path}?sort=-updated_time#catalog" data-storefront-sort="-updated_time">Санал болгох ↗</a></div></div>
       <div class="storefront-hero-art" aria-hidden="true"><span class="storefront-orbit"></span><span class="storefront-art-word">${esc(name.toUpperCase())}</span><img src="/assets/brands/${id}.svg" alt="" width="400" height="240"><span class="storefront-art-caption">${copy[4]}</span></div>
     </div>
-    <div class="storefront-service-row"><div>${icon('bag')}<p><strong>Барааны хайлт</strong><span>${esc(name)} нэрээр хайсан бараа</span></p></div><div>${icon('heart')}<p><strong>Үнэ, урамшуулал</strong><span>Бараа бүрийн дэлгэрэнгүйд</span></p></div><div>${icon('truck')}<p><strong>Монголд хүргүүлээрэй</strong><span>Захиалгын явцаа GOStore-оос хянана</span></p></div></div>`;
+    <div class="storefront-service-row"><div>${icon('bag')}<p><strong>Албан ёсны дэлгүүр</strong><span>${esc(name)} дэлгүүрийн барааны каталог</span></p></div><div>${icon('heart')}<p><strong>Үнэ, урамшуулал</strong><span>Бараа бүрийн дэлгэрэнгүйд</span></p></div><div>${icon('truck')}<p><strong>Монголд хүргүүлээрэй</strong><span>Захиалгын явцаа GOStore-оос хянана</span></p></div></div>`;
   const catalog=document.querySelector('#catalog');catalog.before(section);
-  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / БРЭНДИЙН ХАЙЛТ';
+  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / АЛБАН ЁСНЫ ДЭЛГҮҮР';
   const tabs=document.createElement('nav');tabs.className='storefront-catalog-tabs';tabs.setAttribute('aria-label',name+' барааны сонголт');
   tabs.innerHTML=[['default','Бүх бараа'],['-updated_time','Санал болгох'],['-volume','Борлуулалтаар']].map(([sort,label])=>`<a href="${path}${sort==='default'?'':'?sort='+sort}#catalog" data-storefront-sort="${sort}">${label}</a>`).join('')+'<a href="#storefront-shopping-info">Үнэ, урамшууллын тухай ↗</a>';
   catalog.querySelector('.section-heading').after(tabs);
@@ -684,6 +684,8 @@ async function loadSupplier(page=1,append=false){
     supplierPartialKey=r.partial?partialKey:null;
     supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&incoming.length>0;
     const total=Number.isSafeInteger(r.total)?r.total:null;
+    const shopLabel=document.querySelector('[data-brand-store-name]');
+    if(shopLabel&&r.brand?.id===brand&&r.brand.store_name)shopLabel.textContent=r.brand.store_name;
     $('#supplier-status').textContent=(supplierResults.length?supplierResults.length+' бараа харуулж байна'+(total!==null?' · нийт '+new Intl.NumberFormat('en-US').format(total)+' үр дүн':''):'Тохирох бараа олдсонгүй.')+(range.price_min||range.price_max?' · Үнэ: '+(range.price_min?money(Number(range.price_min)):'0 ₮')+' – '+(range.price_max?money(Number(range.price_max)):'дээд хязгааргүй'):'')+(brand?' · Хямдрал, урамшууллын мэдээллийг бараа дээр дарж үзнэ.':'')+(r.stale?' · Хадгалсан мэдээлэл. Үнэ, үлдэгдлийг барааны хуудаснаас шалгана уу.':'');
     $('#shipping-rates').textContent=supplierRateText(r.shipping)+' Бараа, Хятад доторх хүргэлт, үйлчилгээний шимтгэл тусдаа тооцогдоно.';
     $('#supplier-search button').disabled=false;

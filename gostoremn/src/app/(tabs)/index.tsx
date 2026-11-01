@@ -1,3 +1,4 @@
+import { usePalette } from "@/lib/palette";
 import { useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -20,7 +21,7 @@ import { BrandMark, BrandShelf } from "@/components/brands";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import { Button, Busy, Copy, ErrorBox, colors, money } from "@/components/ui";
+import { Button, Busy, Copy, ErrorBox, money } from "@/components/ui";
 type Results = {
   products: Product[];
   more: boolean;
@@ -28,6 +29,7 @@ type Results = {
   stale?: boolean;
 };
 function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; initialPhoto?: boolean }) {
+  const colors = usePalette();
   const inset = useSafeAreaInsets();
   const [photoMenu, setPhotoMenu] = useState(initialPhoto);
   const [searchMode, setSearchMode] = useState(!!initialQuery);
@@ -112,6 +114,11 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     return () => controller.abort();
   }, [query, page, sort, image, retry]);
   const search = (value: string) => {
+    const selectedBrand = brands.find(b => [b.id, b.name.toLowerCase()].includes(value.trim().toLowerCase()));
+    if (selectedBrand) {
+      router.push({ pathname: "/brand/[id]", params: { id: selectedBrand.id } });
+      return;
+    }
     setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
@@ -187,7 +194,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View
         style={{
-          backgroundColor: "white",
+          backgroundColor: colors.surface,
           paddingTop: inset.top,
           paddingHorizontal: 12,
           paddingBottom: 9,
@@ -234,7 +241,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
             onSubmitEditing={() => search(draft)}
             returnKeyType="search"
             placeholder="Нэр, брэндээр хайх"
-            placeholderTextColor="#858585"
+            placeholderTextColor={colors.muted}
             style={{
               flex: 1,
               minWidth: 0,
@@ -264,7 +271,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontWeight: "700", color: colors.ink }}>Хайх</Text>
+            <Text style={{ fontWeight: "700", color: colors.onPrimary }}>Хайх</Text>
           </Pressable>
         </View>
       </View>
@@ -284,20 +291,20 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
             <HomeDiscovery onSearch={search} />
-            <BrandShelf onSelect={search} />
+            <BrandShelf />
             </>}
-            {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: "white" }}>
+            {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
               {brands.filter(b => b.name.toLowerCase() === query.toLowerCase()).map(b => <BrandMark key={b.id} brand={b} size={38} />)}
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Брэнд солих" onPress={() => router.push("/brands")} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: 12, color: "#b43f0a" }}>Брэндүүд ›</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Брэнд солих" onPress={() => router.push("/brands")} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: 12, color: colors.accentText }}>Брэндүүд ›</Text></Pressable>
             </View>}
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "white",
+                backgroundColor: colors.surface,
                 borderRadius: 10,
               }}
             >
@@ -325,7 +332,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
                     style={{
                       fontSize: 13,
                       fontWeight: sort === value ? "700" : "400",
-                      color: sort === value ? "#c44000" : colors.ink,
+                      color: sort === value ? colors.accentText : colors.ink,
                     }}
                   >
                     {label}
@@ -354,12 +361,12 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
             accessibilityRole="button"
             accessibilityLabel={p.name}
             onPress={() =>
-              router.push({ pathname: "/product/[id]", params: { id: p.id } })
+              router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.brand_id ? { brand: p.brand_id } : {}) } })
             }
             style={{
               flex: 1,
               maxWidth: columns === 4 ? "25%" : "50%",
-              backgroundColor: "white",
+              backgroundColor: colors.surface,
               borderRadius: 11,
               overflow: "hidden",
             }}
@@ -385,7 +392,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               </Text>
               <Text
                 selectable
-                style={{ fontWeight: "800", fontSize: 21, color: "#d84500" }}
+                style={{ fontWeight: "800", fontSize: 21, color: colors.accentText }}
               >
                 {p.mnt
                   ? money(p.mnt)
@@ -437,7 +444,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           />
           <View
             style={{
-              backgroundColor: "white",
+              backgroundColor: colors.surface,
               padding: 20,
               paddingBottom: Math.max(inset.bottom, 16) + 16,
               borderTopLeftRadius: 22,
@@ -445,7 +452,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               gap: 12,
             }}
           >
-            <Text style={{ fontSize: 19, fontWeight: "700" }}>
+            <Text style={{ color: colors.ink, fontSize: 19, fontWeight: "700" }}>
               Зургаар хайх
             </Text>
             <Copy>Таалагдсан барааныхаа зургийг сонгоорой.</Copy>

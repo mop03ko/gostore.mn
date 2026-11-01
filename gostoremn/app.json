@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/gostore-icon.png",
     "scheme": "gostoremn",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/gostore-icon.png",
       "bundleIdentifier": "mn.gostore.app",

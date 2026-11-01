@@ -30,6 +30,33 @@ Customers no longer need to enter these third-party storefronts to browse on GOS
 
 ## API identity and offers
 
+### Direct TaoWorld catalog (2026-11-01)
+
+TaoWorld now uses the documented `shop_id` request parameter of
+[`/traffic/item/search`](https://open.taobao.global/doc/api.htm#/api?path=/traffic/item/search&methodType=GET/POST),
+without a global brand keyword fallback. The allowlist stores shop IDs separately
+from seller/user IDs. These shop IDs were recovered from the previously verified
+store identity responses, including UNIQLO shop `57303596` / seller `196993935`.
+Search rows must match the exact store name and any returned shop ID; detail
+responses must include the exact shop ID. Missing or conflicting identity is
+rejected. Explicit brand IDs and exact legacy brand-name queries share this path.
+Other queries remain general searches. Pagination is calculated before filtering.
+
+The server returns `brand.id`, `name`, `store_name`, `shop_id` and assigns
+`brand_id` to cards. App and website carry that context into detail requests.
+No OT API calls are used by this TaoWorld branch.
+
+Live read-only validation on November 1 returned three Nike listings, while all
+eleven other configured shops returned no products. Inspection of the original
+cached upstream response confirmed `data: []` for UNIQLO and adidas; these were
+not rows removed by the new filter. An empty catalog is shown honestly rather
+than replaced with reseller products. This does not establish why TaoWorld has
+no supply for those shops. Ask the TaoWorld team to confirm supply availability
+and access for `/traffic/item/search`, `shop_id=57303596`, `page_no=1`,
+`page_size=20`, `language=en` (without keyword). No credentials need to be shared.
+
+### Legacy OT provider
+
 OT's REST `vendor_name` was observed returning unrelated catalog items despite a
 matching Vendor block. Brand browsing therefore uses the documented
 [BatchSearchItemsFrame](https://docs.otapi.net/en/Documentations/Method/BatchSearchItemsFrame)

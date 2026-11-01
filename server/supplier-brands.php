@@ -4,18 +4,18 @@ declare(strict_types=1);
 // Case-sensitive OT VendorIds and numeric seller identities verified 2026-10-19.
 function supplier_brands(): array {
     return [
-        'nike'=>['name'=>'Nike','vendor'=>'NIKE官方旗舰店','seller'=>'890482188'],
-        'adidas'=>['name'=>'adidas','vendor'=>'adidas官方旗舰店','seller'=>'446338500'],
-        'puma'=>['name'=>'Puma','vendor'=>'PUMA官方旗舰店','seller'=>'734584252'],
-        'newbalance'=>['name'=>'New Balance','vendor'=>'New Balance官方旗舰店','seller'=>'520557274'],
-        'uniqlo'=>['name'=>'UNIQLO','vendor'=>'优衣库官方旗舰店','seller'=>'196993935'],
-        'zara'=>['name'=>'ZARA','vendor'=>'ZARA官方旗舰店','seller'=>'2228361831'],
-        'hm'=>['name'=>'H&M','vendor'=>'HM官方旗舰店','seller'=>'3676232520'],
-        'thenorthface'=>['name'=>'The North Face','vendor'=>'The North Face官方旗舰店','seller'=>'928417138'],
-        'sony'=>['name'=>'Sony','vendor'=>'索尼官方旗舰店','seller'=>'782731205'],
-        'xiaomi'=>['name'=>'Xiaomi','vendor'=>'小米官方旗舰店','seller'=>'1714128138'],
-        'lego'=>['name'=>'LEGO','vendor'=>'乐高官方旗舰店','seller'=>'766568254'],
-        'ikea'=>['name'=>'IKEA','vendor'=>'IKEA宜家家居官方旗舰店','seller'=>'2207239419714'],
+        'nike'=>['name'=>'Nike','vendor'=>'NIKE官方旗舰店','seller'=>'890482188','shop_id'=>'71955116'],
+        'adidas'=>['name'=>'adidas','vendor'=>'adidas官方旗舰店','seller'=>'446338500','shop_id'=>'62147762'],
+        'puma'=>['name'=>'Puma','vendor'=>'PUMA官方旗舰店','seller'=>'734584252','shop_id'=>'67920715'],
+        'newbalance'=>['name'=>'New Balance','vendor'=>'New Balance官方旗舰店','seller'=>'520557274','shop_id'=>'62847409'],
+        'uniqlo'=>['name'=>'UNIQLO','vendor'=>'优衣库官方旗舰店','seller'=>'196993935','shop_id'=>'57303596'],
+        'zara'=>['name'=>'ZARA','vendor'=>'ZARA官方旗舰店','seller'=>'2228361831','shop_id'=>'113462750'],
+        'hm'=>['name'=>'H&M','vendor'=>'HM官方旗舰店','seller'=>'3676232520','shop_id'=>'548921262'],
+        'thenorthface'=>['name'=>'The North Face','vendor'=>'The North Face官方旗舰店','seller'=>'928417138','shop_id'=>'72854802'],
+        'sony'=>['name'=>'Sony','vendor'=>'索尼官方旗舰店','seller'=>'782731205','shop_id'=>'69451464'],
+        'xiaomi'=>['name'=>'Xiaomi','vendor'=>'小米官方旗舰店','seller'=>'1714128138','shop_id'=>'104736810'],
+        'lego'=>['name'=>'LEGO','vendor'=>'乐高官方旗舰店','seller'=>'766568254','shop_id'=>'69029026'],
+        'ikea'=>['name'=>'IKEA','vendor'=>'IKEA宜家家居官方旗舰店','seller'=>'2207239419714','shop_id'=>'211307870'],
     ];
 }
 function supplier_brand(string $id): array {return supplier_brands()[$id]??throw new ApiError('Брэнд олдсонгүй.',404);}

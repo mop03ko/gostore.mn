@@ -1,3 +1,4 @@
+import { usePalette } from "@/lib/palette";
 import { useState } from "react";
 import { Text, View, ScrollView, Pressable } from "react-native";
 import { Image } from "expo-image";
@@ -11,10 +12,10 @@ import {
   Copy,
   Button,
   ErrorBox,
-  colors,
   money,
 } from "@/components/ui";
 export default function Cart() {
+  const colors = usePalette();
   const { cart, saveCart, shipping, cartReady, customer } = useStore();
   const [error, setError] = useState(""),
     [saving, setSaving] = useState(false);
@@ -55,9 +56,9 @@ export default function Cart() {
             padding: 4,
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: "800" }}>
+          <Text style={{ color: colors.ink, fontSize: 22, fontWeight: "800" }}>
             Сагс{" "}
-            <Text style={{ fontSize: 15, fontWeight: "400" }}>
+            <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "400" }}>
               ({cart.length})
             </Text>
           </Text>
@@ -76,7 +77,7 @@ export default function Cart() {
               }}
             >
               <Icon name="home" size={19} />
-              <Text style={{ fontSize: 14, fontWeight: "700" }}>
+              <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "700" }}>
                 Taobao бараанууд
               </Text>
             </View>
@@ -109,13 +110,13 @@ export default function Cart() {
                 <View style={{ flex: 1, gap: 7 }}>
                   <Text
                     numberOfLines={2}
-                    style={{ fontSize: 13, lineHeight: 19 }}
+                    style={{ color: colors.ink, fontSize: 13, lineHeight: 19 }}
                   >
                     {i.name}
                   </Text>
                   <View
                     style={{
-                      backgroundColor: "#f4f4f4",
+                      backgroundColor: colors.subtle,
                       paddingHorizontal: 8,
                       paddingVertical: 5,
                       borderRadius: 6,
@@ -132,7 +133,7 @@ export default function Cart() {
                     selectable
                     style={{
                       fontSize: 19,
-                      color: "#d84500",
+                      color: colors.accentText,
                       fontWeight: "700",
                     }}
                   >
@@ -184,7 +185,7 @@ export default function Cart() {
         )}
         {!!cart.length && (
           <Card>
-            <Text style={{ fontWeight: "700", fontSize: 14 }}>
+            <Text style={{ color: colors.ink, fontWeight: "700", fontSize: 14 }}>
               Төлбөр хэрхэн тооцогдох вэ?
             </Text>
             <Copy>
@@ -197,7 +198,7 @@ export default function Cart() {
       {!!cart.length && (
         <View
           style={{
-            backgroundColor: "white",
+            backgroundColor: colors.surface,
             borderTopWidth: 1,
             borderColor: colors.line,
             padding: 12,
@@ -212,7 +213,7 @@ export default function Cart() {
             </Text>
             <Text
               selectable
-              style={{ fontSize: 22, fontWeight: "800", color: "#d84500" }}
+              style={{ fontSize: 22, fontWeight: "800", color: colors.accentText }}
             >
               {rate
                 ? money(Math.ceil((Math.round(goods * 100) / 100) * rate))
