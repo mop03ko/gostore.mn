@@ -247,7 +247,7 @@ function tw_catalog_search(array $b,bool $display=false): array {
     if($brand)$rows=array_values(array_filter($rows,fn($row)=>is_array($row)&&tw_catalog_brand_matches($row,$brand)));
     $stale=$time<=time()-TW_CATALOG_SEARCH_TTL;
     $data=['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more,'partial'=>$partial,'stale'=>$stale,'revalidate'=>$stale];
-    if($brand){$data['brand']=['id'=>$brandId,'name'=>$brand['name'],'store_name'=>$brand['vendor'],'shop_id'=>$brand['shop_id']];foreach($data['products'] as &$p){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];}unset($p);}
+    if($brand){$data['brand']=['id'=>$brandId,'name'=>$brand['name'],'store_name'=>$brand['vendor'],'shop_id'=>$brand['shop_id'],'source_url'=>supplier_brand_source_url($brandId)];foreach($data['products'] as &$p){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];}unset($p);}
     return tw_catalog_response($data,$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_image(string $hash,int $page,int $limit): array {

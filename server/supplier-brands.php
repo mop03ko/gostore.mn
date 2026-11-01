@@ -19,6 +19,15 @@ function supplier_brands(): array {
     ];
 }
 function supplier_brand(string $id): array {return supplier_brands()[$id]??throw new ApiError('Брэнд олдсонгүй.',404);}
+// Named URLs supplied by the merchant; other stores use their verified numeric shop ID.
+function supplier_brand_source_url(string $id): string {
+    $brand=supplier_brand($id);
+    return match($id){
+        'nike'=>'https://nike.world.tmall.com/category.htm',
+        'zara'=>'https://zara.world.tmall.com/category.htm',
+        default=>'https://shop'.$brand['shop_id'].'.tmall.com/category.htm',
+    };
+}
 function supplier_brand_assert_vendor(array $vendor,array $brand): void {
     $features=[];foreach($vendor['FeaturedValues']??[] as $v)$features[$v['Name']??'']=$v['Value']??'';
     $seller=(string)($features['userId']??$features['TaobaoVendorId']??'');
