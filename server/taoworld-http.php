@@ -34,10 +34,16 @@ function taoworld_http(string $path,array $params): array {
 }
 // Only independent search reads may run concurrently. Purchases/payments never enter this path.
 function taoworld_http_search_batch(array $queries): array {
-    if(!array_is_list($queries)||count($queries)<1||count($queries)>3)fail('TaoWorld хайлтын багц буруу.',400);
+    return taoworld_http_catalog_batch('/traffic/item/search',$queries);
+}
+function taoworld_http_detail_batch(array $queries): array {
+    return taoworld_http_catalog_batch('/traffic/item/get',$queries);
+}
+function taoworld_http_catalog_batch(string $path,array $queries): array {
+    if(!in_array($path,['/traffic/item/search','/traffic/item/get'],true)||!array_is_list($queries)||count($queries)<1||count($queries)>($path==='/traffic/item/search'?3:6))fail('TaoWorld унших багц буруу.',400);
     $multi=curl_multi_init();$handles=[];$raw=[];
     try{
-        foreach($queries as $i=>$params){$raw[$i]='';$handles[$i]=taoworld_http_handle('/traffic/item/search',$params,$raw[$i]);if(curl_multi_add_handle($multi,$handles[$i])!==CURLM_OK)fail('TaoWorld хайлт эхэлсэнгүй.',502);}
+        foreach($queries as $i=>$params){$raw[$i]='';$handles[$i]=taoworld_http_handle($path,$params,$raw[$i]);if(curl_multi_add_handle($multi,$handles[$i])!==CURLM_OK)fail('TaoWorld хайлт эхэлсэнгүй.',502);}
         do{
             $status=curl_multi_exec($multi,$running);if($status!==CURLM_OK)fail('TaoWorld хайлт дууссангүй.',502);
             if($running&&curl_multi_select($multi,0.5)===-1)usleep(10000);

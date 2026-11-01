@@ -24,7 +24,7 @@
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();
 })();
 
-// Official storefront identities are enforced by the server; see docs/brand-storefronts.md.
+// Brand selections and seller ratings are checked on the server.
 (()=>{
   const brands=[
     {id:'nike',name:'Nike',shop:'nike'},

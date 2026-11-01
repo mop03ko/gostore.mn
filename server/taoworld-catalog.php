@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
+require_once __DIR__.'/taoworld-brands.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
@@ -164,7 +165,7 @@ function tw_catalog_detail(string $id,bool $purchase=false,string $brand='',bool
     }
     $c??=tw_catalog_cached('/traffic/item/get',$params,$purchase,$key);
     if('tb-'.($c['data']['item_id']??'')!==$id)fail('Барааны дугаар зөрлөө.',502);
-    if($brand!==''&&!tw_catalog_brand_matches($c['data'],supplier_brand($brand),true))fail('Энэ бараа сонгосон брэндийн албан ёсны дэлгүүрт хамаарахгүй байна.',409);
+    if($brand!==''&&!tw_catalog_product_brand_matches($c['data'],$brand))fail('Энэ барааны брэнд сонгосон брэндтэй тохирохгүй байна.',409);
     $p=tw_catalog_product($c['data'],true,$c['time']);$p['price_expires']=$c['time']+($purchase?120:300);
     return tw_catalog_response(['product'=>$p],$c['time'],$purchase?120:300);
 }
@@ -225,17 +226,17 @@ function tw_catalog_search(array $b,bool $display=false): array {
         if(in_array(mb_strtolower(trim($q)),[mb_strtolower($entry['name']),$candidate],true)){$brandId=$candidate;break;}
     }
     $brand=$brandId!==''?supplier_brand($brandId):null;
-    // Never replace a brand selection with a global keyword search.
+    // Brand selection supplies its own query and verifies detail attributes.
     if($brand)$q='';
     if($q==='__all__')$q='home storage';
     $sort=str_field($b,'sort',20,false)?:'default';$sorts=['default'=>'','price'=>'PRICE_ASC','-price'=>'PRICE_DESC','-volume'=>'SALE_QTY_DESC','-updated_time'=>''];
     if(!isset($sorts[$sort]))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);$filters=[];$rate=shipping_settings()['cny_rate'];
     foreach(['price_min'=>'min_price','price_max'=>'max_price'] as $k=>$v)if(isset($range[$k]))$filters[]=$v.':'.(int)round($range[$k]*100/$rate);
+    if($brand)return tw_catalog_brand_selection($brandId,$page,$sort,$filters,$display);
     if(product_policy_text_blocked($q))return tw_catalog_response(['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false],time(),0);
     $departments=tw_catalog_departments();
     $params=['keyword'=>$departments[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
-    if($brand){unset($params['keyword']);$params['shop_id']=$brand['shop_id'];}
     // Native pages contain at most 20 items. Keep the storefront's 12/50-item contract.
     $start=($page-1)*$limit;$first=(int)floor($start/20)+1;$last=(int)floor(($start+$limit-1)/20)+1;$rows=[];$time=time();
     if($partial)$last=$first;
@@ -243,11 +244,8 @@ function tw_catalog_search(array $b,bool $display=false): array {
     $partial=$partial&&count($rows)===20;
     if(count($rows)===20&&$first<$last)foreach(tw_catalog_search_pages($params,$first+1,$last,$display) as $c){$time=min($time,$c['time']);$part=$c['data']['data']??null;if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);$rows=array_merge($rows,$part);if(count($part)<20)break;}
     $rows=array_slice($rows,$start%20,$limit);$more=count($rows)===$limit&&$page<100;
-    // Pagination uses upstream rows, so rejected sellers do not skip later pages.
-    if($brand)$rows=array_values(array_filter($rows,fn($row)=>is_array($row)&&tw_catalog_brand_matches($row,$brand)));
     $stale=$time<=time()-TW_CATALOG_SEARCH_TTL;
     $data=['products'=>tw_catalog_cards($rows,$time),'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more,'partial'=>$partial,'stale'=>$stale,'revalidate'=>$stale];
-    if($brand){$data['brand']=['id'=>$brandId,'name'=>$brand['name'],'store_name'=>$brand['vendor'],'shop_id'=>$brand['shop_id'],'source_url'=>supplier_brand_source_url($brandId)];foreach($data['products'] as &$p){$p['brand_id']=$brandId;$p['brand_name']=$brand['name'];}unset($p);}
     return tw_catalog_response($data,$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_image(string $hash,int $page,int $limit): array {

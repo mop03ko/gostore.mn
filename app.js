@@ -528,7 +528,7 @@ customerAccount.setUser(customerAccount.user);
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();
 })();
 
-// Official storefront identities are enforced by the server; see docs/brand-storefronts.md.
+// Brand selections and seller ratings are checked on the server.
 (()=>{
   const brands=[
     {id:'nike',name:'Nike',shop:'nike'},
@@ -560,7 +560,7 @@ customerAccount.setUser(customerAccount.user);
 ;
 /* ==== brand-page.js ==== */
 'use strict';
-// Brand pages request a server-allowlisted official shop, never a keyword fallback.
+// Brand selections are checked against supplier brand attributes on the server.
 const storefrontMatch=location.pathname.match(/^\/brands\/([a-z]+)\/?$/);
 const storefrontBrand=window.supplierBrands?.find(b=>b.id===storefrontMatch?.[1]);
 window.brandStorefront=storefrontBrand?.id||'';
@@ -568,15 +568,15 @@ window.brandStorefront=storefrontBrand?.id||'';
   if(!window.brandStorefront)return;
   const {id,name}=storefrontBrand,path=window.supplierBrandHref(id);
   document.title=name+' — Брэндийн дэлгүүр | GOStore';
-  document.querySelector('meta[name="description"]').content=name+' албан ёсны дэлгүүрийн бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
+  document.querySelector('meta[name="description"]').content=name+' брэндийн сонгосон бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
   const canonical=document.createElement('link');canonical.rel='canonical';canonical.href='https://gostore.mn'+path;document.head.append(canonical);
   const section=document.createElement('section');section.id='brand-storefront';section.className='container storefront-page';section.dataset.brand=id;section.setAttribute('aria-labelledby','storefront-title');
   section.innerHTML=`
     <nav class="storefront-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span aria-hidden="true">/</span><a href="/#brands">Брэндүүд</a><span aria-hidden="true">/</span><span aria-current="page">${esc(name)}</span></nav>
-    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">TMALL · OFFICIAL FLAGSHIP STORE</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Албан ёсны flagship дэлгүүр</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Эх дэлгүүрийг Tmall дээр үзэх ↗</a></div>
-    <p class="storefront-intro">Албан ёсны flagship дэлгүүрийн барааг GOStore-оор захиалаарай. Үнэ, үлдэгдлийг захиалах үед баталгаажуулна.</p>`;
+    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">GOSTORE · БРЭНДИЙН СОНГОЛТ</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Дэлгүүрийн үнэлгээ 4.7+</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Flagship дэлгүүрийг Tmall дээр үзэх ↗</a></div>
+    <p class="storefront-intro">Брэндийн үзүүлэлт тохирсон, дэлгүүрийн үнэлгээ 4.7/5-аас дээш, үнэ болон үлдэгдэлтэй барааны сонголт. Нийлүүлэгчийн мэдээлэлд тулгуурласан; жинхэнэ эсэх, чанарын баталгаа биш.</p>`;
   const catalog=document.querySelector('#catalog');catalog.before(section);
-  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / FLAGSHIP STORE';
+  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / БРЭНДИЙН СОНГОЛТ';
   const tabs=document.createElement('nav');tabs.className='storefront-catalog-tabs';tabs.setAttribute('aria-label',name+' барааны сонголт');
   tabs.innerHTML=[['default','Бүх бараа'],['-updated_time','Санал болгох'],['-volume','Борлуулалтаар']].map(([sort,label])=>`<a href="${path}${sort==='default'?'':'?sort='+sort}#catalog" data-storefront-sort="${sort}">${label}</a>`).join('')+'<a href="#storefront-shopping-info">Үнэ, урамшууллын тухай ↗</a>';
   catalog.querySelector('.section-heading').after(tabs);
@@ -627,13 +627,13 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
       <div class="supplier-card-copy">
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
-        <p class="supplier-delivery-note">Карго тусдаа</p>
+        ${p.brand_id&&p.shop_rating?`<p class="supplier-delivery-note">Дэлгүүрийн үнэлгээ ${esc(String(p.shop_rating))}/5</p>`:''}<p class="supplier-delivery-note">Карго тусдаа</p>
         <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');
   if(append){grid.insertAdjacentHTML('beforeend',html);return;}
-  grid.innerHTML=html||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Таалагдсан барааныхаа зүрхэн тэмдгийг дарж хадгалаарай.':supplierBrand?'Одоогоор энэ flagship дэлгүүрээс тохирох бараа олдсонгүй. Шүүлтүүрээ өөрчлөх эсвэл эх дэлгүүрийг үзээрэй. Tmall дээрх бүх бараа GOStore-д гарахгүй байж болно.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
+  grid.innerHTML=html||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Таалагдсан барааныхаа зүрхэн тэмдгийг дарж хадгалаарай.':supplierBrand?'Энэ хуудсанд брэнд, дэлгүүрийн үнэлгээ, үлдэгдлийн шалгуур хангасан бараа олдсонгүй. Дараагийн бараануудыг үзэх эсвэл шүүлтүүрээ өөрчлөөрэй.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
 }
 function supplierUrl(page=1){
   if(document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;

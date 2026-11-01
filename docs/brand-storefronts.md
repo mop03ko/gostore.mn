@@ -1,6 +1,35 @@
 # Brand storefronts
 
-Updated 2026-10-20. The twelve logo cards open GOStore's internal `/brands/<id>` pages.
+Updated 2026-11-02.
+
+## Current TaoWorld brand selections
+
+Brand pages now include sellers beyond the flagship. Search candidates are fetched
+using brand-specific keywords, excluding used/customized/offline-seller items.
+Each visible item must have a shop rating >= 4.7/5, a usable image, positive price,
+and an in-stock SKU. Detail brand properties (ID 20000 / Brand / 品牌) must match
+an allowlisted alias exactly; reseller titles must also contain a bounded brand name.
+A title or shop name alone is insufficient. Generic titles and explicit replica
+claims are excluded.
+A verified flagship shop ID + name is accepted only when brand attributes are absent.
+Conflicting properties, mixed brands, lookalike labels and unavailable items are rejected.
+Supplier declarations and ratings do not prove authenticity or guarantee quality.
+The UI says “Брэндийн сонголт”; the flagship link is only an external reference.
+
+Pagination checks six source candidates per page, independently of the normal
+12/50-item grid limit. Filtering can leave an empty page with more=true; the next
+page remains available. Six detail reads run concurrently, reuse product cache
+keys/locks, and reserve API budget before sending. Partial successes are cached;
+transient failures propagate instead of being reported as an empty catalog.
+Unsupported items are omitted. Detail visits recheck brand attributes, and checkout
+retains its existing fresh SKU/price/stock checks.
+
+The older OT storefront notes below are historical; they do not describe the active
+TaoWorld selection mode.
+
+## Historical storefront implementation (2026-10-20)
+
+ The twelve logo cards open GOStore's internal `/brands/<id>` pages.
 Desktop widths of 1000px and above show six columns in two rows, without horizontal
 scrolling. Tablets use four columns and phones three, keeping every brand visible.
 Product links keep `?brand=<id>` and open on GOStore. Apple and Samsung are excluded.

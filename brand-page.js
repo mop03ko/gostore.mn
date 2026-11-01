@@ -1,5 +1,5 @@
 'use strict';
-// Brand pages request a server-allowlisted official shop, never a keyword fallback.
+// Brand selections are checked against supplier brand attributes on the server.
 const storefrontMatch=location.pathname.match(/^\/brands\/([a-z]+)\/?$/);
 const storefrontBrand=window.supplierBrands?.find(b=>b.id===storefrontMatch?.[1]);
 window.brandStorefront=storefrontBrand?.id||'';
@@ -7,15 +7,15 @@ window.brandStorefront=storefrontBrand?.id||'';
   if(!window.brandStorefront)return;
   const {id,name}=storefrontBrand,path=window.supplierBrandHref(id);
   document.title=name+' — Брэндийн дэлгүүр | GOStore';
-  document.querySelector('meta[name="description"]').content=name+' албан ёсны дэлгүүрийн бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
+  document.querySelector('meta[name="description"]').content=name+' брэндийн сонгосон бараа, үнийг GOStore дотроо үзэж, Монголд захиалаарай.';
   const canonical=document.createElement('link');canonical.rel='canonical';canonical.href='https://gostore.mn'+path;document.head.append(canonical);
   const section=document.createElement('section');section.id='brand-storefront';section.className='container storefront-page';section.dataset.brand=id;section.setAttribute('aria-labelledby','storefront-title');
   section.innerHTML=`
     <nav class="storefront-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span aria-hidden="true">/</span><a href="/#brands">Брэндүүд</a><span aria-hidden="true">/</span><span aria-current="page">${esc(name)}</span></nav>
-    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">TMALL · OFFICIAL FLAGSHIP STORE</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Албан ёсны flagship дэлгүүр</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Эх дэлгүүрийг Tmall дээр үзэх ↗</a></div>
-    <p class="storefront-intro">Албан ёсны flagship дэлгүүрийн барааг GOStore-оор захиалаарай. Үнэ, үлдэгдлийг захиалах үед баталгаажуулна.</p>`;
+    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">GOSTORE · БРЭНДИЙН СОНГОЛТ</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Дэлгүүрийн үнэлгээ 4.7+</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Flagship дэлгүүрийг Tmall дээр үзэх ↗</a></div>
+    <p class="storefront-intro">Брэндийн үзүүлэлт тохирсон, дэлгүүрийн үнэлгээ 4.7/5-аас дээш, үнэ болон үлдэгдэлтэй барааны сонголт. Нийлүүлэгчийн мэдээлэлд тулгуурласан; жинхэнэ эсэх, чанарын баталгаа биш.</p>`;
   const catalog=document.querySelector('#catalog');catalog.before(section);
-  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / FLAGSHIP STORE';
+  catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / БРЭНДИЙН СОНГОЛТ';
   const tabs=document.createElement('nav');tabs.className='storefront-catalog-tabs';tabs.setAttribute('aria-label',name+' барааны сонголт');
   tabs.innerHTML=[['default','Бүх бараа'],['-updated_time','Санал болгох'],['-volume','Борлуулалтаар']].map(([sort,label])=>`<a href="${path}${sort==='default'?'':'?sort='+sort}#catalog" data-storefront-sort="${sort}">${label}</a>`).join('')+'<a href="#storefront-shopping-info">Үнэ, урамшууллын тухай ↗</a>';
   catalog.querySelector('.section-heading').after(tabs);

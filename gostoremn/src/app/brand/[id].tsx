@@ -10,9 +10,9 @@ import { usePalette } from "@/lib/palette";
 import { BrandMark } from "@/components/brands";
 import { DiscoveryCard } from "@/components/discovery";
 import { Busy, Button, Copy, ErrorBox } from "@/components/ui";
-import { Choice, Icon } from "@/components/shop-ui";
+import { Choice } from "@/components/shop-ui";
 
-type StoreResults = { products: Product[]; more: boolean; brand?: { id: string; name: string; store_name: string; shop_id: string; source_url?: string } };
+type StoreResults = { products: Product[]; more: boolean; brand?: { id: string; name: string; store_name: string; shop_id?: string; source_url?: string } };
 function BrandStore({ id }: { id: string }) {
   const colors = usePalette(), insets = useSafeAreaInsets();
   const brand = brands.find(b => b.id === id);
@@ -27,7 +27,7 @@ function BrandStore({ id }: { id: string }) {
     void catalog<StoreResults>("supplier-search", { brand: id, page, limit: 12, sort }, abort.signal)
       .then(r => {
         if (abort.signal.aborted) return;
-        if (r.brand?.id !== id || !r.brand.shop_id || !r.brand.store_name) throw Error("Дэлгүүрийн мэдээллийг баталгаажуулж чадсангүй.");
+        if (r.brand?.id !== id || !r.brand.store_name) throw Error("Дэлгүүрийн мэдээллийг баталгаажуулж чадсангүй.");
         setStore(r.brand); setMore(r.more);
         setItems(old => { const rows = page === 1 ? r.products : [...old, ...r.products]; return [...new Map(rows.map(p => [p.id, { ...p, brand_id: id }])).values()]; });
       }).catch(e => { if (!abort.signal.aborted) setError(e.message); })
@@ -44,17 +44,17 @@ function BrandStore({ id }: { id: string }) {
         <View testID="official-brand-store" style={{ backgroundColor: colors.surface, padding: 18, borderRadius: 16, gap: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}><BrandMark brand={brand} size={42} />
             <View style={{ flex: 1 }}><Text style={{ color: colors.ink, fontSize: 22, fontWeight: "700" }}>{brand.name}</Text>
-              <Text style={{ color: colors.muted, marginTop: 4 }}>Tmall · Official Flagship Store</Text></View></View>
-          {store && <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}><Icon name="shield" color={colors.success} size={20} /><Text selectable style={{ flex: 1, color: colors.ink }}>{store.store_name}</Text></View>}
-          <Copy>Албан ёсны flagship дэлгүүрийн барааг GOStore-оор захиалаарай. Үнэ, үлдэгдлийг захиалах үед баталгаажуулна.</Copy>
-          {store?.source_url && /^https:\/\/[a-z0-9.-]+\.tmall\.com\/category\.htm$/.test(store.source_url) && <Button secondary title="Эх дэлгүүрийг Tmall дээр үзэх ↗" onPress={() => { void openBrowserAsync(store.source_url!).catch(() => setError("Эх дэлгүүрийг нээж чадсангүй. Дахин оролдоно уу.")); }} />}
+              <Text style={{ color: colors.muted, marginTop: 4 }}>Брэндийн сонголт · Дэлгүүрийн үнэлгээ 4.7+</Text></View></View>
+          {store && <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}><Text selectable style={{ flex: 1, color: colors.ink }}>{store.store_name}</Text></View>}
+          <Copy>Брэндийн үзүүлэлт тохирсон, зурагтай, үнэ болон үлдэгдэлтэй бараа. Нийлүүлэгчийн мэдээлэлд тулгуурласан; жинхэнэ эсэх, чанарын баталгаа биш.</Copy>
+          {store?.source_url && /^https:\/\/[a-z0-9.-]+\.tmall\.com\/category\.htm$/.test(store.source_url) && <Button secondary title="Flagship дэлгүүрийг Tmall дээр үзэх ↗" onPress={() => { void openBrowserAsync(store.source_url!).catch(() => setError("Эх дэлгүүрийг нээж чадсангүй. Дахин оролдоно уу.")); }} />}
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {[["default", "Санал болгох"], ["price", "Үнэ ↑"], ["-price", "Үнэ ↓"]].map(([key, label]) => <Choice key={key} label={label} selected={sort === key} onPress={() => { setItems([]); setPage(1); setSort(key); }} />)}
         </View>
         <ErrorBox message={error} retry={() => setRetry(n => n + 1)} />
       </View>}
-      ListEmptyComponent={!busy && !error ? <Copy>Одоогоор энэ flagship дэлгүүрээс GOStore-д захиалах боломжтой бараа олдсонгүй. Үнийн шүүлтүүрээ өөрчлөх эсвэл эх дэлгүүрийг үзээрэй. Tmall дээрх бүх бараа энд гарахгүй байж болно.</Copy> : undefined}
+      ListEmptyComponent={!busy && !error ? <Copy>Энэ хуудсанд шалгуур хангасан бараа олдсонгүй. Дараагийн бараануудыг үзэх эсвэл эрэмбийг өөрчлөөрэй.</Copy> : undefined}
       ListFooterComponent={busy ? <Busy /> : more && !error ? <Button secondary title="Дараагийн бараанууд" onPress={() => setPage(n => n + 1)} /> : undefined} />
   </View>;
 }
