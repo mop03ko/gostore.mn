@@ -14,7 +14,7 @@
   (()=>{const m=location.pathname.match(/^\/v\/((?:tb-)?[0-9]{5,20})\/?$/);if(!m||!window.fetch)return;
   const id=m[1].startsWith('tb-')?m[1]:'abb-'+m[1],brand=new URLSearchParams(location.search).get('brand'),shop=new URLSearchParams(location.search).get('shop'),payload={id,...(brand?{brand}:{}),...(shop?{shop}:{})};
   const key='supplier-product:'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
-  try{if(JSON.parse(sessionStorage.getItem('gostore-supplier-cache-v7-stores')||'[]').some(e=>e&&e.key===key&&e.expires>Date.now()&&e.data&&e.data.stale===false))return;}catch{}
+  try{if(JSON.parse(sessionStorage.getItem('gostore-supplier-cache-v8-mixed')||'[]').some(e=>e&&e.key===key&&e.expires>Date.now()&&e.data&&e.data.stale===false))return;}catch{}
   const url='/api/index.php?'+new URLSearchParams({action:'supplier-product',...payload,catalog:'taoworld-catalog1'}),response=fetch(url,{credentials:'omit'});
   window.earlySupplierProduct={url,response};
   window.earlySupplierImageUrl=source=>{const original=String(source||'');try{const u=new URL(original);if(u.protocol!=='https:'||!/(^|\.)alicdn\.com$/.test(u.hostname)||u.search||u.hash||!/^\/(?:imgextra|bao|tfs)\//.test(u.pathname)||!/\.(?:jpe?g|png)$/i.test(u.pathname)||/_[0-9]+x[0-9]+/.test(u.pathname))return original;return original+'_800x800q80.jpg_.webp';}catch{return original;}};
@@ -40,7 +40,7 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=a3565c9a4c76">
-  <script src="/app.js?v=a156b60bf688" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=8bd662db12e1" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"></head>
 <body>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
@@ -101,7 +101,7 @@
         <p class="hub-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>QPay-ээр төлнө. Каргог бараа Улаанбаатарт ирэхэд бодит жингээр тооцно.</p>
       </aside>
     </section>
-    <section class="container section official-stores-section" id="official-stores" aria-labelledby="official-stores-title"><div class="section-heading"><h2 id="official-stores-title">Албан ёсны дэлгүүрүүд</h2><a class="text-button" href="/official-stores">Дэлгүүрүүдийг үзэх →</a></div><p class="official-stores-note">API-аар бараа ирж буй баталгаажсан дэлгүүрүүд.</p><div data-official-stores-list aria-live="polite">Дэлгүүрүүдийг ачаалж байна…</div></section>
+    <section hidden class="container section official-stores-section" id="official-stores" aria-labelledby="official-stores-title"><div class="section-heading"><h2 id="official-stores-title">Албан ёсны дэлгүүрүүд</h2><a class="text-button" href="/official-stores">Дэлгүүрүүдийг үзэх →</a></div><p class="official-stores-note">API-аар бараа ирж буй баталгаажсан дэлгүүрүүд.</p><div data-official-stores-list aria-live="polite">Дэлгүүрүүдийг ачаалж байна…</div></section>
     <div class="container preview-notice"><svg class="icon"><use href="#i-shield"/></svg><p><strong>Сагслаад шууд худалдан авна.</strong> Барааны үнэд олон улсын карго ороогүй. Каргог бараа Улаанбаатарт ирэхэд бодит жингээр нь тооцно.</p></div>
     
 

@@ -2,6 +2,8 @@
 (()=>{
   const section=document.querySelector('#official-stores');if(!section||document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;
   const host=section.querySelector('[data-official-stores-list]'),directory=location.pathname.startsWith('/official-stores');let data=null;
+  // Temporarily removed from the homepage; direct store links remain usable.
+  if(!directory){section.remove();return;}section.hidden=false;
   if(directory){document.title='Албан ёсны дэлгүүрүүд | GOStore';section.querySelector('.section-heading>a').textContent='Нүүр хуудас';section.querySelector('.section-heading>a').href='/';}
   function paint(){
     const stores=data.stores;

@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
 require_once __DIR__.'/taoworld-brands.php';
 require_once __DIR__.'/official-stores.php';
+require_once __DIR__.'/taoworld-home.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
@@ -230,12 +231,12 @@ function tw_catalog_search(array $b,bool $display=false): array {
     $brand=$brandId!==''?supplier_brand($brandId):null;
     // Brand selection supplies its own query and verifies detail attributes.
     if($brand)$q='';
-    if($q==='__all__')$q='home storage';
     $sort=str_field($b,'sort',20,false)?:'default';$sorts=['default'=>'','price'=>'PRICE_ASC','-price'=>'PRICE_DESC','-volume'=>'SALE_QTY_DESC','-updated_time'=>''];
     if(!isset($sorts[$sort]))fail('Эрэмбэ буруу.');
     $range=supplier_price_range($b);$filters=[];$rate=shipping_settings()['cny_rate'];
     foreach(['price_min'=>'min_price','price_max'=>'max_price'] as $k=>$v)if(isset($range[$k]))$filters[]=$v.':'.(int)round($range[$k]*100/$rate);
     if($brand)return tw_catalog_brand_selection($brandId,$page,$sort,$filters,$display);
+    if($q==='__all__')return tw_catalog_home($page,$limit,$sorts[$sort],$filters,$display);
     if(product_policy_text_blocked($q))return tw_catalog_response(['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false],time(),0);
     $departments=tw_catalog_departments();
     $params=['keyword'=>$departments[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);

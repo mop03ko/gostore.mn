@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
   const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
   try {
     const page = await browser.newPage(), calls = [], errors = [];
-    let failDirectory = false;
+    let failDirectory = false, directoryReads = 0;
     const store = { id: '71955116', name: 'NIKE官方旗舰店', display_name: 'Nike Official Store', logo: '/assets/brands/nike.svg' };
     const products = prices => prices.map(price => ({ id: 'tb-' + (700000000000 + price), name: 'Product ' + price, official_shop_id: store.id, approx_mnt: price }));
     page.on('pageerror', e => errors.push(e.message));
@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
       const url = new URL(route.request().url()); let data = {};
       try { data = route.request().postDataJSON() || {}; } catch {}
       const p = Object.assign(Object.fromEntries(url.searchParams), data);
+      if (p.action === 'supplier-official-stores') directoryReads++;
       if (p.action === 'supplier-official-stores') return route.fulfill(failDirectory ? { status: 503, json: { error: 'Temporary error' } } : { json: { ok: true, stores: [{ ...store, products: products([300, 100]) }], incomplete: false, cache_ttl: 0 } });
       if (p.action !== 'supplier-search') return route.continue();
       calls.push(p);
@@ -46,6 +47,12 @@ const assert = require('node:assert/strict');
     await page.reload(); await page.locator('[data-stores-retry]').waitFor();
     failDirectory = false;
     await page.locator('[data-stores-retry]').click(); await page.locator('.official-store-row').waitFor();
+    const readsBeforeHome = directoryReads;
+    await page.goto('http://127.0.0.1:8091/');
+    await page.locator('#supplier-grid .supplier-card').first().waitFor();
+    assert.equal(await page.locator('#official-stores').count(), 0, 'Store shelf must be removed from home');
+    assert.equal(directoryReads, readsBeforeHome, 'Hidden shelf must not spend API calls');
+    assert.equal(calls.at(-1).q, '__all__', 'Home must request the mixed feed');
     assert.deepEqual(errors, []);
     console.log('PASS official directory, legacy redirect, strict shop context, sorting, price filter, mobile layout, error retry');
   } finally { await browser.close(); }

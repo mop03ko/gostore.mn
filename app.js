@@ -370,7 +370,7 @@ function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok){if(response.status===401&&['order-create','customer-orders','customer-me'].includes(action.split('&')[0]))window.customerAccount?.setUser(null);throw Error(result.error||'Сервертэй холбогдсонгүй.');}if(result.csrf)shopCsrf=result.csrf;return result;}
 // Only public supplier data is cached; sessions, orders and payments always use shopApi.
 window.supplierApi=(()=>{
-  const key='gostore-supplier-cache-v7-stores',pending=new Map(),maxEntries=40,maxBytes=1500000;
+  const key='gostore-supplier-cache-v8-mixed',pending=new Map(),maxEntries=40,maxBytes=1500000;
   let entries=[];
   const clone=value=>JSON.parse(JSON.stringify(value));
   const valid=e=>e&&typeof e.key==='string'&&Number.isFinite(e.expires)&&e.expires>Date.now()&&e.expires<=Date.now()+600000&&e.data&&e.data.stale===false;
@@ -645,7 +645,7 @@ async function loadSupplier(page=1,append=false){
     const tail=keep?next.slice(supplierResults.length):next;
     supplierResults=next;renderSupplierCards(tail,keep);shown=true;
     supplierPartialKey=r.partial?partialKey:null;
-    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&(!!brand||!!supplierShop||incoming.length>0);
+    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&(!!brand||!!supplierShop||query==='__all__'||incoming.length>0);
     if(r.store&&r.store.id===supplierShop)$('#catalog-title').textContent=r.store.display_name+' · Бараанууд';
     const total=Number.isSafeInteger(r.total)?r.total:null;
     const shopLabel=document.querySelector('[data-brand-store-name]');
@@ -725,6 +725,8 @@ $('#image-search-input').addEventListener('change',e=>{const file=e.target.files
 (()=>{
   const section=document.querySelector('#official-stores');if(!section||document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;
   const host=section.querySelector('[data-official-stores-list]'),directory=location.pathname.startsWith('/official-stores');let data=null;
+  // Temporarily removed from the homepage; direct store links remain usable.
+  if(!directory){section.remove();return;}section.hidden=false;
   if(directory){document.title='Албан ёсны дэлгүүрүүд | GOStore';section.querySelector('.section-heading>a').textContent='Нүүр хуудас';section.querySelector('.section-heading>a').href='/';}
   function paint(){
     const stores=data.stores;

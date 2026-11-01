@@ -3,6 +3,9 @@
 Updated 2026-11-02. This replaces the customer-facing brand section on web and app.
 Legacy `/brands` and `/brands/<id>` links redirect to `/official-stores`.
 
+The home shelf is now temporarily hidden at the merchant's request; see
+[mixed home feed](home-feed.md). Direct store routes and APIs are retained.
+
 ## Coverage and identity
 
 TaoWorld's current `/traffic/item/search` integration supports `shop_id`, but no

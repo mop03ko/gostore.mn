@@ -6,12 +6,12 @@ putenv('GOSTORE_DATA_DIR='.$fixture.'/data');putenv('GOSTORE_DISABLE_SUPPLIER_NE
 file_put_contents($fixture.'/server/taoworld.local.php',"<?php return ['app_key'=>'123456','app_secret'=>'fixture-secret-long-enough','callback_url'=>'https://gostore.mn/api/taoworld/callback.php'];");
 foreach(['bootstrap','shipping','supplier','checkout','taoworld-auth'] as $f)require_once $fixture.'/server/'.$f.'.php';
 require_once $fixture.'/server/taoworld-catalog.php';
-$calls=[];$stock=4;$price=393;$error=false;$unknown=false;$batches=[];$failPage=0;$short=false;$brandFixtures=[];
+$calls=[];$stock=4;$price=393;$error=false;$unknown=false;$batches=[];$failPage=0;$short=false;$brandFixtures=[];$homeFixture=false;
 function taoworld_http_search_batch(array $queries): array {
     global $batches;$batches[]=$queries;return array_map(function($q){try{return taoworld_http('/traffic/item/search',$q);}catch(ApiError $e){return $e;}},$queries);
 }
 function taoworld_http(string $path,array $params): array {
-    global $calls,$stock,$price,$error,$unknown,$failPage,$short,$brandFixtures;$calls[]=[$path,$params];
+    global $calls,$stock,$price,$error,$unknown,$failPage,$short,$brandFixtures,$homeFixture;$calls[]=[$path,$params];
     if($error)throw new ApiError('Fake upstream unavailable',502);
     if($path==='/traffic/item/search'){
         if((int)$params['page_no']===$failPage)throw new ApiError('Fake page failure',502);
@@ -26,6 +26,10 @@ function taoworld_http(string $path,array $params): array {
                 if(in_array($i,[3,5],true))unset($detail['properties']);$brandFixtures['brand-'.$id]=$detail;
             }
             return ['code'=>'0','data'=>['data'=>$rows]];
+        }
+        if($homeFixture){
+            $department=array_search($params['keyword'],array_values(tw_catalog_departments()),true);
+            foreach($rows as $i=>&$row){$row['item_id']=(string)(720000000000+((int)$params['page_no']-1)*100000+($i===0?0:$department*100+$i));$row['mi_id']='home-'.$row['item_id'];$row['multi_language_info']['title']='Department '.$department.' item '.$i;}unset($row);
         }
         if(isset($params['shop_id'])){
             $brand=array_values(array_filter(supplier_brands(),fn($b)=>$b['shop_id']===$params['shop_id']))[0];
@@ -130,5 +134,14 @@ $error=true;$partial=official_stores_directory();check($partial['incomplete']&&c
 $shopCache=['time'=>time(),'data'=>['data'=>[]]];supplier_snapshot_write($shopFile,$shopCache);
 $empty=official_stores_directory();check(count($empty['stores'])===11&&!$empty['incomplete'],'Empty stores must not be shown or replaced by keyword products');
 unset($_SERVER['REMOTE_ADDR']);
+$_SERVER['REMOTE_ADDR']='192.0.2.201';$homeFixture=true;
+$before=count($calls);$home=supplier_search(['q'=>'__all__','page'=>1,'limit'=>50]);
+check(count($calls)===$before+6&&count($home['products'])===50&&$home['feed']==='mixed_departments','Homepage must fetch six departments and fill the requested sample');
+check(count(array_unique(array_column($home['products'],'id')))===50,'Mixed feed repeats products');
+check(count(array_unique(array_map(fn($p)=>explode(' ',$p['name'])[1],array_slice($home['products'],0,7))))===6,'Department products must be interleaved');
+$before=count($calls);$again=supplier_search(['q'=>'__all__','page'=>1,'limit'=>50]);check(count($calls)===$before&&array_column($again['products'],'id')===array_column($home['products'],'id'),'Cached mixed feed must remain stable');
+$next=supplier_search(['q'=>'__all__','page'=>2,'limit'=>12]);check(count($calls)===$before+6&&count($next['products'])===12,'Next page must rotate departments');
+$firstKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before-6,6));$nextKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before,6));check(!array_intersect($firstKeywords,$nextKeywords),'Next page repeated the same department group');
+$homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $state=taoworld_state();$state['account_id']='another-buyer';taoworld_store($state);denied(fn()=>supplier_detail('tb-700000000000'),409);
 echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search; no OT calls.\n";

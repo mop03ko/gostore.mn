@@ -109,7 +109,7 @@ async function loadSupplier(page=1,append=false){
     const tail=keep?next.slice(supplierResults.length):next;
     supplierResults=next;renderSupplierCards(tail,keep);shown=true;
     supplierPartialKey=r.partial?partialKey:null;
-    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&(!!brand||!!supplierShop||incoming.length>0);
+    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&(!!brand||!!supplierShop||query==='__all__'||incoming.length>0);
     if(r.store&&r.store.id===supplierShop)$('#catalog-title').textContent=r.store.display_name+' · Бараанууд';
     const total=Number.isSafeInteger(r.total)?r.total:null;
     const shopLabel=document.querySelector('[data-brand-store-name]');

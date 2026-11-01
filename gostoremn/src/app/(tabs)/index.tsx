@@ -16,7 +16,6 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
 import { HomeDiscovery } from "@/components/discovery";
-import { OfficialStores } from "@/components/official-stores";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
@@ -37,7 +36,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     { width } = useWindowDimensions(),
     columns = width >= 800 ? 4 : 2;
   const [draft, setDraft] = useState(initialQuery),
-    [query, setQuery] = useState(initialQuery || "storage box"),
+    [query, setQuery] = useState(initialQuery || "__all__"),
     [sort, setSort] = useState("default"),
     [image, setImage] = useState(""),
     [page, setPage] = useState(1),
@@ -116,7 +115,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
-    setQuery(value.trim() || "storage box");
+    setQuery(value.trim() || "__all__");
     setDraft(value);
     setItems([]);
     setRetry((x) => x + 1);
@@ -285,7 +284,6 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
             <HomeDiscovery onSearch={search} />
-            <OfficialStores compact />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
