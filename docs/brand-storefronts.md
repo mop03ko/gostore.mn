@@ -5,20 +5,23 @@ Updated 2026-11-02.
 ## Current TaoWorld brand selections
 
 Brand pages now include sellers beyond the flagship. Search candidates are fetched
-using brand-specific keywords, excluding used/customized/offline-seller items.
-Each visible item must have a shop rating >= 4.7/5, a usable image, positive price,
-and an in-stock SKU. Detail brand properties (ID 20000 / Brand / 品牌) must match
+using brand-specific keywords. Default ordering is PRICE_DESC, from highest price
+to lowest. Explicit ascending/relevance/sales sorts remain available. Rating, image,
+price and stock thresholds and the extra used/customized/offline exclusions were
+removed at the merchant’s request. Missing prices sort last; unavailable items can
+be browsed but retain their unavailable purchase state. Detail brand properties (ID 20000 / Brand / 品牌) must match
 an allowlisted alias exactly; reseller titles must also contain a bounded brand name.
 A title or shop name alone is insufficient. Generic titles and explicit replica
 claims are excluded.
 A verified flagship shop ID + name is accepted only when brand attributes are absent.
-Conflicting properties, mixed brands, lookalike labels and unavailable items are rejected.
+Conflicting properties, mixed brands and lookalike labels are rejected.
 Supplier declarations and ratings do not prove authenticity or guarantee quality.
-The UI says “Брэндийн сонголт”; the flagship link is only an external reference.
+The UI says “Брэндэд хамаарах бараанууд”; the flagship link is only an external reference.
 
 Pagination checks six source candidates per page, independently of the normal
 12/50-item grid limit. Filtering can leave an empty page with more=true; the next
-page remains available. Six detail reads run concurrently, reuse product cache
+page remains available, including when a page has zero matches. Displayed prices
+are sorted again after detail verification and across loaded pages on both clients. Six detail reads run concurrently, reuse product cache
 keys/locks, and reserve API budget before sending. Partial successes are cached;
 transient failures propagate instead of being reported as an empty catalog.
 Unsupported items are omitted. Detail visits recheck brand attributes, and checkout

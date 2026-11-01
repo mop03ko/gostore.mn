@@ -573,13 +573,14 @@ window.brandStorefront=storefrontBrand?.id||'';
   const section=document.createElement('section');section.id='brand-storefront';section.className='container storefront-page';section.dataset.brand=id;section.setAttribute('aria-labelledby','storefront-title');
   section.innerHTML=`
     <nav class="storefront-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span aria-hidden="true">/</span><a href="/#brands">Брэндүүд</a><span aria-hidden="true">/</span><span aria-current="page">${esc(name)}</span></nav>
-    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">GOSTORE · БРЭНДИЙН СОНГОЛТ</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Дэлгүүрийн үнэлгээ 4.7+</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Flagship дэлгүүрийг Tmall дээр үзэх ↗</a></div>
-    <p class="storefront-intro">Брэндийн үзүүлэлт тохирсон, дэлгүүрийн үнэлгээ 4.7/5-аас дээш, үнэ болон үлдэгдэлтэй барааны сонголт. Нийлүүлэгчийн мэдээлэлд тулгуурласан; жинхэнэ эсэх, чанарын баталгаа биш.</p>`;
+    <div class="storefront-store-heading"><div class="storefront-store-identity"><span class="storefront-logo-tile"><img src="/assets/brands/${id}.svg" alt="${esc(name)}" width="64" height="48"></span><div><span class="section-kicker">GOSTORE · БРЭНДИЙН СОНГОЛТ</span><h1 id="storefront-title">${esc(name)}</h1><p data-brand-store-name>Брэндэд хамаарах бараанууд</p></div></div><a class="storefront-source-link" data-brand-source hidden target="_blank" rel="noopener noreferrer">Flagship дэлгүүрийг Tmall дээр үзэх ↗</a></div>
+    <p class="storefront-intro">Тухайн брэндэд тохирох бараанууд. Үндсэн эрэмбэ: хамгийн үнэтэйгээс хямд руу. Нийлүүлэгчийн мэдээлэлд тулгуурласан; жинхэнэ эсэх, чанарын баталгаа биш.</p>`;
   const catalog=document.querySelector('#catalog');catalog.before(section);
   catalog.querySelector('.section-kicker').textContent=name.toUpperCase()+' / БРЭНДИЙН СОНГОЛТ';
   const tabs=document.createElement('nav');tabs.className='storefront-catalog-tabs';tabs.setAttribute('aria-label',name+' барааны сонголт');
-  tabs.innerHTML=[['default','Бүх бараа'],['-updated_time','Санал болгох'],['-volume','Борлуулалтаар']].map(([sort,label])=>`<a href="${path}${sort==='default'?'':'?sort='+sort}#catalog" data-storefront-sort="${sort}">${label}</a>`).join('')+'<a href="#storefront-shopping-info">Үнэ, урамшууллын тухай ↗</a>';
+  tabs.innerHTML=[['-price','Бүх бараа · Үнэ ↓'],['-updated_time','Санал болгох'],['-volume','Борлуулалтаар']].map(([sort,label])=>`<a href="${path}${sort==='default'?'':'?sort='+sort}#catalog" data-storefront-sort="${sort}">${label}</a>`).join('')+'<a href="#storefront-shopping-info">Үнэ, урамшууллын тухай ↗</a>';
   catalog.querySelector('.section-heading').after(tabs);
+  document.querySelector('#supplier-sort option[value=default]').textContent='Үндсэн · Үнэтэйгээс';
   const info=document.createElement('aside');info.id='storefront-shopping-info';info.className='storefront-shopping-info';info.innerHTML=`<div><span class="section-kicker">СОНГООД, САГСЛААД, ТӨЛӨӨРЭЙ</span><h2>Таны сонголт.<br>Бидний хүргэлт.</h2></div><div><h3>Үнэ, хямдрал, урамшуулал</h3><p>Бараан дээр дарж өнгө, хэмжээ, боломжит хямдрал болон дэлгүүрийн урамшууллын нөхцөлийг үзээрэй. Үнэ, үлдэгдэл сонгосон хувилбараас хамаарна.</p><p>Хүргэлтийн төлбөр барааны үнэд нэмэгдэнэ. Захиалгын эцсийн үнийг баталгаажуулна.</p><a class="text-button" href="/help">Хэрхэн худалдан авах вэ? ${icon('arrow')}</a></div>`;catalog.append(info);
   window.syncBrandStorefront=sort=>tabs.querySelectorAll('[data-storefront-sort]').forEach(a=>{const active=a.dataset.storefrontSort===sort;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
   document.addEventListener('click',e=>{const link=e.target.closest('[data-storefront-sort]');if(!link||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();const select=document.querySelector('#supplier-sort');select.value=link.dataset.storefrontSort;select.dispatchEvent(new Event('change',{bubbles:true}));scrollCatalog();});
@@ -591,7 +592,7 @@ window.brandStorefront=storefrontBrand?.id||'';
 'use strict';
 function shippingOrderHtml(o){if(!o.supplier&&!o.quote&&!o.route)return '';const b=o.quote?.breakdown;return `<div class="info-box"><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Ачааны байршлын төлөвийг GOStore шинэчилнэ.</p>${o.fulfillment?`<p>Авах хэлбэр: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.warehouse?`<h3>Эрээн агуулахын хүлээн авах мэдээлэл</h3><p><strong>${esc(o.warehouse.recipient)}</strong></p><p>${esc(o.warehouse.address)}<br>手机号: ${esc(o.warehouse.phone)}<br>Утас: ${esc(o.warehouse.contact_phone)}</p><p>Ачааг энэ овог нэр, захиалгын кодоор бүртгэнэ.</p>`:''}${o.supplier?`<p>${esc(o.supplier.variant)} × ${o.supplier.qty} · Барааны лавлах дүн ${money(Math.ceil(o.supplier.goods_cny*(o.supplier.rate||storeServer.shipping?.cny_rate||0)))}</p>`:''}${o.type==='checkout'&&o.items?.length?`<ul>${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty} · ${money((i.price||0)*i.qty)}</li>`).join('')}</ul>`:''}${b?`<p>Бараа: ${money(b.goods_mnt)}<br>Хятад доторх хүргэлт: ${money(b.domestic_mnt)}<br>Үйлчилгээ: ${money(b.service_mnt)}<br>Карго: ${b.cargo_mnt||!o.quote.cargo_later?money(b.cargo_mnt):'Улаанбаатарт ирэхэд бодит жингээр тооцно'}</p>`:''}${o.history?.length?`<ol>${o.history.map(h=>`<li>${esc(orderLabels[h.status]||h.status)} · ${new Date(h.at).toLocaleString('mn-MN')}</li>`).join('')}</ol>`:''}</div>`;}
 let supplierBrand=window.brandStorefront||initialFilters.get('brand')||'';
-let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')||'__all__').slice(0,100),supplierSort=['default','price','-price','-volume','-updated_time'].includes(initialFilters.get('sort'))?initialFilters.get('sort'):'default',supplierPriceRange={min:/^\d{1,9}$/.test(initialFilters.get('price_min')||'')?initialFilters.get('price_min'):'',max:/^\d{1,9}$/.test(initialFilters.get('price_max')||'')?initialFilters.get('price_max'):''},supplierBusy=false,supplierSelected=null,supplierImage=/^[a-f0-9]{32}$/.test(initialFilters.get('image')||'')?initialFilters.get('image'):'';
+let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')||'__all__').slice(0,100),supplierSort=['default','price','-price','-volume','-updated_time'].includes(initialFilters.get('sort'))?initialFilters.get('sort'):(supplierBrand?'-price':'default'),supplierPriceRange={min:/^\d{1,9}$/.test(initialFilters.get('price_min')||'')?initialFilters.get('price_min'):'',max:/^\d{1,9}$/.test(initialFilters.get('price_max')||'')?initialFilters.get('price_max'):''},supplierBusy=false,supplierSelected=null,supplierImage=/^[a-f0-9]{32}$/.test(initialFilters.get('image')||'')?initialFilters.get('image'):'';
 function supplierRateText(s){return `${s.weight_step_kg} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ) · ${s.volume_threshold} м³-ээс бага: ${money(Math.round(s.volume_small_cny*s.cny_rate))}/м³, түүнээс их буюу тэнцүү: ${money(Math.round(s.volume_large_cny*s.cny_rate))}/м³. Жин эсвэл эзлэхүүнээр тооцох аргыг агуулах бодит хэмжилтээр баталгаажуулна.`;}
 
 const SUPPLIER_FAVORITES_KEY='gostore-taobao-favorites-v1';
@@ -633,7 +634,7 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
     </article>`;
   }).join('');
   if(append){grid.insertAdjacentHTML('beforeend',html);return;}
-  grid.innerHTML=html||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Таалагдсан барааныхаа зүрхэн тэмдгийг дарж хадгалаарай.':supplierBrand?'Энэ хуудсанд брэнд, дэлгүүрийн үнэлгээ, үлдэгдлийн шалгуур хангасан бараа олдсонгүй. Дараагийн бараануудыг үзэх эсвэл шүүлтүүрээ өөрчлөөрэй.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
+  grid.innerHTML=html||`<div class="empty-state"><h3>${supplierSaved?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${supplierSaved?'Таалагдсан барааныхаа зүрхэн тэмдгийг дарж хадгалаарай.':supplierBrand?'Энэ хуудсанд тухайн брэндэд тохирох бараа олдсонгүй. Дараагийн бараануудыг үзэх эсвэл шүүлтүүрээ өөрчлөөрэй.':'Өөр түлхүүр үгээр хайж үзээрэй.'}</p><button class="button blue" data-supplier-reset>Бараа үзэх</button></div>`;
 }
 function supplierUrl(page=1){
   if(document.documentElement.matches('.product-view,.account-view,.store-page-view'))return;
@@ -656,7 +657,7 @@ function supplierViewState(){
   const preview=$('#image-search-preview');preview.hidden=supplierSaved||!supplierImage;if(!preview.hidden)preview.querySelector('img').src='/assets/uploads/search/'+supplierImage+'.jpg';
   document.querySelectorAll('#catalog .filter-tabs button').forEach(b=>{const active=(b.dataset.filter==='saved')===supplierSaved;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
 }
-window.supplierBrowseBrand=id=>{if(window.brandStorefront){location.assign(window.supplierBrandHref(id));return;}supplierBrand=id;supplierSaved=false;supplierImage='';supplierQuery='__all__';supplierCategory='';$('#supplier-query').value='';$('#search').value='';loadSupplier(1);};
+window.supplierBrowseBrand=id=>{if(window.brandStorefront){location.assign(window.supplierBrandHref(id));return;}supplierBrand=id;supplierSort='-price';$('#supplier-search [name=sort]').value=supplierSort;supplierSaved=false;supplierImage='';supplierQuery='__all__';supplierCategory='';$('#supplier-query').value='';$('#search').value='';loadSupplier(1);};
 window.supplierBrowse=(query,saved=false,category=null)=>{
   if(window.brandStorefront){const params=new URLSearchParams(saved?{filter:'saved'}:category&&category!=='all'?{category}:query&&query!=='__all__'?{q:query}:{});location.assign('/'+(params.size?'?'+params:'')+'#catalog');return;}
   supplierBrand='';
@@ -667,14 +668,14 @@ window.supplierBrowse=(query,saved=false,category=null)=>{
 };
 // Append one batch at a time; filters invalidate older in-flight requests.
 const supplierScrollObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
-  if(entries.some(e=>e.isIntersecting)&&!supplierBusy&&!supplierSaved&&supplierMore&&$('#supplier-paging').offsetParent!==null)loadSupplier(supplierPage+1,true);
+  if(entries.some(e=>e.isIntersecting)&&!supplierBusy&&!supplierSaved&&!supplierBrand&&supplierMore&&$('#supplier-paging').offsetParent!==null)loadSupplier(supplierPage+1,true);
 },{rootMargin:'0px 0px 300px 0px'}):null;
 function supplierLoadMoreControl(retryPage=null,append=true){
   supplierScrollObserver?.disconnect();
   const host=$('#supplier-paging');host.replaceChildren();
   if(retryPage!==null){host.innerHTML='<button type="button" class="button outline" data-supplier-retry="'+retryPage+'" data-append="'+append+'">Дахин оролдох</button>';return;}
   if(!supplierMore||supplierSaved){if(supplierResults.length&&!supplierSaved)host.textContent='Бүх барааг харууллаа';return;}
-  host.innerHTML='<button type="button" class="button outline" data-supplier-more>Дараагийн 50 барааг харах</button>';
+  host.innerHTML='<button type="button" class="button outline" data-supplier-more>Дараагийн бараануудыг харах</button>';
   supplierScrollObserver?.observe(host.firstElementChild);
 }
 async function loadSupplier(page=1,append=false){
@@ -692,11 +693,13 @@ async function loadSupplier(page=1,append=false){
   let failure=false,shown=resume;
   const paint=r=>{
     const seen=new Set(base.map(p=>p.id)),incoming=(r.products||[]).filter(p=>{if(!/^tb-[0-9]{5,20}$/.test(p.id)||seen.has(p.id))return false;seen.add(p.id);return true;});
-    const next=[...base,...incoming],keep=supplierResults.length>0&&next.length>=supplierResults.length&&supplierResults.every((p,i)=>JSON.stringify(p)===JSON.stringify(next[i]));
+    const next=[...base,...incoming];
+    if(brand&&['default','-price','price'].includes(sort))next.sort((a,b)=>{const pa=a.mnt??a.approx_mnt??null,pb=b.mnt??b.approx_mnt??null;if((pa===null)!==(pb===null))return pa===null?1:-1;return sort==='price'?pa-pb:pb-pa;});
+    const keep=supplierResults.length>0&&next.length>=supplierResults.length&&supplierResults.every((p,i)=>JSON.stringify(p)===JSON.stringify(next[i]));
     const tail=keep?next.slice(supplierResults.length):next;
     supplierResults=next;renderSupplierCards(tail,keep);shown=true;
     supplierPartialKey=r.partial?partialKey:null;
-    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&incoming.length>0;
+    supplierPage=page;supplierMore=!r.partial&&r.more===true&&page<100&&(!!brand||incoming.length>0);
     const total=Number.isSafeInteger(r.total)?r.total:null;
     const shopLabel=document.querySelector('[data-brand-store-name]');
     if(shopLabel&&r.brand?.id===brand&&r.brand.store_name)shopLabel.textContent=r.brand.store_name;
@@ -731,7 +734,7 @@ function openSupplierOrder(p,sku,qty){
 }
 function supplierPrice(){const f=$('#supplier-order-form');if(!f||!supplierSelected)return;const v=supplierSelected.variants.find(v=>v.id===f.elements.sku.value);$('#supplier-item-price').textContent=v?`Барааны урьдчилсан дүн: ${money(Math.ceil(v.cny*(storeServer.shipping?.cny_rate||0))*Number(f.elements.qty.value))} · хүргэлт нэмэгдэнэ`:'';}
 document.addEventListener('input',e=>{if(e.target.closest('#supplier-order-form'))supplierPrice();});
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-supplier-reset')||b.id==='supplier-reset'){supplierSort='default';$('#supplier-search [name=sort]').value='default';supplierPriceRange={min:'',max:''};$('#supplier-search [name=price_min]').value='';$('#supplier-search [name=price_max]').value='';filters.category='all';renderCategories();if(window.brandStorefront)loadSupplier(1);else window.supplierBrowse('__all__',false,'all');$('#supplier-query').value='';$('#search').value='';return;}if(b.dataset.supplierId)showSupplier(b.dataset.supplierId);if(b.hasAttribute('data-supplier-more'))loadSupplier(supplierPage+1,true);if(b.dataset.supplierRetry)loadSupplier(Number(b.dataset.supplierRetry),b.dataset.append==='true');if(b.dataset.supplierQuery){window.supplierBrowse(b.dataset.supplierQuery,false,b.closest('#catalog-refinements')?supplierCategory:null);if(b.closest('#quick-categories'))scrollCatalog();}if(b.dataset.supplierFavorite){const id=b.dataset.supplierFavorite,saved=supplierFavoriteItems(),found=supplierResults.find(p=>p.id===id)||supplierExtraCards.get(id);const next=saved.some(p=>p.id===id)?saved.filter(p=>p.id!==id):found?[found,...saved].slice(0,100):saved;try{localStorage.setItem(SUPPLIER_FAVORITES_KEY,JSON.stringify(next));window.dispatchEvent(new Event('gostore-favorites-changed'));renderSupplierCards(supplierSaved?next:supplierResults);updateCounts();$('[data-supplier-favorite="'+id+'"]')?.focus({preventScroll:true});}catch{toast('Хөтөч бараа хадгалах боломжгүй байна.');}}});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-supplier-reset')||b.id==='supplier-reset'){supplierSort=window.brandStorefront?'-price':'default';$('#supplier-search [name=sort]').value=supplierSort;supplierPriceRange={min:'',max:''};$('#supplier-search [name=price_min]').value='';$('#supplier-search [name=price_max]').value='';filters.category='all';renderCategories();if(window.brandStorefront)loadSupplier(1);else window.supplierBrowse('__all__',false,'all');$('#supplier-query').value='';$('#search').value='';return;}if(b.dataset.supplierId)showSupplier(b.dataset.supplierId);if(b.hasAttribute('data-supplier-more'))loadSupplier(supplierPage+1,true);if(b.dataset.supplierRetry)loadSupplier(Number(b.dataset.supplierRetry),b.dataset.append==='true');if(b.dataset.supplierQuery){window.supplierBrowse(b.dataset.supplierQuery,false,b.closest('#catalog-refinements')?supplierCategory:null);if(b.closest('#quick-categories'))scrollCatalog();}if(b.dataset.supplierFavorite){const id=b.dataset.supplierFavorite,saved=supplierFavoriteItems(),found=supplierResults.find(p=>p.id===id)||supplierExtraCards.get(id);const next=saved.some(p=>p.id===id)?saved.filter(p=>p.id!==id):found?[found,...saved].slice(0,100):saved;try{localStorage.setItem(SUPPLIER_FAVORITES_KEY,JSON.stringify(next));window.dispatchEvent(new Event('gostore-favorites-changed'));renderSupplierCards(supplierSaved?next:supplierResults);updateCounts();$('[data-supplier-favorite="'+id+'"]')?.focus({preventScroll:true});}catch{toast('Хөтөч бараа хадгалах боломжгүй байна.');}}});
 $('#supplier-search').addEventListener('submit',e=>{e.preventDefault();if(matchMedia('(max-width:760px)').matches)$('#supplier-query').blur();supplierSort=e.target.elements.sort.value;
   const min=e.target.elements.price_min.value.replace(/\D/g,''),max=e.target.elements.price_max.value.replace(/\D/g,'');
   if(min&&max&&Number(min)>Number(max)){toast('Доод үнэ дээд үнээс их байна.');return;}

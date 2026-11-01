@@ -21,6 +21,8 @@ function taoworld_http(string $path,array $params): array {
             $rows=[];for($i=0;$i<6;$i++){
                 $id=(string)(710000000000+$offset+$i);$rows[]=['item_id'=>$id,'mi_id'=>'brand-'.$id,'title'=>$brand['name'],'main_image_url'=>'https://img.alicdn.com/example.jpg','price'=>'14','shopDsr'=>$i===2?'4.6':'4.9'];
                 $detail=['item_id'=>$id,'mi_id'=>'brand-'.$id,'title'=>$brand['name'],'pic_urls'=>['https://img.alicdn.com/example.jpg'],'price'=>1400,'shop_id'=>$i===5?$brand['shop_id']:'123','shop_name'=>$i===5?$brand['vendor']:'Reseller','properties'=>[['prop_id'=>20000,'value_name'=>$i===1?'Unrelated':($i===4?$brand['name'].' style':$brand['name'])]],'sku_list'=>[['sku_id'=>'1234','quantity'=>3,'price'=>1400]]];
+                if($i===2){$detail['pic_urls']=[];$detail['price']=5000;$detail['sku_list'][0]['quantity']=0;$detail['sku_list'][0]['price']=5000;}
+                if($i===5){$detail['price']=900;$detail['sku_list'][0]['price']=900;}
                 if(in_array($i,[3,5],true))unset($detail['properties']);$brandFixtures['brand-'.$id]=$detail;
             }
             return ['code'=>'0','data'=>['data'=>$rows]];
@@ -52,8 +54,11 @@ foreach(supplier_brands() as $brandId=>$brand){
     $_SERVER['REMOTE_ADDR']='192.0.2.'.(60+array_search($brandId,array_keys(supplier_brands()),true));
     $r=supplier_search(['brand'=>$brandId,'q'=>'wrong unrelated keyword','page'=>1,'limit'=>12]);$searchCalls=array_values(array_filter($calls,fn($c)=>$c[0]==='/traffic/item/search'));$query=end($searchCalls)[1];
     check(!isset($query['shop_id'])&&isset($query['keyword']),'Brand selection must search across sellers');
-    check(count($r['products'])===2&&$r['more']&&$r['brand']['scope']==='brand_selection','Wrong/missing brand, low rating and lookalikes must be omitted without breaking pagination');
+    check(count($r['products'])===3&&$r['more']&&$r['brand']['scope']==='brand_selection','Only wrong/missing brands and lookalikes are omitted; low ratings remain');
     check($r['products'][0]['brand_id']===$brandId,'Brand context missing from cards');
+    check(($query['sort']??'')==='PRICE_DESC'&&!isset($query['excludeFilters']),'Default must request descending price without quality exclusions');
+    check(array_map(fn($p)=>$p['mnt']??$p['approx_mnt'],$r['products'])===[5000*shipping_settings()['cny_rate']/100,1400*shipping_settings()['cny_rate']/100,900*shipping_settings()['cny_rate']/100],'Displayed prices must descend');
+    check(!$r['products'][0]['sellable']&&$r['products'][0]['shop_rating']===4.6&&$r['products'][0]['image']==='','Sold-out, lower-rated and imageless brand items must remain visible');
 }
 unset($_SERVER['REMOTE_ADDR']);
 $before=count($calls);$verified=supplier_detail('tb-710000000000',false,'nike');check(count($calls)===$before&&$verified['product']['vendor_name']==='Reseller','Brand reseller detail must reuse checked cache and preserve seller identity');
@@ -61,8 +66,9 @@ denied(fn()=>supplier_detail('tb-710000000001',false,'nike'),409);
 check(!tw_catalog_product_brand_matches(['title'=>'Nike shoes','shop_name'=>'Nike outlet'], 'nike'),'Title or shop name alone must never establish brand');
 check(tw_catalog_product_brand_matches(['title'=>'Nike shoes','properties'=>[['prop_id'=>20000,'value_name'=>'Nike/耐克']]],'nike'),'Bilingual supplier brand rejected');
 check(!tw_catalog_product_brand_matches(['title'=>'Generic sweater','properties'=>[['prop_id'=>20000,'value_name'=>'ZARA']]],'zara'),'Generic recommendation with isolated brand attribute must be rejected');
+$_SERVER['REMOTE_ADDR']='192.0.2.99';$asc=supplier_search(['brand'=>'nike','page'=>1,'limit'=>12,'sort'=>'price']);check(($asc['products'][0]['mnt']??0)<($asc['products'][1]['mnt']??0),'Explicit ascending sort must still work');unset($_SERVER['REMOTE_ADDR']);
 $legacy=supplier_search(['q'=>'UNIQLO','page'=>1,'limit'=>12]);
-check(($legacy['brand']['id']??'')==='uniqlo'&&count($legacy['products'])===2,'Older app exact brand queries must also use brand attribute verification');
+check(($legacy['brand']['id']??'')==='uniqlo'&&count($legacy['products'])===3,'Older app exact brand queries must also use brand attribute verification');
 $brand=supplier_brand('uniqlo');
 check(!tw_catalog_brand_matches(['shop_name'=>$brand['vendor'],'shop_id'=>$brand['seller']],$brand,true),'Seller ID must not be mistaken for shop ID');
 check(!tw_catalog_brand_matches(['shop_name'=>$brand['vendor']],$brand,true),'Details must include shop ID');

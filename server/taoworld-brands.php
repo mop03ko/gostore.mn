@@ -67,15 +67,15 @@ function tw_catalog_brand_details(array $rows): array {
     }finally{foreach($locks as $h){flock($h,LOCK_UN);fclose($h);}}
 }
 function tw_catalog_brand_selection(string $id,int $page,string $sort,array $filters,bool $display): array {
-    $brand=supplier_brand($id);$sorts=['default'=>'','-updated_time'=>'','price'=>'PRICE_ASC','-price'=>'PRICE_DESC','-volume'=>'SALE_QTY_DESC'];
+    $brand=supplier_brand($id);$sorts=['default'=>'PRICE_DESC','-updated_time'=>'','price'=>'PRICE_ASC','-price'=>'PRICE_DESC','-volume'=>'SALE_QTY_DESC'];
     // Six candidates per page bounds cold verification cost; pagination follows source rows.
-    $params=['keyword'=>tw_catalog_brand_keyword($id),'language'=>'en','page_no'=>(string)$page,'page_size'=>'6','excludeFilters'=>'["used_item","customized_item","offline_seller_item"]'];
+    $params=['keyword'=>tw_catalog_brand_keyword($id),'language'=>'en','page_no'=>(string)$page,'page_size'=>'6'];
     if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
     $search=tw_catalog_cached('/traffic/item/search',$params,false,null,$display);$rows=$search['data']['data']??null;
     if(!is_array($rows))fail('TaoWorld хайлтын хариу дутуу.',502);
     $rows=array_slice($rows,0,6);$more=count($rows)===6&&$page<100;$eligible=[];
     foreach($rows as $row){
-        if(!is_array($row)||(tw_catalog_seller_info($row)['shop_rating']??0)<4.7||!supplier_image((string)($row['main_image_url']??''))||tw_catalog_price($row,false)===null)continue;
+        if(!is_array($row))continue;
         if(!preg_match('/^\d{5,20}$/D',(string)($row['item_id']??''))||empty($row['mi_id']))continue;
         $eligible[(string)$row['item_id']]=$row;
     }
@@ -83,11 +83,15 @@ function tw_catalog_brand_selection(string $id,int $page,string $sort,array $fil
     foreach($eligible as $number=>$row){
         $c=$details['tb-'.$number]??null;if(!$c||!tw_catalog_product_brand_matches($c['data'],$id))continue;
         try{$p=tw_catalog_product($c['data'],true,$c['time']);}catch(ApiError){continue;}
-        if(!$p['sellable']||!$p['image'])continue;
-        $p['brand_id']=$id;$p['brand_name']=$brand['name'];$p['price_expires']=$c['time']+300;$p['shop_rating']=tw_catalog_seller_info($row)['shop_rating'];
+        $p['brand_id']=$id;$p['brand_name']=$brand['name'];$p['price_expires']=$c['time']+300;$p['shop_rating']=tw_catalog_seller_info($row)['shop_rating']??null;
         $products[]=$p;$fetched=min($fetched,$c['time']);
     }
+    if(in_array($sort,['default','-price','price'],true))usort($products,static function($a,$b)use($sort){
+        $pa=$a['mnt']??$a['approx_mnt']??null;$pb=$b['mnt']??$b['approx_mnt']??null;
+        if(($pa===null)!==($pb===null))return $pa===null?1:-1;
+        return $sort==='price'?($pa<=>$pb):($pb<=>$pa);
+    });
     $stale=$search['time']<=time()-TW_CATALOG_SEARCH_TTL;
     return tw_catalog_response(['products'=>$products,'page'=>$page,'page_size'=>6,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more,'partial'=>false,'stale'=>$stale,'revalidate'=>$stale,
-        'brand'=>['id'=>$id,'name'=>$brand['name'],'scope'=>'brand_selection','store_name'=>'Брэндийн сонголт · Дэлгүүрийн үнэлгээ 4.7+','source_url'=>supplier_brand_source_url($id),'minimum_shop_rating'=>4.7]],$fetched,300);
+        'brand'=>['id'=>$id,'name'=>$brand['name'],'scope'=>'brand_selection','store_name'=>'Брэндэд хамаарах бараанууд','source_url'=>supplier_brand_source_url($id)]],$fetched,300);
 }
