@@ -1,12 +1,12 @@
 /* A single scrollable category row, shared across desktop and touch screens. */
-.catalog-category-nav{position:relative;min-width:0;margin:20px 0 12px;background:#fff}
+.catalog-category-nav{position:relative;min-width:0;margin:20px 0 12px;background:var(--theme-surface,#fff)}
 .catalog-category-list{min-height:62px;display:flex;align-items:center;gap:14px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:8px 56px 8px 0;scroll-padding-inline:56px;-webkit-overflow-scrolling:touch}
 .catalog-category-list::-webkit-scrollbar{display:none}
-.catalog-category-list button{flex:none;min-height:46px;padding:11px 20px;border:0;border-radius:999px;background:transparent;color:#46546b;font:inherit;font-size:16px;line-height:24px;white-space:nowrap;cursor:pointer}
-.catalog-category-list button:hover{background:#f4f5f7;color:#101827}
+.catalog-category-list button{flex:none;min-height:46px;padding:11px 20px;border:0;border-radius:999px;background:transparent;color:var(--theme-muted,#46546b);font:inherit;font-size:16px;line-height:24px;white-space:nowrap;cursor:pointer}
+.catalog-category-list button:hover{background:var(--theme-raised,#f4f5f7);color:var(--theme-text,#101827)}
 .catalog-category-list button[aria-pressed=true]{background:#111827;color:#fff;font-weight:600;box-shadow:0 5px 12px #1118270d}
 .catalog-category-list button:focus-visible,.catalog-category-arrow:focus-visible{outline:2px solid #a53b0b;outline-offset:3px}
-.catalog-category-arrow{position:absolute;z-index:1;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:50px;height:50px;padding:0;border:1px solid #e1e5ec;border-radius:50%;background:#fff;color:#111827;box-shadow:0 2px 4px #11182712;cursor:pointer}
+.catalog-category-arrow{position:absolute;z-index:1;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:50px;height:50px;padding:0;border:1px solid var(--theme-border,#e1e5ec);border-radius:50%;background:var(--theme-surface,#fff);color:var(--theme-text,#111827);box-shadow:0 2px 4px #11182712;cursor:pointer}
 .catalog-category-arrow[hidden]{display:none}.catalog-category-arrow[data-catalog-scroll="-1"]{left:0}.catalog-category-arrow[data-catalog-scroll="1"]{right:0}.catalog-category-arrow .icon{width:18px;height:18px}.catalog-category-arrow[data-catalog-scroll="-1"] .icon{transform:rotate(180deg)}
 @media(max-width:760px){.catalog-category-nav{margin:12px 0 6px}.catalog-category-list{min-height:56px;gap:4px;padding-block:6px;padding-right:48px}.catalog-category-list button{min-height:44px;padding:10px 16px;font-size:14px;line-height:24px}.catalog-category-arrow{width:44px;height:44px}}
 
@@ -18,19 +18,19 @@
 .brand-section .section-heading p{font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.5}
 .brand-section .text-button{display:inline-flex;align-items:center;gap:8px;min-height:44px;white-space:nowrap;font-size:13px}
 .brand-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:3px}
-.brand-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:156px;padding:18px 10px;border:1px solid #e1e5ec;border-radius:14px;background:#fff;color:#182331;text-align:center;transition:background .15s,border-color .15s}
+.brand-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:156px;padding:18px 10px;border:1px solid var(--theme-border,#e1e5ec);border-radius:14px;background:var(--theme-surface,#fff);color:var(--theme-text,#182331);text-align:center;transition:background .15s,border-color .15s}
 .brand-logo{display:grid;place-items:center;width:100%;height:64px;margin-bottom:3px}
 .brand-logo img{display:block;width:112px;height:56px;max-width:100%;object-fit:contain}
 .brand-card strong{font-size:15px;line-height:1.2}
-.brand-store-label{font-size:11px;line-height:1.5;color:#637087}
+.brand-store-label{font-size:11px;line-height:1.5;color:var(--theme-muted,#637087)}
 .brand-store-label>span{margin-left:3px}
-.brand-card:hover{background:#fff8f3;border-color:#d8a384}
+.brand-card:hover{background:var(--theme-raised,#fff8f3);border-color:#d8a384}
 .brand-card:focus-visible{outline:2px solid #a53b0b;outline-offset:2px}
-.brand-card[aria-current=true]{background:#fff4ec;border-color:#c45b25;box-shadow:inset 0 0 0 1px #c45b25}
-.supplier-discount{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px;color:#576174}
-.supplier-discount>span{display:inline-block;padding:3px 7px;border-radius:6px;background:#ffefe8;color:#a9380a;font-weight:700}
-.supplier-discount del{color:#737c89}
-.product-offers{padding:15px;margin:16px 0;background:#fff8f3;border:1px solid #f0dccd;border-radius:12px;line-height:1.6;font-size:13px}
-.product-offers h3{font-size:15px;margin:0 0 9px}.product-offers p{margin:6px 0}.product-offers article+article{border-top:1px solid #efd9cc;margin-top:10px;padding-top:10px}.product-offers small{color:#666;display:block}.pd-brand-store{font-size:13px;color:#a53b0b}
+.brand-card[aria-current=true]{background:var(--theme-accent-surface,#fff4ec);border-color:#c45b25;box-shadow:inset 0 0 0 1px #c45b25}
+.supplier-discount{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px;color:var(--theme-muted,#576174)}
+.supplier-discount>span{display:inline-block;padding:3px 7px;border-radius:6px;background:var(--theme-accent-surface,#ffefe8);color:var(--theme-accent,#a9380a);font-weight:700}
+.supplier-discount del{color:var(--theme-muted,#737c89)}
+.product-offers{padding:15px;margin:16px 0;background:var(--theme-raised,#fff8f3);border:1px solid var(--theme-border,#f0dccd);border-radius:12px;line-height:1.6;font-size:13px}
+.product-offers h3{font-size:15px;margin:0 0 9px}.product-offers p{margin:6px 0}.product-offers article+article{border-top:1px solid var(--theme-border,#efd9cc);margin-top:10px;padding-top:10px}.product-offers small{color:var(--theme-muted,#666);display:block}.pd-brand-store{font-size:13px;color:var(--theme-accent,#a53b0b)}
 @media(max-width:760px){.brand-section{padding-top:24px}.brand-section h2{font-size:21px}.brand-section .section-heading{gap:8px}.brand-section .section-heading p{font-size:12px;max-width:230px}.brand-section .text-button{font-size:12px}.brand-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.brand-card{min-height:138px;padding:14px 8px;gap:7px}.brand-logo{height:55px}.brand-logo img{width:100px;height:48px}.brand-card strong{font-size:14px}.brand-store-label{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.brand-card{transition:none}}

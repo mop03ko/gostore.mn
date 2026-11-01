@@ -3,6 +3,10 @@
 <head>
   <script>document.documentElement.classList.toggle("brand-page-view", /^\/brands\/(?:nike|adidas|puma|newbalance|uniqlo|zara|hm|thenorthface|sony|xiaomi|lego|ikea)\/?$/.test(location.pathname));document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
+  <script>
+  // Apply saved appearance before styles paint. Blocked storage falls back to the device.
+  (()=>{let saved;try{saved=localStorage.getItem('gostore-theme');}catch{}const theme=saved==='dark'||(saved!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;})();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <script>
   // Product pages: request the product and its main image while deferred scripts download.
@@ -35,8 +39,8 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="/app.css?v=1c55e6c934fd">
-  <script src="/app.js?v=db86596d2571" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app.css?v=986fe05c0238">
+  <script src="/app.js?v=5f610ef2e596" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"></head>
 <body>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
@@ -68,6 +72,7 @@
       <button class="category-trigger" id="category-trigger" type="button" aria-label="Ангилал" aria-haspopup="dialog" aria-controls="category-menu" aria-expanded="false"><svg class="icon"><use href="#i-grid"/></svg><span>Ангилал</span></button><a class="header-browse" href="/#catalog">Бараанууд</a>
       <form id="search-form" class="search-form" role="search"><span class="search-provider" aria-label="GOStore дэлгүүр">GOStore</span><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" enterkeyhint="search" placeholder="Бүтээгдэхүүний нэрээр хайх…" autocomplete="off"><button type="button" class="image-search-button" data-image-search hidden aria-label="Зургаар хайх" title="Зургаар хайх"><svg class="icon"><use href="#i-camera"/></svg></button><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
       <div class="header-actions">
+        <button type="button" class="header-action theme-toggle" data-theme-toggle aria-label="Dark Mode" aria-pressed="false" title="Бараан горимд шилжих"><svg class="icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
         <button class="header-action mobile-notifications" data-notifications aria-label="Мэдэгдэл"><span class="icon-wrap"><svg class="icon"><use href="#i-bell"/></svg><span data-notification-count></span></span></button>
         <button class="header-action" data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button>
         <button class="header-action" data-action="orders" aria-label="Миний ачаа"><svg class="icon"><use href="#i-box"/></svg><span>Миний ачаа</span></button>
