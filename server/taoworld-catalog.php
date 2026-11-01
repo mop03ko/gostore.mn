@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/taoworld-auth.php';
 require_once __DIR__.'/taoworld-brands.php';
+require_once __DIR__.'/official-stores.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
@@ -213,6 +214,7 @@ function tw_catalog_recommend(string $id,int $limit=24): array {
     return tw_catalog_response(['products'=>array_slice(tw_catalog_cards($rows,$time),0,$limit)],$time,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_search(array $b,bool $display=false): array {
+    if(!empty($b['shop']))return official_store_products($b,$display&&empty($b['refresh']));
     tw_catalog_require_ready();
     $limit=supplier_page_size($b);$page=int_field($b,'page',1,100);$q=str_field($b,'q',100,false)?:'home storage';
     $refresh=isset($b['refresh'])?int_field($b,'refresh',0,1):0;

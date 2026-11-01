@@ -29,7 +29,7 @@ export default function ProductScreen() {
   const inset = useSafeAreaInsets();
   const [sheet, setSheet] = useState(false),
     [intent, setIntent] = useState<"cart" | "buy">("cart");
-  const { id, brand } = useLocalSearchParams<{ id: string; brand?: string }>(),
+  const { id, brand, shop } = useLocalSearchParams<{ id: string; brand?: string; shop?: string }>(),
     { cart, saveCart, shipping, cartReady } = useStore();
   const [product, setProduct] = useState<Product | null>(null),
     [sku, setSku] = useState(""),
@@ -44,7 +44,7 @@ export default function ProductScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProduct(null);
     setError("");
-    void catalog<{ product: Product }>("supplier-product", { id, ...(brand ? { brand } : {}) }, c.signal)
+    void catalog<{ product: Product }>("supplier-product", { id, ...(shop ? { shop } : {}), ...(brand ? { brand } : {}) }, c.signal)
       .then((r) => {
         if (c.signal.aborted) return;
         setProduct(r.product);
@@ -56,7 +56,7 @@ export default function ProductScreen() {
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [id, brand, retry]);
+  }, [id, brand, shop, retry]);
   const variant = product?.variants.find((v) => v.id === sku),
     rate = shipping?.cny_rate || 0;
   async function add() {

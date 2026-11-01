@@ -17,7 +17,8 @@ export default function Root() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="brands" options={{ title: "Дэлхийн брэндүүд", headerTransparent: false }} />
+        <Stack.Screen name="official-stores" options={{ title: "Албан ёсны дэлгүүрүүд", headerTransparent: false }} />
+        <Stack.Screen name="brands" options={{ title: "Албан ёсны дэлгүүрүүд", headerTransparent: false }} />
         <Stack.Screen name="brand/[id]" options={{ title: "Албан ёсны дэлгүүр" }} />
         <Stack.Screen
           name="product/[id]"

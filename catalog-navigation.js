@@ -24,32 +24,6 @@
   row.addEventListener('scroll',arrows,{passive:true});new ResizeObserver(arrows).observe(row);document.fonts.ready.then(arrows);arrows();
 })();
 
-// Brand selections and seller ratings are checked on the server.
-(()=>{
-  const brands=[
-    {id:'nike',name:'Nike',shop:'nike'},
-    {id:'adidas',name:'adidas',shop:'adidas'},
-    {id:'puma',name:'Puma',shop:'puma'},
-    {id:'newbalance',name:'New Balance',shop:'newbalance'},
-    {id:'uniqlo',name:'UNIQLO',shop:'uniqlo'},
-    {id:'zara',name:'ZARA',shop:'zara'},
-    {id:'hm',name:'H&M',shop:'hm'},
-    {id:'thenorthface',name:'The North Face',shop:'thenorthface'},
-    {id:'sony',name:'Sony',shop:'sony'},
-    {id:'xiaomi',name:'Xiaomi',shop:'xiaomi'},
-    {id:'lego',name:'LEGO',shop:'lego'},
-    {id:'ikea',name:'IKEA',shop:'ikea'}
-  ];
-  window.supplierBrands=brands;
-  window.supplierBrandHref=id=>'/brands/'+encodeURIComponent(id);
-  const section=document.querySelector('#brands');if(!section)return;
-  // index.html pre-renders the same cards; rebuild only if they are missing.
-  const grid=section.querySelector('.brand-grid');
-  if(grid.querySelectorAll('[data-brand]').length!==brands.length)grid.innerHTML=brands.map(b=>`<a class="brand-card" data-brand="${b.id}" href="${window.supplierBrandHref(b.id)}" aria-label="${esc(b.name)} брэндийн бараа үзэх"><span class="brand-logo"><img src="/assets/brands/${b.id}.svg" alt="" width="112" height="56" loading="lazy" decoding="async"></span><strong>${esc(b.name)}</strong></a>`).join('');
-  window.syncSupplierBrands=id=>section.querySelectorAll('[data-brand]').forEach(a=>{if(a.dataset.brand===id)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
-  section.addEventListener('click',e=>{
-    const link=e.target.closest('[data-brand],[data-brand-all]');if(!link)return;
-    if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||!!link.dataset.brand||typeof window.supplierBrowse!=='function')return;
-    e.preventDefault();window.supplierBrowse('__all__',false,'all');scrollCatalog();
-  });
-})();
+// Legacy product links route to the replacement store directory.
+window.supplierBrands=[];
+window.supplierBrandHref=()=>'/official-stores';

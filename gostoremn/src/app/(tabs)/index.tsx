@@ -16,8 +16,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
 import { HomeDiscovery } from "@/components/discovery";
-import { brands } from "@/lib/brands";
-import { BrandMark, BrandShelf } from "@/components/brands";
+import { OfficialStores } from "@/components/official-stores";
 import { api, catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
@@ -114,11 +113,6 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     return () => controller.abort();
   }, [query, page, sort, image, retry]);
   const search = (value: string) => {
-    const selectedBrand = brands.find(b => [b.id, b.name.toLowerCase()].includes(value.trim().toLowerCase()));
-    if (selectedBrand) {
-      router.push({ pathname: "/brand/[id]", params: { id: selectedBrand.id } });
-      return;
-    }
     setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
@@ -291,13 +285,11 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
             <HomeDiscovery onSearch={search} />
-            <BrandShelf />
+            <OfficialStores compact />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
-              {brands.filter(b => b.name.toLowerCase() === query.toLowerCase()).map(b => <BrandMark key={b.id} brand={b} size={38} />)}
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Брэнд солих" onPress={() => router.push("/brands")} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: 12, color: colors.accentText }}>Брэндүүд ›</Text></Pressable>
             </View>}
             <View
               style={{

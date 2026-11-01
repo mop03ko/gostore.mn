@@ -109,7 +109,7 @@
     if(preview){root.innerHTML=`<div class="pd-preview" aria-busy="true">${preview.image&&/^https:\/\//.test(preview.image)?`<img ${supplierImageAttrs(preview.image,800)} alt="${esc(preview.name)}" referrerpolicy="no-referrer" fetchpriority="high">`:''}<div><span class="section-kicker">БАРААНЫ МЭДЭЭЛЭЛ</span><h1>${esc(preview.name)}</h1>${preview.mnt?`<p class="product-price">${money(preview.mnt)}</p>`:''}<p role="status">Өнгө, хэмжээ, үнэ, үлдэгдлийг шалгаж байна…</p><p class="pd-muted">Сонголтууд ачаалсны дараа худалдан авах боломжтой.</p></div></div>`;}
     else stateMessage('Барааны мэдээлэл ачаалж байна…','Үнэ, сонголт, зургуудыг авч байна.');
     try{
-      if(supplier){details=await supplierApi('supplier-product',{id,...(initialFilters.get('brand')?{brand:initialFilters.get('brand')}:{})});product=details.product;}
+      if(supplier){details=await supplierApi('supplier-product',{id,...(initialFilters.get('shop')?{shop:initialFilters.get('shop')}:{}),...(initialFilters.get('brand')?{brand:initialFilters.get('brand')}:{})});product=details.product;}
       else{await window.catalogReady;if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');product=products.find(p=>p.id===id);details={};if(!product){stateMessage('Бараа олдсонгүй','Энэ бараа устгагдсан эсвэл худалдаанд байхгүй байна.');return;}}
       render();
     }catch(error){stateMessage(error.status===404?'Бараа олдсонгүй':'Мэдээлэл авах боломжгүй',error.message,error.status!==404);}

@@ -112,5 +112,23 @@ $before=count($calls);settings(['supplier_enabled'=>false]);denied(fn()=>supplie
 $health=supplier_snapshot_health();check($health['provider']==='taoworld'&&$health['search_ttl']===1800&&!isset($health['cron_overdue']),'Native health reports legacy snapshot cron');
 $_SERVER['REMOTE_ADDR']='192.0.2.55';for($i=0;$i<30;$i++)limit_attempts('supplier-ip-minute:192.0.2.55',30,60);
 $before=count($calls);$budget=supplier_budget_status()['used'];denied(fn()=>supplier_search(['q'=>'rate limited cold','page'=>1]),429);check(count($calls)===$before&&supplier_budget_status()['used']===$budget,'Rate-limited call reached provider or spent daily quota');supplier_search(['q'=>'box','page'=>1]);check(count($calls)===$before,'Rate limit blocked cached browsing');unset($_SERVER['REMOTE_ADDR']);
+// Official directory uses a bounded verified registry, never a keyword fallback.
+$_SERVER['REMOTE_ADDR']='192.0.2.200';
+$before=count($calls);$directory=official_stores_directory();
+check(count($directory['stores'])===12&&!$directory['all_platform_stores']&&!$directory['incomplete'],'Directory coverage must be explicit');
+check(count($calls)===$before+12,'Each cold shop must use one native request');
+foreach($directory['stores'] as $store){check(count($store['products'])===4&&!isset($store['verification']),'Public previews and private registry metadata');foreach($store['products'] as $product)check($product['official_shop_id']===$store['id'],'Preview lost store context');}
+$before=count($calls);official_stores_directory();$storePage=supplier_search(['shop'=>'71955116','page'=>1]);
+check(count($calls)===$before&&count($storePage['products'])===17&&$storePage['more'],'Directory and store must share cache and reject mismatched sellers');
+check($storePage['store']['id']==='71955116','Store identity missing');
+denied(fn()=>supplier_search(['shop'=>'99999999','page'=>1]),404);
+denied(fn()=>official_store_detail('tb-700000000000','71955116'),409);
+$shop=official_store('71955116');$shopFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',official_store_query($shop)).'.json';
+$shopCache=supplier_snapshot_read($shopFile);$shopCache['time']=time()-1801;supplier_snapshot_write($shopFile,$shopCache);$before=count($calls);
+$old=official_store_products(['shop'=>$shop['id'],'page'=>1],true);check($old['stale']&&$old['revalidate']&&count($calls)===$before,'Display cache must request revalidation');
+$error=true;$partial=official_stores_directory();check($partial['incomplete']&&count($partial['stores'])===11&&$partial['cache_ttl']===0,'Partial outage must preserve successful shops and permit retry');$error=false;
+$shopCache=['time'=>time(),'data'=>['data'=>[]]];supplier_snapshot_write($shopFile,$shopCache);
+$empty=official_stores_directory();check(count($empty['stores'])===11&&!$empty['incomplete'],'Empty stores must not be shown or replaced by keyword products');
+unset($_SERVER['REMOTE_ADDR']);
 $state=taoworld_state();$state['account_id']='another-buyer';taoworld_store($state);denied(fn()=>supplier_detail('tb-700000000000'),409);
 echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search; no OT calls.\n";

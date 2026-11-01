@@ -20,7 +20,7 @@ export function CategoryPhoto({ image, size = 64 }: { image: string; size?: numb
 export function DiscoveryCard({ product: p }: { product: Product }) {
   const colors = usePalette();
   const s = createStyles(colors);
-  return <Pressable accessibilityRole="button" accessibilityLabel={p.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.brand_id ? { brand: p.brand_id } : {}) } })} style={s.card}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={p.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.official_shop_id ? { shop: p.official_shop_id } : p.brand_id ? { brand: p.brand_id } : {}) } })} style={s.card}>
     <Image source={p.image || undefined} contentFit="cover" recyclingKey={p.id} style={{ width: "100%", aspectRatio: 1 }} />
     <View style={{ padding: 8, gap: 5 }}><Text numberOfLines={2} style={s.name}>{p.name}</Text><Text style={s.price}>{p.mnt ? money(p.mnt) : p.approx_mnt ? "≈ " + money(p.approx_mnt) : "Үнэ шалгах"}</Text>{p.brand_id && p.shop_rating ? <Text style={s.note}>Дэлгүүрийн үнэлгээ {p.shop_rating}/5</Text> : null}</View>
   </Pressable>;

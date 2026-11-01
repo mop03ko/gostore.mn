@@ -2,6 +2,10 @@
 
 Updated 2026-11-02.
 
+The customer-facing brand section has been replaced by the [official store
+directory](official-stores.md). The implementations below are historical or retained
+only for older-client API compatibility.
+
 ## Current TaoWorld brand selections
 
 Brand pages now include sellers beyond the flagship. Search candidates are fetched

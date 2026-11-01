@@ -1,0 +1,98 @@
+[
+  {
+    "id": "71955116",
+    "name": "NIKE官方旗舰店",
+    "display_name": "Nike Official Store",
+    "logo": "/assets/brands/nike.svg",
+    "source_url": "https://nike.world.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "62147762",
+    "name": "adidas官方旗舰店",
+    "display_name": "adidas Official Store",
+    "logo": "/assets/brands/adidas.svg",
+    "source_url": "https://shop62147762.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "67920715",
+    "name": "PUMA官方旗舰店",
+    "display_name": "Puma Official Store",
+    "logo": "/assets/brands/puma.svg",
+    "source_url": "https://shop67920715.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "62847409",
+    "name": "New Balance官方旗舰店",
+    "display_name": "New Balance Official Store",
+    "logo": "/assets/brands/newbalance.svg",
+    "source_url": "https://shop62847409.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "57303596",
+    "name": "优衣库官方旗舰店",
+    "display_name": "UNIQLO Official Store",
+    "logo": "/assets/brands/uniqlo.svg",
+    "source_url": "https://shop57303596.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "113462750",
+    "name": "ZARA官方旗舰店",
+    "display_name": "ZARA Official Store",
+    "logo": "/assets/brands/zara.svg",
+    "source_url": "https://zara.world.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "548921262",
+    "name": "HM官方旗舰店",
+    "display_name": "H&M Official Store",
+    "logo": "/assets/brands/hm.svg",
+    "source_url": "https://shop548921262.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "72854802",
+    "name": "The North Face官方旗舰店",
+    "display_name": "The North Face Official Store",
+    "logo": "/assets/brands/thenorthface.svg",
+    "source_url": "https://shop72854802.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "69451464",
+    "name": "索尼官方旗舰店",
+    "display_name": "Sony Official Store",
+    "logo": "/assets/brands/sony.svg",
+    "source_url": "https://shop69451464.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "104736810",
+    "name": "小米官方旗舰店",
+    "display_name": "Xiaomi Official Store",
+    "logo": "/assets/brands/xiaomi.svg",
+    "source_url": "https://shop104736810.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "69029026",
+    "name": "乐高官方旗舰店",
+    "display_name": "LEGO Official Store",
+    "logo": "/assets/brands/lego.svg",
+    "source_url": "https://shop69029026.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  },
+  {
+    "id": "211307870",
+    "name": "IKEA宜家家居官方旗舰店",
+    "display_name": "IKEA Official Store",
+    "logo": "/assets/brands/ikea.svg",
+    "source_url": "https://shop211307870.tmall.com/category.htm",
+    "verification": "Previously checked flagship identity; see docs/brand-storefronts.md"
+  }
+]
