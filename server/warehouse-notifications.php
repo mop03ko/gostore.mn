@@ -86,7 +86,7 @@ function warehouse_push_revoke_session(): void {
 }
 function warehouse_push_delivery(): array {
     warehouse_notice_schema(db());
-    $header=$_SERVER['HTTP_AUTHORIZATION']??'';
+    $header=isset($_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN'])?'Bearer '.$_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN']:($_SERVER['HTTP_AUTHORIZATION']??'');
     if(!preg_match('/^Bearer ([a-f0-9]{64})$/D',$header,$m))fail('Push эрх хүчингүй.',401);
     $s=db()->prepare('SELECT * FROM warehouse_push_devices WHERE token_hash=?');$s->execute([hash('sha256',$m[1])]);$device=$s->fetch();
     if(!$device||!warehouse_push_device_active($device))fail('Push эрх хүчингүй.',401);
@@ -94,7 +94,7 @@ function warehouse_push_delivery(): array {
     $result['notifications']=array_slice($result['notifications'],0,5);return $result;
 }
 function warehouse_push_revoke_token(): array {
-    warehouse_notice_schema(db());$header=$_SERVER['HTTP_AUTHORIZATION']??'';
+    warehouse_notice_schema(db());$header=isset($_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN'])?'Bearer '.$_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN']:($_SERVER['HTTP_AUTHORIZATION']??'');
     if(!preg_match('/^Bearer ([a-f0-9]{64})$/D',$header,$m))fail('Push эрх хүчингүй.',401);
     db()->prepare('DELETE FROM warehouse_push_devices WHERE token_hash=?')->execute([hash('sha256',$m[1])]);return ['ok'=>true];
 }

@@ -19,9 +19,14 @@ revocable, device-scoped bearer token. It never caches pages or API responses an
 never sends customer names, phone numbers or order contents to a push provider.
 The notification opens the authenticated warehouse order screen.
 
-Server support: PHP OpenSSL and cURL. A P-256 VAPID key is generated once in private
+Server support: PHP OpenSSL and cURL. A P-256 VAPID key is kept in private
 `data_dir/warehouse-vapid.json` (outside public_html, mode 0600). Back up this file;
 replacing it requires browsers to subscribe again. Only its public key is exposed.
+The live host could sign EC keys but failed EC key generation, so its key was
+generated locally and provisioned over verified FTPS with mode 0600; live signing
+was then verified. The scoped token uses `X-GOStore-Push-Token` because this host
+does not forward the standard Authorization header to PHP. Authorization remains
+accepted for other environments.
 Push POSTs use RFC 8030 empty bodies and RFC 8292 VAPID authentication; no payload
 encryption library is needed because the provider receives no payload. Redirects
 are disabled and only known browser push-service hosts are accepted.
