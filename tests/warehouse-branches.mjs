@@ -26,7 +26,7 @@ assert.equal((await admin('warehouse-assign-order',{...assignment,ulaanbaatar:de
 assert.equal((await admin('warehouse-assign-order',assignment)).status,200);
 assert.equal((await admin('warehouse-assign-order',assignment)).status,409,'Stale routing rejected');
 assert.equal((await cn('warehouse-order&id='+other)).status,404);assert.equal((await oldCn('warehouse-order&id='+id)).status,404);
-assert.equal((await ub('warehouse-order&id='+id)).status,404,'Receiving warehouse cannot read early customer data');
+const early=(await ub('warehouse-order&id='+id)).order;assert.equal(early.status,'confirmed');assert.equal(early.read_only,true);assert.equal(early.contact,undefined);assert.equal((await oldUb('warehouse-order&id='+id)).status,404,'Other destination cannot see early order');
 assert.equal((await ub('warehouse-orders')).overview.ordered.orders,1,'Planning counts scoped to assigned branch');
 let profile=(await admin('dashboard')).warehouse_profiles[definitions.ulaanbaatar];
 assert.equal((await admin('warehouse-profile-save',{...profile,active:false})).status,409,'Cannot disable with open orders');

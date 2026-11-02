@@ -67,7 +67,7 @@ function logistics_post(string $action,array $b,string $location): never {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
-        if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);
+        if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         $l=logistics_state($o);
         if(int_field($b,'expected_version',0,PHP_INT_MAX)!==$l['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
         if(in_array($o['status'],['completed','cancelled'],true))fail('Дууссан захиалгыг өөрчлөхгүй.',409);
@@ -117,7 +117,7 @@ function logistics_exception_photos(string $id): array {
 }
 function logistics_photo_upload(bool $exception=false): never {
     warehouse_required();$id=str_field($_POST,'id',50);$location=warehouse_session_location();
-    if($exception)logistics_exception($id,$location);else{$o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);}
+    if($exception)logistics_exception($id,$location);else{$o=order_row($id)['order'];if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);}
     $f=$_FILES['image']??null;if(!$f||$f['error']!==UPLOAD_ERR_OK||$f['size']>5*1024*1024)fail('5 MB хүртэл зураг сонгоно уу.');
     $info=@getimagesize($f['tmp_name']);if(!$info||!in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true)||$info[0]*$info[1]>12000000)fail('JPEG, PNG, WebP зураг (12 MP хүртэл) оруулна уу.');
     if(!function_exists('imagecreatefromstring'))fail('GD өргөтгөл шаардлагатай.',503);
@@ -134,7 +134,7 @@ function logistics_photo_upload(bool $exception=false): never {
             $db->prepare('INSERT INTO warehouse_exception_photos VALUES (?,?,?)')->execute([$photo,$id,gmdate('c')]);
         }else{
         $o=order_row($id)['order'];$l=logistics_state($o);
-        if(!warehouse_order_visible($o,$location)||in_array($o['status'],['completed','cancelled'],true))fail('Зураг нэмэх боломжгүй.',409);
+        if(!warehouse_order_operable($o,$location)||in_array($o['status'],['completed','cancelled'],true))fail('Зураг нэмэх боломжгүй.',409);
         if((string)$l['version']!==($_POST['expected_version']??''))fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
         $allowed=warehouse_role($location)==='erenhot'?['confirmed','shipping','erenhot','erenhot_ready']:['erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'];
         if(!in_array($o['status'],$allowed,true))fail('Энэ төлөвт агуулахын зураг нэмэх боломжгүй.',409);

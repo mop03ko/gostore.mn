@@ -100,6 +100,14 @@ function warehouse_required(): void {
     if(!warehouse_authenticated())fail('Агуулахын эрхээр нэвтэрнэ үү.',401);
 }
 function warehouse_order_visible(array $o,string $location='erenhot'): bool {
+    if(warehouse_order_operable($o,$location))return true;
+    return warehouse_role($location)==='ulaanbaatar'
+        && warehouse_order_location($o,'ulaanbaatar')===$location
+        && in_array('Улаанбаатар',$o['route']??[],true)
+        && in_array($o['status'],['confirmed','shipping','erenhot','erenhot_ready','erenhot_dispatched'],true);
+}
+// Operational access stays narrower than visibility: early UB tracking is read-only.
+function warehouse_order_operable(array $o,string $location='erenhot'): bool {
     if(warehouse_order_location($o,warehouse_role($location))!==$location)return false;
     if(warehouse_role($location)==='erenhot')return in_array('Эрээн',$o['route']??[],true);
     if(!in_array('Улаанбаатар',$o['route']??[],true))return false;
@@ -109,6 +117,7 @@ function warehouse_order_visible(array $o,string $location='erenhot'): bool {
 }
 function warehouse_order_public(array $o,string $location='erenhot'): array {
     $result=array_intersect_key($o,array_flip(['id','title','customer','status','created','warehouse','batch_id']));
+    $result['read_only']=!warehouse_order_operable($o,$location);
     $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
     $result['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
     $result['items']=array_map(fn($item)=>array_intersect_key($item,array_flip(['name','variant','qty'])),$items);
@@ -116,7 +125,8 @@ function warehouse_order_public(array $o,string $location='erenhot'): array {
     $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
     $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o);
-    if(warehouse_role($location)==='ulaanbaatar'){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
+    if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
+    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['requested_method']=$o['fulfillment_request']['method']??null;
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
@@ -127,7 +137,7 @@ function warehouse_order_public(array $o,string $location='erenhot'): array {
         : match($o['status']){'confirmed','shipping'=>'erenhot',default=>null});
     return $result;
 }
-// Read-only totals for UB planning; these do not grant access to early-stage orders.
+// Totals for UB planning are independent of list filters and pagination.
 function warehouse_overview_add(array &$overview,array $order): void {
     if(($order['status']??'')==='cancelled')return;
     $items=isset($order['supplier'])?[$order['supplier']]:($order['items']??[]);
@@ -199,7 +209,7 @@ function warehouse_post(string $action,array $b): never {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         warehouse_required();
-        $o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);
+        $o=order_row($id)['order'];if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         if($o['status']!==$expected)fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
         if(warehouse_order_public($o,$location)['next_status']!==$status)fail('Энэ захиалгыг сонгосон төлөвт шилжүүлэх боломжгүй.',409);
         logistics_receipt_photo_required($o,$location);

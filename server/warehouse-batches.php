@@ -63,7 +63,7 @@ function warehouse_batch_add(array $batch,array $ids): void {
     $lookup=db()->prepare('SELECT batch_id FROM shipment_batch_orders WHERE order_id=?');
     foreach($ids as $id){
         $o=order_row($id)['order'];
-        if(!warehouse_order_visible($o,$batch['source']??'erenhot')||$o['status']!=='erenhot')fail('Зөвхөн Эрээнд ирсэн захиалгыг багцлана.',409);
+        if(!warehouse_order_operable($o,$batch['source']??'erenhot')||$o['status']!=='erenhot')fail('Зөвхөн Эрээнд ирсэн захиалгыг багцлана.',409);
         if(warehouse_order_location($o,'ulaanbaatar')!==($batch['destination']??'ulaanbaatar'))fail('Нэг багцын захиалгууд ижил хүлээн авах агуулахтай байна.',409);
         $lookup->execute([$id]);if($lookup->fetchColumn())fail('Захиалга өөр багцад бүртгэлтэй байна.',409);
         db()->prepare('INSERT INTO shipment_batch_orders VALUES (?,?)')->execute([$id,$batch['id']]);$o['batch_id']=$batch['id'];save_order($o);
@@ -145,7 +145,7 @@ function warehouse_fulfillment(array $b,string $location): never {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
-        if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);
+        if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         if(str_field($b,'expected_status',30)!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
         if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
         if($action==='sort'){

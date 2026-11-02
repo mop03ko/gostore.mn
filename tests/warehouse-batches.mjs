@@ -45,6 +45,8 @@ assert.equal((await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:
 let prepared=await cn('warehouse-batch-ready',{id:batch.id,expected_version:batch.version});assert.equal(prepared.status,200);batch=prepared.batch;
 assert.equal(batch.status,'ready');assert.ok(batch.ready_at);assert.equal(batch.dispatched_at,undefined);assert.ok(batch.orders.every(o=>o.status==='erenhot_ready'));
 await checkTracking('erenhot_ready');assert.equal((await cn('warehouse-orders&status=erenhot_ready')).counts.ready,2);
+const ubReady=await ub('warehouse-orders&status=erenhot_ready');assert.equal(ubReady.total,2);assert.ok(ubReady.orders.every(o=>o.read_only&&o.next_status===null));
+assert.equal((await ub('warehouse-order&id='+ids[0])).order.status,'erenhot_ready','UB can track a packed order before dispatch');
 assert.equal((await ub('warehouse-batch&id='+batch.id)).status,404,'Ready batch has not left Erenhot');
 assert.equal((await admin('order-update',{id:ids[0],status:'erenhot_dispatched',amount:99000,internal_note:''})).status,409,'Admin cannot skip manual dispatch');
 for(const action of ['add','remove','cancel'])assert.equal((await cn('warehouse-batch-'+action,{id:batch.id,expected_version:batch.version,order_ids:[ids[2]],order_id:ids[0]})).status,409,'Reopen required for packed membership edits');
