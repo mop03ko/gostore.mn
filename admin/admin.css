@@ -29,3 +29,45 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 /* White artwork sits directly on dark login panels. */
 .login-brand img[src$="logo-white.svg"]{background:transparent;padding:0;border-radius:0;height:auto}
+
+/* Keep order controls visible even with long supplier titles. */
+.admin-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.orders-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,230px) auto;gap:12px;margin-bottom:18px}
+.orders-toolbar input,.orders-toolbar select{max-width:none;min-height:46px}
+.orders-toolbar .quiet{white-space:nowrap;min-height:46px}
+.orders-panel .panel-heading{padding:18px 20px;gap:12px}
+.orders-panel .panel-heading h3{font-size:18px;line-height:26px}
+.orders-panel .panel-heading>.muted{font-size:13px;white-space:nowrap;background:#f3f6fc;border-radius:20px;padding:4px 10px}
+.orders-table{table-layout:fixed;white-space:normal}
+.order-col-main{width:32%}.order-col-customer{width:18%}.order-col-amount{width:18%}.order-col-status{width:20%}.order-col-action{width:12%}
+.orders-table th{padding:12px 14px;font-size:12px;line-height:18px}
+.orders-table td{padding:14px;vertical-align:middle;font-size:14px;line-height:20px;overflow-wrap:anywhere}
+.order-heading{display:flex;align-items:baseline;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;margin-bottom:5px}
+.orders-table .order-code{display:block;font-size:14px;line-height:20px;font-variant-numeric:tabular-nums}
+.order-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;color:#566580;font-size:13px;line-height:19px}
+.order-date{display:block;color:#788397;font-size:12px;line-height:18px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.orders-table small{font-size:12px;line-height:18px;margin-top:5px}
+.order-customer>span{display:block;overflow-wrap:anywhere}.order-customer small{font-variant-numeric:tabular-nums}
+.order-amount>strong{font-size:14px;font-variant-numeric:tabular-nums}.order-payment.is-paid{color:#17634e}
+.orders-table .tag{white-space:normal;font-size:12px;line-height:18px;padding:5px 8px;overflow-wrap:anywhere;max-width:100%;text-align:left}
+.orders-table .order-action{text-align:right}.order-action .quiet{padding:8px 10px;min-height:44px;font-size:13px;white-space:nowrap}
+@media(min-width:761px){
+ .app{grid-template-columns:240px minmax(0,1fr)}.app>aside{padding:24px 16px;overflow-y:auto}.app .logo img{width:176px;margin-bottom:26px}
+ .app>.main>header{padding:20px 28px;margin-bottom:0}.app>.main>header h1{font-size:24px;line-height:32px}
+ .app>.main>main{padding:24px 28px}.app>.main>footer{padding-inline:28px}
+}
+@media(min-width:761px) and (max-width:1200px){.app{grid-template-columns:220px minmax(0,1fr)}.app>.main>header,.app>.main>main{padding:20px}.orders-table td,.orders-table th{padding-inline:10px}}
+@media(max-width:1050px){
+ .orders-table-wrap{overflow:visible}.orders-table,.orders-table tbody{display:block;width:100%}.orders-table colgroup{display:none}
+ .orders-table thead{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0)}
+ .orders-table tbody{display:grid;gap:12px;padding:12px;background:#f8faff}
+ .orders-table tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"main main" "customer amount" "status action";gap:14px 16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff;min-width:0}
+ .orders-table td{display:block;padding:0;border:0;min-width:0;max-width:none}
+ .orders-table .order-main{grid-area:main;border-bottom:1px solid var(--line);padding-bottom:12px}.order-customer{grid-area:customer}.order-amount{grid-area:amount}.order-status{grid-area:status}.order-action{grid-area:action;align-self:end}
+ .orders-table td[data-label]::before{content:attr(data-label);display:block;font-size:11px;line-height:16px;color:#64748b;margin-bottom:5px}
+ .orders-table .order-title{-webkit-line-clamp:2}.orders-table .order-action .quiet{min-width:90px}
+}
+@media(max-width:760px){
+ .orders-toolbar{grid-template-columns:minmax(0,1fr) auto;gap:10px}.orders-toolbar input{grid-column:1/-1}.orders-toolbar select{width:100%}
+ .orders-panel .panel-heading{padding:15px}.orders-panel .panel-heading h3{font-size:17px;line-height:24px}.orders-table tbody{padding:10px;gap:10px}.orders-table tr{padding:13px;gap:12px}
+}
