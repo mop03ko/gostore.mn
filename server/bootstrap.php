@@ -151,9 +151,14 @@ function order_row(string $id): array {
     if (!$r) fail('Захиалга олдсонгүй.',404); $r['order']=json_decode($r['data'],true); return $r;
 }
 function save_order(array $o): void {
-    $old=function_exists('logistics_notify')?order_row($o['id'])['order']:null;
+    $old=(function_exists('logistics_notify')||function_exists('warehouse_notice_record'))?order_row($o['id'])['order']:null;
+    db()->exec('SAVEPOINT save_order_write');
+    try{
     db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]);
     if(function_exists('logistics_notify'))logistics_notify($o,$old);
+    if(function_exists('warehouse_notice_record'))warehouse_notice_record($o,$old);
+    db()->exec('RELEASE SAVEPOINT save_order_write');
+    }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT save_order_write');db()->exec('RELEASE SAVEPOINT save_order_write');throw $e;}
 }
 function public_order(array $o): array {
     unset($o['quote']['domestic'],$o['quote']['verified_until']);

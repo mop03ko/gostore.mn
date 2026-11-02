@@ -1,6 +1,6 @@
 const {spawn,spawnSync}=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),net=require('node:net'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),php=path.join(root,'tmp/tooling/php/php.exe'),node=process.execPath;
-const args=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','extension=pdo_sqlite','-d','extension=mbstring','-d','extension=curl','-d','extension=gd'];
+const args=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','extension=pdo_sqlite','-d','extension=mbstring','-d','extension=curl','-d','extension=gd','-d','extension=openssl'];
 async function run(test){
   const data=path.join(root,'tmp/warehouse-test-'+crypto.randomBytes(8).toString('hex'));fs.mkdirSync(data,{recursive:true});
   const hash=spawnSync(php,[],{cwd:root,input:"<?php $b=json_decode(file_get_contents('tmp/admin-preview.json'),true);echo password_hash($b['password'],PASSWORD_BCRYPT);",encoding:'utf8'});if(hash.status!==0)throw Error('Test credential setup failed');

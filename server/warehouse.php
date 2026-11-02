@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/warehouse-notifications.php';
 
 // A warehouse has an immutable operational role and an independent manager session.
 function warehouse_definitions(): array {
@@ -152,6 +153,8 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
     $location=warehouse_session_location();
+    if($action==='warehouse-notifications'){warehouse_push_schedule();json_out(warehouse_notice_list($location));}
+    if($action==='warehouse-push-config')json_out(['public_key'=>warehouse_push_keys()['public'],'native_configured'=>false]);
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
     if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
@@ -196,9 +199,16 @@ function warehouse_post(string $action,array $b): never {
         session_regenerate_id(true);$_SESSION['warehouse_version']=$a['version'];$_SESSION['warehouse_location']=$location;$_SESSION['csrf']=bin2hex(random_bytes(32));
         json_out(['ok'=>true,'location'=>$location,'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     }
-    if($action==='warehouse-logout'){$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
+    if($action==='warehouse-logout'){warehouse_push_revoke_session();$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
     warehouse_required();
     $location=warehouse_session_location();
+    if($action==='warehouse-push-subscribe')json_out(warehouse_push_subscribe($b,$location));
+    if($action==='warehouse-push-unsubscribe'){
+        warehouse_notice_schema(db());db()->prepare('DELETE FROM warehouse_push_devices WHERE id=? AND location=? AND session_hash=?')->execute([str_field($b,'id',64),$location,hash('sha256',session_id())]);json_out(['ok'=>true]);
+    }
+    if($action==='warehouse-notifications-read'){
+        warehouse_notice_schema(db());$through=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE warehouse_notifications SET read_at=? WHERE location=? AND id<=? AND read_at IS NULL')->execute([gmdate('c'),$location,$through]);json_out(['ok'=>true]);
+    }
     if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm','warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);
     if($action==='warehouse-fulfillment-update')warehouse_fulfillment($b,$location);

@@ -1,7 +1,7 @@
 // Run all checks locally, with disposable data and provider network access disabled.
 const {spawnSync}=require('node:child_process'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),php=path.join(root,'tmp/tooling/php/php.exe'),node=process.execPath;
-const phpArgs=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','extension=pdo_sqlite','-d','extension=mbstring','-d','extension=curl','-d','extension=gd'];
+const phpArgs=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','extension=pdo_sqlite','-d','extension=mbstring','-d','extension=curl','-d','extension=gd','-d','extension=openssl'];
 let failures=0;
 function run(command,args,label){const r=spawnSync(command,args,{cwd:root,encoding:'utf8',windowsHide:true,maxBuffer:4*1024*1024});if(r.status!==0){failures++;console.error('FAIL '+label+'\n'+(r.stdout||'')+(r.stderr||r.error||''));}else if(r.stdout)process.stdout.write(r.stdout);}
 const listing=spawnSync('git',['ls-files','-z'],{cwd:root,encoding:'utf8'});if(listing.status!==0)throw Error('Cannot list project files');
@@ -14,10 +14,10 @@ run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/run-logistics.cjs','mobile'],'mobile-api');
 run(node,['tests/supplier-retry.cjs'],'supplier-retry');
-for(const test of ['taoworld-signature','taoworld-auth','taoworld-purchase','taoworld-progressive','taoworld-recommend','taoworld-domestic','inbound-details'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
+for(const test of ['taoworld-signature','taoworld-auth','taoworld-purchase','taoworld-progressive','taoworld-recommend','taoworld-domestic','inbound-details','warehouse-notifications'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
 run(node,['tests/taoworld-web.cjs'],'taoworld-web');
 run(node,['tests/run-logistics.cjs','taoworld-admin-ui','taoworld-storefront-ui','taoworld-stale-api'],'taoworld-admin-and-storefront-ui');
 for(const test of ['qpay','qpay-flow','freight-payment','shipping','supplier-snapshot','supplier-batches','supplier-performance','checkout-freshness','supplier-card-prices','supplier-errors','supplier-english-titles','checkout','catalog-filters','product-policy','customer-addresses','customer-state','taobao-purchase','ot-operator','configure-admin','warehouse-overview'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
-for(const test of ['api','customers','supplier','supplier-speed','supplier-contention','shared-cache','warehouse','warehouse-cargo','warehouse-cargo-ui','inbound-details-ui','warehouse-batches','warehouse-branches','logistics','admin-management','ot-operator','audit','demo-catalog','order-concurrency','product-page-ui','product-early-ui','collection-ui','catalog-scroll-ui','catalog-progressive-ui','catalog-batches-api','catalog-navigation-ui','storefront-ui','supplier-cache-ui','product-policy-ui','english-titles-ui','mobile-ui','customer-actions-ui','image-search-ui','checkout-ui','commerce-ui','shop-tools-ui','account-ui','customer-sync-ui','store-pages-ui','home-hub-ui','eleven-sale-ui','layout-audit-ui','admin-management-ui','ot-operator-ui','logistics-ui'])run(node,['tests/run-logistics.cjs',test],test);
+for(const test of ['api','customers','supplier','supplier-speed','supplier-contention','shared-cache','warehouse','warehouse-notifications-ui','warehouse-cargo','warehouse-cargo-ui','inbound-details-ui','warehouse-batches','warehouse-branches','logistics','admin-management','ot-operator','audit','demo-catalog','order-concurrency','product-page-ui','product-early-ui','collection-ui','catalog-scroll-ui','catalog-progressive-ui','catalog-batches-api','catalog-navigation-ui','storefront-ui','supplier-cache-ui','product-policy-ui','english-titles-ui','mobile-ui','customer-actions-ui','image-search-ui','checkout-ui','commerce-ui','shop-tools-ui','account-ui','customer-sync-ui','store-pages-ui','home-hub-ui','eleven-sale-ui','layout-audit-ui','admin-management-ui','ot-operator-ui','logistics-ui'])run(node,['tests/run-logistics.cjs',test],test);
 console.log(failures?'FAILED: '+failures+' check(s).':'PASS: all registered suites and source syntax checks.');process.exitCode=failures?1:0;
 

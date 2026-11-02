@@ -23,6 +23,8 @@ try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
+    if($action==='warehouse-push-delivery'&&$method==='GET')json_out(warehouse_push_delivery());
+    if($action==='warehouse-push-revoke'&&$method==='POST')json_out(warehouse_push_revoke_token());
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.
