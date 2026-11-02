@@ -8,7 +8,7 @@ reuse. Expo's empty search now uses `__all__`, as the website does, instead of
 `storage box`.
 
 For TaoWorld, `__all__` now samples six departments per page from the existing
-25-department mapping. Each contributes up to twenty native search results. Rows
+26-department mapping. Each contributes up to twenty native search results. Rows
 are interleaved across departments, policy-filtered and deduplicated by product ID,
 then capped to the requested 12/50-item display limit. This is a mixed discovery
 sample, not an exhaustive export of the provider catalog. Each next page advances

@@ -983,6 +983,54 @@
     ]
   },
   {
+    "id": "building",
+    "name": "Барилгын материал",
+    "query": "building materials",
+    "image": "https://gostore.mn/assets/category-images/2c2664025e0ce286.webp",
+    "children": [
+      {
+        "name": "Плита",
+        "query": "ceramic tiles",
+        "image": "https://gostore.mn/assets/category-images/1ff0d8def2104c74.webp"
+      },
+      {
+        "name": "Ханын хавтан",
+        "query": "wall panels",
+        "image": "https://gostore.mn/assets/category-images/a3743bfe4146e1d7.webp"
+      },
+      {
+        "name": "Шалны материал",
+        "query": "flooring materials",
+        "image": "https://gostore.mn/assets/category-images/e2441420dc491dad.webp"
+      },
+      {
+        "name": "Дулаалгын материал",
+        "query": "insulation materials",
+        "image": "https://gostore.mn/assets/category-images/972d6ce52290200b.webp"
+      },
+      {
+        "name": "Ус тусгаарлах материал",
+        "query": "waterproofing materials",
+        "image": "https://gostore.mn/assets/category-images/141ac70155b2b965.webp"
+      },
+      {
+        "name": "Сантехникийн материал",
+        "query": "plumbing fittings",
+        "image": "https://gostore.mn/assets/category-images/917e1d5315a90f8f.webp"
+      },
+      {
+        "name": "Цахилгааны материал",
+        "query": "electrical supplies",
+        "image": "https://gostore.mn/assets/category-images/19031ebcf2438f0c.webp"
+      },
+      {
+        "name": "Бэхэлгээ",
+        "query": "fasteners",
+        "image": "https://gostore.mn/assets/category-images/c1d435aa5bd2b6d6.webp"
+      }
+    ]
+  },
+  {
     "id": "garden",
     "name": "Цэцэрлэг, ургамал",
     "query": "garden supplies",

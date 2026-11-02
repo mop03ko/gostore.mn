@@ -2,8 +2,8 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 const products=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday category product '+i,image:'',approx_mnt:15000+i}));
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
- const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[];page.on('pageerror',e=>errors.push(e.message));let free='unavailable';
- await page.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products,more:false,shipping:{},cache_ttl:600}}));
+ const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[],calls=[];page.on('pageerror',e=>errors.push(e.message));let free='unavailable';
+ await page.route('**/api/index.php?action=supplier-search*',r=>{calls.push(new URL(r.request().url()).searchParams.get('q'));return r.fulfill({json:{products,more:false,shipping:{},cache_ttl:600}});});
  await page.route('**/api/index.php?action=supplier-free-shipping*',r=>r.fulfill({json:{products:free==='available'?products.slice(0,2):[],status:free,scope:'china_to_erenhot'}}));
  await page.goto(base+'/');await page.locator('.discovery-home').waitFor();
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+width);}
@@ -16,6 +16,10 @@ const products=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday
  await page.locator('.category-recommendations .discovery-product').first().waitFor();
  const more=page.locator('#category-suggestions > .discovery-more');if(await more.count()){await more.click();assert.equal(await more.getAttribute('aria-expanded'),'true');assert.ok(await page.locator('.category-photo-link:visible').count()>6);}
  await page.locator('[data-department=tech]').click();await page.locator('.category-recommendations .discovery-product').first().waitFor();assert.match(await page.locator('.category-suggestion-heading').innerText(),/Электроник/);
+ await page.locator('[data-department=building]').click();await page.locator('.category-recommendations .discovery-product').first().waitFor();
+ assert.match(await page.locator('.category-suggestion-heading').innerText(),/Барилгын материал/);assert.equal(await page.locator('.category-photo-link').count(),8);assert.equal(await page.locator('.category-photo-link img').count(),8);assert.equal(calls.at(-1),'building materials');
+ await page.locator('[data-menu-category=building]').click();await page.waitForFunction(()=>new URLSearchParams(location.search).get('category')==='building');assert.equal(calls.at(-1),'building materials');
+ await page.reload();await page.locator('#supplier-grid .supplier-card').first().waitFor();assert.equal(calls.at(-1),'building materials');assert.equal(await page.locator('[data-catalog-category=building]').getAttribute('aria-pressed'),'true');
  fs.mkdirSync('output/discovery',{recursive:true});await page.screenshot({path:'output/discovery/web-categories.png'});await page.keyboard.press('Escape');await page.locator('[role=tab][data-discovery-tab=explore]').click();await page.locator('.discovery-home').scrollIntoViewIfNeeded();await page.screenshot({path:'output/discovery/web-home.png'});
  await page.goto(base+'/cart');assert.equal(await page.locator('.discovery-home').count(),0,'Home discovery does not leak into cart routes');
  assert.deepEqual(errors,[]);console.log('PASS shared web discovery: photo categories, expansion, navigation, scoped free/unknown results, phone/desktop layout.');

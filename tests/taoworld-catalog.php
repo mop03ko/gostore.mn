@@ -143,5 +143,12 @@ $before=count($calls);$again=supplier_search(['q'=>'__all__','page'=>1,'limit'=>
 $next=supplier_search(['q'=>'__all__','page'=>2,'limit'=>12]);check(count($calls)===$before+6&&count($next['products'])===12,'Next page must rotate departments');
 $firstKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before-6,6));$nextKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before,6));check(!array_intersect($firstKeywords,$nextKeywords),'Next page repeated the same department group');
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
+$_SERVER['REMOTE_ADDR']='192.0.2.202';
+foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){
+    supplier_search(['q'=>$query,'page'=>1]);check(end($calls)[1]['keyword']===$keyword,'Building category keyword mismatch: '.$query);
+}
+$before=count($calls);supplier_search(['q'=>'Барилгын материал','page'=>1]);check(count($calls)===$before,'Mongolian building search must reuse the translated category cache');
+check(isset(tw_catalog_departments()['building materials']),'Building materials missing from mixed home departments');
+unset($_SERVER['REMOTE_ADDR']);
 $state=taoworld_state();$state['account_id']='another-buyer';taoworld_store($state);denied(fn()=>supplier_detail('tb-700000000000'),409);
 echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search; no OT calls.\n";

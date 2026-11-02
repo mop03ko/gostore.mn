@@ -184,7 +184,7 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
     return $cards;
 }
 function tw_catalog_departments(): array {
-    return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
+    return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
 }
 // «Танд санал болгох» under a product: first pages of every department, interleaved so no single
 // category dominates and the product's own category gets no preference. Only display-fresh cached
@@ -238,8 +238,20 @@ function tw_catalog_search(array $b,bool $display=false): array {
     if($brand)return tw_catalog_brand_selection($brandId,$page,$sort,$filters,$display);
     if($q==='__all__')return tw_catalog_home($page,$limit,$sorts[$sort],$filters,$display);
     if(product_policy_text_blocked($q))return tw_catalog_response(['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false],time(),0);
-    $departments=tw_catalog_departments();
-    $params=['keyword'=>$departments[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
+    $keywords=tw_catalog_departments()+[
+        'барилгын материал'=>'建筑材料',
+        'барилгын материалууд'=>'建筑材料',
+        'барилгын материалиуд'=>'建筑材料',
+        'ceramic tiles'=>'瓷砖', 'плита'=>'瓷砖',
+        'wall panels'=>'墙面装饰板', 'ханын хавтан'=>'墙面装饰板',
+        'flooring materials'=>'地板', 'шалны материал'=>'地板',
+        'insulation materials'=>'建筑保温板', 'дулаалгын материал'=>'建筑保温板',
+        'waterproofing materials'=>'防水材料', 'ус тусгаарлах материал'=>'防水材料',
+        'plumbing fittings'=>'水管配件', 'сантехникийн материал'=>'水管配件',
+        'electrical supplies'=>'电线电缆', 'цахилгааны материал'=>'电线电缆',
+        'fasteners'=>'紧固件', 'бэхэлгээ'=>'紧固件',
+    ];
+    $params=['keyword'=>$keywords[mb_strtolower($q)]??$q,'language'=>'en'];if($sorts[$sort]!=='')$params['sort']=$sorts[$sort];if($filters)$params['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
     // Native pages contain at most 20 items. Keep the storefront's 12/50-item contract.
     $start=($page-1)*$limit;$first=(int)floor($start/20)+1;$last=(int)floor(($start+$limit-1)/20)+1;$rows=[];$time=time();
     if($partial)$last=$first;
