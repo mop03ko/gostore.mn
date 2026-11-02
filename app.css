@@ -677,6 +677,21 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
  .store-cart-bar{bottom:calc(68px + env(safe-area-inset-bottom));padding-bottom:8px}
  .store-cart-filled .pending-pay{bottom:calc(152px + env(safe-area-inset-bottom))}
 }
+/* ==== order-tracking.css ==== */
+.order-tracking{border:1px solid var(--theme-border,#e0e6f0);border-radius:14px;padding:18px;margin:18px 0;background:var(--theme-surface,#fff);color:var(--theme-text,#132344);overflow-wrap:anywhere}
+.order-tracking .tracking-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;font-size:11px;line-height:18px;color:var(--theme-muted,#566580)}
+.order-tracking h3.tracking-location{font-size:20px;line-height:28px;margin:10px 0 4px;font-weight:700}
+.order-tracking .tracking-status{font-size:14px;line-height:22px;margin:0}.order-tracking .tracking-updated{font-size:12px;line-height:18px;color:var(--theme-muted,#566580);margin:6px 0 0}
+.order-tracking .tracking-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0;list-style:none;margin:20px 0}
+.order-tracking .tracking-progress li{position:relative;text-align:center;font-size:11px;line-height:17px;color:var(--theme-muted,#566580);min-width:0}
+.order-tracking .tracking-progress li>span{position:relative;z-index:1;display:grid;place-items:center;width:28px;height:28px;margin:0 auto 8px;border-radius:50%;background:var(--theme-raised,#edf1f6);font-weight:700}
+.order-tracking .tracking-progress li:not(:last-child)::after{content:'';position:absolute;top:13px;left:65%;width:76%;height:2px;background:var(--theme-border,#e0e6f0)}
+.order-tracking .tracking-progress .done>span{background:#132344;color:#fff}.order-tracking .tracking-progress .current>span{background:#f16522;color:#132344;box-shadow:0 0 0 3px #f1652226}.order-tracking .tracking-progress .current{font-weight:700;color:var(--theme-text,#132344)}
+.order-tracking .tracking-next{padding:12px;border-radius:10px;background:var(--theme-raised,#f3f6fc);font-size:13px;line-height:21px;margin:0}.tracking-next strong{display:block;margin-bottom:3px}
+.order-tracking .tracking-history{margin-top:12px}.tracking-history summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;font-weight:700}.tracking-history ol{list-style:none;padding:0 0 0 14px;border-left:2px solid #f16522;margin:8px 0 14px}.tracking-history li{padding:8px 0;font-size:13px;line-height:20px}.tracking-history time{display:block;font-size:12px;color:var(--theme-muted,#566580);margin-top:3px}
+.order-tracking .tracking-note{display:block;font-size:11px;line-height:18px;color:var(--theme-muted,#566580);margin-top:12px}.tracking-list-location{font-size:12px;line-height:20px;color:var(--theme-muted,#566580);margin:8px 0;overflow-wrap:anywhere}
+@media(max-width:400px){.order-tracking{padding:13px}.order-tracking h3.tracking-location{font-size:18px;line-height:26px}.order-tracking .tracking-progress{gap:5px}.order-tracking .tracking-progress li{font-size:10px;line-height:16px}}
+@media(max-width:600px){.order-tracking .tracking-progress{grid-template-columns:1fr;gap:8px;margin:16px 0}.order-tracking .tracking-progress li{display:flex;align-items:center;gap:10px;text-align:left;font-size:12px;line-height:18px}.order-tracking .tracking-progress li>span{flex:0 0 24px;width:24px;height:24px;margin:0}.order-tracking .tracking-progress li:not(:last-child)::after{left:11px;top:24px;width:2px;height:8px}}
 /* ==== home-hub.css ==== */
 /* Marketplace first screen (home-hub.js): categories | banner | customer panel. */
 .home-hub{position:relative;display:grid;grid-template-columns:236px minmax(0,1fr) 240px;gap:16px;padding-top:20px;align-items:stretch}
