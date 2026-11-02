@@ -9,6 +9,7 @@ const files=[...new Set([...listing.stdout.split('\0'),...fs.readdirSync(__dirna
 for(const file of files){const result=spawnSync(file.endsWith('.php')?php:node,file.endsWith('.php')?['-l',file]:['--check',file],{cwd:root,encoding:'utf8',windowsHide:true});if(result.status!==0){failures++;console.error('FAIL syntax '+file+'\n'+result.stdout+result.stderr);}}
 console.log('Syntax checked '+files.length+' PHP/JavaScript files.');
 run(node,['scripts/bundle.cjs','--check'],'bundle-current');
+run(node,['tests/expo-eleven-sale.cjs'],'expo-eleven-sale');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/run-logistics.cjs','mobile'],'mobile-api');

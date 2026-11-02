@@ -1,7 +1,7 @@
 import { ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { catalog } from "@/lib/api";
@@ -10,6 +10,7 @@ import { Busy, money } from "@/components/ui";
 import { Icon } from "@/components/shop-ui";
 import categories from "@/lib/discovery.json";
 import { categoryImages } from "@/lib/category-images";
+import { elevenSaleActive, elevenSaleProducts } from "@/lib/eleven-sale";
 export { categories };
 export function CategoryPhoto({ image, size = 64 }: { image: string; size?: number }) {
   const colors = usePalette();
@@ -47,6 +48,53 @@ export function DiscoveryShelf({ query, free = false }: { query?: string; free?:
     <View style={s.grid}>{data?.products.slice(0, free ? 8 : 6).map(p => <View key={p.id} style={{ width: "48%" }}><DiscoveryCard product={p} /></View>)}</View>
   </View>;
 }
+function ElevenSale() {
+  const colors = usePalette();
+  const [now, setNow] = useState(() => Date.now());
+  const [data, setData] = useState<Product[] | null>(null);
+  const [error, setError] = useState(false), [retry, setRetry] = useState(0);
+  const active = elevenSaleActive(now);
+  useEffect(() => {
+    // Clock checks do not request the API; resume also removes offers that expired in the background.
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") setNow(Date.now()); });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, []);
+  useEffect(() => {
+    if (!active) return;
+    const controller = new AbortController();
+    let cancelled = false;
+    const timer = setTimeout(() => controller.abort(), 15000);
+    void catalog<{ products: Product[] }>("supplier-deals", { page: 1 }, controller.signal)
+      .then(result => {
+        if (!Array.isArray(result.products)) throw new Error("Invalid offers");
+        if (!cancelled) { setData(result.products); setError(false); setNow(Date.now()); }
+      })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => clearTimeout(timer));
+    return () => { cancelled = true; clearTimeout(timer); controller.abort(); };
+  }, [active, retry]);
+  if (!active) return null;
+  const products = elevenSaleProducts(data || [], now);
+  return <View testID="eleven-sale" style={{ padding: 12, gap: 12, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <Text style={{ color: colors.orange, fontSize: 42, fontWeight: "900", letterSpacing: -2 }}>11.11</Text>
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={{ color: colors.accentText, fontSize: 10, fontWeight: "700" }}>11.11-ИЙН СОНГОЛТ</Text>
+        <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 19, fontWeight: "800" }}>Хямдрал, купонтой бараа</Text>
+      </View>
+    </View>
+    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Нийлүүлэгчийн одоогийн саналууд. Купон, урамшуулал нь нөхцөлтэй; бүх бараа албан ёсны 11.11 аянд хамрагдсан гэсэн үг биш. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</Text>
+    {!data && !error && <View accessibilityLabel="11.11 хямдрал ачаалж байна"><Busy /></View>}
+    {error ? <View style={{ gap: 6 }}>
+      <Text accessibilityLiveRegion="polite" style={{ color: colors.muted }}>Хямдралын мэдээлэл түр боломжгүй байна.</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="11.11 хямдралыг дахин ачаалах" onPress={() => { setError(false); setRetry(n => n + 1); }} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText, fontWeight: "700" }}>Дахин ачаалах</Text></Pressable>
+    </View> : data && !products.length ? <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, lineHeight: 20 }}>Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй.</Text> : null}
+    {!error && <View testID="eleven-sale-grid" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+      {products.map(p => <View key={p.id} testID="eleven-sale-item" style={{ width: "48%", borderWidth: 1, borderColor: colors.line, borderRadius: 12, overflow: "hidden" }}><DiscoveryCard product={p} /></View>)}
+    </View>}
+  </View>;
+}
 function DealsShelf() {
   const colors = usePalette();
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
@@ -77,6 +125,7 @@ export function HomeDiscovery({ onSearch }: { onSearch: (q: string) => void }) {
   const [tab, setTab] = useState("explore");
   const channels = [["explore", "Танд зориулсан"], ["deals", "Хямдрал"], ["free", "0¥ хүргэлт"], ["fashion", "Хувцас"], ["home", "Гэр ахуй"], ["tech", "Технологи"]];
   return <View style={{ gap: 14 }}>
+    <ElevenSale />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 18 }}>
       {channels.map(([id, label]) => <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: tab === id }} onPress={() => setTab(id)} style={[s.tab, tab === id && { borderBottomColor: colors.orange }]}><Text style={{ fontSize: 15, fontWeight: "700", color: id === "free" ? colors.success : tab === id ? colors.ink : colors.muted }}>{label}</Text></Pressable>)}
     </ScrollView>

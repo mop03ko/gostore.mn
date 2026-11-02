@@ -22,6 +22,18 @@ Deletion removes login/profile/address-book/server-cart data and revokes session
 
 ## Development and validation
 
+The home screen includes a seasonal 11.11 shelf from November 1 through November 11
+(Ulaanbaatar time). It uses the existing `supplier-deals` endpoint and catalog cache,
+shows at most eight currently valid supplier offers in two columns, and removes
+expired offers on clock checks or app resume. Coupons remain conditional and are
+not represented as automatic checkout discounts or guaranteed campaign membership.
+No API polling is added. The shelf supports loading, empty and retry states.
+
+Run `node tests/expo-eleven-sale.cjs` for date/offer rules. With Expo web running,
+set `EXPO_TEST_URL` to its loopback URL and run `node tests/expo-eleven-sale-ui.cjs`
+for layout, navigation, expiry, cache, empty and failure coverage. Native installed
+apps require a new build; changing the website does not update their bundled UI.
+
 ```powershell
 cd D:\Gostore.mn\gostoremn
 npm ci
