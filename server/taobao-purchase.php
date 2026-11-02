@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/inbound-details.php';
 
 // Paid customer orders are bought on Taobao through OT and shipped to the Erenhot warehouse.
 // Tokens stay in the private data directory and are never returned to a browser.
@@ -212,10 +213,10 @@ function inbound_add_manual(string $id,array $b,?string $location=null): array {
         inbound_merge($o,[['no'=>$number,'company'=>$company]],$location===null?'admin':'warehouse');save_order($o);$db->exec('COMMIT');return $o;
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
-function inbound_public(array $o): array {
+function inbound_public(array $o,bool $details=true): array {
     $p=$o['purchase']??[];
     return ['numbers'=>array_map(fn($n)=>array_intersect_key($n,array_flip(['no','company','source'])),$o['inbound']['numbers']??[]),'status'=>$o['inbound']['status']??'','checked_at'=>$o['inbound']['checked_at']??null,
-        'provider_order_ids'=>$p['provider_order_ids']??[],'trackable'=>(($p['provider']??'')==='taoworld'&&!empty($p['submitted_at']))||(($p['state']??'')==='created'&&!empty($p['provider_order_ids']))];
+        'provider_order_ids'=>$p['provider_order_ids']??[],'details'=>$details?inbound_details_public($o):null,'trackable'=>(($p['provider']??'')==='taoworld'&&!empty($p['submitted_at']))||(($p['state']??'')==='created'&&!empty($p['provider_order_ids']))];
 }
 // Erenhot list views refresh a few stale purchases after the response has been sent.
 function inbound_schedule_refresh(): void {
@@ -243,7 +244,7 @@ function inbound_warehouse_post(string $action,array $b,string $location): never
     limit_attempts('inbound:'.$location.':'.($_SERVER['REMOTE_ADDR']??''),60,900);
     $id=str_field($b,'id',50);
     if($action==='warehouse-inbound-add')$o=inbound_add_manual($id,$b,$location);
-    elseif($action==='warehouse-inbound-refresh'){$o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);$o=taobao_purchase_track($id);}
+    elseif($action==='warehouse-inbound-refresh'){$o=order_row($id)['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);$o=($o['purchase']['provider']??'')==='taoworld'?inbound_details_refresh($id,$location):taobao_purchase_track($id);}
     else fail('Үйлдэл олдсонгүй.',404);
     json_out(['order'=>warehouse_order_public($o,$location)]);
 }

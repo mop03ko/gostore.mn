@@ -115,7 +115,7 @@ function warehouse_order_operable(array $o,string $location='erenhot'): bool {
         || in_array($o['status'],['zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)
         || count(array_intersect(array_column($o['history']??[],'status'),['zamyn_uud','ulaanbaatar']))>0;
 }
-function warehouse_order_public(array $o,string $location='erenhot'): array {
+function warehouse_order_public(array $o,string $location='erenhot',bool $details=true): array {
     $result=array_intersect_key($o,array_flip(['id','title','customer','status','created','warehouse','batch_id']));
     $result['read_only']=!warehouse_order_operable($o,$location);
     $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
@@ -124,7 +124,7 @@ function warehouse_order_public(array $o,string $location='erenhot'): array {
     $result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])), $o['history']??[]);
     $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
     $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
-    if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o);
+    if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
     if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
@@ -180,7 +180,7 @@ function warehouse_get(string $action): never {
         elseif($status!==''&&$status!=='all'&&$o['status']!==$status)continue;
         if($query!==''&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
         if($matched++<$offset)continue;
-        if(count($rows)<51)$rows[]=warehouse_order_public($o,$location);
+        if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);
     }
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_schedule_refresh'))inbound_schedule_refresh();
     json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
