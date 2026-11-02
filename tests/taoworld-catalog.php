@@ -155,6 +155,19 @@ check(!in_array($home['products'][0]['id'],array_column($recommend['products'],'
 check(count(array_diff(array_column($recommendNext['products'],'id'),array_column($recommend['products'],'id')))>0,'Next recommendation page must add new products');
 foreach($recommend['products'] as $recommended)check(($recommended['mnt']??$recommended['approx_mnt'])>0,'Every recommendation must have a display price');
 denied(fn()=>supplier_recommend($home['products'][0]['id'],0),400);
+// An upstream outage may use display snapshots, but cannot resurrect expired discounts.
+$offerSnapshots=[];
+foreach(array_slice(array_values(tw_catalog_departments()),0,6) as $keyword){
+    $query=['keyword'=>$keyword,'language'=>'en','page_no'=>'1','page_size'=>'20'];
+    $file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
+    $snapshot=supplier_snapshot_read($file);$offerSnapshots[$file]=$snapshot;
+    $snapshot['time']=time()-1801;
+    foreach($snapshot['data']['data'] as &$row)$row['coupon_price']='1';unset($row);
+    supplier_snapshot_write($file,$snapshot);
+}
+$error=true;$fallback=tw_catalog_deals(['page'=>1]);$error=false;
+check($fallback['stale']&&$fallback['products']===[],'Expired offers must remain hidden during fallback');
+foreach($offerSnapshots as $file=>$snapshot)supplier_snapshot_write($file,$snapshot);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
 foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){

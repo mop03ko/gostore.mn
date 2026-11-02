@@ -217,7 +217,15 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
 function tw_catalog_deals(array $params): array {
     $page=filter_var($params['page']??1,FILTER_VALIDATE_INT);
     if($page===false)fail('Хуудасны дугаар буруу.');
-    $result=tw_catalog_search(['q'=>'__all__','page'=>$page,'limit'=>50]);
+    $query=['q'=>'__all__','page'=>$page,'limit'=>50];
+    try {
+        $result=tw_catalog_search($query);
+    } catch(ApiError $error) {
+        if(!in_array($error->getCode(),[429,502,503],true))throw $error;
+        // Display cache can retain fresh detail offers during a temporary upstream failure.
+        // The offer-expiry filter below still excludes expired promotions.
+        $result=tw_catalog_search($query,true);
+    }
     $result['products']=array_values(array_filter($result['products'],static function($p){
         return ($p['sellable']??true)&&($p['offers']['expires']??0)>time()&&(!empty($p['card_discount'])||!empty($p['offers']['coupon_mnt'])||!empty($p['offers']['promotions']));
     }));
