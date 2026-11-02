@@ -62,10 +62,22 @@ app. Android WebView does not provide the browser Push API. It currently display
 the inbox while open and clearly directs managers to Chrome/Edge for browser push.
 Closing that APK does not deliver native Android push.
 
-Native delivery needs a push-provider project. The owner confirmed none exists.
-For Firebase/FCM, register Android package **mn.gostore.warehouse**, provide its
-`google-services.json` locally (never put server credentials in the APK), and place
-an FCM service-account JSON outside public_html. Do not send private keys in chat.
+Firebase project **GOStore Warehouse** (`gostore-warehouse`) was created on
+2026-11-03 with the no-cost Spark plan, without Google Analytics or Gemini enabled
+during setup. Android app **GOStore Warehouse Android** is registered with package
+**mn.gostore.warehouse**, project number `681834677731`, and app ID
+`1:681834677731:android:d0f28b5e733db439ed8cd6`.
+Firebase Cloud Messaging API (V1) is enabled (verified in the console); the legacy
+API remains disabled.
+
+Console: https://console.firebase.google.com/project/gostore-warehouse/overview
+
+The downloaded Android client configuration is stored locally as
+`warehouse-android/google-services.json` (Git-ignored). It is not a server
+credential. No server private key has been generated or deployed yet. A dedicated
+FCM sender service account should have only the permissions needed for messaging;
+keep its JSON outside public_html and never put it in Git or the APK. Do not send
+private keys in chat.
 The native SDK, notification permission/channel, token registration/revocation,
 server FCM delivery and updated signed APK still need implementation after this
 provider setup. Do not mark native push as complete or ship the current APK as a

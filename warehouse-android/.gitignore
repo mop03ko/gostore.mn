@@ -3,3 +3,5 @@ signing/
 *.apk
 *.idsig
 local.properties
+google-services.json
+firebase-service-account*.json
