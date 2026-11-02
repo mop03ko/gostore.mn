@@ -154,7 +154,7 @@ function warehouse_get(string $action): never {
     warehouse_required();
     $location=warehouse_session_location();
     if($action==='warehouse-notifications'){warehouse_push_schedule();json_out(warehouse_notice_list($location));}
-    if($action==='warehouse-push-config')json_out(['public_key'=>warehouse_push_keys()['public'],'native_configured'=>false]);
+    if($action==='warehouse-push-config')json_out(['public_key'=>warehouse_push_keys()['public'],'native_configured'=>warehouse_fcm_configured()]);
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
     if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
@@ -203,6 +203,7 @@ function warehouse_post(string $action,array $b): never {
     warehouse_required();
     $location=warehouse_session_location();
     if($action==='warehouse-push-subscribe')json_out(warehouse_push_subscribe($b,$location));
+    if($action==='warehouse-fcm-subscribe')json_out(warehouse_fcm_subscribe($b,$location));
     if($action==='warehouse-push-unsubscribe'){
         warehouse_notice_schema(db());db()->prepare('DELETE FROM warehouse_push_devices WHERE id=? AND location=? AND session_hash=?')->execute([str_field($b,'id',64),$location,hash('sha256',session_id())]);json_out(['ok'=>true]);
     }

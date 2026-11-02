@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application' version '8.9.2'
+    id 'com.google.gms.google-services' version '4.4.3'
+}
+
+android {
+    namespace 'mn.gostore.warehouse'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'mn.gostore.warehouse'
+        minSdk 26
+        targetSdk 35
+        versionCode 2
+        versionName '1.1.0'
+    }
+    sourceSets {
+        main { manifest.srcFile 'AndroidManifest.xml'; java.srcDirs = ['src']; res.srcDirs = ['res'] }
+        test { java.srcDirs = ['tests-gradle'] }
+    }
+    signingConfigs {
+        release {
+            storeFile file('signing/warehouse-release.p12')
+            storePassword file('signing/keystore-password.txt').text.trim()
+            keyAlias 'warehouse'
+            keyPassword storePassword
+            storeType 'PKCS12'
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    testOptions { unitTests.includeAndroidResources = true }
+}
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:24.1.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}

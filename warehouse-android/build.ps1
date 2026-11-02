@@ -1,49 +1,46 @@
 param([string]$ToolRoot = (Join-Path $PSScriptRoot '..\tmp\tooling\android'))
-$ErrorActionPreference = 'Stop'
-$ToolRoot = (Resolve-Path -LiteralPath $ToolRoot).Path
-$jdk = (Get-ChildItem -LiteralPath (Join-Path $ToolRoot 'jdk') -Directory | Select-Object -First 1).FullName
-$platform = (Get-ChildItem -LiteralPath (Join-Path $ToolRoot 'platform') -Filter 'android.jar' -Recurse | Select-Object -First 1).FullName
-$aapt = (Get-ChildItem -LiteralPath (Join-Path $ToolRoot 'build-tools') -Filter 'aapt2.exe' -Recurse | Select-Object -First 1).FullName
-$bt = Split-Path $aapt
-$build = Join-Path $PSScriptRoot ('build\' + [guid]::NewGuid().ToString('N'))
-$output = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\output\android'))
-$signing = Join-Path $PSScriptRoot 'signing'
-foreach ($path in @($build, "$build\classes", "$build\dex", "$build\generated", "$build\test", $output, $signing)) { New-Item -ItemType Directory -Force -Path $path | Out-Null }
-function Run([string]$exe, [string[]]$arguments) {
-    & $exe @arguments
-    if ($LASTEXITCODE -ne 0) { throw "Build command failed: $exe ($LASTEXITCODE)" }
+$ErrorActionPreference='Stop'
+$ToolRoot=(Resolve-Path -LiteralPath $ToolRoot).Path
+$workspace=Split-Path $PSScriptRoot
+$gradleRoot=Join-Path $workspace 'tmp\tooling\gradle'
+$gradle=Join-Path $gradleRoot 'gradle-8.11.1\bin\gradle.bat'
+function Run([string]$exe,[string[]]$arguments){ & $exe @arguments; if($LASTEXITCODE -ne 0){throw "Build failed: $exe ($LASTEXITCODE)"} }
+if(!(Test-Path -LiteralPath $gradle)){
+ New-Item -ItemType Directory -Force -Path $gradleRoot | Out-Null
+ $archive=Join-Path $gradleRoot 'gradle-8.11.1-bin.zip'
+ Run 'curl.exe' @('-fsSL','--retry','2','-o',$archive,'https://services.gradle.org/distributions/gradle-8.11.1-bin.zip')
+ $expected=(& curl.exe -fsSL 'https://services.gradle.org/distributions/gradle-8.11.1-bin.zip.sha256').Trim()
+ if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected){throw 'Gradle checksum mismatch'}
+ Expand-Archive -LiteralPath $archive -DestinationPath $gradleRoot
 }
-Run "$jdk\bin\javac.exe" @('-encoding','UTF-8','-d',"$build\test","$PSScriptRoot\src\mn\gostore\warehouse\NavigationPolicy.java","$PSScriptRoot\tests\NavigationPolicyTest.java")
-Run "$jdk\bin\java.exe" @('-cp',"$build\test",'NavigationPolicyTest')
-Run $aapt @('compile','--dir',"$PSScriptRoot\res",'-o',"$build\resources.zip")
-Run $aapt @('link','-o',"$build\resources.apk",'-I',$platform,'--manifest',"$PSScriptRoot\AndroidManifest.xml",'--java',"$build\generated",'--auto-add-overlay',"$build\resources.zip")
-$sources = @(Get-ChildItem "$PSScriptRoot\src","$build\generated" -Filter '*.java' -Recurse | ForEach-Object FullName)
-Run "$jdk\bin\javac.exe" (@('-encoding','UTF-8','--release','8','-classpath',$platform,'-d',"$build\classes") + $sources)
-Run "$jdk\bin\jar.exe" @('cf',"$build\classes.jar",'-C',"$build\classes",'.')
-Run "$jdk\bin\java.exe" @('-cp',"$bt\lib\d8.jar",'com.android.tools.r8.D8','--release','--min-api','26','--lib',$platform,'--output',"$build\dex","$build\classes.jar")
-Copy-Item -LiteralPath "$build\resources.apk" -Destination "$build\unsigned.apk" -Force
-Run "$jdk\bin\jar.exe" @('uf',"$build\unsigned.apk",'-C',"$build\dex",'classes.dex')
-Run "$bt\zipalign.exe" @('-f','-p','4',"$build\unsigned.apk","$build\aligned.apk")
-# Stable private release key: never in Git, the APK, or the user download folder.
-$key = Join-Path $signing 'warehouse-release.p12'
-$passwordPath = Join-Path $signing 'keystore-password.txt'
-if (!(Test-Path -LiteralPath $key)) {
-    if (Test-Path -LiteralPath $passwordPath) { throw 'Signing password exists without key; restore the key before building updates.' }
-    $bytes = New-Object byte[] 36
-    $rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $rng.GetBytes($bytes); $rng.Dispose()
-    [IO.File]::WriteAllText($passwordPath, [Convert]::ToBase64String($bytes), [Text.UTF8Encoding]::new($false))
-    $owner = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    & icacls.exe $signing /inheritance:r /grant:r "${owner}:(OI)(CI)F" | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot restrict signing directory permissions' }
-    Run "$jdk\bin\keytool.exe" @('-genkeypair','-keystore',$key,'-storetype','PKCS12','-storepass:file',$passwordPath,'-alias','warehouse','-keyalg','RSA','-keysize','3072','-validity','10000','-dname','CN=GOStore Warehouse, O=GOStore, C=MN')
+$jdk=(Get-ChildItem -LiteralPath (Join-Path $ToolRoot 'jdk') -Directory | Select-Object -First 1).FullName
+$sdk=Join-Path $ToolRoot 'sdk'
+New-Item -ItemType Directory -Force -Path "$sdk\platforms","$sdk\build-tools" | Out-Null
+if(!(Test-Path -LiteralPath "$sdk\platforms\android-35")){Copy-Item -LiteralPath "$ToolRoot\platform\android-35" -Destination "$sdk\platforms\android-35" -Recurse}
+if(!(Test-Path -LiteralPath "$sdk\build-tools\35.0.0")){
+ $bt=(Get-ChildItem -LiteralPath (Join-Path $ToolRoot 'build-tools') -Filter 'aapt2.exe' -Recurse | Select-Object -First 1).DirectoryName
+ Copy-Item -LiteralPath $bt -Destination "$sdk\build-tools\35.0.0" -Recurse
 }
-if (!(Test-Path -LiteralPath $passwordPath)) { throw 'Missing signing password file; restore it rather than replacing the key.' }
-$apk = Join-Path $output 'GOStore-Erenhot-1.0.0.apk'
-Run "$jdk\bin\java.exe" @('-jar',"$bt\lib\apksigner.jar",'sign','--ks',$key,'--ks-key-alias','warehouse','--ks-pass',"file:$passwordPath",'--v4-signing-enabled','false','--out',$apk,"$build\aligned.apk")
-Run "$jdk\bin\java.exe" @('-jar',"$bt\lib\apksigner.jar",'verify','--verbose','--print-certs',$apk)
-Run "$bt\zipalign.exe" @('-c','-p','4',$apk)
-$hash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText("$apk.sha256", "$hash  $([IO.Path]::GetFileName($apk))`n", [Text.UTF8Encoding]::new($false))
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'INSTALL.txt') -Destination (Join-Path $output 'INSTALL.txt') -Force
-Write-Output "APK: $apk"
-Write-Output "SHA256: $hash"
+if(!(Test-Path -LiteralPath "$sdk\platform-tools") -and (Test-Path -LiteralPath "$ToolRoot\adb\platform-tools")){Copy-Item -LiteralPath "$ToolRoot\adb\platform-tools" -Destination "$sdk\platform-tools" -Recurse}
+[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'local.properties'),'sdk.dir='+$sdk.Replace('\','/').Replace(':','\:')+"`n",[Text.UTF8Encoding]::new($false))
+$client=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'google-services.json') -Raw | ConvertFrom-Json
+if($client.project_info.project_id -ne 'gostore-warehouse' -or $client.client[0].client_info.android_client_info.package_name -ne 'mn.gostore.warehouse'){throw 'Firebase project/package mismatch'}
+foreach($privateFile in @('warehouse-release.p12','keystore-password.txt')){if(!(Test-Path -LiteralPath (Join-Path $PSScriptRoot "signing\$privateFile"))){throw 'Restore the existing release signing key and password before building an update.'}}
+$previousJava=$env:JAVA_HOME;$previousGradle=$env:GRADLE_USER_HOME;$previousDebug=$env:DEBUG
+try{
+ $env:JAVA_HOME=$jdk;$env:GRADLE_USER_HOME=Join-Path $workspace 'tmp\tooling\gradle-user';$env:DEBUG=$null
+ $test=Join-Path $PSScriptRoot 'build\navigation-test';New-Item -ItemType Directory -Force -Path $test | Out-Null
+ Run "$jdk\bin\javac.exe" @('-encoding','UTF-8','-d',$test,"$PSScriptRoot\src\mn\gostore\warehouse\NavigationPolicy.java","$PSScriptRoot\tests\NavigationPolicyTest.java")
+ Run "$jdk\bin\java.exe" @('-cp',$test,'NavigationPolicyTest')
+ Run $gradle @('-p',$PSScriptRoot,'assembleRelease','testReleaseUnitTest','lintRelease','--console=plain')
+ $output=Join-Path $workspace 'output\android';New-Item -ItemType Directory -Force -Path $output | Out-Null
+ $apk=Join-Path $output 'GOStore-Erenhot-1.1.0.apk'
+ Copy-Item -LiteralPath "$PSScriptRoot\build\outputs\apk\release\GOStoreWarehouse-release.apk" -Destination $apk -Force
+ Run "$jdk\bin\java.exe" @('-jar',"$sdk\build-tools\35.0.0\lib\apksigner.jar",'verify','--verbose','--print-certs',$apk)
+ Run "$sdk\build-tools\35.0.0\zipalign.exe" @('-c','-p','4',$apk)
+ $hash=(Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+ [IO.File]::WriteAllText("$apk.sha256","$hash  $([IO.Path]::GetFileName($apk))`n",[Text.UTF8Encoding]::new($false))
+ Copy-Item -LiteralPath "$PSScriptRoot\INSTALL.txt" -Destination (Join-Path $output 'INSTALL.txt') -Force
+ Write-Output "APK: $apk"
+ Write-Output "SHA256: $hash"
+}finally{$env:JAVA_HOME=$previousJava;$env:GRADLE_USER_HOME=$previousGradle;$env:DEBUG=$previousDebug}

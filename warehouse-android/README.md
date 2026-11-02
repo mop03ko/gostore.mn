@@ -3,7 +3,7 @@
 Хятад хэлтэй агуулахын панелийг Android дээр нээдэг, шууд APK файлаар суулгах тусдаа апп. Google Play эсвэл бусад дэлгүүрт нийтлэхгүй. Хэрэглэгчийн `gostoremn/` Expo апптай тусдаа package, signing key ашиглана.
 
 - Package: `mn.gostore.warehouse`
-- Version: `1.0.0` / versionCode `1`
+- Version: `1.1.0` / versionCode `2`
 - Android 8.0+ (API 26), target API 35
 - Үндсэн хуудас: `https://gostore.mn/warehouse/?location=erenhot`
 - Нэвтрэх эрх: админд үүсгэсэн одоогийн агуулахын менежерийн эрх
@@ -21,9 +21,15 @@ QR унших нь багцыг нээнэ; хүлээн авсан эсвэл �
 
 `INSTALL.txt`-ийн зааврыг APK-тай хамт менежерт өгнө. Бүтээсэн файл:
 
-`D:\Gostore.mn\output\android\GOStore-Erenhot-1.0.0.apk`
+`D:\Gostore.mn\output\android\GOStore-Erenhot-1.1.0.apk`
 
-APK-д API түлхүүр, менежерийн нууц үг, signing key ороогүй. Серверийн session, CSRF болон эрхийн шалгалтууд хэвээр үйлчилнэ. HTTPS, зөвхөн `gostore.mn` эх үүсвэрийн нөөц ашиглана. Бусад HTTPS холбоосыг хэрэглэгч дарсан үед гаднах браузерт нээнэ. TLS алдааг алгасахгүй, native JavaScript interface ашиглахгүй. Аппын өгөгдлийг Android backup-д оруулахгүй.
+APK-д серверийн нууц түлхүүр, менежерийн нууц үг, signing key ороогүй. Firebase-ийн нийтэд зориулсан Android client тохиргоо багтана. Серверийн session, CSRF болон эрхийн шалгалтууд хэвээр үйлчилнэ. WebView зөвхөн `gostore.mn` эх үүсвэрийн нөөц ашиглана; native push Firebase-тэй HTTPS-ээр холбогдоно. Бусад HTTPS холбоосыг хэрэглэгч дарсан үед гаднах браузерт нээнэ. TLS алдааг алгасахгүй, native JavaScript interface ашиглахгүй. Аппын өгөгдлийг Android backup-д оруулахгүй.
+
+## Push мэдэгдэл
+
+Нэвтэрсний дараа **开启推送通知 / Push мэдэгдэл идэвхжүүлэх** дарж Android-ийн мэдэгдлийн эрхийг зөвшөөрнө. **测试推送 / Push турших** нь захиалга үүсгэхгүйгээр серверээс тухайн утсанд туршилтын мэдэгдэл илгээнэ. Google Play services болон Firebase-д хүрэх сүлжээ шаардлагатай. Төхөөрөмж бүр дээр тусад нь идэвхжүүлнэ.
+
+FCM зөвхөн сэрээх дохио дамжуулна; апп захиалгын кодыг GOStore-оос агуулахын эрхээр авна. Мэдэгдэл дарахад тухайн захиалга нээгдэнэ. Logout болон менежерийн эрх цуцлагдахад төхөөрөмжийн эрх хүчингүй болно. Серверийн холболт, автомат тестүүд шалгагдсан; бодит утас дээрх хүлээн авалтыг суулгасны дараа туршина.
 
 ## Дахин build хийх
 
@@ -33,7 +39,7 @@ Windows PowerShell дээр:
 powershell -NoProfile -ExecutionPolicy Bypass -File warehouse-android/build.ps1
 ```
 
-Build нь JDK 17, Android platform 35, build-tools 35.0.0 ашигладаг. Gradle, Node эсвэл Expo шаардлагагүй. Default tool root: `tmp/tooling/android`; өөр замыг `-ToolRoot` параметрээр өгч болно. ZIP-үүдийг дараах дэд хавтсуудад задлана:
+Build нь JDK 17, Android platform 35, build-tools 35.0.0, Gradle 8.11.1 ашигладаг. Script Gradle-ийг албан ёсны эх үүсвэрээс татаж SHA256 шалгана. Firebase Android client тохиргоог `warehouse-android/google-services.json` файлд байрлуулна (Git-ignored). Node эсвэл Expo шаардлагагүй. Default tool root: `tmp/tooling/android`; өөр замыг `-ToolRoot` параметрээр өгч болно. ZIP-үүдийг дараах дэд хавтсуудад задлана:
 
 | Дэд хавтас | Албан ёсны татах файл | Баталгаажуулах hash |
 | --- | --- | --- |
@@ -41,11 +47,11 @@ Build нь JDK 17, Android platform 35, build-tools 35.0.0 ашигладаг. G
 | `platform/` | [Android platform 35 r02](https://dl.google.com/android/repository/platform-35_r02.zip) | SHA1 `0bb560a90a7a2cbd0dd8348224d518b638fe7949` |
 | `build-tools/` | [Android build-tools 35](https://dl.google.com/android/repository/build-tools_r35_windows.zip) | SHA1 `af059bb67cf7786f45ee0db85e2d24985df1b4b6` |
 
-Build бүр тусдаа түр хавтас үүсгэнэ. URL-ийн аюулгүй байдлын Java тест, compile, DEX, alignment, signing болон signature verification ажиллуулж, `output/android/` дотор APK, SHA256, суулгах заавар гаргана. Icon нь одоогийн `assets/favicon.svg`-ээс хөрвүүлсэн GOStore тэмдэг.
+Build нь URL-ийн Java тест, Robolectric push тест, Android lint, compile, alignment, signing болон signature verification ажиллуулж, `output/android/` дотор APK, SHA256, суулгах заавар гаргана. Gradle build/cache файлууд Git-д орохгүй. Icon нь одоогийн `assets/favicon.svg`-ээс хөрвүүлсэн GOStore тэмдэг.
 
-Эхний build дээр `signing/warehouse-release.p12`, `signing/keystore-password.txt` үүснэ. Энэ хавтасны ACL-ийг тухайн Windows хэрэглэгчээр хязгаарлана. **Хоёр файлыг хамгаалалттай газар нөөцөлж хадгал.** Шинэ APK-г хуучин апп дээр update байдлаар суулгахын тулд ижил key заавал хэрэгтэй. Эдгээрийг Git, APK, татах хавтас эсвэл менежер рүү явуулахгүй.
+Өмнөх хувилбарын `signing/warehouse-release.p12`, `signing/keystore-password.txt` файлууд шаардлагатай. Энэ хавтасны ACL тухайн Windows хэрэглэгчээр хязгаарлагдсан. **Хоёр файлыг хамгаалалттай газар нөөцөлж хадгал.** Шинэ APK-г хуучин апп дээр update байдлаар суулгахын тулд ижил key заавал хэрэгтэй. Эдгээрийг Git, APK, татах хавтас эсвэл менежер рүү явуулахгүй.
 
-Дараагийн хувилбарт manifest-ийн versionCode-ийг өсгөж, versionName, Activity user agent болон build output нэрийг хамт шинэчилнэ. Нэг key/password алга болсон тохиолдолд script key-г чимээгүй солихгүй, алдаа өгнө.
+Дараагийн хувилбарт `build.gradle`-ийн versionCode-ийг өсгөж, versionName, Activity user agent болон build output нэрийг хамт шинэчилнэ. Нэг key/password алга болсон тохиолдолд script key-г чимээгүй солихгүй, алдаа өгнө.
 
 ## Шалгалт
 

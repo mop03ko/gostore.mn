@@ -45,7 +45,7 @@ also retry due deliveries. HTTP 404/410 subscriptions are removed; transient
 failures back off up to one hour. HTTP success means the push service accepted the
 message, not proof that a phone displayed it.
 
-For reliable retries without any open manager page, add this cPanel cron:
+For reliable retries without any open manager page, use this cron:
 
 ```text
 * * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home/gostorem/public_html/server/warehouse-push-worker.php >/dev/null 2>&1
@@ -55,12 +55,18 @@ The CLI worker takes a process lock and handles up to 20 devices per run. Its la
 run is stored as `warehouse_push_worker_last` in meta. No HTTP cron/secret URL is
 exposed. Existing two-hour product-cache cron is unchanged.
 
-## Android APK — not yet connected
+The one-minute push cron was installed and verified on 2026-11-03, preserving
+the existing crontab. A later read-only audit confirmed a fresh worker timestamp.
+
+## Android APK — native FCM
 
 `warehouse-android/` is a separate Java WebView application, not the customer Expo
-app. Android WebView does not provide the browser Push API. It currently displays
-the inbox while open and clearly directs managers to Chrome/Edge for browser push.
-Closing that APK does not deliver native Android push.
+app. Android WebView does not provide the browser Push API. Version 1.1.0 adds
+native Firebase Messaging, Android notification permissions and a notification
+channel. Managers opt in after login and can use **测试推送 / Push турших** to send
+a test to their own device without creating an order. Receiving a notification
+does not require the warehouse page to remain open; OS force-stop, permissions,
+device restrictions and network availability still affect delivery.
 
 Firebase project **GOStore Warehouse** (`gostore-warehouse`) was created on
 2026-11-03 with the no-cost Spark plan, without Google Analytics or Gemini enabled
@@ -74,15 +80,30 @@ Console: https://console.firebase.google.com/project/gostore-warehouse/overview
 
 The downloaded Android client configuration is stored locally as
 `warehouse-android/google-services.json` (Git-ignored). It is not a server
-credential. No server private key has been generated or deployed yet. A dedicated
-FCM sender service account should have only the permissions needed for messaging;
-keep its JSON outside public_html and never put it in Git or the APK. Do not send
-private keys in chat.
-The native SDK, notification permission/channel, token registration/revocation,
-server FCM delivery and updated signed APK still need implementation after this
-provider setup. Do not mark native push as complete or ship the current APK as a
-push-capable build. FCM needs a compatible Google Play services device; confirm
-the Erenhot manager's handset and network before choosing it for China use.
+credential. With explicit owner authorization, the dedicated service account
+`warehouse-push-sender@gostore-warehouse.iam.gserviceaccount.com` was created with
+only the Firebase Cloud Messaging API Admin role. Its JSON is stored in private
+`data_dir/warehouse-fcm-service-account.json` outside public_html, mode 0600.
+OAuth access tokens are cached privately for at most one hour. Neither secret is
+included in Git, the APK or JavaScript. HTTP v1 uses only the firebase.messaging
+OAuth scope and fixed Google endpoints; redirects are disabled.
+
+The server sends only a high-priority data wake-up (no order/customer data).
+Native code retrieves order information using a revocable device credential,
+stored in app-private preferences with Android backup disabled. Token registration
+requires a manager session and CSRF; refresh and test requests use the scoped
+device credential. Logout clears native state, revokes server binding and removes
+displayed notifications. Assignment/account checks and duplicate suppression run
+before display. Lock-screen public content is generic. Native actions use guarded
+main-frame navigation, without exposing credentials through a JavaScript bridge.
+
+Web and FCM share the existing device/outbox lifecycle and retry worker. An FCM
+UNREGISTERED response removes the device; a project-level 404 stays queued. API
+acceptance is not evidence that a handset displayed the message. The live OAuth
+and a validation-only request have been checked without sending an actual push.
+Physical phone delivery still requires installing the APK, enabling notifications
+and receiving a test. FCM needs compatible Google Play services and network access,
+which must be checked on the Erenhot manager's handset.
 
 ## Checks
 
@@ -93,3 +114,18 @@ rollback, token revocation, SSRF allowlist, retry queue and ES256 verification.
 event via Chrome DevTools with a fake provider subscription, inbox permissions,
 Chinese/Mongolian UI, read state, logout, order links and phone layout. This does
 not assert real FCM/APNs/Firefox delivery or test physical devices.
+
+`tests/warehouse-fcm.php`: scoped native registration/rotation, signed OAuth/cache,
+minimal FCM payload, error classification, delivery scope and logout revocation.
+The UI suite also checks native enable/test states and logout.
+
+`warehouse-android/build.ps1`: navigation tests, seven Robolectric notification
+tests, Android lint, release build, alignment and signature verification. Version
+1.1.0 uses the existing signing certificate so it can update version 1.0.0.
+
+Release download: https://gostore.mn/downloads/warehouse-1.1.0/GOStore-Erenhot-1.1.0.apk
+
+SHA256: `a6379e05f846be5a9c327725324df38e9daa8aa16d32267b6a751bae7a281298`.
+Public download bytes and all seven deployed source files were verified against
+local hashes. The live credential is outside public_html with mode 0600. No native
+device was subscribed at deployment, so physical FCM receipt remains unverified.

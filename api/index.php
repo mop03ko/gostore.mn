@@ -25,6 +25,8 @@ try {
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     if($action==='warehouse-push-delivery'&&$method==='GET')json_out(warehouse_push_delivery());
     if($action==='warehouse-push-revoke'&&$method==='POST')json_out(warehouse_push_revoke_token());
+    if($action==='warehouse-fcm-rotate'&&$method==='POST')json_out(warehouse_fcm_rotate(body()));
+    if($action==='warehouse-fcm-test'&&$method==='POST')json_out(warehouse_fcm_test());
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.

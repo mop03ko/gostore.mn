@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/warehouse-fcm.php';
 
 function warehouse_notice_schema(PDO $db): void {
     $db->exec('CREATE TABLE IF NOT EXISTS warehouse_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,location TEXT NOT NULL,order_id TEXT NOT NULL REFERENCES orders(id),created TEXT NOT NULL,read_at TEXT,UNIQUE(location,order_id));
@@ -74,9 +75,15 @@ function warehouse_push_subscribe(array $b,string $location): array {
     limit_attempts('warehouse-push:'.$location,30,3600);
     $endpoint=str_field($b,'endpoint',2048);warehouse_push_endpoint($endpoint);$keys=warehouse_push_keys();
     if(($b['public_key']??'')!==$keys['public'])fail('Push түлхүүр шинэчлэгдсэн. Дахин идэвхжүүлнэ үү.',409);
+    return warehouse_push_store_device($endpoint,$location);
+}
+function warehouse_push_store_device(string $endpoint,string $location): array {
+    warehouse_notice_schema(db());
+    limit_attempts('warehouse-device:'.$location,30,3600);
     $id=hash('sha256',$endpoint);$token=bin2hex(random_bytes(32));$a=warehouse_account($location);
     $s=db()->prepare('SELECT COALESCE(MAX(id),0) FROM warehouse_notifications WHERE location=?');$s->execute([$location]);$cursor=(int)$s->fetchColumn();
-    $s=db()->prepare('SELECT COUNT(*) FROM warehouse_push_devices WHERE location=? AND id<>? AND expires>?');$s->execute([$location,$id,time()]);if((int)$s->fetchColumn()>=20)fail('Төхөөрөмжийн дээд тоонд хүрлээ.',429);
+    $s=db()->prepare('SELECT COUNT(*) FROM warehouse_push_devices WHERE location=? AND id<>? AND endpoint<>? AND expires>?');$s->execute([$location,$id,$endpoint,time()]);if((int)$s->fetchColumn()>=20)fail('Төхөөрөмжийн дээд тоонд хүрлээ.',429);
+    db()->prepare('DELETE FROM warehouse_push_devices WHERE endpoint=?')->execute([$endpoint]);
     db()->prepare('INSERT OR REPLACE INTO warehouse_push_devices (id,location,account_version,session_hash,endpoint,token_hash,start_id,queued_id,sent_id,expires) VALUES (?,?,?,?,?,?,?,?,?,?)')->execute([$id,$location,$a['version'],hash('sha256',session_id()),$endpoint,hash('sha256',$token),$cursor,$cursor,$cursor,time()+90*86400]);
     return ['id'=>$id,'token'=>$token,'location'=>$location,'language'=>warehouse_role($location)==='erenhot'?'zh':'mn'];
 }
@@ -84,12 +91,16 @@ function warehouse_push_revoke_session(): void {
     warehouse_notice_schema(db());
     db()->prepare('DELETE FROM warehouse_push_devices WHERE session_hash=?')->execute([hash('sha256',session_id())]);
 }
-function warehouse_push_delivery(): array {
+function warehouse_push_authenticated_device(): array {
     warehouse_notice_schema(db());
     $header=isset($_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN'])?'Bearer '.$_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN']:($_SERVER['HTTP_AUTHORIZATION']??'');
     if(!preg_match('/^Bearer ([a-f0-9]{64})$/D',$header,$m))fail('Push эрх хүчингүй.',401);
     $s=db()->prepare('SELECT * FROM warehouse_push_devices WHERE token_hash=?');$s->execute([hash('sha256',$m[1])]);$device=$s->fetch();
     if(!$device||!warehouse_push_device_active($device))fail('Push эрх хүчингүй.',401);
+    return $device;
+}
+function warehouse_push_delivery(): array {
+    $device=warehouse_push_authenticated_device();
     $result=warehouse_notice_list($device['location'],(int)$device['start_id']);
     $result['notifications']=array_slice($result['notifications'],0,5);return $result;
 }
@@ -122,7 +133,7 @@ function warehouse_push_drain(int $limit=20,?callable $transport=null,int $budge
             try{
                 // Wake-up only: no personal/order data is sent to a third-party push provider.
                 // The service worker retrieves content from our scoped authenticated endpoint.
-                if($transport){$status=$transport($d);}else{
+                if($transport){$status=$transport($d);}elseif(str_starts_with($d['endpoint'],'fcm:')){$status=warehouse_fcm_send($d);}else{
                 $auth=warehouse_push_authorization($d['endpoint'],warehouse_push_keys());$curl=curl_init($d['endpoint']);
                 curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>'',CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>2,CURLOPT_TIMEOUT=>4,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_HTTPHEADER=>['Authorization: '.$auth,'TTL: 86400','Urgency: high','Topic: gostore-new-orders','Content-Length: 0']]);
                 curl_exec($curl);$status=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);curl_close($curl);}

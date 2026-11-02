@@ -20,5 +20,15 @@ function seed(id){const php=`require 'server/bootstrap.php';require 'server/ship
  await page.locator('#logout').click();await page.locator('#login-screen').waitFor({state:'visible'});assert.equal(await page.locator('.warehouse-notifications').isVisible(),false);
  await login('ulaanbaatar',2);await page.locator('[data-notices-toggle]').click();assert.match(await page.locator('.warehouse-notifications').innerText(),/Шинэ захиалга баталгаажлаа/);
  await page.locator('[data-notice-order="GS-TEST-001"]').click();await page.locator('#editor').waitFor({state:'visible'});assert.equal(await page.locator('#editor-title').innerText(),'GS-TEST-001');
+ const nativeContext=await browser.newContext({viewport:{width:390,height:844},userAgent:'GOStoreWarehouse/1.1.0'}),nativePage=await nativeContext.newPage();
+ await nativePage.addInitScript(()=>{window.gostoreWarehouseNativePush=true;});
+ await nativePage.goto(base+'/warehouse/?location=erenhot');
+ await nativePage.locator('[name=email]').fill('erenhot@example.test');await nativePage.locator('[name=password]').fill('Warehouse-push-test-2026');await nativePage.locator('#login-form button').click();await nativePage.locator('#app').waitFor({state:'visible'});
+ assert.equal(await nativePage.locator('[data-push-enable]').isVisible(),true,'Native APK can enable push without browser PushManager');
+ await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'connecting'})));assert.equal(await nativePage.locator('[data-push-enable]').isDisabled(),true);
+ await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'enabled'})));assert.equal(await nativePage.locator('[data-push-test]').isVisible(),true);assert.match(await nativePage.locator('[data-push-status]').innerText(),/推送已开启/);
+ await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'play-services'})));assert.match(await nativePage.locator('[data-push-status]').innerText(),/Google Play/);assert.equal(await nativePage.locator('[data-push-test]').isVisible(),false);
+ await nativePage.locator('#logout').click();await nativePage.locator('#login-screen').waitFor({state:'visible'});assert.equal(await nativePage.evaluate(()=>window.warehouseAuthState),false);
+ await nativeContext.close();
  assert.deepEqual(errors,[]);console.log('PASS warehouse notification UI: Chinese/Mongolian inbox, read state isolation, device registration, real service-worker push delivery, logout privacy, order navigation, mobile layout.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
