@@ -26,7 +26,8 @@ try {
     if ($action==='qpay-callback' && in_array($method,['GET','POST'],true)) json_out(qpay_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.
-    if($method==='GET'&&in_array($action,['supplier-search','supplier-product','supplier-recommend','supplier-free-shipping','supplier-official-stores'],true)){
+    if($method==='GET'&&in_array($action,['supplier-search','supplier-product','supplier-recommend','supplier-free-shipping','supplier-official-stores','supplier-logistics'],true)){
+        if($action==='supplier-logistics'){require_once __DIR__.'/../server/taoworld-domestic.php';supplier_public_json(tw_product_logistics(str_field($_GET,'id',50)));}
         if($action==='supplier-official-stores'){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_stores_directory());}
         if($action==='supplier-product'&&!empty($_GET['shop'])){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_store_detail(str_field($_GET,'id',50),str_field($_GET,'shop',20)));}
         if($action==='supplier-free-shipping'){require_once __DIR__.'/../server/discovery.php';supplier_public_json(discovery_free_shipping());}

@@ -74,3 +74,29 @@ function tw_domestic_assert_warehouse(array $quote,array $warehouse): void {
     $domestic=$quote['domestic']??null;
     if($domestic&&($domestic['receiver']!==tw_domestic_receiver($warehouse)||!hash_equals($domestic['account'],tw_account())||$domestic['expires_at']<=time()))fail('Хүргэлтийн хаяг эсвэл тооцоо өөрчлөгдсөн. Дахин шалгана уу.',409);
 }
+
+// Public, single-item reference only. Cart/SKU/quantity pricing still comes from order/render.
+function tw_product_logistics(string $id): array {
+    if(!tw_catalog_enabled())fail('Хүргэлтийн лавлах түр боломжгүй.',503);
+    tw_catalog_require_ready();$resource=tw_catalog_resource($id);$receiver=tw_domestic_receiver();
+    $key=hash('sha256',tw_json([tw_account(),$id,$resource,$receiver]));
+    $file=tw_catalog_dir().'/logistics-reference-'.$key.'.json';
+    $fresh=static fn($c)=>tw_catalog_fresh($c,1800)&&is_int($c['data']['fee_fen']??null)&&$c['data']['fee_fen']>=0;
+    $cached=supplier_snapshot_read($file);
+    if(!$fresh($cached)){
+        $h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);if(!$h)throw new SupplierBusy();
+        try{
+            $cached=supplier_snapshot_read($file);
+            if(!$fresh($cached)){
+                $reference=tw_domestic_reference([['id'=>$id]],$receiver,false);
+                if(($reference['status']??'')!=='available')return ['status'=>'unavailable','fee_cny'=>null,'fee_mnt'=>null,'cache_ttl'=>0];
+                $cached=['time'=>time(),'data'=>['fee_fen'=>$reference['item_fees_fen'][$id]]];
+                supplier_snapshot_write($file,$cached);
+            }
+        }finally{flock($h,LOCK_UN);fclose($h);}
+    }
+    $fee=$cached['data']['fee_fen'];$rate=shipping_settings()['cny_rate'];
+    return ['status'=>'available','id'=>$id,'destination'=>'Эрээн агуулах','source'=>'taoworld_reference','fee_cny'=>$fee/100,
+        'fee_mnt'=>(int)ceil(round($fee/100*$rate,8)),'cny_rate'=>$rate,'checked_at'=>gmdate('c',$cached['time']),
+        'expires_at'=>gmdate('c',$cached['time']+1800),'cache_ttl'=>0];
+}

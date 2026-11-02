@@ -5,7 +5,8 @@ const seed=spawnSync('tmp/tooling/php/php.exe',[...phpArgs,'tests/taoworld-store
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await require('./customer-ui-helper.cjs')(page,base);
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
- await page.goto(base+'/');await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length>=50);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
+ // The fixture seeds storage search; the mixed home feed is no longer a storage alias.
+ await page.goto(base+'/?q=home%20storage');await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length>=50);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
  assert.ok(await page.locator('[data-image-search]').first().isVisible());assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/?image='+fixture.image);await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===2);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
  await page.goto(base+'/v/'+fixture.id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);

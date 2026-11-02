@@ -42,14 +42,34 @@ window.commerceUI = (() => {
   }
   function calculator(s = settings()) {
     if (!(Number(s.weight_step_kg) > 0)) return '';
-    return `<details class="commerce-calculator"><summary>Каргоны зардлаа тооцоолох</summary><p>Өөрийн мэдэх жин эсвэл эзлэхүүнийг оруулна уу. Энэ нь урьдчилсан тооцоо; агуулах бодитоор хэмжиж тооцох аргыг баталгаажуулна.</p><label class="field">Тооцох арга<select data-cargo-method><option value="weight">Жин · кг</option><option value="volume">Эзлэхүүн · м³</option></select></label><label class="field">Хэмжээ<input data-cargo-measure type="number" min="0.001" max="100000" step="any" inputmode="decimal" placeholder="Жишээ: 1.5"></label><output data-cargo-estimate aria-live="polite">Хэмжээгээ оруулна уу.</output><small>Бараа, үйлчилгээ, Хятад доторх болон УБ хүргэлт ороогүй.</small></details>`;
+    const rates=Object.fromEntries(['cny_rate','weight_step_kg','weight_step_mnt','volume_threshold','volume_small_cny','volume_large_cny'].map(k=>[k,s[k]]));
+    return `<details class="commerce-calculator" data-cargo-rates="${esc(JSON.stringify(rates))}"><summary>Жин, эзлэхүүнээр карго тооцоолох</summary><p>Эрээн → Улаанбаатар тээврийн урьдчилсан зардал. Савласан барааны нийт жин эсвэл хэмжээсээ оруулна уу. Эцсийн төлбөрийг агуулах бодитоор хэмжиж батална.</p><label class="field">Тооцох арга<select data-cargo-method><option value="weight">Нийт жин · кг</option><option value="dimensions">Урт × өргөн × өндөр · см</option><option value="volume">Нийт эзлэхүүн · м³</option></select></label><label class="field" data-cargo-direct><span data-cargo-unit>Нийт жин · кг</span><input data-cargo-measure type="number" min="0.001" max="100000" step="any" inputmode="decimal" placeholder="Жишээ: 1.5"></label><div class="cargo-dimensions" hidden>${[['length','Урт · см'],['width','Өргөн · см'],['height','Өндөр · см'],['packages','Ижил хэмжээтэй савлагааны тоо']].map(([k,label])=>`<label class="field">${label}<input data-cargo-${k} type="number" inputmode="decimal" min="${k==='packages'?1:0.1}" max="${k==='packages'?10000:1000}" step="${k==='packages'?1:'any'}" ${k==='packages'?'value="1"':''}></label>`).join('')}<small>Нэг савлагааны хэмжээсийг оруулна. Барааны ширхэг болон савлагааны тоо өөр байж болно.</small></div><output data-cargo-estimate aria-live="polite">Хэмжээгээ оруулна уу.</output><small>Барааны үнэ, үйлчилгээ, Эрээн хүртэлх болон УБ хүргэлт энэ дүнд ороогүй.</small></details>`;
   }
-  document.addEventListener('input', e => {
+  function cargoEstimate(method, values, s) {
+    let n=Number(values.measure),formula='';
+    if(method==='dimensions'){
+      const [l,w,h,count]=['length','width','height','packages'].map(k=>Number(values[k]));
+      if(![l,w,h].every(v=>Number.isFinite(v)&&v>=0.1&&v<=1000)||!Number.isInteger(count)||count<1||count>10000)return null;
+      n=l*w*h*count/1000000;formula=`${number(l)} × ${number(w)} × ${number(h)} см × ${count} / 1,000,000 = ${n.toLocaleString('en-US',{maximumFractionDigits:9})} м³`;
+    }else if(!['weight','volume'].includes(method))return null;
+    if(!Number.isFinite(n)||n<=0||n>100000)return null;
+    const weight=method==='weight',rate=Number(weight?s.weight_step_mnt:n<Number(s.volume_threshold)?s.volume_small_cny:s.volume_large_cny);
+    if(!Number.isFinite(rate)||rate<0||!(Number(s.weight_step_kg)>0)||!(Number(s.cny_rate)>0)||!(Number(s.volume_threshold)>0))return null;
+    const units=weight?Math.ceil(Number((n/Number(s.weight_step_kg)).toFixed(9))):n;
+    const amount=Math.ceil(Number((units*rate*(weight?1:Number(s.cny_rate))).toFixed(8)));
+    if(!Number.isFinite(amount))return null;
+    formula+=(formula?' · ':'')+(weight?`${number(n)} кг → ${units} × ${number(s.weight_step_kg)} кг × ${money(rate)}`:`${n.toLocaleString('en-US',{maximumFractionDigits:9})} м³ × ¥${number(rate)} × ${number(s.cny_rate)} ₮`);
+    return {measure:n,amount,formula};
+  }
+  function updateCalculator(e) {
     const box = e.target.closest('.commerce-calculator'); if (!box) return;
-    const s = settings(), n = Number(box.querySelector('[data-cargo-measure]').value), method = box.querySelector('[data-cargo-method]').value;
-    const amount = method === 'weight' ? Math.ceil(Number((n / Number(s.weight_step_kg)).toFixed(9))) * Number(s.weight_step_mnt) : n * Number(n < s.volume_threshold ? s.volume_small_cny : s.volume_large_cny) * Number(s.cny_rate);
-    box.querySelector('output').textContent = n > 0 && n <= 100000 && Number.isFinite(amount) ? 'Каргоны урьдчилсан дүн: ' + money(Math.ceil(Number(amount.toFixed(8)))) : '0-ээс их зөв хэмжээ оруулна уу.';
-  });
+    const s=JSON.parse(box.dataset.cargoRates),method=box.querySelector('[data-cargo-method]').value;
+    box.querySelector('[data-cargo-direct]').hidden=method==='dimensions';box.querySelector('.cargo-dimensions').hidden=method!=='dimensions';
+    box.querySelector('[data-cargo-unit]').textContent=method==='weight'?'Нийт жин · кг':'Нийт эзлэхүүн · м³';
+    const values=Object.fromEntries(['measure','length','width','height','packages'].map(k=>[k,box.querySelector(`[data-cargo-${k}]`).value])),q=cargoEstimate(method,values,s);
+    box.querySelector('output').textContent=q?`${q.formula}\nКаргоны урьдчилсан дүн: ${money(q.amount)}`:'0-ээс их зөв хэмжээ оруулна уу. Савлагааны тоо бүхэл байна.';
+  }
+  document.addEventListener('input',updateCalculator);document.addEventListener('change',updateCalculator);
   const calculationTitle='Захиалах үеийн тооцоо';
-  return {paymentText, timingText, unit, unitHelp, estimate, estimateHtml, calculator, calculationHtml, calculationTitle};
+  return {paymentText, timingText, unit, unitHelp, estimate, estimateHtml, calculator, cargoEstimate, calculationHtml, calculationTitle};
 })();

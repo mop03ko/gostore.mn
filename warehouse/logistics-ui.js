@@ -5,7 +5,7 @@ const lf=(label,name,value='',extra='')=>`<label>${label}<input name="${name}" v
 const logisticsKinds=()=>({missing:lt('Дутуу','缺件'),damaged:lt('Гэмтсэн','破损'),wrong:lt('Бараа зөрсөн','货不对版'),extra:lt('Илүү','多件')});
 function logisticsOrderHtml(o){
   activeLogisticsOrder=o;const l=o.logistics||{version:0,photos:[],issues:[]},m=l.measurement;
-  const form=(action,html)=>`<form data-logistics="${action}" data-id="${esc(o.id)}" data-version="${l.version}" class="warehouse-confirm">${html}${errorBox()}<button class="primary">${lt('Хадгалах','保存')}</button></form>`;
+  const form=(action,html)=>`<form data-logistics="${action}" data-id="${esc(o.id)}" data-version="${l.version}" class="warehouse-confirm">${html}${action==='warehouse-measure'?`<output data-measurement-preview aria-live="polite">${lt('Хэмжээс оруулахад эзлэхүүнийг автоматаар бодно. Тоо ширхэг нь барааны тоо бөгөөд эзлэхүүнийг дахин үржүүлэхгүй.','输入包装尺寸后自动计算体积。商品数量不会再次乘入体积。')}</output>`:''}${errorBox()}<button class="primary">${lt('Хадгалах','保存')}</button></form>`;
   const num=(label,name,value='',min='0.1',max='1000',step='any')=>lf(label,name,value,`type="number" min="${min}" max="${max}" step="${step}" required`);
   let html=`<section class="logistics-section"><div class="batch-heading"><h3>${lt('Агуулахын бүртгэл','仓储记录')}</h3><button class="quiet" data-print-order>${lt('Шошго хэвлэх','打印标签')}</button><button class="quiet" data-logistics-refresh="${esc(o.id)}">${t('refresh')}</button></div>`;
   if(m)html+=`<p>${m.weight_kg} kg · ${m.length_cm} × ${m.width_cm} × ${m.height_cm} cm · ${m.volume_m3} m³ · ${m.pieces} ${t('pieces')}</p>`;
@@ -51,6 +51,12 @@ document.addEventListener('submit',async e=>{
   }catch(error){f.querySelector('.error').textContent=error.message;}finally{button.disabled=false;}
 });
 document.addEventListener('input',e=>{if(e.target.closest('[data-logistics="warehouse-settlement"]'))settlementPreview();});
+document.addEventListener('input',e=>{
+  const f=e.target.closest('[data-logistics="warehouse-measure"]');if(!f)return;
+  const [weight,l,w,h]=['weight_kg','length_cm','width_cm','height_cm'].map(k=>Number(f.elements[k].value));
+  const valid=[l,w,h].every(n=>Number.isFinite(n)&&n>=0.1&&n<=1000);
+  f.querySelector('[data-measurement-preview]').textContent=valid?`${lt('Нийт жин','总重量')}: ${weight>0?weight:'—'} kg · ${l} × ${w} × ${h} / 1,000,000 = ${Number((l*w*h/1000000).toFixed(9))} m³`:lt('Савласан урт, өргөн, өндрийг зөв оруулна уу.','请输入有效的包装长、宽、高。');
+});
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{if(b.hasAttribute('data-print-order'))printOrder();if(b.dataset.logisticsRefresh)await logisticsOpenOrder(b.dataset.logisticsRefresh);if(b.id==='exceptions-button')await showExceptions();}catch(error){toast(error.message);}});
 $('#scan-form').addEventListener('submit',async e=>{e.preventDefault();const code=$('#scan-code').value.trim().toUpperCase();try{if(/^GB-[A-Z0-9-]+$/.test(code))await openBatch(code);else if(/^GS-[A-Z0-9-]+$/.test(code))await logisticsOpenOrder(code);else throw Error(lt('GS эсвэл GB код уншуулна уу.','请扫描 GS 或 GB 编号。'));$('#scan-code').value='';}catch(error){toast(error.message);}});
 

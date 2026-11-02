@@ -335,16 +335,36 @@ window.commerceUI = (() => {
   }
   function calculator(s = settings()) {
     if (!(Number(s.weight_step_kg) > 0)) return '';
-    return `<details class="commerce-calculator"><summary>Каргоны зардлаа тооцоолох</summary><p>Өөрийн мэдэх жин эсвэл эзлэхүүнийг оруулна уу. Энэ нь урьдчилсан тооцоо; агуулах бодитоор хэмжиж тооцох аргыг баталгаажуулна.</p><label class="field">Тооцох арга<select data-cargo-method><option value="weight">Жин · кг</option><option value="volume">Эзлэхүүн · м³</option></select></label><label class="field">Хэмжээ<input data-cargo-measure type="number" min="0.001" max="100000" step="any" inputmode="decimal" placeholder="Жишээ: 1.5"></label><output data-cargo-estimate aria-live="polite">Хэмжээгээ оруулна уу.</output><small>Бараа, үйлчилгээ, Хятад доторх болон УБ хүргэлт ороогүй.</small></details>`;
+    const rates=Object.fromEntries(['cny_rate','weight_step_kg','weight_step_mnt','volume_threshold','volume_small_cny','volume_large_cny'].map(k=>[k,s[k]]));
+    return `<details class="commerce-calculator" data-cargo-rates="${esc(JSON.stringify(rates))}"><summary>Жин, эзлэхүүнээр карго тооцоолох</summary><p>Эрээн → Улаанбаатар тээврийн урьдчилсан зардал. Савласан барааны нийт жин эсвэл хэмжээсээ оруулна уу. Эцсийн төлбөрийг агуулах бодитоор хэмжиж батална.</p><label class="field">Тооцох арга<select data-cargo-method><option value="weight">Нийт жин · кг</option><option value="dimensions">Урт × өргөн × өндөр · см</option><option value="volume">Нийт эзлэхүүн · м³</option></select></label><label class="field" data-cargo-direct><span data-cargo-unit>Нийт жин · кг</span><input data-cargo-measure type="number" min="0.001" max="100000" step="any" inputmode="decimal" placeholder="Жишээ: 1.5"></label><div class="cargo-dimensions" hidden>${[['length','Урт · см'],['width','Өргөн · см'],['height','Өндөр · см'],['packages','Ижил хэмжээтэй савлагааны тоо']].map(([k,label])=>`<label class="field">${label}<input data-cargo-${k} type="number" inputmode="decimal" min="${k==='packages'?1:0.1}" max="${k==='packages'?10000:1000}" step="${k==='packages'?1:'any'}" ${k==='packages'?'value="1"':''}></label>`).join('')}<small>Нэг савлагааны хэмжээсийг оруулна. Барааны ширхэг болон савлагааны тоо өөр байж болно.</small></div><output data-cargo-estimate aria-live="polite">Хэмжээгээ оруулна уу.</output><small>Барааны үнэ, үйлчилгээ, Эрээн хүртэлх болон УБ хүргэлт энэ дүнд ороогүй.</small></details>`;
   }
-  document.addEventListener('input', e => {
+  function cargoEstimate(method, values, s) {
+    let n=Number(values.measure),formula='';
+    if(method==='dimensions'){
+      const [l,w,h,count]=['length','width','height','packages'].map(k=>Number(values[k]));
+      if(![l,w,h].every(v=>Number.isFinite(v)&&v>=0.1&&v<=1000)||!Number.isInteger(count)||count<1||count>10000)return null;
+      n=l*w*h*count/1000000;formula=`${number(l)} × ${number(w)} × ${number(h)} см × ${count} / 1,000,000 = ${n.toLocaleString('en-US',{maximumFractionDigits:9})} м³`;
+    }else if(!['weight','volume'].includes(method))return null;
+    if(!Number.isFinite(n)||n<=0||n>100000)return null;
+    const weight=method==='weight',rate=Number(weight?s.weight_step_mnt:n<Number(s.volume_threshold)?s.volume_small_cny:s.volume_large_cny);
+    if(!Number.isFinite(rate)||rate<0||!(Number(s.weight_step_kg)>0)||!(Number(s.cny_rate)>0)||!(Number(s.volume_threshold)>0))return null;
+    const units=weight?Math.ceil(Number((n/Number(s.weight_step_kg)).toFixed(9))):n;
+    const amount=Math.ceil(Number((units*rate*(weight?1:Number(s.cny_rate))).toFixed(8)));
+    if(!Number.isFinite(amount))return null;
+    formula+=(formula?' · ':'')+(weight?`${number(n)} кг → ${units} × ${number(s.weight_step_kg)} кг × ${money(rate)}`:`${n.toLocaleString('en-US',{maximumFractionDigits:9})} м³ × ¥${number(rate)} × ${number(s.cny_rate)} ₮`);
+    return {measure:n,amount,formula};
+  }
+  function updateCalculator(e) {
     const box = e.target.closest('.commerce-calculator'); if (!box) return;
-    const s = settings(), n = Number(box.querySelector('[data-cargo-measure]').value), method = box.querySelector('[data-cargo-method]').value;
-    const amount = method === 'weight' ? Math.ceil(Number((n / Number(s.weight_step_kg)).toFixed(9))) * Number(s.weight_step_mnt) : n * Number(n < s.volume_threshold ? s.volume_small_cny : s.volume_large_cny) * Number(s.cny_rate);
-    box.querySelector('output').textContent = n > 0 && n <= 100000 && Number.isFinite(amount) ? 'Каргоны урьдчилсан дүн: ' + money(Math.ceil(Number(amount.toFixed(8)))) : '0-ээс их зөв хэмжээ оруулна уу.';
-  });
+    const s=JSON.parse(box.dataset.cargoRates),method=box.querySelector('[data-cargo-method]').value;
+    box.querySelector('[data-cargo-direct]').hidden=method==='dimensions';box.querySelector('.cargo-dimensions').hidden=method!=='dimensions';
+    box.querySelector('[data-cargo-unit]').textContent=method==='weight'?'Нийт жин · кг':'Нийт эзлэхүүн · м³';
+    const values=Object.fromEntries(['measure','length','width','height','packages'].map(k=>[k,box.querySelector(`[data-cargo-${k}]`).value])),q=cargoEstimate(method,values,s);
+    box.querySelector('output').textContent=q?`${q.formula}\nКаргоны урьдчилсан дүн: ${money(q.amount)}`:'0-ээс их зөв хэмжээ оруулна уу. Савлагааны тоо бүхэл байна.';
+  }
+  document.addEventListener('input',updateCalculator);document.addEventListener('change',updateCalculator);
   const calculationTitle='Захиалах үеийн тооцоо';
-  return {paymentText, timingText, unit, unitHelp, estimate, estimateHtml, calculator, calculationHtml, calculationTitle};
+  return {paymentText, timingText, unit, unitHelp, estimate, estimateHtml, calculator, cargoEstimate, calculationHtml, calculationTitle};
 })();
 ;
 /* ==== store-server.js ==== */
@@ -941,7 +961,7 @@ async function refreshCargoNotifications(){if(!window.customerAccount?.user){doc
 async function showCargoNotifications(){if(!window.customerAccount?.user){await customerAccount.open();return;}const d=await refreshCargoNotifications();if(!d)return;cargoNoticeThrough=d.notifications[0]?.id||0;openModal('Мэдэгдэл',`<p class="modal-intro">Захиалгын явц болон төлбөрийн шинэчлэлтүүд.</p>${d.notifications.length?`<button class="button outline" data-read-notifications>Бүгдийг уншсан болгох</button>${d.notifications.map(n=>`<article class="cargo-notice ${n.read_at?'':'unread'}"><strong>${n.kind==='status'?esc(orderLabels[n.message]||n.message):esc(n.message)}</strong><p>${esc(n.order_id)} · ${cargoDate(n.created)}</p><button class="text-button" data-server-order="${esc(n.order_id)}">Ачаа харах →</button></article>`).join('')}`:'<div class="empty-state">Шинэ мэдэгдэл алга.</div>'}`);}
 document.addEventListener('input',e=>{if(e.target.id==='cargo-search'){cargoQuery=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
 document.addEventListener('change',e=>{if(e.target.id==='cargo-filter'){cargoFilter=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
-document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{if(b.hasAttribute('data-cargo-reset')){cargoFilter='all';cargoQuery='';$('#cargo-search').value='';$('#cargo-filter').value='all';$('#cargo-cards').innerHTML=cargoCards();$('#cargo-search').focus();}if(b.dataset.copyCargo){try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}}if(b.hasAttribute('data-notifications'))await showCargoNotifications();if(b.hasAttribute('data-read-notifications')){await shopApi('customer-notifications-read',{through_id:Number(cargoNoticeThrough)});await showCargoNotifications();}if(b.dataset.freightInvoice||b.dataset.paymentCheck){b.disabled=true;await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}}catch(err){toast(err.message);}finally{b.disabled=false;}});
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||!b.matches('[data-cargo-reset],[data-copy-cargo],[data-notifications],[data-read-notifications],[data-freight-invoice],[data-payment-check]'))return;try{if(b.hasAttribute('data-cargo-reset')){cargoFilter='all';cargoQuery='';$('#cargo-search').value='';$('#cargo-filter').value='all';$('#cargo-cards').innerHTML=cargoCards();$('#cargo-search').focus();}if(b.dataset.copyCargo){try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}}if(b.hasAttribute('data-notifications'))await showCargoNotifications();if(b.hasAttribute('data-read-notifications')){await shopApi('customer-notifications-read',{through_id:Number(cargoNoticeThrough)});await showCargoNotifications();}if(b.dataset.freightInvoice||b.dataset.paymentCheck){b.disabled=true;await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}}catch(err){toast(err.message);}finally{b.disabled=false;}});
 setInterval(()=>{if(!document.hidden&&window.customerAccount?.user)refreshCargoNotifications().catch(()=>{});},60000);
 setTimeout(()=>refreshCargoNotifications().catch(()=>{}),2000);
 
@@ -1500,6 +1520,10 @@ window.productCompare=(()=>{
   function mediaInfo(p){
     return (p.videos?.length?'<div class="pd-videos">'+p.videos.map(v=>'<video controls playsinline preload="none"'+(v.poster?' poster="'+esc(v.poster)+'"':'')+' src="'+esc(v.url)+'" aria-label="Барааны танилцуулга видео"></video>').join('')+'</div>':'')+(p.description_images?.length?'<details class="pd-description-photos"><summary>Нийлүүлэгчийн дэлгэрэнгүй зураг ('+p.description_images.length+')</summary><div>'+p.description_images.map((src,i)=>'<img data-description-src="'+esc(src)+'" alt="Барааны тайлбар · '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">').join('')+'</div></details>':'');
   }
+  function shippingTools(p){
+    const native=supplier&&details.shipping?.catalog_provider==='taoworld';
+    return `<section class="pd-shipping-tools" aria-label="Хүргэлтийн тооцоо"><h3>Хүргэлтийн зардлаа шалгах</h3>${native?`<div class="pd-domestic"><strong>Нийлүүлэгч → Эрээн агуулах</strong><p>Барааны хүргэлтийн лавлах үнийг шалгана. Сонголт, тоо ширхэг, нэг дэлгүүрийн нийлүүлсэн захиалгын эцсийн дүнг төлөхийн өмнө дахин тооцно.</p><button type="button" class="button outline" data-pd-logistics>Эрээн хүртэлх үнэ шалгах</button><output data-pd-logistics-result aria-live="polite"></output></div>`:''}<p class="pd-muted">${Number(p.weight_kg)>0?`Нийлүүлэгчийн лавлах жин: ${esc(p.weight_kg)} кг. Савласан нийт жин өөр байж болно.`:'Нийлүүлэгч савласан жин, хэмжээс мэдээлээгүй. Агуулахад ирэхэд хэмжиж, Миний ачаа хэсэгт харуулна.'}</p>${commerceUI.calculator(details.shipping)}</section>`;
+  }
   function render(){
     const p=product,variants=p.variants;
     const available=supplier?variants.filter(v=>v.cny>0&&(v.stock===null||v.stock>=product.min_qty)).sort((a,b)=>(a.stock===null)-(b.stock===null)||a.cny-b.cny)[0]?.id:variants[0];
@@ -1514,7 +1538,7 @@ window.productCompare=(()=>{
     <div class="pd-summary"><span class="section-kicker">${supplier?'GOSTORE ДЭЛГҮҮР':'GOSTORE СОНГОЛТ'}</span><h1>${esc(p.name)}</h1>${supplier&&(p.vendor_name||p.shop_rating)?`<p class="pd-vendor">${p.vendor_name?`<span>Дэлгүүр: ${esc(p.vendor_name)}</span>`:''}${ratingHtml(Number(p.shop_rating))}</p>`:''}
     ${supplier?`<div class="pd-sales">${p.sold_count?`<span>${esc(p.sold_count.toLocaleString('en-US'))} · нийлүүлэгч дээр зарагдсан</span>`:''}${p.min_qty>1?`<span>Хамгийн багадаа ${esc(p.min_qty)}ш</span>`:''}${p.sales_30_days?`<span>Сүүлийн 30 хоног: ${esc(p.sales_30_days.toLocaleString())}</span>`:''}</div>`:''}
     ${supplier&&p.brand_name?`<p class="pd-brand-store"><a href="${esc(window.supplierBrandHref(p.brand_id))}">${esc(p.brand_name)} · эх дэлгүүрийн бусад бараа →</a></p>`:''}
-    <div class="pd-price-box"><span>Үнэ</span><strong id="pd-unit-price"></strong><small id="pd-original-price"></small><p>Олон улсын карго ирэхэд жингээр тооцогдоно</p></div>
+    <div class="pd-price-box"><span>Үнэ</span><strong id="pd-unit-price"></strong><small id="pd-original-price"></small><p>Олон улсын каргог бодит жин эсвэл эзлэхүүнээр тооцно</p></div>
     ${supplier?briefInfo(p):''}
     ${!supplier&&p.demo?'<p class="pd-warning">Жишээ бараа · Бодит худалдааны санал биш.</p>':''}
     ${supplier&&details.stale?'<div class="pd-warning" role="alert">Барааны үнэ, худалдаалах нөхцөлийг дахин шалгах шаардлагатай. Захиалга түр боломжгүй.<br><button type="button" class="text-button" data-pd-retry>Мэдээлэл шинэчлэх ↻</button></div>':supplier&&!p.sellable?'<div class="pd-warning" role="alert">Нийлүүлэгч энэ барааг одоогоор худалдаалахгүй байна. Төстэй бараанаас сонгоно уу.</div>':''}
@@ -1522,7 +1546,7 @@ window.productCompare=(()=>{
     <form id="pd-options">${supplier?`<fieldset class="pd-variant-list" data-variants-collapsed><legend>Өнгө / хэмжээ / загвар <small>${variants.length} сонголт</small></legend>${variants.map(v=>{const off=(v.stock!==null&&v.stock<product.min_qty)||v.cny===null;return `<label class="pd-variant${off?' off':''}"><input type="radio" name="variant" value="${esc(v.id)}" ${v.id===available?'checked':''} ${off?'disabled':''} required>${/^https:\/\//i.test(v.image||p.image||'')?`<img ${supplierImageAttrs(v.image||p.image,80)} alt="" loading="lazy" fetchpriority="low" referrerpolicy="no-referrer">`:'<span class="pd-variant-noimg"></span>'}<span class="pd-variant-name">${esc(v.label)}</span><span class="pd-variant-side"><b>${v.cny>0?money(Math.ceil(v.cny*(details.shipping?.cny_rate||0))):'—'}</b><small>${v.stock===0?'Дууссан':v.stock==null?'':'Үлд: '+v.stock+'ш'}</small></span></label>`;}).join('')}</fieldset>${variants.length>4?'<button type="button" class="text-button pd-variants-toggle" data-variants-toggle aria-expanded="false">Бүх сонголтыг харах ('+variants.length+')</button>':''}`:`<label class="field">Өнгө / хэмжээ / загвар<select name="variant" required>${variants.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>`}
     <div class="pd-quantity-row"><label for="pd-qty">Тоо ширхэг</label><div class="pd-quantity"><button type="button" data-pd-delta="-1" aria-label="Тоо бууруулах">−</button><input id="pd-qty" name="qty" type="number" inputmode="numeric" min="${supplier?p.min_qty:1}" step="${supplier?p.step:1}" max="${supplier?9999:99}" value="${supplier?p.min_qty:1}" required><button type="button" data-pd-delta="1" aria-label="Тоо нэмэх">+</button></div></div><p class="pd-muted" id="pd-stock"></p><p class="pd-muted">${esc(commerceUI.unitHelp)}</p><p class="form-error" id="pd-selection-error" role="alert"></p>
     <div class="pd-buybar"><div><small>Барааны үнэ · карго тусдаа</small><strong id="pd-total"></strong><span id="pd-selected-label" class="pd-selected-label"></span></div>${supplier?`<button type="button" class="button outline pd-add" data-pd-add aria-label="Сагсанд нэмэх" title="Сагсанд нэмэх">${icon('cart-add')}<span>Сагслах</span></button>`:''}<button class="button blue pd-buy" type="submit" data-pd-submit>${supplier?'Худалдан авах':'Сагсанд нэмэх'}</button></div></form>
-    <div class="pd-assurance"><a href="/help#delivery">Хүргэлт, тариф</a><a href="/help#returns">Гэмтэл, буцаалтын хүсэлт</a><a href="/help#cancellation">Цуцлах нөхцөл</a></div><div class="pd-delivery">${icon('truck')}<div><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>${supplier?esc(commerceUI.paymentText(details.shipping)):'Бараа, хүргэлтийн дүн баталгаажсаны дараа төлнө.'}</p><p>${esc(commerceUI.timingText())}</p></div></div>
+    ${supplier?shippingTools(p):''}<div class="pd-assurance"><a href="/help#delivery">Хүргэлт, тариф</a><a href="/help#returns">Гэмтэл, буцаалтын хүсэлт</a><a href="/help#cancellation">Цуцлах нөхцөл</a></div><div class="pd-delivery">${icon('truck')}<div><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>${supplier?esc(commerceUI.paymentText(details.shipping)):'Бараа, хүргэлтийн дүн баталгаажсаны дараа төлнө.'}</p><p>${esc(commerceUI.timingText())}</p></div></div>
     ${supplier&&p.tiers?.length?`<div class="pd-tiers"><strong>Тоо ширхгээс хамаарах лавлах үнэ</strong>${p.tiers.map(t=>`<span>${t.qty}+ ширхэг <b>${money(Math.ceil(t.cny*(details.shipping?.cny_rate||0)))}</b></span>`).join('')}<small>Сонгосон хувилбарын эцсийн үнийг баталгаажуулна.</small></div>`:''}
     ${supplier?`<details class="pd-source-details"><summary>Эх нийлүүлэгчийн мэдээлэл</summary><p>GOStore нь сонгосон барааны захиалга, тээврийн явцыг зохицуулна. Дэлгүүрийн борлуулалт, мэдээлэл нь эх нийлүүлэгчийнх.</p><a class="text-button" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Нийлүүлэгчийн хуудас ↗</a></details>`:''}</div></div>
     <nav class="pd-section-links" aria-label="Барааны мэдээлэл"><a href="#pd-description">Тайлбар</a><a href="#pd-shipping">Хүргэлт</a></nav>
@@ -1545,6 +1569,19 @@ window.productCompare=(()=>{
     }catch(error){stateMessage(error.status===404?'Бараа олдсонгүй':'Мэдээлэл авах боломжгүй',error.message,error.status!==404);}
   }
   root.addEventListener('click',e=>{if(!e.target.closest('[data-pd-add]'))return;const value=selection();if(value?.valid&&!details.stale&&product.sellable)taobaoCart.add(product,value.variant,value.qty);});
+  root.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-pd-logistics]');if(!button||button.disabled)return;
+    const output=button.parentElement.querySelector('output');button.disabled=true;output.textContent='Хүргэлтийн үнэ шалгаж байна…';
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+    try{
+      const response=await fetch('/api/index.php?'+new URLSearchParams({action:'supplier-logistics',id:product.id}),{credentials:'omit',cache:'no-store',signal:controller.signal}),q=await response.json();
+      if(!button.isConnected)return;
+      if(!response.ok||q.status!=='available'||!Number.isFinite(q.fee_cny)||q.fee_cny<0||!Number.isFinite(q.fee_mnt)||q.fee_mnt<0)throw Error('Unavailable');
+      output.textContent=`Эрээн хүртэл: ¥${q.fee_cny.toLocaleString('en-US',{maximumFractionDigits:2})} · ${money(q.fee_mnt)}\nБарааны хүргэлтийн лавлах үнэ · ${new Date(q.checked_at).toLocaleString('sv-SE',{timeZone:'Asia/Ulaanbaatar'})}\nЭнэ нь Эрээн → Улаанбаатар каргоны төлбөрийг агуулаагүй.`;
+      button.textContent='Хүргэлтийн лавлах үнэ шалгасан';
+    }catch(error){if(button.isConnected){output.textContent='Хүргэлтийн лавлах үнэ одоогоор авах боломжгүй. Захиалга батлах үед бодит дүнг дахин шалгана.';button.textContent='Дахин шалгах';button.disabled=false;}}
+    finally{clearTimeout(timer);}
+  });
   root.addEventListener('input',e=>{if(e.target.closest('#pd-options'))update();});
   root.addEventListener('change',e=>{if(e.target.closest('#pd-options')){update();if(supplier&&e.target.name==='variant'){const image=selection()?.variant?.image,index=images.indexOf(image);if(index>=0)gallery(index);}}});
   root.addEventListener('submit',e=>{if(e.target.id!=='pd-options')return;e.preventDefault();const value=selection();if(!value?.valid)return; if(supplier){if(details.stale||!product.sellable)return;taobaoCart.buyNow(product,value.variant,value.qty);}else addToCart(id,value.variant,value.qty);});

@@ -6,7 +6,7 @@ file_put_contents($root.'/server/taoworld.local.php',"<?php return ['app_key'=>'
 file_put_contents($root.'/server/config.local.php','<?php return '.var_export(['data_dir'=>$root.'/data','site_url'=>'https://example.test','qpay'=>['enabled'=>true,'client_id'=>'fake','client_secret'=>'fake','invoice_code'=>'fake']],true).';');
 putenv('GOSTORE_DATA_DIR='.$root.'/data');putenv('GOSTORE_DISABLE_SUPPLIER_NETWORK=1');putenv('GOSTORE_DISABLE_QPAY=0');
 foreach(['bootstrap','shipping','supplier','checkout','taoworld-domestic','qpay'] as $f)require_once $root.'/server/'.$f.'.php';
-$calls=[];$qpayCalls=[];$ship=1000;$error=false;$referenceError=false;$missing=false;$wrongSku=false;$extraGoods=0;$onRender=null;
+$calls=[];$qpayCalls=[];$ship=1000;$error=false;$referenceError=false;$referenceFee=1000;$missing=false;$wrongSku=false;$extraGoods=0;$onRender=null;
 $products=[
  '700000000001'=>['seller'=>'a','mp'=>'80001','skus'=>['11'=>['mp'=>'90011','price'=>1000],'12'=>['mp'=>'90012','price'=>1200]]],
  '700000000002'=>['seller'=>'a','mp'=>'80002','skus'=>['21'=>['mp'=>'90021','price'=>2000]]],
@@ -15,13 +15,13 @@ $products=[
 function check(bool $yes,string $why):void{if(!$yes)throw new RuntimeException($why);}
 function denied(callable $fn,int $code):void{try{$fn();}catch(ApiError $e){check($e->getCode()===$code,'Unexpected rejection: '.$e->getMessage());return;}throw new RuntimeException('Expected rejection');}
 function taoworld_http(string $path,array $params):array{
- global $calls,$products,$ship,$error,$referenceError,$missing,$wrongSku,$extraGoods,$onRender;$calls[]=[$path,$params];
+ global $calls,$products,$ship,$error,$referenceError,$referenceFee,$missing,$wrongSku,$extraGoods,$onRender;$calls[]=[$path,$params];
  check(!in_array($path,['/purchase/order/create','/purchase/order/batch/pay'],true),'Checkout attempted a purchase/payment');
  if($path==='/traffic/item/batchGetSourceItemLogisticPrice'){
   if($referenceError)throw new ApiError('API_CAN_NOT_USE',502);
   check(!array_intersect(['item_ids','sku_id','quantity'],array_keys($params)),'Unsupported shipping inputs');
   $address=json_decode($params['address_info'],true);check($address===['country'=>'中国','state'=>'内蒙古自治区','city'=>'锡林郭勒盟','district'=>'二连浩特市'],'Wrong address levels');
-  $rows=[];foreach(json_decode($params['mi_id_list'],true) as $mi)$rows[]=['item_resource'=>'taobao','item_id'=>substr($mi,3),'mi_id'=>'rotated-'.$mi,'success'=>true,'currency'=>'CNY','post_fee'=>1000];
+  $rows=[];foreach(json_decode($params['mi_id_list'],true) as $mi)$rows[]=['item_resource'=>'taobao','item_id'=>substr($mi,3),'mi_id'=>'rotated-'.$mi,'success'=>true,'currency'=>'CNY','post_fee'=>$referenceFee];
   if($missing)array_pop($rows);return ['code'=>'0','data'=>array_reverse($rows)];
  }
  if($error)throw new ApiError('Read failed',502);
@@ -49,6 +49,17 @@ function qpay_http(string $path,array $params,string $auth):array{global $qpayCa
 taoworld_store(taoworld_token_state(['access_token'=>'fake','refresh_token'=>'fake','expires_in'=>3600,'refresh_expires_in'=>7200,'account_id'=>'fixture']));
 $settings=array_replace(shipping_settings(),['catalog_provider'=>'taoworld','supplier_enabled'=>true,'api_daily_limit'=>10000,'domestic_default_cny'=>99]);db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',tw_json($settings)]);
 foreach($products as $id=>$p)tw_catalog_remember(['item_id'=>(string)$id,'mi_id'=>'mi-'.$id]);
+$_SERVER['REMOTE_ADDR']='192.0.2.88';
+$reference=tw_product_logistics('tb-700000000001');check($reference['status']==='available'&&$reference['fee_cny']===10&&$reference['fee_mnt']===5500,'Public logistics reference money');
+check(!array_intersect(['account','receiver','mi_id','access_token'],array_keys($reference)),'Reference exposes private supplier proof');
+$before=count($calls);tw_product_logistics('tb-700000000001');check(count($calls)===$before,'Repeated reference consumes API');
+$file=glob(tw_catalog_dir().'/logistics-reference-*.json')[0];$expired=supplier_snapshot_read($file);$expired['time']=time()-1801;supplier_snapshot_write($file,$expired);tw_product_logistics('tb-700000000001');check(count($calls)===$before+1,'Expired reference not refreshed');
+$bad=supplier_snapshot_read($file);$bad['data']['fee_fen']=-1;supplier_snapshot_write($file,$bad);check(tw_product_logistics('tb-700000000001')['fee_cny']===10,'Corrupt negative reference was trusted');
+$before=count($calls);$otherAddress=$settings;$otherAddress['warehouse_address'].=' 2';db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',tw_json($otherAddress)]);tw_product_logistics('tb-700000000001');check(count($calls)===$before+1,'Changed destination reused reference');db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',tw_json($settings)]);
+$referenceFee=0;$reference=tw_product_logistics('tb-700000000002');check($reference['status']==='available'&&$reference['fee_cny']===0,'Zero fee confused with missing fee');$referenceFee=1000;
+$referenceError=true;$reference=tw_product_logistics('tb-700000000003');check($reference['status']==='unavailable'&&$reference['fee_cny']===null,'Failed reference presented as free');$referenceError=false;unlink(tw_catalog_dir().'/logistics-unavailable.json');
+$before=count($calls);denied(fn()=>tw_product_logistics('tb-799999999999'),409);check(count($calls)===$before,'Unknown identifier consumed API');
+$_SERVER['REMOTE_ADDR']='192.0.2.87';
 function lines(array $items):array{return checkout_items(['items'=>$items]);}
 function selectItem(string $id,string $sku,int $qty=1):array{return ['id'=>'tb-'.$id,'sku'=>$sku,'qty'=>$qty];}
 function expireQuote(array $lines):void{$path=tw_catalog_dir().'/domestic-'.tw_domestic_key($lines,tw_domestic_receiver()).'.json';if(is_file($path)){$c=supplier_snapshot_read($path);$c['time']=time()-121;supplier_snapshot_write($path,$c);}}

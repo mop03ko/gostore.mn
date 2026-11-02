@@ -19,6 +19,8 @@ assert.equal((await ub('warehouse-measure',measure)).status,404);
 assert.equal((await cn('warehouse-measure',{...measure,pieces:1})).status,409,'Partial order cannot pass count verification');
 o=(await cn('warehouse-measure',measure)).order;assert.equal(o.logistics.measurement.volume_m3,0.006);
 assert.equal((await cn('warehouse-measure',measure)).status,409,'Stale measurement rejected');
+o=(await cn('warehouse-measure',{...measure,expected_version:o.logistics.version,length_cm:.1,width_cm:.1,height_cm:.1})).order;assert.equal(o.logistics.measurement.volume_m3,1e-9,'Positive tiny volume must not round to zero');
+o=(await cn('warehouse-measure',{...measure,expected_version:o.logistics.version})).order;
 const png=fs.readFileSync('assets/chair.jpg');
 function upload(version,bytes=png){const f=new FormData();f.set('id',id);f.set('expected_version',String(version));f.set('image',new Blob([bytes],{type:'image/png'}),'photo.png');return f;}
 assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version,Buffer.from('<script>bad</script>')))).status,400);

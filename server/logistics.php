@@ -78,7 +78,7 @@ function logistics_post(string $action,array $b,string $location): never {
             $m['pieces']=int_field($b,'pieces',1,1000000);
             $expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
             if($m['pieces']!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
-            $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,6);$m['at']=gmdate('c');$l['measurement']=$m;
+            $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,9);$m['at']=gmdate('c');$l['measurement']=$m;
         }elseif($action==='warehouse-shelf'){
             if(warehouse_role($location)!=='ulaanbaatar'||!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('УБ агуулахад ирсэн барааны байрлалыг бүртгэнэ.',409);
             $l['shelf']=str_field($b,'shelf',50);
