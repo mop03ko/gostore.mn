@@ -1,4 +1,4 @@
-import {uploadReceipt} from './warehouse-photo.mjs';
+import {uploadReceipt,confirmCargo} from './warehouse-photo.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -40,7 +40,7 @@ b=(await cn('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:
 b=(await cn('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;assert.equal(b.scanned.length,1,'Duplicate scanner input does not double count');
 assert.equal((await cn('warehouse-batch-ready',{id:b.id,expected_version:b.version})).status,409,'Open issue holds packing');
 o=(await cn('warehouse-issue-resolve',{id,expected_version:o.logistics.version,issue_id:issue,resolution:'Replaced and inspected'})).order;
-b=(await cn('warehouse-batch-ready',{id:b.id,expected_version:b.version})).batch;assert.equal(b.status,'ready');
+o=await confirmCargo(cn,id);b=(await cn('warehouse-batch-ready',{id:b.id,expected_version:b.version})).batch;assert.equal(b.status,'ready');
 b=(await cn('warehouse-batch-dispatch',{id:b.id,expected_version:b.version,checked:true})).batch;
 assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409);
 b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;

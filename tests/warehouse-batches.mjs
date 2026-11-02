@@ -1,4 +1,4 @@
-import {uploadReceipt} from './warehouse-photo.mjs';
+import {uploadReceipt,confirmCargo} from './warehouse-photo.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -15,7 +15,7 @@ async function checkTracking(status){const response=await guest('order-get',{id:
 for(const id of ids){await uploadReceipt(cn,id);assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);}
 assert.equal((await cn('warehouse-order-update',{id:ids[0],status:'erenhot_dispatched',expected_status:'erenhot'})).status,403,'Dispatch must use a batch');
 assert.equal((await admin('order-update',{id:ids[3],status:'ready_delivery',amount:99000,internal_note:''})).status,409,'Admin cannot create fulfillment state without sorting');
-for(const id of ids){const m=await cn('warehouse-measure',{id,expected_version:(await cn('warehouse-order&id='+id)).order.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2});assert.equal(m.status,200);}
+for(const id of ids){const m=await cn('warehouse-measure',{id,expected_version:(await cn('warehouse-order&id='+id)).order.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2});assert.equal(m.status,200);await confirmCargo(cn,id);}
 async function scanAll(c,b){for(const o of b.orders){const r=await c('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:o.id});assert.equal(r.status,200);b=r.batch;}return b;}
 const create={token:token(),order_ids:[ids[0]],note:'Batch test'};
 assert.equal((await ub('warehouse-batch-create',create)).status,403);

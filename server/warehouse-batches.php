@@ -118,7 +118,7 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                 if(array_diff(array_column($members,'id'),$batch['checks'][$location]??[]))fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
                 foreach($members as $o){
                     if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
-                    if(warehouse_role($location)==='erenhot'&&!isset($o['logistics']['measurement']))fail('Бодит хэмжилт шаардлагатай.',409);
+                    if(warehouse_role($location)==='erenhot')warehouse_cargo_required($o);
                     $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready',default=>'erenhot_dispatched'};
                     if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
                     if($action==='warehouse-batch-receive')logistics_receipt_photo_required($o,$location);

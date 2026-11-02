@@ -123,6 +123,7 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     $result['items']=array_map(fn($item)=>array_intersect_key($item,array_flip(['name','variant','qty'])),$items);
     $result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])), $o['history']??[]);
     $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
+    if(warehouse_role($location)==='erenhot')$result['cargo_rates']=warehouse_cargo_rates($o);
     $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
@@ -198,7 +199,7 @@ function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-logout'){$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
     warehouse_required();
     $location=warehouse_session_location();
-    if(in_array($action,['warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
+    if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm','warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);
     if($action==='warehouse-fulfillment-update')warehouse_fulfillment($b,$location);
     if(str_starts_with($action,'warehouse-inbound-')&&function_exists('inbound_warehouse_post'))inbound_warehouse_post($action,$b,$location);
@@ -220,6 +221,18 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
+        'Тээврийн хэмжилт буруу.'=>'请输入正确的重量或体积。',
+        'Тээврийн тарифыг админ шалгана уу.'=>'运费费率无效，请联系管理员检查。',
+        'Тээврийн дүн хэтэрсэн.'=>'运费金额超出允许范围。',
+        'Тээврийн дүнг Эрээнд хүлээн авсны дараа батална.'=>'二连仓库签收入库后才能计算和确认运费。',
+        'Тээврийн дүнг шалгаснаа батална уу.'=>'请勾选确认已核对运费。',
+        'Эхлээд тээврийн дүнг тооцоолно уу.'=>'请先计算运费。',
+        'Тээврийн тооцоо өөрчлөгдсөн. Шинэчилнэ үү.'=>'运费计算已更新，请刷新后核对。',
+        'Тээврийн дүн аль хэдийн батлагдсан.'=>'运费已确认，请勿重复提交。',
+        'Эрээнд баталсан тээврийн аргыг өөрчлөхгүй.'=>'不能更改二连仓库已确认的计费方式。',
+        'Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.'=>'请先处理未解决的异常。',
+        'Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.'=>'记录已更新，请刷新后重试。',
         'Нэг багцын захиалгууд ижил хүлээн авах агуулахтай байна.'=>'同一包裹的订单必须属于同一个收货仓库，请检查订单分配。',
         'Хүлээн авах агуулах буруу.'=>'请选择有效的收货仓库。',
         'Багц агуулахаас бодитоор гарсныг батална уу.'=>'请确认包裹已实际离开二连仓库。',

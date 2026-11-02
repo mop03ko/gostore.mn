@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/warehouse-cargo.php';
 
 function logistics_state(array $o): array {
     return array_replace(['version'=>0,'photos'=>[],'issues'=>[],'shelf'=>''], $o['logistics']??[]);
@@ -71,7 +72,32 @@ function logistics_post(string $action,array $b,string $location): never {
         $l=logistics_state($o);
         if(int_field($b,'expected_version',0,PHP_INT_MAX)!==$l['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
         if(in_array($o['status'],['completed','cancelled'],true))fail('Дууссан захиалгыг өөрчлөхгүй.',409);
-        if($action==='warehouse-measure'){
+        if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm'],true)){
+            if(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot')fail('Тээврийн дүнг Эрээнд хүлээн авсны дараа батална.',409);
+            if($action==='warehouse-cargo-calculate'){
+                $method=str_field($b,'cargo_method',20);$dimensions=[];
+                if($method==='weight')$measure=decimal_field($b,'weight_kg',0.001,10000);
+                elseif($method==='volume'){
+                    if(($b['volume_input']??'dimensions')==='dimensions'){
+                        foreach(['length_cm','width_cm','height_cm'] as $k)$dimensions[$k]=decimal_field($b,$k,0.1,1000);
+                        $measure=round(array_product($dimensions)/1000000,9);
+                    }elseif($b['volume_input']==='direct')$measure=decimal_field($b,'volume_m3',0.000000001,1000);
+                    else fail('Тээврийн хэмжилт буруу.',400);
+                }else fail('Тээврийн хэмжилт буруу.',400);
+                $pieces=int_field($b,'pieces',1,1000000);$expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
+                if($pieces!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
+                $l['transport']=warehouse_cargo_calculate($method,$measure,warehouse_cargo_rates($o),$pieces,$dimensions)+['location'=>$location];
+                // Preserve independently recorded package dimensions; update a matching measurement when present.
+                if(isset($l['measurement'])){if($method==='weight')$l['measurement']['weight_kg']=$measure;else{$l['measurement']['volume_m3']=$measure;if($dimensions)$l['measurement']=array_replace($l['measurement'],$dimensions);else unset($l['measurement']);}}
+            }else{
+                if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
+                if(($b['checked']??false)!==true)fail('Тээврийн дүнг шалгаснаа батална уу.',400);
+                $q=$l['transport']??null;if(!$q)fail('Эхлээд тээврийн дүнг тооцоолно уу.',409);
+                if(int_field($b,'expected_amount_mnt',0,100000000)!==$q['amount_mnt'])fail('Тээврийн тооцоо өөрчлөгдсөн. Шинэчилнэ үү.',409);
+                if(!empty($q['confirmed_at']))fail('Тээврийн дүн аль хэдийн батлагдсан.',409);
+                $l['transport']['confirmed_at']=gmdate('c');$l['transport']['confirmed_location']=$location;
+            }
+        }elseif($action==='warehouse-measure'){
             $legacy=warehouse_role($location)==='ulaanbaatar'&&!isset($l['measurement'])&&!isset($o['settlement'])&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true);
             if(!$legacy&&(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot'))fail('Эрээнд хүлээн авсны дараа хэмжилт хийнэ.',409);
             $m=[];foreach(['weight_kg'=>[0.001,10000],'length_cm'=>[0.1,1000],'width_cm'=>[0.1,1000],'height_cm'=>[0.1,1000]] as $key=>$range)$m[$key]=decimal_field($b,$key,...$range);
@@ -79,6 +105,7 @@ function logistics_post(string $action,array $b,string $location): never {
             $expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
             if($m['pieces']!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
             $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,9);$m['at']=gmdate('c');$l['measurement']=$m;
+            if(warehouse_role($location)==='erenhot')$l['transport']=warehouse_cargo_calculate('weight',$m['weight_kg'],warehouse_cargo_rates($o),$m['pieces'])+['location'=>$location];
         }elseif($action==='warehouse-shelf'){
             if(warehouse_role($location)!=='ulaanbaatar'||!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('УБ агуулахад ирсэн барааны байрлалыг бүртгэнэ.',409);
             $l['shelf']=str_field($b,'shelf',50);
@@ -94,11 +121,16 @@ function logistics_post(string $action,array $b,string $location): never {
             if(!in_array($o['status'],['ready_pickup','ready_delivery'],true))fail('Эхлээд барааг ангилж авах хэлбэрийг сонгоно уу.',409);
             if(isset($o['freight']['invoice']))fail('Нэхэмжлэл үүссэн тул тооцоог өөрчлөхгүй.',409);
             if(isset($o['invoice'])&&!$o['paid'])fail('Эхний нэхэмжлэлийн төлбөрийг баталгаажуулна уу.',409);
-            if(!isset($l['measurement']))fail('Бодит хэмжилт шаардлагатай.',409);
-            $method=str_field($b,'cargo_method',20);$measure=$method==='weight'?$l['measurement']['weight_kg']:$l['measurement']['volume_m3'];
+            warehouse_cargo_required($o);
+            $method=str_field($b,'cargo_method',20);
             if(!in_array($method,['weight','volume'],true))fail('Каргоны арга буруу.');
-            $rates=$o['quote']['rates']??shipping_settings();
-            $cargo=$method==='weight'?ceil(round($measure/$rates['weight_step_kg'],9))*$rates['weight_step_mnt']:$measure*($measure<$rates['volume_threshold']?$rates['volume_small_cny']:$rates['volume_large_cny'])*$rates['cny_rate'];
+            if(isset($l['transport'])){
+                $q=$l['transport'];if($method!==$q['method'])fail('Эрээнд баталсан тээврийн аргыг өөрчлөхгүй.',409);
+                $measure=$q['measure'];$rates=$q['rates'];$cargo=$q['amount_mnt'];
+            }else{
+                $measure=$method==='weight'?$l['measurement']['weight_kg']:$l['measurement']['volume_m3'];$rates=warehouse_cargo_rates($o);
+                $cargo=warehouse_cargo_calculate($method,$measure,$rates,$l['measurement']['pieces'])['amount_mnt'];
+            }
             $parts=[];foreach(['goods_mnt','domestic_mnt','service_mnt','delivery_mnt'] as $key)$parts[$key]=int_field($b,$key,0,100000000);
             $parts['cargo_mnt']=(int)ceil($cargo);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');
             if($total<settlement_summary($o)['paid'])fail('Өмнө төлсөн дүнгээс бага байна. Буцаалтыг админтай тулган шийднэ үү.',409);

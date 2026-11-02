@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import {uploadReceipt} from './warehouse-photo.mjs';
+import {uploadReceipt,confirmCargo} from './warehouse-photo.mjs';
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 function client(){const jar=new Map();let csrf='';return async(action,body,bad=false)=>{const form=body instanceof FormData;const r=await fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; '),...(body?{'X-CSRF-Token':bad?'bad':csrf,...(!form?{'Content-Type':'application/json'}:{})}:{})},body:body?(form?body:JSON.stringify(body)):undefined});for(const c of r.headers.getSetCookie()){const p=c.split(';')[0],i=p.indexOf('=');jar.set(p.slice(0,i),p.slice(i+1));}const d=await r.json();if(d.csrf)csrf=d.csrf;return{status:r.status,...d};};}
 const admin=client(),cn=client(),ub=client(),oldCn=client(),oldUb=client(),guest=client(),anon=client();
@@ -33,7 +33,7 @@ assert.equal((await admin('warehouse-profile-save',{...profile,active:false})).s
 await uploadReceipt(cn,id);assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
 assert.equal((await admin('warehouse-assign-order',{...assignment,expected_status:'erenhot',expected_erenhot:definitions.erenhot,expected_ulaanbaatar:definitions.ulaanbaatar,erenhot:'erenhot'})).status,409,'Cannot move received source');
 let o=(await cn('warehouse-order&id='+id)).order;
-assert.equal((await cn('warehouse-measure',{id,expected_version:o.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2})).status,200);
+assert.equal((await cn('warehouse-measure',{id,expected_version:o.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2})).status,200);await confirmCargo(cn,id);
 assert.equal((await cn('warehouse-batch-create',{token:token(),order_ids:[id],note:''})).status,409,'Wrong destination rejects batch atomically');
 let result=await cn('warehouse-batch-create',{token:token(),order_ids:[id],destination:definitions.ulaanbaatar,note:'Branch shipment'});assert.equal(result.status,201,JSON.stringify(result));let b=result.batch;
 assert.equal(b.source,definitions.erenhot);assert.equal(b.destination,definitions.ulaanbaatar);
