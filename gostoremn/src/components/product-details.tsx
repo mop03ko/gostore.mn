@@ -1,3 +1,4 @@
+import { ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -86,6 +87,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         </View>
         <View style={styles.summary}>
           <Text style={styles.price}>{variant?.cny && rate ? money(Math.ceil(variant.cny * rate)) : product.mnt ? money(product.mnt) : "Үнэ шалгах"}<Text style={{ fontSize: 12, color: colors.muted }}> / нэгж</Text></Text>
+          <ProductOffers product={product} amount={variant?.cny && rate ? Math.ceil(variant.cny * rate) : product.mnt} discount={variant ? variant.card_discount ?? null : product.card_discount} details />
           <Pressable accessibilityRole="button" accessibilityLabel="Барааны нэрийг дэлгэрүүлэх" accessibilityState={{ expanded: fullName }} onPress={() => setFullName(v => !v)}>
             <Text numberOfLines={fullName ? undefined : 2} style={{ fontSize: 17, lineHeight: 24, fontWeight: "600", color: colors.ink }}>{product.name}</Text>
             <Text style={styles.more}>{fullName ? "Хураах" : "Бүтэн нэрийг харах"}</Text>

@@ -21,7 +21,7 @@
     const rate=details.shipping?.cny_rate||1;
     const label=root.querySelector('#pd-selected-label');if(label)label.textContent=supplier?value.variant?.label||'Сонголтоо сонгоно уу':String(value.variant||'');
     document.querySelector('#pd-unit-price').textContent=value.price==null?'Үнэ тодорхойгүй':money(supplier?Math.ceil(value.price*rate):value.price);
-    document.querySelector('#pd-original-price').textContent='';
+    document.querySelector('#pd-original-price').innerHTML=supplier?supplierPromotionHtml(product,value.price==null?null:Math.ceil(value.price*rate),value.variant?.card_discount??null,true):'';
     document.querySelector('#pd-total').textContent=value.valid?money(supplier?Math.ceil(Number((value.price*value.qty*rate).toFixed(8))):value.price*value.qty):'Сонголтоо шалгана уу';
     document.querySelector('#pd-stock').textContent=value.stock==null?'Үлдэгдлийг захиалгын үед баталгаажуулна':`Үлдэгдэл: ${value.stock}ш`;
     document.querySelector('#pd-selection-error').textContent=value.valid?'':`Хувилбар, доод тоо болон үлдэгдлээ шалгана уу. Доод тоо ${supplier?product.min_qty:1}, алхам ${supplier?product.step:1}.`;

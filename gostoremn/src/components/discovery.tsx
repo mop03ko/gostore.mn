@@ -1,3 +1,4 @@
+import { ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -22,7 +23,7 @@ export function DiscoveryCard({ product: p }: { product: Product }) {
   const s = createStyles(colors);
   return <Pressable accessibilityRole="button" accessibilityLabel={p.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.official_shop_id ? { shop: p.official_shop_id } : p.brand_id ? { brand: p.brand_id } : {}) } })} style={s.card}>
     <Image source={p.image || undefined} contentFit="cover" recyclingKey={p.id} style={{ width: "100%", aspectRatio: 1 }} />
-    <View style={{ padding: 8, gap: 5 }}><Text numberOfLines={2} style={s.name}>{p.name}</Text><Text style={s.price}>{p.mnt ? money(p.mnt) : p.approx_mnt ? "≈ " + money(p.approx_mnt) : "Үнэ шалгах"}</Text>{p.brand_id && p.shop_rating ? <Text style={s.note}>Дэлгүүрийн үнэлгээ {p.shop_rating}/5</Text> : null}</View>
+    <View style={{ padding: 8, gap: 5 }}><Text numberOfLines={2} style={s.name}>{p.name}</Text><Text style={s.price}>{p.mnt ? money(p.mnt) : p.approx_mnt ? "≈ " + money(p.approx_mnt) : "Үнэ шалгах"}</Text><ProductOffers product={p} amount={p.mnt || p.approx_mnt} />{p.brand_id && p.shop_rating ? <Text style={s.note}>Дэлгүүрийн үнэлгээ {p.shop_rating}/5</Text> : null}</View>
   </Pressable>;
 }
 export function DiscoveryShelf({ query, free = false }: { query?: string; free?: boolean }) {
@@ -46,16 +47,40 @@ export function DiscoveryShelf({ query, free = false }: { query?: string; free?:
     <View style={s.grid}>{data?.products.slice(0, free ? 8 : 6).map(p => <View key={p.id} style={{ width: "48%" }}><DiscoveryCard product={p} /></View>)}</View>
   </View>;
 }
+function DealsShelf() {
+  const colors = usePalette();
+  const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
+  const [data, setData] = useState<{ products: Product[]; more: boolean } | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    void catalog<{ products: Product[]; more: boolean }>("supplier-deals", { page }, controller.signal)
+      .then(r => { if (!controller.signal.aborted) { setData(r); setError(false); } })
+      .catch(() => { if (!controller.signal.aborted) setError(true); });
+    return () => controller.abort();
+  }, [page, retry]);
+  return <View style={{ gap: 10 }}>
+    <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>Хямдрал, купон</Text>
+    <Text style={{ color: colors.muted, fontSize: 12 }}>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</Text>
+    {!data && !error && <Busy />}
+    {error && <Pressable accessibilityRole="button" onPress={() => { setError(false); setRetry(x => x + 1); }}><Text style={{ color: colors.accentText }}>Дахин оролдох</Text></Pressable>}
+    {data && !data.products.length && <Text style={{ color: colors.muted }}>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</Text>}
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+      {data?.products.map(p => <View key={p.id} style={{ width: "48%" }}><DiscoveryCard product={p} /></View>)}
+    </View>
+    {data?.more && <Pressable accessibilityRole="button" onPress={() => { setData(null); setError(false); setPage(x => x + 1); }} style={{ padding: 14 }}><Text style={{ color: colors.accentText }}>Дараагийн сонголт →</Text></Pressable>}
+  </View>;
+}
 export function HomeDiscovery({ onSearch }: { onSearch: (q: string) => void }) {
   const colors = usePalette();
   const s = createStyles(colors);
   const [tab, setTab] = useState("explore");
-  const channels = [["explore", "Танд зориулсан"], ["free", "0¥ хүргэлт"], ["fashion", "Хувцас"], ["home", "Гэр ахуй"], ["tech", "Технологи"]];
+  const channels = [["explore", "Танд зориулсан"], ["deals", "Хямдрал"], ["free", "0¥ хүргэлт"], ["fashion", "Хувцас"], ["home", "Гэр ахуй"], ["tech", "Технологи"]];
   return <View style={{ gap: 14 }}>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 18 }}>
       {channels.map(([id, label]) => <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: tab === id }} onPress={() => setTab(id)} style={[s.tab, tab === id && { borderBottomColor: colors.orange }]}><Text style={{ fontSize: 15, fontWeight: "700", color: id === "free" ? colors.success : tab === id ? colors.ink : colors.muted }}>{label}</Text></Pressable>)}
     </ScrollView>
-    {tab !== "explore" ? <DiscoveryShelf key={tab} free={tab === "free"} query={tab === "fashion" ? "women clothing" : tab === "tech" ? "electronics" : "home storage"} /> : <>
+    {tab === "deals" ? <DealsShelf /> : tab !== "explore" ? <DiscoveryShelf key={tab} free={tab === "free"} query={tab === "fashion" ? "women clothing" : tab === "tech" ? "electronics" : "home storage"} /> : <>
       <View style={{ flexDirection: "row", gap: 8 }}>{[{ q: "women clothing", title: "Өөрийн хэв маяг", photo: "women" }, { q: "home storage", title: "Тухтай гэр", photo: "home" }].map(c => <Pressable key={c.q} onPress={() => onSearch(c.q)} accessibilityRole="button" style={s.collection}><Text style={s.heading}>{c.title}</Text><Text style={s.note}>Сонголтоо нээгээрэй ›</Text><CategoryPhoto image={categories.find(x => x.id === c.photo)?.image || ""} size={100} /></Pressable>)}</View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
         {categories.slice(0, 12).map(c => <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => onSearch(c.query)} style={{ width: 72, alignItems: "center", gap: 6 }}><CategoryPhoto image={c.image} /><Text numberOfLines={2} style={{ fontSize: 11, textAlign: "center", color: colors.ink }}>{c.name}</Text></Pressable>)}

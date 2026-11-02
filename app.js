@@ -391,7 +391,7 @@ function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok){if(response.status===401&&['order-create','customer-orders','customer-me'].includes(action.split('&')[0]))window.customerAccount?.setUser(null);throw Error(result.error||'Сервертэй холбогдсонгүй.');}if(result.csrf)shopCsrf=result.csrf;return result;}
 // Only public supplier data is cached; sessions, orders and payments always use shopApi.
 window.supplierApi=(()=>{
-  const key='gostore-supplier-cache-v9-materials',pending=new Map(),maxEntries=40,maxBytes=1500000;
+  const key='gostore-supplier-cache-v10-offers',pending=new Map(),maxEntries=40,maxBytes=1500000;
   let entries=[];
   const clone=value=>JSON.parse(JSON.stringify(value));
   const valid=e=>e&&typeof e.key==='string'&&Number.isFinite(e.expires)&&e.expires>Date.now()&&e.expires<=Date.now()+600000&&e.data&&e.data.stale===false;
@@ -556,6 +556,15 @@ window.supplierBrandHref=()=>'/official-stores';
 ;
 /* ==== supplier.js ==== */
 'use strict';
+function supplierPromotionHtml(p,amount,discount=p.card_discount,details=false){
+  if(p.sellable===false)return '';
+  const fresh=p.offers?.expires*1000>Date.now(),offers=fresh?p.offers:null;
+  const sale=discount?.expires*1000>Date.now()&&discount.current_mnt===amount&&discount.was_mnt>amount?discount:null;
+  const price=sale?`<span class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(sale.was_mnt)}</del>${sale.percent>0?`<span>−${sale.percent}%</span>`:''}</span>`:'';
+  const coupon=offers?.coupon_mnt?`Купонтой ≈ ${money(offers.coupon_mnt)} · нөхцөлтэй`:offers?.promotions?.length?'Урамшуулалтай · нөхцөлтэй':'';
+  const conditions=details?(offers?.promotions||[]).map(o=>`<small>${esc(o.name)}</small>`).join(''):'';
+  return price+(coupon?`<small class="supplier-coupon">${coupon}</small>`:'')+conditions;
+}
 function shippingOrderHtml(o){if(!o.supplier&&!o.quote&&!o.route)return '';const b=o.quote?.breakdown;return `<div class="info-box"><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Ачааны байршлын төлөвийг GOStore шинэчилнэ.</p>${o.fulfillment?`<p>Авах хэлбэр: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.warehouse?`<h3>Эрээн агуулахын хүлээн авах мэдээлэл</h3><p><strong>${esc(o.warehouse.recipient)}</strong></p><p>${esc(o.warehouse.address)}<br>手机号: ${esc(o.warehouse.phone)}<br>Утас: ${esc(o.warehouse.contact_phone)}</p><p>Ачааг энэ овог нэр, захиалгын кодоор бүртгэнэ.</p>`:''}${o.supplier?`<p>${esc(o.supplier.variant)} × ${o.supplier.qty} · Барааны лавлах дүн ${money(Math.ceil(o.supplier.goods_cny*(o.supplier.rate||storeServer.shipping?.cny_rate||0)))}</p>`:''}${o.type==='checkout'&&o.items?.length?`<ul>${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty} · ${money((i.price||0)*i.qty)}</li>`).join('')}</ul>`:''}${b?`<p>Бараа: ${money(b.goods_mnt)}<br>Хятад доторх хүргэлт: ${money(b.domestic_mnt)}<br>Үйлчилгээ: ${money(b.service_mnt)}<br>Карго: ${b.cargo_mnt||!o.quote.cargo_later?money(b.cargo_mnt):'Улаанбаатарт ирэхэд бодит жингээр тооцно'}</p>`:''}${o.history?.length?`<ol>${o.history.map(h=>`<li>${esc(orderLabels[h.status]||h.status)} · ${new Date(h.at).toLocaleString('mn-MN')}</li>`).join('')}</ol>`:''}</div>`;}
 let supplierShop=initialFilters.get('shop')||'';
 let supplierBrand=window.brandStorefront||initialFilters.get('brand')||'';
@@ -596,7 +605,7 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
         ${p.brand_id&&p.shop_rating?`<p class="supplier-delivery-note">Дэлгүүрийн үнэлгээ ${esc(String(p.shop_rating))}/5</p>`:''}<p class="supplier-delivery-note">Карго тусдаа</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${supplierPromotionHtml(p,null,null)}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');
@@ -823,7 +832,7 @@ $('#image-search-input').addEventListener('change',e=>{const file=e.target.files
 (()=>{
  const taxonomy=window.GOStoreDiscovery||[],photo=q=>taxonomy.flatMap(c=>[c,...c.children]).find(c=>c.query===q)?.image||'';
  const image=(src,cls='')=>src?`<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:'';
- const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong></a>`).join('')}</div>`;
+ const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong>${supplierPromotionHtml(p,p.mnt||p.approx_mnt)}</a>`).join('')}</div>`;
  async function load(q,free,signal){const params=new URLSearchParams(free?{action:'supplier-free-shipping'}:{action:'supplier-search',q,page:'1',limit:'12'});const r=await fetch('/api/index.php?'+params,{signal,credentials:'omit'});if(!r.ok)throw Error('unavailable');return r.json();}
  // Shared photos replace emoji on the phone home grid, and generic category portraits.
  document.querySelectorAll('#hub-channels [data-hub-category]').forEach(a=>{const c=taxonomy.find(c=>c.id===a.dataset.hubCategory);if(c?.image)a.querySelector('span').innerHTML=image(c.image);});
@@ -842,13 +851,22 @@ $('#image-search-input').addEventListener('change',e=>{const file=e.target.files
  const flyout=document.querySelector('#hub-flyout');if(flyout)new MutationObserver(()=>{flyout.querySelectorAll('[data-hub-query]:not(.discovery-flyout-photo)').forEach(a=>{a.classList.add('discovery-flyout-photo');a.insertAdjacentHTML('afterbegin',image(photo(a.dataset.hubQuery)));});}).observe(flyout,{childList:true});
  const hub=document.querySelector('#home-hub');if(!hub||!/^\/(?:index\.html)?$/.test(location.pathname))return;
  const section=document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
- const tabs=[['explore','Танд зориулсан'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
+ const tabs=[['explore','Танд зориулсан'],['deals','Хямдрал'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
  section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;hub.after(section);
  const panel=section.querySelector('.discovery-panel');let request;
  const freeNote='Эрээн агуулах хүртэлх лавлах үнэ 0¥. Монгол хүртэлх тээвэр тусдаа; сонгосон хувилбар, тоо ширхэгийн эцсийн хүргэлтийг сагсанд шалгана.';
  function select(tab){
   request?.abort();request=new AbortController();const own=request;
   section.querySelectorAll('[data-discovery-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.discoveryTab===tab)));
+  if(tab==='deals'){
+   panel.innerHTML='<h2>Хямдрал, купон</h2><p>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
+   const target=panel.querySelector('[data-deals-results]'),next=panel.querySelector('[data-deals-next]');let page=1;
+   const run=async()=>{next.hidden=true;target.innerHTML='<p role="status">Ачаалж байна…</p>';try{
+    const response=await fetch('/api/index.php?action=supplier-deals&page='+page,{signal:own.signal,credentials:'omit'});if(!response.ok)throw Error('Unavailable');const result=await response.json();if(own.signal.aborted)return;
+    target.innerHTML=result.products.length?products(result.products):'<p>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</p>';next.hidden=!result.more;
+   }catch{if(own.signal.aborted)return;target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}};
+   next.onclick=()=>{page++;run();};run();return;
+  }
   if(tab==='explore'){
    panel.innerHTML=`<div class="discovery-collections">${[['women','Өөрийн хэв маяг'],['home','Тухтай гэр'],['tech','Өдөр тутмын технологи']].map(([id,title])=>{const c=taxonomy.find(c=>c.id===id);return `<a href="/?category=${id}#catalog" data-discovery-query="${esc(c.query)}"><div><h3>${title}</h3><p>Сонголтоо нээгээрэй ›</p></div>${image(c.image)}</a>`;}).join('')}</div><div class="discovery-category-strip">${taxonomy.slice(0,12).map(c=>`<a href="/?category=${c.id}#catalog" data-discovery-query="${esc(c.query)}">${image(c.image)}<span>${esc(c.name)}</span></a>`).join('')}</div><button type="button" class="discovery-free-banner" data-discovery-tab="free">${icon('truck')}<span><strong>Хятад дотор 0¥ хүргэлт</strong><small>Эрээн хүртэл · Монголын тээвэр тусдаа</small></span><b>Үзэх ›</b></button>`;return;
   }
@@ -1505,7 +1523,7 @@ window.productCompare=(()=>{
     const rate=details.shipping?.cny_rate||1;
     const label=root.querySelector('#pd-selected-label');if(label)label.textContent=supplier?value.variant?.label||'Сонголтоо сонгоно уу':String(value.variant||'');
     document.querySelector('#pd-unit-price').textContent=value.price==null?'Үнэ тодорхойгүй':money(supplier?Math.ceil(value.price*rate):value.price);
-    document.querySelector('#pd-original-price').textContent='';
+    document.querySelector('#pd-original-price').innerHTML=supplier?supplierPromotionHtml(product,value.price==null?null:Math.ceil(value.price*rate),value.variant?.card_discount??null,true):'';
     document.querySelector('#pd-total').textContent=value.valid?money(supplier?Math.ceil(Number((value.price*value.qty*rate).toFixed(8))):value.price*value.qty):'Сонголтоо шалгана уу';
     document.querySelector('#pd-stock').textContent=value.stock==null?'Үлдэгдлийг захиалгын үед баталгаажуулна':`Үлдэгдэл: ${value.stock}ш`;
     document.querySelector('#pd-selection-error').textContent=value.valid?'':`Хувилбар, доод тоо болон үлдэгдлээ шалгана уу. Доод тоо ${supplier?product.min_qty:1}, алхам ${supplier?product.step:1}.`;

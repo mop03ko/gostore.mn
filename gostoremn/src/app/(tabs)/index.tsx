@@ -1,3 +1,4 @@
+import { ProductOffers } from "@/components/product-offers";
 import { usePalette } from "@/lib/palette";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -390,6 +391,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
                     ? "≈ " + money(p.approx_mnt)
                     : "Үнэ шалгах"}
               </Text>
+              <ProductOffers product={p} amount={p.mnt || p.approx_mnt} />
               <Text style={{ fontSize: 10, color: colors.muted }}>
                 Хүргэлт тусдаа · Хувилбар сонгох
               </Text>

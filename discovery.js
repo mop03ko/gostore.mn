@@ -2,7 +2,7 @@
 (()=>{
  const taxonomy=window.GOStoreDiscovery||[],photo=q=>taxonomy.flatMap(c=>[c,...c.children]).find(c=>c.query===q)?.image||'';
  const image=(src,cls='')=>src?`<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:'';
- const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong></a>`).join('')}</div>`;
+ const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong>${supplierPromotionHtml(p,p.mnt||p.approx_mnt)}</a>`).join('')}</div>`;
  async function load(q,free,signal){const params=new URLSearchParams(free?{action:'supplier-free-shipping'}:{action:'supplier-search',q,page:'1',limit:'12'});const r=await fetch('/api/index.php?'+params,{signal,credentials:'omit'});if(!r.ok)throw Error('unavailable');return r.json();}
  // Shared photos replace emoji on the phone home grid, and generic category portraits.
  document.querySelectorAll('#hub-channels [data-hub-category]').forEach(a=>{const c=taxonomy.find(c=>c.id===a.dataset.hubCategory);if(c?.image)a.querySelector('span').innerHTML=image(c.image);});
@@ -21,13 +21,22 @@
  const flyout=document.querySelector('#hub-flyout');if(flyout)new MutationObserver(()=>{flyout.querySelectorAll('[data-hub-query]:not(.discovery-flyout-photo)').forEach(a=>{a.classList.add('discovery-flyout-photo');a.insertAdjacentHTML('afterbegin',image(photo(a.dataset.hubQuery)));});}).observe(flyout,{childList:true});
  const hub=document.querySelector('#home-hub');if(!hub||!/^\/(?:index\.html)?$/.test(location.pathname))return;
  const section=document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
- const tabs=[['explore','Танд зориулсан'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
+ const tabs=[['explore','Танд зориулсан'],['deals','Хямдрал'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
  section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;hub.after(section);
  const panel=section.querySelector('.discovery-panel');let request;
  const freeNote='Эрээн агуулах хүртэлх лавлах үнэ 0¥. Монгол хүртэлх тээвэр тусдаа; сонгосон хувилбар, тоо ширхэгийн эцсийн хүргэлтийг сагсанд шалгана.';
  function select(tab){
   request?.abort();request=new AbortController();const own=request;
   section.querySelectorAll('[data-discovery-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.discoveryTab===tab)));
+  if(tab==='deals'){
+   panel.innerHTML='<h2>Хямдрал, купон</h2><p>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
+   const target=panel.querySelector('[data-deals-results]'),next=panel.querySelector('[data-deals-next]');let page=1;
+   const run=async()=>{next.hidden=true;target.innerHTML='<p role="status">Ачаалж байна…</p>';try{
+    const response=await fetch('/api/index.php?action=supplier-deals&page='+page,{signal:own.signal,credentials:'omit'});if(!response.ok)throw Error('Unavailable');const result=await response.json();if(own.signal.aborted)return;
+    target.innerHTML=result.products.length?products(result.products):'<p>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</p>';next.hidden=!result.more;
+   }catch{if(own.signal.aborted)return;target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}};
+   next.onclick=()=>{page++;run();};run();return;
+  }
   if(tab==='explore'){
    panel.innerHTML=`<div class="discovery-collections">${[['women','Өөрийн хэв маяг'],['home','Тухтай гэр'],['tech','Өдөр тутмын технологи']].map(([id,title])=>{const c=taxonomy.find(c=>c.id===id);return `<a href="/?category=${id}#catalog" data-discovery-query="${esc(c.query)}"><div><h3>${title}</h3><p>Сонголтоо нээгээрэй ›</p></div>${image(c.image)}</a>`;}).join('')}</div><div class="discovery-category-strip">${taxonomy.slice(0,12).map(c=>`<a href="/?category=${c.id}#catalog" data-discovery-query="${esc(c.query)}">${image(c.image)}<span>${esc(c.name)}</span></a>`).join('')}</div><button type="button" class="discovery-free-banner" data-discovery-tab="free">${icon('truck')}<span><strong>Хятад дотор 0¥ хүргэлт</strong><small>Эрээн хүртэл · Монголын тээвэр тусдаа</small></span><b>Үзэх ›</b></button>`;return;
   }

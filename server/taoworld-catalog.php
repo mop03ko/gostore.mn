@@ -114,6 +114,23 @@ function tw_catalog_price(array $p,bool $detail): ?float {
     if(!is_numeric($v)||!is_finite((float)$v)||(float)$v<=0)return null;
     return round((float)$v/($detail?100:1),2);
 }
+function tw_catalog_discount(array $p,int $expires): ?array {
+    $current=tw_catalog_price($p,true);
+    $original=tw_catalog_price(['price'=>$p['price']??null],true);
+    if($expires<=time()||$current===null||$original===null||$original<=$current)return null;
+    $rate=shipping_settings()['cny_rate'];
+    return ['current_mnt'=>(int)ceil($current*$rate),'was_mnt'=>(int)ceil($original*$rate),'percent'=>(int)floor(round(($original-$current)/$original*100,8)),'expires'=>$expires];
+}
+function tw_catalog_offers(array $p,bool $detail,int $expires): array {
+    $promotions=[];
+    foreach($p['promotion_displays']??[] as $group)foreach($group['promotion_info_list']??[] as $promotion){
+        $name=supplier_text($promotion['promotion_name']??'',300);
+        if($name!=='')$promotions[$name]=['name'=>$name];
+    }
+    $current=tw_catalog_price($p,$detail);
+    $coupon=tw_catalog_price(['price'=>$p['coupon_price']??null],$detail);
+    return ['expires'=>$expires,'promotions'=>array_slice(array_values($promotions),0,8),'coupon_mnt'=>$coupon!==null&&$current!==null&&$coupon<$current?(int)ceil($coupon*shipping_settings()['cny_rate']):null];
+}
 function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): array {
     product_policy_assert(['id'=>'tb-'.($p['item_id']??''),'name'=>$p['title']??'','original_name'=>$p['multi_language_info']['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]]);
     $id=tw_catalog_remember($p,$fetched);$price=tw_catalog_price($p,$detail);$rate=shipping_settings()['cny_rate'];
@@ -121,6 +138,8 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
     $image=supplier_image((string)($p['main_image_url']??$p['pic_urls'][0]??''));
     $r=['id'=>$id,'provider'=>'taobao','catalog_provider'=>'taoworld','provider_label'=>'Taobao','name'=>supplier_text($title,300),'original_name'=>supplier_text($p['title']??'',500),'image'=>$image,'url'=>'/v/'.$id,'min_qty'=>1,'step'=>1,'sellable'=>true,'variants'=>[],'sold_count'=>null,'sales_30_days'=>null,'cny'=>null,'mnt'=>null,'approx_cny'=>$price,'approx_mnt'=>$price===null?null:(int)ceil($price*$rate),'price_status'=>'unverified','card_discount'=>null];
     $r['shop_rating']=tw_catalog_seller_info($p)['shop_rating']??null;
+    $expires=($fetched??time())+($detail?300:TW_CATALOG_SEARCH_TTL);
+    $r['offers']=tw_catalog_offers($p,$detail,$expires);
     if(!$detail)return $r;
     $meta=supplier_snapshot_read(tw_catalog_dir().'/item-'.substr($id,3).'.json')??[];
     $r['shop_rating']=is_numeric($meta['shop_rating']??null)?(float)$meta['shop_rating']:null;$r['ship_from']=tw_catalog_ship_from((string)($meta['ship_from']??''));$r['ships_48h']=!empty($meta['ships_48h']);
@@ -129,10 +148,13 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
         $sku=(string)($v['sku_id']??'');if(!preg_match('/^\d{1,30}$/D',$sku))continue;
         $labels=[];foreach($translated[$sku]??$v['properties']??[] as $a)$labels[]=supplier_text(($a['prop_name']??'').': '.($a['value_name']??$a['value_desc']??''),300);
         $stock=supplier_count($v['quantity']??null);
-        $r['variants'][]=['id'=>$sku,'label'=>implode(' / ',$labels)?:'Стандарт','image'=>supplier_image((string)($v['pic_url']??'')),'cny'=>$stock===null?null:tw_catalog_price($v,true),'stock'=>$stock];
+        $r['variants'][]=['id'=>$sku,'label'=>implode(' / ',$labels)?:'Стандарт','image'=>supplier_image((string)($v['pic_url']??'')),'cny'=>$stock===null?null:tw_catalog_price($v,true),'stock'=>$stock,'card_discount'=>$stock!==null&&$stock>0?tw_catalog_discount($v,$expires):null];
     }
     $prices=[];foreach($r['variants'] as $v)if(($v['stock']??0)>0&&$v['cny']!==null)$prices[]=$v['cny'];
     $r['cny']=$prices?min($prices):null;$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);$r['sellable']=(bool)$prices;$r['price_status']=$prices?'available':'unavailable';
+    // The card's original price belongs to the same cheapest available SKU.
+    foreach($r['variants'] as $v)if(($v['stock']??0)>0&&$v['cny']===$r['cny']){$r['card_discount']=$v['card_discount'];break;}
+    $r['offers']['discount']=$r['card_discount'];
     $r['images']=array_values(array_unique(array_filter(array_map('supplier_image',$p['pic_urls']??[$image]))));
     $r['vendor_name']=supplier_text($p['shop_name']??'',200);$r['vendor_id']=(string)($p['shop_id']??'');
     $r['attributes']=[];foreach($p['multi_language_info']['properties']??$p['properties']??[] as $a)$r['attributes'][]=['name'=>supplier_text($a['prop_name']??'',120),'value'=>supplier_text($a['value_name']??'',300)];
@@ -180,8 +202,27 @@ function tw_catalog_brand_matches(array $item,array $brand,bool $detail=false): 
     return true;
 }
 function tw_catalog_cards(array $rows,?int $fetched=null): array {
-    $cards=[];foreach($rows as $p){if(!is_array($p))continue;try{$cards[]=tw_catalog_product($p,false,$fetched);}catch(ApiError){}}
+    $cards=[];foreach($rows as $p){if(!is_array($p))continue;try{
+        $card=tw_catalog_product($p,false,$fetched);
+        $cached=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$card['id'],'language'=>'en']).'.json');
+        if(tw_catalog_fresh($cached,300)&&'tb-'.($cached['data']['item_id']??'')===$card['id']){
+            $detail=tw_catalog_product($cached['data'],true,$cached['time']);
+            foreach(['cny','mnt','approx_cny','approx_mnt','price_status','sellable','card_discount','offers'] as $key)$card[$key]=$detail[$key];
+            $card['price_expires']=$cached['time']+300;
+        }
+        $cards[]=$card;
+    }catch(ApiError){}}
     return $cards;
+}
+function tw_catalog_deals(array $params): array {
+    $page=filter_var($params['page']??1,FILTER_VALIDATE_INT);
+    if($page===false)fail('Хуудасны дугаар буруу.');
+    $result=tw_catalog_search(['q'=>'__all__','page'=>$page,'limit'=>50]);
+    $result['products']=array_values(array_filter($result['products'],static function($p){
+        return ($p['sellable']??true)&&($p['offers']['expires']??0)>time()&&(!empty($p['card_discount'])||!empty($p['offers']['coupon_mnt'])||!empty($p['offers']['promotions']));
+    }));
+    $result['scope']='catalog_sample';
+    return $result;
 }
 function tw_catalog_departments(): array {
     return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];

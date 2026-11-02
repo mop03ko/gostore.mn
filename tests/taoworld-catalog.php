@@ -142,6 +142,8 @@ check(count(array_unique(array_map(fn($p)=>explode(' ',$p['name'])[1],array_slic
 $before=count($calls);$again=supplier_search(['q'=>'__all__','page'=>1,'limit'=>50]);check(count($calls)===$before&&array_column($again['products'],'id')===array_column($home['products'],'id'),'Cached mixed feed must remain stable');
 $next=supplier_search(['q'=>'__all__','page'=>2,'limit'=>12]);check(count($calls)===$before+6&&count($next['products'])===12,'Next page must rotate departments');
 $firstKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before-6,6));$nextKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before,6));check(!array_intersect($firstKeywords,$nextKeywords),'Next page repeated the same department group');
+check(tw_catalog_deals(['page'=>'1'])['page']===1,'Deals must accept an HTTP query page string');
+denied(fn()=>tw_catalog_deals(['page'=>'bad']),400);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
 foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){
@@ -150,5 +152,25 @@ foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall pa
 $before=count($calls);supplier_search(['q'=>'Барилгын материал','page'=>1]);check(count($calls)===$before,'Mongolian building search must reuse the translated category cache');
 check(isset(tw_catalog_departments()['building materials']),'Building materials missing from mixed home departments');
 unset($_SERVER['REMOTE_ADDR']);
+// Discounts must compare the exact available SKU, never a coupon or another variant.
+$saleRaw=['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Storage box','price'=>10000,'promotion_price'=>8000,'coupon_price'=>7000,'sku_list'=>[
+ ['sku_id'=>'11','quantity'=>0,'price'=>10000,'promotion_price'=>1000],
+ ['sku_id'=>'12','quantity'=>2,'price'=>10000,'promotion_price'=>8000],
+ ['sku_id'=>'13','quantity'=>2,'price'=>9000,'promotion_price'=>9000]]];
+$sale=tw_catalog_product($saleRaw,true,time());
+check($sale['cny']===80.0&&$sale['card_discount']['percent']===20,'Discount must match cheapest in-stock SKU');
+check($sale['variants'][0]['card_discount']===null&&$sale['variants'][2]['card_discount']===null,'Sold out and full-price SKUs cannot inherit discount');
+check($sale['offers']['coupon_mnt']===7000/100*shipping_settings()['cny_rate'],'Conditional coupon must remain separate from displayed SKU price');
+check(tw_catalog_product($saleRaw,true,time()-301)['card_discount']===null,'Expired detail cannot advertise discount');
+check(tw_catalog_discount(['price'=>10000,'promotion_price'=>12000],time()+60)===null,'Higher promotion price is not a discount');
+$searchSale=tw_catalog_product(['item_id'=>'799999999992','mi_id'=>'coupon-fixture','title'=>'Box','price'=>'100','coupon_price'=>'80'],false,time());
+check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&$searchSale['offers']['coupon_mnt']===80*shipping_settings()['cny_rate'],'Search coupon is conditional, and search prices are CNY');
+$detailFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$sale['id'],'language'=>'en']).'.json';
+supplier_snapshot_write($detailFile,['time'=>time(),'data'=>$saleRaw]);$before=count($calls);
+$cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);
+check(count($calls)===$before&&$cards[0]['mnt']===$sale['mnt']&&$cards[0]['card_discount']['percent']===20,'Cards must reuse fresh detail without new API calls');
+$saleRaw['sku_list'][1]['promotion_price']=10000;supplier_snapshot_write($detailFile,['time'=>time(),'data'=>$saleRaw]);
+$cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);
+check($cards[0]['card_discount']===null,'Different cheapest SKU must clear old discount');
 $state=taoworld_state();$state['account_id']='another-buyer';taoworld_store($state);denied(fn()=>supplier_detail('tb-700000000000'),409);
 echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search; no OT calls.\n";

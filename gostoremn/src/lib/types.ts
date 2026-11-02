@@ -5,7 +5,10 @@ export type Customer = {
   phone: string;
   address: string;
 };
+export type Discount = { current_mnt: number; was_mnt: number; percent: number; expires: number };
+export type Offers = { expires: number; coupon_mnt?: number | null; promotions: { name: string }[] };
 export type Variant = {
+  card_discount?: Discount | null;
   id: string;
   label: string;
   cny: number | null;
@@ -13,6 +16,9 @@ export type Variant = {
   image?: string;
 };
 export type Product = {
+  card_discount?: Discount | null;
+  offers?: Offers;
+  price_status?: string;
   id: string;
   name: string;
   image: string;
