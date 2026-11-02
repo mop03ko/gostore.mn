@@ -30,13 +30,14 @@ The cart shows the current indicative CNY conversion and service-fee formula. Ch
 
 The order detail includes the original calculation using that order's saved rates and items, independent of current settings. Once final settlement exists, the original calculation is collapsed under its own label; the existing final bill continues to show charges, paid amount, outstanding balance and any overpayment. International cargo and optional UB delivery remain marked as later charges until measured/confirmed; they are not presented as free or as part of the initial payment. Supplier procurement costs and private account/receiver proofs are not displayed.
 
-## Validation and remaining permission
+## Validation and API permission
 
-- Live logistics request: HTTP 200 with `code=API_CAN_NOT_USE`, no fee data. TaoWorld must enable or otherwise resolve access to this endpoint for GOStore's application. Successful live logistics output and its multi-item behavior remain unverified until access works.
+- After TaoWorld reported activation, a fresh read-only request using the live GOStore configuration succeeded on 2026-11-02 at 13:40:07 UTC (21:40:07 Ulaanbaatar). HTTP 200, `code=0`, item `538452788616`, `success=true`, `post_fee=1000` fen (CNY 10), `currency=CNY`; request ID `2140f97b17936268111366864`. The temporary authenticated diagnostic endpoint was removed after the check. No order creation or payment was performed. This confirms access and one item's reference fee; live multi-item behavior remains unverified.
+- Historical failure: the 2026-10-31 request `2102fe1517934149116913098` returned `API_CAN_NOT_USE`. The fresh request above supersedes that permission status. An existing 10-minute unavailable-reference cooldown can still delay the application's next reference lookup; the diagnostic request bypassed that cache, while retaining the API call budget check.
 - Live read-only render of the existing pilot's SKU: quantity 1 returned goods CNY 2.21 plus shipping CNY 10, total CNY 12.21; quantity 2 returned goods CNY 4.42 plus shipping CNY 10, total CNY 14.42. This is one product example, not a universal shipping rule.
 - Isolated tests cover same-seller distinct items without double charging, different sellers, multiple SKUs, quantity-dependent shipping, free shipping, reversed reference rows, cache expiry/account identity, failed render, changed goods/shipping, QPay blocking, concurrent warehouse edits and issued-invoice immutability. Multi-product seller grouping is validated against controlled fixtures; GOStore trusts the actual render for each real cart.
 - Native browser checkout tests verify the rendered domestic amount in the displayed/server total and private proof redaction. Existing QPay, freight, checkout, concurrency, auth and procurement checks pass. No new live orders, invoices or payments were created for these checks.
 
-Permission request for the TaoWorld team:
+Previous permission request for the TaoWorld team (access confirmed above):
 
 > 我们调用 /traffic/item/batchGetSourceItemLogisticPrice 返回 API_CAN_NOT_USE。请协助检查并开通 GOStore 应用的接口权限。另外，请确认该接口不支持 SKU、数量及同店多商品合并运费，实际购物车运费应以 /purchase/order/render 的 mainland_shipping_fee 为准。
