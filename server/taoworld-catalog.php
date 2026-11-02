@@ -227,33 +227,26 @@ function tw_catalog_deals(array $params): array {
 function tw_catalog_departments(): array {
     return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
 }
-// «Танд санал болгох» under a product: first pages of every department, interleaved so no single
-// category dominates and the product's own category gets no preference. Only display-fresh cached
-// pages are read; while fewer than four departments (or 12 products) are cached, each request fetches
-// one uncached department chosen by the product ID, warming it for later visitors, so the mix widens
-// after a few views. Failures leave the list shorter.
-function tw_catalog_recommend(string $id,int $limit=24): array {
+// Product recommendations paginate the shared, interleaved department feed.
+function tw_catalog_recommend(string $id,int $limit=24,int $page=1): array {
     if(!preg_match('/^tb-\d{5,20}$/D',$id))fail('Барааны дугаар буруу.');
-    tw_catalog_require_ready();product_policy_assert(['id'=>$id]);
-    $keywords=array_values(array_unique(tw_catalog_departments()));$count=count($keywords);
-    $start=hexdec(substr(hash('sha256',$id),0,6))%$count;$query=fn(string $k)=>['keyword'=>$k,'language'=>'en','page_no'=>'1','page_size'=>'20'];
-    $lists=[];$missing=[];$time=time();
-    for($i=0;$i<$count;$i++){
-        $k=$keywords[($start+$i)%$count];$c=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query($k)).'.json');
-        if(tw_catalog_fresh($c,TW_CATALOG_SEARCH_MAX_AGE)&&is_array($c['data']['data']??null)){$lists[]=$c['data']['data'];$time=min($time,$c['time']);}else $missing[]=$k;
-    }
-    if($missing&&(count($lists)<4||array_sum(array_map('count',$lists))<12)){
-        try{$c=tw_catalog_cached('/traffic/item/search',$query($missing[0]),false,null,true);if(is_array($c['data']['data']??null)){$lists[]=$c['data']['data'];$time=min($time,$c['time']);}}
-        catch(ApiError){}
-    }
-    $rows=[];$seen=[substr($id,3)=>true];
-    for($j=0;count($rows)<$limit*2&&$lists;$j++){
-        $active=false;
-        foreach($lists as $list){if(!isset($list[$j]))continue;$active=true;$item=(string)($list[$j]['item_id']??'');if($item===''||isset($seen[$item]))continue;$seen[$item]=true;$rows[]=$list[$j];}
-        if(!$active)break;
-    }
-    // Blocked listings are dropped while building cards, so a few spare rows are taken above.
-    return tw_catalog_response(['products'=>array_slice(tw_catalog_cards($rows,$time),0,$limit)],$time,TW_CATALOG_SEARCH_TTL);
+    if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
+    if($limit<1||$limit>120)fail('Барааны тоо буруу.');
+    tw_catalog_require_ready();
+    product_policy_assert(['id'=>$id]);
+    // Six cached departments supply several scroll pages without new provider calls.
+    $pagesPerBatch=(int)ceil(120/$limit);
+    $feedPage=intdiv($page-1,$pagesPerBatch)+1;
+    $offset=(($page-1)%$pagesPerBatch)*$limit;
+    $result=tw_catalog_home($feedPage,120,'',[],false);
+    $products=array_values(array_filter($result['products'],static function($product)use($id){
+        $price=$product['mnt']??$product['approx_mnt']??null;
+        return $product['id']!==$id&&($product['sellable']??true)&&is_numeric($price)&&$price>0;
+    }));
+    $result['products']=array_slice($products,$offset,$limit);
+    $result['page']=$page;
+    $result['more']=$page<100&&($offset+$limit<count($products)||$result['more']);
+    return $result;
 }
 function tw_catalog_search(array $b,bool $display=false): array {
     if(!empty($b['shop']))return official_store_products($b,$display&&empty($b['refresh']));

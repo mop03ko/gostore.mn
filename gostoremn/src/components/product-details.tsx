@@ -1,7 +1,7 @@
 import { ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
-import { useEffect, useRef, useState, type ComponentRef } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { catalog } from "@/lib/api";
@@ -15,41 +15,58 @@ const tabs = [
 ] as const;
 type Section = typeof tabs[number]["id"];
 
-function Recommendations({ id }: { id: string }) {
-  const colors = usePalette();
-  const styles = createStyles(colors);
-  const [items, setItems] = useState<Product[]>([]), [loading, setLoading] = useState(true);
-  const [error, setError] = useState(""), [retry, setRetry] = useState(0);
+function useRecommendations(id: string) {
+  const [items, setItems] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [more, setMore] = useState(true);
+  const state = useRef({ page: 1, loading: false, more: true, failed: false, controller: new AbortController(), seen: new Set([id]) });
+  const load = useCallback(async (retry = false) => {
+    const current = state.current;
+    if (current.loading || !current.more || current.controller.signal.aborted || (current.failed && !retry)) return;
+    current.loading = true;
+    current.failed = false;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await catalog<{ products: Product[]; more?: boolean }>("supplier-recommend", { id, page: current.page }, current.controller.signal);
+      if (current.controller.signal.aborted) return;
+      const next = result.products.filter(product => {
+        const price = product.mnt ?? product.approx_mnt;
+        if (!product.id || current.seen.has(product.id) || product.sellable === false || !(price && price > 0)) return false;
+        current.seen.add(product.id);
+        return true;
+      });
+      current.page++;
+      current.more = result.more === true;
+      setItems(previous => [...previous, ...next]);
+      setMore(current.more);
+    } catch (reason) {
+      if (!current.controller.signal.aborted) {
+        current.failed = true;
+        setError(reason instanceof Error ? reason.message : "Бараа ачаалж чадсангүй.");
+      }
+    } finally {
+      current.loading = false;
+      if (!current.controller.signal.aborted) setLoading(false);
+    }
+  }, [id]);
   useEffect(() => {
-    const controller = new AbortController();
-    void catalog<{ products: Product[] }>("supplier-recommend", { id }, controller.signal)
-      .then(r => {
-        if (controller.signal.aborted) return;
-        const seen = new Set([id]);
-        setItems((r.products || []).filter(p => p?.id && !seen.has(p.id) && !!seen.add(p.id)).slice(0, 12));
-      }).catch(e => { if (!controller.signal.aborted) setError(e.message); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [id, retry]);
-  return <View testID="product-recommendations" style={{ gap: 12 }}>
-    <Text style={styles.heading}>Танд санал болгох</Text>
-    <Text style={styles.muted}>Олон ангиллын бараанаас сонгоорой</Text>
-    {loading ? <Busy /> : error ? <ErrorBox message={error} retry={() => { setError(""); setLoading(true); setRetry(r => r + 1); }} /> : !items.length ?
-      <Card><Copy>Санал болгох бараа одоогоор алга байна.</Copy><Button title="Бусад бараа үзэх" secondary onPress={() => router.push("/")} /></Card> :
-      <View testID="recommendation-grid" style={styles.grid}>{items.map(p => <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.name}
-        onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })} style={styles.product}>
-        <Image source={p.image || undefined} recyclingKey={p.id} contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />
-        <View style={{ padding: 10, gap: 6 }}><Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 19, minHeight: 38, color: colors.ink }}>{p.name}</Text>
-          <Text style={{ fontSize: 19, fontWeight: "800", color: colors.accentText }}>{p.mnt ? money(p.mnt) : "Үнэ шалгах"}</Text></View>
-      </Pressable>)}</View>}
-  </View>;
+    // Isolate canceled requests when React replays effects during development.
+    state.current = { page: 1, loading: false, more: true, failed: false, controller: new AbortController(), seen: new Set([id]) };
+    void load();
+    const current = state.current;
+    return () => current.controller.abort();
+  }, [id, load]);
+  return { items, loading, error, more, load };
 }
 
 export function ProductDetails({ product, variant, rate, onChoose }: { product: Product; variant?: Variant; rate: number; onChoose: () => void }) {
   const colors = usePalette();
   const styles = createStyles(colors);
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null), positions = useRef<Partial<Record<Section, number>>>({ overview: 0 });
+  const scroll = useRef<ComponentRef<typeof FlatList<Product>>>(null), positions = useRef<Partial<Record<Section, number>>>({ overview: 0 });
   const [active, setActive] = useState<Section>("overview"), [expanded, setExpanded] = useState(false), [fullName, setFullName] = useState(false);
+  const recommendations = useRecommendations(product.id);
   const [imageIndex, setImageIndex] = useState(0);
   const width = Math.min(useWindowDimensions().width, 820);
   const images = [...new Set([product.image, ...(product.images || [])])].filter(Boolean).slice(0, 12);
@@ -63,20 +80,41 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
   ].filter(a => a.value);
   const summary = facts.length ? facts : attributes.slice(0, 4);
   const rating = typeof product.shop_rating === "number" && product.shop_rating > 0 && product.shop_rating <= 5 ? product.shop_rating : null;
-  function jump(id: Section) { setActive(id); scroll.current?.scrollTo({ y: positions.current[id] || 0, animated: true }); }
+  function jump(id: Section) { setActive(id); scroll.current?.scrollToOffset({ offset: positions.current[id] || 0, animated: true }); }
   return <View style={{ flex: 1 }}>
     <View style={styles.tabs}>{tabs.map(tab => <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{ selected: active === tab.id }}
       onPress={() => jump(tab.id)} style={[styles.tab, active === tab.id && { borderBottomColor: colors.orange }]}>
       <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: active === tab.id ? "700" : "500", color: active === tab.id ? colors.accentText : colors.muted }}>{tab.label}</Text>
     </Pressable>)}</View>
-    <ScrollView ref={scroll} testID="product-content" scrollEventThrottle={80} contentInsetAdjustmentBehavior="never"
+    <FlatList ref={scroll} testID="product-content"
+      data={recommendations.items} numColumns={2} keyExtractor={item => item.id}
+      initialNumToRender={8} maxToRenderPerBatch={8} windowSize={7}
+      onEndReached={() => { void recommendations.load(); }} onEndReachedThreshold={0.7}
+      columnWrapperStyle={{ paddingHorizontal: 10, gap: 8 }}
+      renderItem={({ item: p }) => <Pressable testID="recommendation-card" accessibilityRole="button" accessibilityLabel={p.name}
+        onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })} style={styles.product}>
+        <Image source={p.image || undefined} recyclingKey={p.id} contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />
+        <View style={{ padding: 10, gap: 6 }}>
+          <Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 19, minHeight: 38, color: colors.ink }}>{p.name}</Text>
+          <Text style={{ fontSize: 19, fontWeight: "800", color: colors.accentText }}>{p.mnt ? money(p.mnt) : "≈ " + money(p.approx_mnt!)}</Text>
+          <ProductOffers product={p} amount={p.mnt || p.approx_mnt} />
+        </View>
+      </Pressable>}
+      ListFooterComponent={<View testID="recommendation-status" style={{ padding: 16, gap: 12 }}>
+        {recommendations.loading && <Busy />}
+        {!!recommendations.error && <ErrorBox message={recommendations.error} retry={() => { void recommendations.load(true); }} />}
+        {!recommendations.loading && !recommendations.error && recommendations.more && <Button title="Дараагийн бараа" secondary onPress={() => { void recommendations.load(); }} />}
+        {!recommendations.loading && !recommendations.error && !recommendations.more && <Copy>{recommendations.items.length ? "Бүх санал болгох барааг үзлээ." : "Санал болгох бараа одоогоор алга байна."}</Copy>}
+        <Text style={styles.muted}>Үнэ, үлдэгдэл захиалга үүсгэхэд дахин шалгагдана.</Text>
+      </View>} scrollEventThrottle={80} contentInsetAdjustmentBehavior="never"
       onScroll={e => {
         const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
         if (contentOffset.y > 0 && contentOffset.y + layoutMeasurement.height >= contentSize.height - 12) { setActive("recommend"); return; }
         const y = e.nativeEvent.contentOffset.y + 40;
         const current = [...tabs].reverse().find(t => positions.current[t.id] !== undefined && y >= positions.current[t.id]!);
         if (current) setActive(current.id);
-      }} contentContainerStyle={{ paddingBottom: 24, gap: 10, maxWidth: 820, width: "100%", alignSelf: "center" }}>
+      }} contentContainerStyle={{ paddingBottom: 24, gap: 10, maxWidth: 820, width: "100%", alignSelf: "center" }}
+      ListHeaderComponent={<View style={{ gap: 10 }}>
       <View onLayout={e => { positions.current.overview = e.nativeEvent.layout.y; }} style={{ gap: 10 }}>
         <View style={{ backgroundColor: colors.surface }}>
           <ScrollView key={width} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
@@ -126,9 +164,12 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         {!!attributes.length && <Pressable accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel="Бүх үзүүлэлтийг дэлгэрүүлэх"
           onPress={() => setExpanded(v => !v)} style={styles.expand}><Text style={styles.more}>{expanded ? "Үзүүлэлтийг хураах" : `Бүх ${attributes.length} үзүүлэлтийг харах`}</Text></Pressable>}
       </Card></View>
-      <View onLayout={e => { positions.current.recommend = e.nativeEvent.layout.y; }} style={styles.inset}><Recommendations key={product.id} id={product.id} /></View>
-      <Text style={[styles.muted, { paddingHorizontal: 16 }]}>Үнэ, үлдэгдэл захиалга үүсгэхэд дахин шалгагдана.</Text>
-    </ScrollView>
+      <View onLayout={e => { positions.current.recommend = e.nativeEvent.layout.y; }} style={[styles.inset, { gap: 8 }]} testID="product-recommendations">
+        <Text style={styles.heading}>Танд санал болгох</Text>
+        <Text style={styles.muted}>Олон ангиллын бараанаас сонгоорой</Text>
+      </View>
+      </View>}
+    />
   </View>;
 }
 const createStyles = (colors: Palette) => StyleSheet.create({
@@ -146,6 +187,5 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   fact: { flexDirection: "row", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.line, paddingVertical: 8 },
   expand: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   counter: { position: "absolute", bottom: 12, right: 12, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#00000080" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   product: { width: "48%", flexGrow: 1, maxWidth: "50%", backgroundColor: colors.surface, borderRadius: 12, overflow: "hidden" },
 });

@@ -22,7 +22,13 @@ const product = id => ({ id, name: id === 'tb-123456' ? 'Everyday Travel Backpac
       else if (action === 'supplier-product') data.product = product(url.searchParams.get('id'));
       else if (action === 'supplier-recommend') {
         if (failRecommendations) { status = 503; data.error = 'Recommendation fixture error'; }
-        else data.products = [product('tb-123456'), product('tb-654321'), product('tb-654321'), ...Array.from({ length: 12 }, (_, i) => ({ ...product('tb-' + (700000 + i)), name: 'Suggested item ' + i }))];
+        else {
+          const number = Number(url.searchParams.get('page') || 1);
+          data.more = number === 1;
+          data.products = number === 1
+            ? [product('tb-123456'), product('tb-654321'), product('tb-654321'), ...Array.from({ length: 12 }, (_, i) => ({ ...product('tb-' + (700000 + i)), name: 'Suggested item ' + i, mnt: null, approx_mnt: 15000 }))]
+            : [product('tb-654321'), { ...product('tb-800000'), name: 'Second page recommendation', mnt: null, approx_mnt: 18000 }];
+        }
       } else throw Error('Unexpected API call: ' + action);
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     });
@@ -48,17 +54,23 @@ const product = id => ({ id, name: id === 'tb-123456' ? 'Everyday Travel Backpac
     assert.ok(await page.getByTestId('product-fact').count() <= 4);
     await page.screenshot({ path: 'output/mobile-product/specifications.png' });
     await page.getByRole('tab', { name: 'Санал болгох', exact: true }).click();
-    await page.getByTestId('product-recommendations').getByText('Recommendation fixture error').waitFor();
+    await page.getByTestId('recommendation-status').getByText('Recommendation fixture error').waitFor();
     failRecommendations = false;
-    await page.getByTestId('product-recommendations').getByRole('button', { name: 'Дахин оролдох', exact: true }).click();
-    await page.getByTestId('product-recommendations').getByRole('button', { name: 'Compact Travel Organizer', exact: true }).waitFor();
-    assert.equal(await page.getByTestId('product-recommendations').getByRole('button').count(), 12, 'Recommendations exclude current product, deduplicate and cap cards');
+    await page.getByTestId('recommendation-status').getByRole('button', { name: 'Дахин оролдох', exact: true }).click();
+    await page.getByTestId('recommendation-card').filter({ hasText: 'Compact Travel Organizer' }).waitFor();
+    const suggested = page.getByTestId('recommendation-card').filter({ hasText: 'Suggested item 0' });
+    await suggested.waitFor();
+    assert.ok((await suggested.innerText()).includes('15,000'), 'Search reference price must render immediately');
+    assert.ok(!(await suggested.innerText()).includes('Үнэ шалгах'));
+    await page.getByTestId('recommendation-status').scrollIntoViewIfNeeded();
+    await page.getByTestId('recommendation-card').filter({ hasText: 'Second page recommendation' }).waitFor();
+    assert.equal(await page.getByTestId('recommendation-card').filter({ hasText: 'Compact Travel Organizer' }).count(), 1, 'Appending pages must deduplicate');
     await page.getByRole('tab', { name: 'Санал болгох', exact: true }).click();
     await page.waitForTimeout(500);
     const recommendedHeading = await page.getByText('Танд санал болгох', { exact: true }).boundingBox();
     assert.ok(recommendedHeading && recommendedHeading.y >= 100 && recommendedHeading.y < 180, 'Recommendation jump aligns the section below the fixed tabs');
     await page.screenshot({ path: 'output/mobile-product/recommendations.png' });
-    await page.getByTestId('product-recommendations').getByRole('button', { name: 'Compact Travel Organizer', exact: true }).click();
+    await page.getByTestId('recommendation-card').filter({ hasText: 'Compact Travel Organizer' }).click();
     await page.waitForURL('**/product/tb-654321');
     await page.getByRole('button', { name: 'Барааны нэрийг дэлгэрүүлэх', exact: true }).filter({ hasText: 'Compact Travel Organizer' }).waitFor();
     await page.getByRole('tab', { name: 'Үнэлгээ', exact: true }).click();

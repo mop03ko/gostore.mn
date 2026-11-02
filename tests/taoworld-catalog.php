@@ -144,6 +144,17 @@ $next=supplier_search(['q'=>'__all__','page'=>2,'limit'=>12]);check(count($calls
 $firstKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before-6,6));$nextKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before,6));check(!array_intersect($firstKeywords,$nextKeywords),'Next page repeated the same department group');
 check(tw_catalog_deals(['page'=>'1'])['page']===1,'Deals must accept an HTTP query page string');
 denied(fn()=>tw_catalog_deals(['page'=>'bad']),400);
+$recommendBefore=count($calls);
+$recommend=supplier_recommend($home['products'][0]['id']);
+$recommendNext=supplier_recommend($home['products'][0]['id'],2);
+$recommendFifth=supplier_recommend($home['products'][0]['id'],5);
+check(count($calls)===$recommendBefore,'Recommendations must reuse the mixed-feed cache');
+check(count($recommendFifth['products'])>0&&!array_intersect(array_column($recommend['products'],'id'),array_column($recommendFifth['products'],'id')),'Five scroll pages must share one batch without repeating items');
+check($recommend['page']===1&&$recommendNext['page']===2&&$recommend['more'],'Recommendations must expose pagination');
+check(!in_array($home['products'][0]['id'],array_column($recommend['products'],'id'),true),'Recommendations must exclude the current product');
+check(count(array_diff(array_column($recommendNext['products'],'id'),array_column($recommend['products'],'id')))>0,'Next recommendation page must add new products');
+foreach($recommend['products'] as $recommended)check(($recommended['mnt']??$recommended['approx_mnt'])>0,'Every recommendation must have a display price');
+denied(fn()=>supplier_recommend($home['products'][0]['id'],0),400);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
 foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){

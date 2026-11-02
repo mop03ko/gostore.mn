@@ -427,7 +427,7 @@ window.supplierApi=(()=>{
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
         if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null,store:result.store??null,partial:result.partial===true,revalidate:result.revalidate===true});
         else if(action==='supplier-official-stores')Object.assign(data,{stores:result.stores,incomplete:result.incomplete===true});
-        else if(action==='supplier-recommend')data.products=result.products;
+        else if(action==='supplier-recommend')Object.assign(data,{products:result.products,page:result.page,more:result.more===true});
         else data.product=result.product;
         const list=action!=='supplier-product',ttl=Math.min(list?600:300,Number(result.cache_ttl)||0);
         const shaped=action==='supplier-official-stores'?Array.isArray(data.stores):list?Array.isArray(data.products):data.product?.id===payload.id;
@@ -1557,17 +1557,49 @@ window.productCompare=(()=>{
   }
   // «Танд санал болгох»: mixed products from every department, loaded when the reader nears it.
   function recommendations(p){
-    const section=document.createElement('section');section.className='pd-related';section.id='pd-recommend';section.hidden=true;
-    section.innerHTML='<h2>Танд санал болгох</h2><div class="product-grid" id="pd-recommend-grid"></div>';root.append(section);
-    const show=items=>{const seen=new Set([p.id]),list=items.filter(i=>i&&/^tb-\d{5,20}$/.test(i.id)&&!seen.has(i.id)&&seen.add(i.id)).slice(0,24);
-      // Whole rows where possible: 6 columns on desktop, 2 on phones; a lone related item still shows.
-      list.length-=list.length>=6?list.length%6:list.length>2?list.length%2:0;section.hidden=!list.length;if(list.length)renderSupplierCards(list,false,section.querySelector('#pd-recommend-grid'));};
-    const related=(p.related||[]).filter(i=>/^tb-/.test(i.id||''));show(related);
-    const load=()=>supplierApi('supplier-recommend',{id:p.id}).then(r=>{if(section.isConnected)show([...related,...(r.products||[])]);}).catch(()=>{});
-    // The section stays hidden until it has cards, so the visible details block above is watched.
-    const anchor=root.querySelector('.pd-details');
-    if(typeof IntersectionObserver!=='function'||!anchor)return load();
-    const watch=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){watch.disconnect();load();}},{rootMargin:'0px 0px 800px 0px'});watch.observe(anchor);
+    const section=document.createElement('section');
+    section.className='pd-related';section.id='pd-recommend';
+    section.innerHTML='<h2>Танд санал болгох</h2><div class="product-grid" id="pd-recommend-grid"></div><p role="status" data-recommend-status></p><button type="button" class="button outline" data-recommend-next>Дараагийн бараа</button>';
+    root.append(section);
+    const grid=section.querySelector('#pd-recommend-grid');
+    const status=section.querySelector('[data-recommend-status]');
+    const next=section.querySelector('[data-recommend-next]');
+    const seen=new Set([p.id]);
+    let page=1,loading=false,more=true,failed=false;
+    async function load(){
+      if(loading||!more||!section.isConnected)return;
+      loading=true;failed=false;next.disabled=true;status.textContent='Ачаалж байна…';
+      try{
+        const result=await supplierApi('supplier-recommend',{id:p.id,page});
+        if(!section.isConnected)return;
+        const items=(result.products||[]).filter(item=>{
+          const price=item.mnt??item.approx_mnt;
+          if(!item.id||seen.has(item.id)||item.sellable===false||!(price>0))return false;
+          seen.add(item.id);return true;
+        });
+        renderSupplierCards(items,true,grid);
+        page++;more=result.more===true;
+        status.textContent=more?'':seen.size>1?'Бүх санал болгох барааг үзлээ.':'Санал болгох бараа одоогоор алга байна.';
+        next.hidden=!more;
+      }catch{
+        failed=true;status.textContent='Бараа ачаалж чадсангүй.';
+        next.textContent='Дахин оролдох';
+      }finally{
+        loading=false;next.disabled=false;
+        if(!failed&&more){
+          next.textContent='Дараагийн бараа';
+          // Re-observe after appending, including pages with no new priced items.
+          watch?.unobserve(next);watch?.observe(next);
+        }
+      }
+    }
+    next.onclick=load;
+    const watch=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
+      if(!section.isConnected){watch.disconnect();return;}
+      if(!failed&&entries.some(entry=>entry.isIntersecting))void load();
+    },{rootMargin:'0px 0px 800px 0px'}):null;
+    if(watch)watch.observe(next);else void load();
+    window.addEventListener('pagehide',()=>watch?.disconnect(),{once:true});
   }
   function mediaInfo(p){
     return (p.videos?.length?'<div class="pd-videos">'+p.videos.map(v=>'<video controls playsinline preload="none"'+(v.poster?' poster="'+esc(v.poster)+'"':'')+' src="'+esc(v.url)+'" aria-label="Барааны танилцуулга видео"></video>').join('')+'</div>':'')+(p.description_images?.length?'<details class="pd-description-photos"><summary>Нийлүүлэгчийн дэлгэрэнгүй зураг ('+p.description_images.length+')</summary><div>'+p.description_images.map((src,i)=>'<img data-description-src="'+esc(src)+'" alt="Барааны тайлбар · '+(i+1)+'" loading="lazy" referrerpolicy="no-referrer">').join('')+'</div></details>':'');

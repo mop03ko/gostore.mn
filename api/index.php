@@ -32,7 +32,11 @@ try {
         if($action==='supplier-official-stores'){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_stores_directory());}
         if($action==='supplier-product'&&!empty($_GET['shop'])){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_store_detail(str_field($_GET,'id',50),str_field($_GET,'shop',20)));}
         if($action==='supplier-free-shipping'){require_once __DIR__.'/../server/discovery.php';supplier_public_json(discovery_free_shipping());}
-        if($action==='supplier-recommend')supplier_public_json(supplier_recommend(str_field($_GET,'id',50)));
+        if($action==='supplier-recommend'){
+            $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);
+            if($page===false||$page<1||$page>100)fail('Хуудасны дугаар буруу.');
+            supplier_public_json(supplier_recommend(str_field($_GET,'id',50),$page));
+        }
         if($action==='supplier-product')supplier_public_json(supplier_detail(str_field($_GET,'id',50),true,str_field($_GET,'brand',30,false)));
         $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);
         if($page===false)fail('Хуудасны дугаар буруу.');
