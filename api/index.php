@@ -4,6 +4,7 @@ require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
+require_once __DIR__.'/../server/product-reviews.php';
 require __DIR__.'/../server/customer-state.php';
 require __DIR__.'/../server/shipping.php';
 require __DIR__.'/../server/supplier.php';
@@ -50,7 +51,7 @@ try {
         }
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
     }
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||in_array($action,['session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||in_array($action,['reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
@@ -58,6 +59,9 @@ try {
     if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due();
     if ($method==='GET') {
         if($warehouseAction)warehouse_get($action);
+        if($action==='product-reviews')json_out(reviews_get());
+        if($action==='review-photo')review_photo();
+        if($action==='reviews-admin')json_out(reviews_admin());
         if ($action==='catalog') json_out(['products'=>products(),'local_products_enabled'=>config()['local_products_enabled'],'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
         if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
@@ -75,6 +79,7 @@ try {
     }
     if ($method!=='POST') fail('Зөвшөөрөөгүй хүсэлт.',405);
     csrf_required();
+    if($action==='review-save')json_out(review_save());
     if($action==='supplier-image-upload')json_out(supplier_image_search_upload());
     if($action==='warehouse-photo-upload')logistics_photo_upload();
     if($action==='warehouse-exception-photo-upload')logistics_photo_upload(true);
@@ -93,6 +98,8 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if(in_array($action,['review-delete','review-report'],true))json_out(reviews_post($action,$b));
+    if($action==='review-moderate')json_out(reviews_moderate($b));
     if(str_starts_with($action,'taoworld-'))tw_admin_post($action,$b);
     if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);
     if(str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-'))taobao_admin_post($action,$b);

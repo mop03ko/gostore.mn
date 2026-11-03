@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/product-reviews.php';
 
 function current_customer(): ?array {
     if (empty($_SESSION['customer_id'])) return null;
@@ -156,6 +157,7 @@ function customer_post(string $action,array $b): never {
             $s=$db->prepare('UPDATE customers SET email=?,name=?,phone=?,address=?,password_hash=?,auth_version=auth_version+1,updated=? WHERE id=? AND auth_version=?');
             $s->execute(['deleted-'.bin2hex(random_bytes(16)).'@invalid.example','Deleted account','','',password_hash(bin2hex(random_bytes(32)),PASSWORD_BCRYPT),gmdate('c'),$c['id'],$c['auth_version']]);
             if($s->rowCount()!==1)fail('Дахин нэвтэрч оролдоно уу.',401);
+            reviews_delete_customer($c['id']);
             $db->prepare('DELETE FROM customer_addresses WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_state WHERE customer_id=?')->execute([$c['id']]);
             $db->exec('COMMIT');
