@@ -62,6 +62,8 @@ export default function Login() {
       await refresh();
       setPassword("");
       setConfirm("");
+      const review = typeof next === "string" ? next.match(/^\/reviews\/([a-z0-9-]{1,60})$/) : null;
+      if (review) { router.replace({ pathname: "/reviews/[id]", params: { id: review[1] } }); return; }
       const destination = next === "checkout" || next === "/checkout" ? "/checkout"
         : next === "/orders" ? "/orders" : next === "/addresses" ? "/addresses"
         : next === "/notifications" ? "/notifications" : "/account";

@@ -98,7 +98,7 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
-    if(in_array($action,['review-delete','review-report'],true))json_out(reviews_post($action,$b));
+    if(in_array($action,['review-delete','review-report','review-block','review-unblock-all'],true))json_out(reviews_post($action,$b));
     if($action==='review-moderate')json_out(reviews_moderate($b));
     if(str_starts_with($action,'taoworld-'))tw_admin_post($action,$b);
     if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);

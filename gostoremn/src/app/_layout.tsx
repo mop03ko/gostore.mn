@@ -36,6 +36,7 @@ export default function Root() {
           name="login"
           options={{ title: "Нэвтрэх / Бүртгүүлэх", presentation: "modal" }}
         />
+        <Stack.Screen name="reviews/[id]" options={{ title: "Үнэлгээ, сэтгэгдэл" }} />
         <Stack.Screen name="addresses" options={{ title: "Миний хаягууд" }} />
         <Stack.Screen name="notifications" options={{ title: "Мэдэгдэл" }} />
         <Stack.Screen

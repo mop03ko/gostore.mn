@@ -8,6 +8,8 @@ All writes use the existing customer session and CSRF guard. A unique product/cu
 
 `product-reviews` returns 20 visible reviews per page, average, count and the signed-in customer's review. `review-save` accepts multipart form data; `review-delete` and `review-report` accept JSON. Admin actions `reviews-admin` and `review-moderate` use only the admin session. The admin “Үнэлгээ, сэтгэгдэл” page prioritizes reported reviews and supports hiding/restoring them. Customer edits preserve the moderation state. Public responses and photos are not cached.
 
-This release covers the website, including mobile browsers and dark mode. Native Expo product screens are unchanged.
+The Expo app also uses these reviews through the token-only mobile API. The product page shows a three-review preview; the dedicated review screen paginates all comments and supports rating, editing, deleting, camera/library JPEG attachments, image enlargement and reporting. Signed-in users can hide an author across products or restore hidden authors; blocking changes only that viewer’s list and rating summary. Store/admin moderation remains shared. Photo URLs are public, noncached, same-origin image reads; mobile credentials are never put in URLs. Native camera/library permission descriptions mention review photos. Existing installed native apps require a new build.
 
 Validation: `node tests/run-logistics.cjs product-reviews-ui product-page-ui customers` and `node scripts/bundle.cjs --check`. Fixtures and uploads run against isolated local databases, never production accounts.
+
+Native checks: `npm run typecheck` and `npm run lint` in `gostoremn`; `node tests/run-logistics.cjs mobile-reviews product-reviews-ui mobile expo-reviews-ui` from the repository root. The Expo UI test starts its own offline Metro on port 8086, uses a disposable local PHP database, and writes screenshots under `output/mobile-reviews/`.

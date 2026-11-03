@@ -1,3 +1,4 @@
+import { ProductReviews } from "./product-reviews";
 import { ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
@@ -151,8 +152,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         {rating !== null && <View style={styles.rating}><Text style={{ fontSize: 27, fontWeight: "800", color: colors.accentText }}>★ {rating.toFixed(1)}<Text style={{ color: colors.ink, fontSize: 14 }}> / 5</Text></Text>
           <View style={{ flex: 1 }}><Text style={{ color: colors.ink, fontWeight: "600" }}>Дэлгүүрийн үнэлгээ</Text><Text style={styles.muted}>Taobao дэлгүүрийн нийт үзүүлэлт</Text></View></View>}
         <View style={styles.separator} />
-        <Text style={{ color: colors.ink, fontWeight: "600", fontSize: 14 }}>Худалдан авагчдын сэтгэгдэл</Text>
-        <Text style={styles.muted}>Энэ барааны худалдан авагчдын сэтгэгдлийг одоогоор харуулах боломжгүй байна.</Text>
+        <ProductReviews key={product.id} productId={product.id} />
       </Card></View>
       <View onLayout={e => { positions.current.details = e.nativeEvent.layout.y; }} style={styles.inset} testID="product-specifications"><Card>
         <Text style={styles.heading}>Товч үзүүлэлт</Text>

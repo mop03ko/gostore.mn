@@ -6,6 +6,7 @@ function reviews_schema(): void {
     CREATE INDEX IF NOT EXISTS product_reviews_product ON product_reviews(product,status,created);
     CREATE TABLE IF NOT EXISTS product_review_photos (id TEXT PRIMARY KEY, review TEXT NOT NULL, image BLOB NOT NULL);
     CREATE INDEX IF NOT EXISTS product_review_photos_review ON product_review_photos(review);
+    CREATE TABLE IF NOT EXISTS product_review_blocks (customer TEXT NOT NULL, author TEXT NOT NULL, PRIMARY KEY(customer,author));
     CREATE TABLE IF NOT EXISTS product_review_reports (review TEXT NOT NULL, customer TEXT NOT NULL, reason TEXT NOT NULL, created TEXT NOT NULL, PRIMARY KEY(review,customer));");$ready=true;
 }
 function review_number(array $b,string $key,int $min,int $max): int {
@@ -22,10 +23,11 @@ function review_public(array $r,?array $c): array {
 }
 function reviews_get(): array {
     reviews_schema();$id=reviews_product($_GET);$page=review_number($_GET+['page'=>1],'page',1,10000);$c=current_customer();
-    $s=db()->prepare("SELECT count(*) total,avg(rating) average FROM product_reviews WHERE product=? AND status='visible'");$s->execute([$id]);$summary=$s->fetch();
-    $s=db()->prepare("SELECT r.*,c.name FROM product_reviews r JOIN customers c ON c.id=r.customer WHERE r.product=? AND r.status='visible' ORDER BY r.created DESC,r.id DESC LIMIT 20 OFFSET ".(($page-1)*20));$s->execute([$id]);$rows=$s->fetchAll();
+    $s=db()->prepare("SELECT count(*) total,avg(rating) average FROM product_reviews WHERE product=? AND status='visible' AND NOT EXISTS (SELECT 1 FROM product_review_blocks b WHERE b.customer=? AND b.author=product_reviews.customer)");$s->execute([$id,$c['id']??'']);$summary=$s->fetch();
+    $s=db()->prepare("SELECT r.*,c.name FROM product_reviews r JOIN customers c ON c.id=r.customer WHERE r.product=? AND r.status='visible' AND NOT EXISTS (SELECT 1 FROM product_review_blocks b WHERE b.customer=? AND b.author=r.customer) ORDER BY r.created DESC,r.id DESC LIMIT 20 OFFSET ".(($page-1)*20));$s->execute([$id,$c['id']??'']);$rows=$s->fetchAll();
     $mine=null;if($c){$s=db()->prepare('SELECT r.*,c.name FROM product_reviews r JOIN customers c ON c.id=r.customer WHERE r.product=? AND r.customer=?');$s->execute([$id,$c['id']]);if($r=$s->fetch())$mine=review_public($r,$c);}
-    return ['reviews'=>array_map(fn($r)=>review_public($r,$c),$rows),'total'=>(int)$summary['total'],'average'=>$summary['average']===null?null:round((float)$summary['average'],1),'more'=>$page*20<(int)$summary['total'],'mine'=>$mine,'authenticated'=>(bool)$c,'csrf'=>$_SESSION['csrf']];
+    $blocked=0;if($c){$s=db()->prepare('SELECT count(*) FROM product_review_blocks WHERE customer=?');$s->execute([$c['id']]);$blocked=(int)$s->fetchColumn();}
+    return ['blocked_count'=>$blocked,'reviews'=>array_map(fn($r)=>review_public($r,$c),$rows),'total'=>(int)$summary['total'],'average'=>$summary['average']===null?null:round((float)$summary['average'],1),'more'=>$page*20<(int)$summary['total'],'mine'=>$mine,'authenticated'=>(bool)$c,'csrf'=>$_SESSION['csrf']];
 }
 function review_photo(): never {
     reviews_schema();$id=str_field($_GET,'id',32);$s=db()->prepare("SELECT p.image FROM product_review_photos p JOIN product_reviews r ON r.id=p.review WHERE p.id=? AND r.status='visible'");$s->execute([$id]);$bytes=$s->fetchColumn();if($bytes===false)fail('Зураг олдсонгүй.',404);
@@ -69,13 +71,16 @@ function review_remove(string $id): void {
     db()->prepare('DELETE FROM product_review_photos WHERE review=?')->execute([$id]);db()->prepare('DELETE FROM product_review_reports WHERE review=?')->execute([$id]);db()->prepare('DELETE FROM product_reviews WHERE id=?')->execute([$id]);
 }
 function reviews_delete_customer(string $customer): void {
-    reviews_schema();$s=db()->prepare('SELECT id FROM product_reviews WHERE customer=?');$s->execute([$customer]);foreach($s->fetchAll() as $r)review_remove($r['id']);db()->prepare('DELETE FROM product_review_reports WHERE customer=?')->execute([$customer]);
+    reviews_schema();db()->prepare('DELETE FROM product_review_blocks WHERE customer=? OR author=?')->execute([$customer,$customer]);$s=db()->prepare('SELECT id FROM product_reviews WHERE customer=?');$s->execute([$customer]);foreach($s->fetchAll() as $r)review_remove($r['id']);db()->prepare('DELETE FROM product_review_reports WHERE customer=?')->execute([$customer]);
 }
 function reviews_post(string $action,array $b): array {
-    reviews_schema();$c=customer_required();$id=str_field($b,'id',32);$s=db()->prepare('SELECT * FROM product_reviews WHERE id=?');$s->execute([$id]);$r=$s->fetch();if(!$r)fail('Сэтгэгдэл олдсонгүй.',404);
+    reviews_schema();$c=customer_required();if($action==='review-unblock-all'){db()->prepare('DELETE FROM product_review_blocks WHERE customer=?')->execute([$c['id']]);return ['ok'=>true];}$id=str_field($b,'id',32);$s=db()->prepare('SELECT * FROM product_reviews WHERE id=?');$s->execute([$id]);$r=$s->fetch();if(!$r)fail('Сэтгэгдэл олдсонгүй.',404);
     if($action==='review-delete'){
         if($r['customer']!==$c['id'])fail('Зөвхөн өөрийн сэтгэгдлийг устгана.',403);
         $db=db();$db->exec('BEGIN IMMEDIATE');try{review_remove($id);$db->exec('COMMIT');}catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    }elseif($action==='review-block'){
+        if($r['customer']===$c['id'])fail('Өөрийн сэтгэгдлийг устгах товч ашиглана уу.');
+        db()->prepare('INSERT OR IGNORE INTO product_review_blocks VALUES (?,?)')->execute([$c['id'],$r['customer']]);
     }elseif($action==='review-report'){
         $reason=str_field($b,'reason',500);limit_attempts('review-report:'.$c['id'],20,3600);db()->prepare('INSERT OR IGNORE INTO product_review_reports VALUES (?,?,?,?)')->execute([$id,$c['id'],$reason,gmdate('c')]);
     }else fail('Үйлдэл олдсонгүй.',404);return ['ok'=>true];
