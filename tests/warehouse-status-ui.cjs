@@ -1,0 +1,24 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),fs=require('fs'),assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;assert.equal(new URL(base).hostname,'127.0.0.1');
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage(),errors=[],id='GS-TEST-030';let csrf='';
+ const api=async(action,body)=>{const r=await context.request.fetch(base+'/api/index.php?action='+action,{method:body?'POST':'GET',headers:body?{'X-CSRF-Token':csrf}:{},data:body});const d=await r.json();if(d.csrf)csrf=d.csrf;assert.ok(r.ok(),JSON.stringify(d));return d;};
+ await api('session');await api('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')));await api('order-update',{id,status:'erenhot',amount:99000,internal_note:''});const login={location:'erenhot',email:'status-ui@example.test',password:'Status-navigation-ui-2026',enabled:true};await api('warehouse-account-save',login);await api('warehouse-session');await api('warehouse-login',login);
+ page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/warehouse/');await page.locator('#app').waitFor({state:'visible'});
+ // A tap reveals the list immediately, even when the cards were above the fold.
+ await page.locator('#received-stat').click();await page.waitForFunction(()=>document.querySelector('#records').getAttribute('aria-busy')==='false');
+ assert.equal(await page.locator('#status-filter').inputValue(),'erenhot');assert.equal(await page.locator('#received-stat').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#records .order-card').count(),1);
+ assert.match(await page.locator('#list-title').innerText(),/二连仓库已收货/);assert.equal(await page.locator('#list-title').evaluate(e=>document.activeElement===e),true);
+ const box=await page.locator('#order-list-panel').boundingBox();assert.ok(box.y>=0&&box.y<60,'Filtered list must be in view after status tap');
+ await page.locator('#records .order-code-link').click();await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),id);
+ await page.locator('[data-pack-one]').click();assert.match(await page.locator('#editor-body').innerText(),/自动生成 GB-/);
+ const created=page.waitForResponse(r=>r.url().includes('action=warehouse-batch-create'));await page.locator('[data-operation=batch-create] button').click();assert.equal((await created).status(),201);await page.locator('.batch-qr-label').waitFor();const code=await page.locator('#editor-title').innerText();assert.match(code,/^GB-[A-F0-9]{6}$/);assert.match(await page.locator('.batch-qr-label').innerText(),new RegExp(code));
+ await page.locator('#close-editor').click();await page.locator('#batches-tab').click();await page.locator('#records .order-code-link[data-batch]').waitFor();await page.locator('#records .order-code-link[data-batch]').click();await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),code);await page.locator('#close-editor').click();
+ // Status navigation resets a prior tab and query, supports keyboard activation.
+ await page.locator('#search').fill('no-match');await page.locator('#search-form button').click();await page.locator('#records .empty').waitFor();await page.locator('[data-status=waiting]').focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.querySelector('#records').getAttribute('aria-busy')==='false');
+ assert.equal(await page.locator('#orders-tab').getAttribute('aria-selected'),'true');assert.equal(await page.locator('#search').inputValue(),'');assert.equal(await page.locator('#status-filter').inputValue(),'waiting');assert.ok(await page.locator('#records .order-card').count()>0);
+ await page.locator('#ready-stat').click();await page.locator('#records .empty').waitFor();assert.equal(await page.locator('#status-filter').inputValue(),'erenhot_ready');assert.equal(await page.locator('#received-stat').getAttribute('aria-pressed'),'false');
+ for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+ fs.mkdirSync('output/warehouse-status',{recursive:true});await page.setViewportSize({width:390,height:844});await page.locator('#received-stat').click();await page.locator('#records .order-card').waitFor();await page.screenshot({path:'output/warehouse-status/filtered-orders.png'});
+ assert.deepEqual(errors,[]);console.log('PASS warehouse status UI: mobile list navigation, active filters, code-to-details, automatic GB/QR creation, tab/query reset, empty states, keyboard and responsive layout.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
