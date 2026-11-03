@@ -1,0 +1,3 @@
+Synthetic Code 128 fixture: SF001234567890
+Generated using JsBarcode 3.12.3 (MIT), width 3, height 160, margin 40, displayValue false.
+No real customer or parcel data.

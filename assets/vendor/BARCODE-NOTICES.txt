@@ -1,0 +1,6 @@
+ZXing JS library 0.23.0
+https://github.com/zxing-js/library
+Source package https://registry.npmjs.org/@zxing/library/-/library-0.23.0.tgz
+Package SHA-512 verified against npm metadata before extraction.
+Unmodified UMD decoder, licensed under Apache-2.0; see zxing-LICENSE.txt.
+Camera frames and uploaded barcode photos are decoded locally on the device.

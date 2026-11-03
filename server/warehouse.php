@@ -149,6 +149,23 @@ function warehouse_overview_add(array &$overview,array $order): void {
     if(in_array('Улаанбаатар',$order['route']??[],true)&&in_array($order['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))$groups[]='ulaanbaatar';
     foreach($groups as $group){$overview[$group]['orders']++;$overview[$group]['quantity']+=$quantity;}
 }
+// Exact incoming carrier-number matching; branch visibility remains authoritative.
+function warehouse_tracking_matches(string $number,string $location): array {
+    if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
+    $number=strtoupper(trim($number));
+    if(!preg_match('/^[A-Z0-9-]{6,40}$/D',$number))fail('Tracking дугаар буруу.');
+    $matches=[];$total=0;
+    foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $row){
+        $o=json_decode($row['data'],true);
+        if(!warehouse_order_visible($o,$location))continue;
+        foreach($o['inbound']['numbers']??[] as $entry){
+            if(strtoupper(trim((string)($entry['no']??'')))!==$number)continue;
+            $total++;if(count($matches)<50)$matches[]=warehouse_order_public($o,$location,false);
+            break;
+        }
+    }
+    return ['number'=>$number,'orders'=>$matches,'total'=>$total,'more'=>$total>50];
+}
 function warehouse_get(string $action): never {
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
@@ -156,6 +173,7 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-notifications'){warehouse_push_schedule();json_out(warehouse_notice_list($location));}
     if($action==='warehouse-push-config')json_out(['public_key'=>warehouse_push_keys()['public'],'native_configured'=>warehouse_fcm_configured()]);
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
+    if($action==='warehouse-tracking')json_out(warehouse_tracking_matches(str_field($_GET,'number',40),$location));
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
     if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
     if($action==='warehouse-exception-photo'){$id=str_field($_GET,'id',50);logistics_exception($id,$location);logistics_photo_read(['logistics'=>['photos'=>logistics_exception_photos($id)]],str_field($_GET,'photo',32));}

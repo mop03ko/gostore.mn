@@ -59,6 +59,20 @@ document.addEventListener('input',e=>{
   f.querySelector('[data-measurement-preview]').textContent=valid?`${lt('Нийт жин','总重量')}: ${weight>0?weight:'—'} kg · ${l} × ${w} × ${h} / 1,000,000 = ${Number((l*w*h/1000000).toFixed(9))} m³`:lt('Савласан урт, өргөн, өндрийг зөв оруулна уу.','请输入有效的包装长、宽、高。');
 });
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{if(b.hasAttribute('data-print-order'))printOrder();if(b.dataset.logisticsRefresh)await logisticsOpenOrder(b.dataset.logisticsRefresh);if(b.id==='exceptions-button')await showExceptions();}catch(error){toast(error.message);}});
-$('#scan-form').addEventListener('submit',async e=>{e.preventDefault();const code=$('#scan-code').value.trim().toUpperCase();try{if(/^GB-[A-Z0-9-]+$/.test(code))await openBatch(code);else if(/^GS-[A-Z0-9-]+$/.test(code))await logisticsOpenOrder(code);else throw Error(lt('GS эсвэл GB код уншуулна уу.','请扫描 GS 或 GB 编号。'));$('#scan-code').value='';}catch(error){toast(error.message);}});
+// Scanning only opens records. Receipt still requires the manager's separate checks.
+async function openWarehouseCode(value){
+  const code=String(value||'').trim().toUpperCase();
+  if(/^GB-[A-Z0-9-]{1,45}$/.test(code)){await openBatch(code);return true;}
+  if(/^GS-[A-Z0-9-]{1,45}$/.test(code)){await logisticsOpenOrder(code);return true;}
+  if(!/^[A-Z0-9-]{6,40}$/.test(code)||cityRole()!=='erenhot')throw Error(t('qrInvalid'));
+  const response=await api('warehouse-tracking&'+new URLSearchParams({number:code}));
+  if(response.total===1){await logisticsOpenOrder(response.orders[0].id);return true;}
+  const title=lt('Tracking дугаар','快递运单号')+' · '+code;
+  const hint=response.total?lt('Энэ дугаарт хэд хэдэн захиалга холбогдсон. Барааг тулгаж захиалгаа сонгоно уу.','此运单关联多个订单，请核对商品后选择订单。'):lt('Энэ tracking дугаарт тохирох захиалга олдсонгүй. TaoWorld-ийн хүргэлтийн мэдээлэл хараахан синк хийгдээгүй эсвэл өөр төрлийн баркод байж болно. Админаар захиалгын дугаарыг шалгуулаарай.','未找到此运单号对应的订单。可能尚未同步淘宝物流信息，或扫描的不是快递运单条码。请联系管理员核对订单。');
+  currentBatch=null;
+  modal(title,'<p class="note">'+esc(hint)+'</p>'+response.orders.map(o=>'<article class="order-card"><div><strong>'+esc(o.id)+'</strong><p>'+esc(o.title)+'</p><small>'+esc(statusText(o.status,o))+'</small></div><button class="quiet" data-order="'+esc(o.id)+'">'+t('details')+'</button></article>').join('')+(response.more?'<p class="note">'+lt('Эхний 50 захиалгыг харууллаа. Админаар шалгуулна уу.','显示前 50 个订单，请联系管理员核对。')+'</p>':''));
+  return response.total>0;
+}
+$('#scan-form').addEventListener('submit',async e=>{e.preventDefault();const b=e.target.querySelector('button');if(b.disabled)return;b.disabled=true;try{if(await openWarehouseCode($('#scan-code').value))$('#scan-code').value='';}catch(error){toast(error.message);}finally{b.disabled=false;}});
 
 document.addEventListener('change',e=>{const input=e.target,f=input.closest('[data-photo-upload]');if(!f||input.type!=='file')return;const file=input.files[0];if(!file)return;f.elements[input.name==='image'?'camera_image':'image'].value='';const preview=f.querySelector('.warehouse-photo-preview'),url=URL.createObjectURL(file);preview.onload=preview.onerror=()=>URL.revokeObjectURL(url);preview.src=url;preview.hidden=false;});
