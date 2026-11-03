@@ -235,26 +235,66 @@ function tw_catalog_deals(array $params): array {
 function tw_catalog_departments(): array {
     return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
 }
-// Product recommendations paginate the shared, interleaved department feed.
+// Recommendations use the viewed product's leaf category, never the mixed home feed.
+function tw_catalog_recommend_query(array $product): string {
+    $valid=static function($value): string {
+        if(!is_string($value))return '';
+        $value=trim(supplier_text($value,100));
+        return in_array(mb_strtolower($value),['','null','other','others','其他','其它'],true)?'':$value;
+    };
+    $category=$valid($product['category_name']??null);
+    if($category!=='')return $category;
+    $path=$product['category_path']??null;
+    if(is_string($path)){
+        $parts=preg_split('/(?:->|>|\x{2192})/u',html_entity_decode($path,ENT_QUOTES|ENT_HTML5,'UTF-8'));
+        $category=$valid(end($parts));
+        if($category!=='')return $category;
+    }
+    // Some suppliers omit taxonomy. A product-title search stays item-specific.
+    return $valid($product['title']??null)?:$valid($product['multi_language_info']['title']??null);
+}
 function tw_catalog_recommend(string $id,int $limit=24,int $page=1): array {
     if(!preg_match('/^tb-\d{5,20}$/D',$id))fail('Барааны дугаар буруу.');
     if($page<1||$page>100)fail('Хуудасны дугаар буруу.');
     if($limit<1||$limit>120)fail('Барааны тоо буруу.');
     tw_catalog_require_ready();
     product_policy_assert(['id'=>$id]);
-    // Six cached departments supply several scroll pages without new provider calls.
-    $pagesPerBatch=(int)ceil(120/$limit);
-    $feedPage=intdiv($page-1,$pagesPerBatch)+1;
-    $offset=(($page-1)%$pagesPerBatch)*$limit;
-    $result=tw_catalog_home($feedPage,120,'',[],false);
-    $products=array_values(array_filter($result['products'],static function($product)use($id){
-        $price=$product['mnt']??$product['approx_mnt']??null;
-        return $product['id']!==$id&&($product['sellable']??true)&&is_numeric($price)&&$price>0;
+    // Reuses the product page's cached detail; no per-card detail requests.
+    tw_catalog_detail($id,false,'',true);
+    $source=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$id,'language'=>'en']).'.json');
+    $product=$source['data']??[];$query=tw_catalog_recommend_query($product);
+    $empty=['products'=>[],'page'=>$page,'total'=>null,'pages'=>$page,'more'=>false];
+    if($query===''||product_policy_text_blocked($query))return tw_catalog_response($empty,time(),0);
+    // The traffic search API accepts keywords, not category_id. Preserve the raw
+    // window when excluding cards so scrolling cannot skip or repeat a page.
+    $params=['keyword'=>$query,'language'=>'en'];
+    $start=($page-1)*$limit;$first=intdiv($start,20)+1;$last=intdiv($start+$limit-1,20)+1;
+    $rows=[];$fetched=time();
+    for($n=$first;$n<=$last;$n++){
+        $c=tw_catalog_cached('/traffic/item/search',$params+['page_no'=>(string)$n,'page_size'=>'20']);
+        $part=$c['data']['data']??null;
+        if(!is_array($part))fail('TaoWorld хайлтын хариу дутуу.',502);
+        $fetched=min($fetched,$c['time']);$rows=array_merge($rows,$part);
+        if(count($part)<20)break;
+    }
+    $rows=array_slice($rows,$start%20,$limit);$more=count($rows)===$limit&&$page<100;
+    $seen=[$id=>true];$eligible=[];$category=(string)($product['category_id']??'');
+    foreach($rows as $row){
+        if(!is_array($row))continue;
+        $candidate='tb-'.($row['item_id']??'');
+        if(isset($seen[$candidate]))continue;
+        $seen[$candidate]=true;
+        $detail=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$candidate,'language'=>'en']).'.json');
+        $candidateCategory=(string)($row['category_id']??'');
+        if($candidateCategory===''&&tw_catalog_fresh($detail,TW_CATALOG_DETAIL_DISPLAY_MAX))$candidateCategory=(string)($detail['data']['category_id']??'');
+        if($category!==''&&$candidateCategory!==''&&$category!==$candidateCategory)continue;
+        $eligible[]=$row;
+    }
+    $products=array_values(array_filter(tw_catalog_cards($eligible,$fetched),static function($p){
+        $price=$p['mnt']??$p['approx_mnt']??null;
+        return ($p['sellable']??true)&&is_numeric($price)&&$price>0;
     }));
-    $result['products']=array_slice($products,$offset,$limit);
-    $result['page']=$page;
-    $result['more']=$page<100&&($offset+$limit<count($products)||$result['more']);
-    return $result;
+    return tw_catalog_response(['products'=>$products,'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$fetched,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_search(array $b,bool $display=false): array {
     if(!empty($b['shop']))return official_store_products($b,$display&&empty($b['refresh']));
