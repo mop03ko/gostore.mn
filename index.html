@@ -3,6 +3,24 @@
 <head>
   <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
+  <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="gostore.mn">
+  <meta property="og:title" content="Gostore.mn — Сонголт нэг дор.">
+  <meta property="og:description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
+  <meta property="og:locale" content="mn_MN">
+  <meta property="og:image" content="https://gostore.mn/assets/gostore-share.jpg?v=6c36fbac67ca">
+  <meta property="og:image:secure_url" content="https://gostore.mn/assets/gostore-share.jpg?v=6c36fbac67ca">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="gostore.mn лого — Сонголт нэг дор. Бараа, захиалга, хүргэлт.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gostore.mn — Сонголт нэг дор.">
+  <meta name="twitter:description" content="Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
+  <meta name="twitter:image" content="https://gostore.mn/assets/gostore-share.jpg?v=6c36fbac67ca">
+  <meta name="twitter:image:alt" content="gostore.mn лого — Сонголт нэг дор.">
+
   <script>
   // Apply saved appearance before styles paint. Blocked storage falls back to the device.
   (()=>{let saved;try{saved=localStorage.getItem('gostore-theme');}catch{}const theme=saved==='dark'||(saved!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;})();
