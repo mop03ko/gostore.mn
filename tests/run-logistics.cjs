@@ -8,7 +8,8 @@ async function run(test){
   const seed=spawnSync(php,[...args,'tests/warehouse-fixtures.php'],{cwd:root,env,encoding:'utf8'});if(seed.status)throw Error(seed.stderr||seed.stdout);
   require('./supplier-fixture.cjs').seedSupplier(data);
   const socket=net.createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
-  const server=spawn(php,[...args,'-S','127.0.0.1:'+port,'scripts/router.php'],{cwd:root,env,windowsHide:true,stdio:['ignore','ignore','pipe']});let logs='';server.stderr.on('data',d=>logs+=d);
+  fs.mkdirSync(path.join(data,'sessions'),{recursive:true});
+  const server=spawn(php,[...args,'-d','session.save_path='+path.join(data,'sessions'),'-S','127.0.0.1:'+port,'scripts/router.php'],{cwd:root,env,windowsHide:true,stdio:['ignore','ignore','pipe']});let logs='';server.stderr.on('data',d=>logs+=d);
   try{
     const base='http://127.0.0.1:'+port;let ready=false;for(let i=0;i<30;i++){try{if((await fetch(base+'/api/index.php?action=customer-me')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}if(!ready)throw Error('Server startup failed');
     const extension=fs.existsSync(path.join(root,'tests',test+'.cjs'))?'.cjs':'.mjs';

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/warehouse-notifications.php';
+require_once __DIR__.'/warehouse-session.php';
 
 // A warehouse has an immutable operational role and an independent manager session.
 function warehouse_definitions(): array {
@@ -214,10 +215,10 @@ function warehouse_post(string $action,array $b): never {
         $email=strtolower(str_field($b,'email',200));$password=$b['password']??'';$a=warehouse_account($location);
         if(!is_string($password)||strlen($password)>500)fail('Имэйл эсвэл нууц үг буруу байна.',401);
         if(!warehouse_definitions()[$location]['active']||!$a['enabled']||$a['password_hash']===''||!hash_equals($a['email'],$email)||!password_verify($password,$a['password_hash']))fail('Имэйл эсвэл нууц үг буруу байна.',401);
-        session_regenerate_id(true);$_SESSION['warehouse_version']=$a['version'];$_SESSION['warehouse_location']=$location;$_SESSION['csrf']=bin2hex(random_bytes(32));
+        session_regenerate_id(true);$_SESSION['warehouse_version']=$a['version'];$_SESSION['warehouse_location']=$location;$_SESSION['csrf']=bin2hex(random_bytes(32));warehouse_device_issue();
         json_out(['ok'=>true,'location'=>$location,'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     }
-    if($action==='warehouse-logout'){warehouse_push_revoke_session();$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
+    if($action==='warehouse-logout'){warehouse_push_revoke_session();warehouse_device_forget();$_SESSION=[];session_destroy();json_out(['ok'=>true]);}
     warehouse_required();
     $location=warehouse_session_location();
     if($action==='warehouse-push-subscribe')json_out(warehouse_push_subscribe($b,$location));
