@@ -1,5 +1,5 @@
 import { ProductReviews } from "./product-reviews";
-import { ProductOffers } from "./product-offers";
+import { ProductDiscountBadge, ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -95,6 +95,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
       renderItem={({ item: p }) => <Pressable testID="recommendation-card" accessibilityRole="button" accessibilityLabel={p.name}
         onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })} style={styles.product}>
         <Image source={p.image || undefined} recyclingKey={p.id} contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />
+        <ProductDiscountBadge product={p} amount={p.mnt || p.approx_mnt} />
         <View style={{ padding: 10, gap: 6 }}>
           <Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 19, minHeight: 38, color: colors.ink }}>{p.name}</Text>
           <Text style={{ fontSize: 19, fontWeight: "800", color: colors.accentText }}>{p.mnt ? money(p.mnt) : "≈ " + money(p.approx_mnt!)}</Text>

@@ -1,4 +1,4 @@
-import { ProductOffers } from "@/components/product-offers";
+import { ProductDiscountBadge, ProductOffers } from "@/components/product-offers";
 import { usePalette } from "@/lib/palette";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -369,6 +369,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               transition={160}
               style={{ width: "100%", aspectRatio: 1 }}
             />
+            <ProductDiscountBadge product={p} amount={p.mnt || p.approx_mnt} />
             <View style={{ padding: 9, gap: 5 }}>
               <Text
                 numberOfLines={2}

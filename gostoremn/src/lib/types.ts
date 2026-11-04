@@ -6,7 +6,7 @@ export type Customer = {
   address: string;
 };
 export type Discount = { current_mnt: number; was_mnt: number; percent: number; expires: number };
-export type Offers = { expires: number; coupon_mnt?: number | null; promotions: { name: string }[] };
+export type Offers = { expires: number; coupon_mnt?: number | null; coupon_base_mnt?: number | null; coupon_percent?: number | null; promotions: { name: string }[] };
 export type Variant = {
   card_discount?: Discount | null;
   id: string;

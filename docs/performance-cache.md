@@ -114,3 +114,17 @@ labels, discovery and recommendation cards, mobile/dark layouts and live-page ve
 Deployed and verified on 2026-11-04. Backup: `/gostore-backups/all-discount-1793773611764`.
 Live verification found 36 eligible homepage cards and confirmed every one displayed a
 percentage badge; the 11.11 coupon cards and deployed JS/CSS/HTML were also verified.
+
+## Native product-card discounts — 2026-11-04
+
+iOS/Android share ProductDiscountBadge and productSavings across catalog/search, discovery
+(category/deals/free-shipping/11.11) and product recommendation cards. Sale badges take
+priority; coupon badges say “Купонтой” and the explanatory price retains “нөхцөлтэй”.
+Both validate the exact displayed price and source expiry. Selected SKU details explicitly
+override the parent sale. Timers and AppState resume checks remove expired offers.
+No catalog prices, checkout rules or provider requests change.
+
+Validated: full Expo lint, TypeScript, native discount logic fixtures, and Expo web preview
+UI at 320/390/430px including dark mode and recommendation navigation. This is browser
+verification of the shared React Native UI, not a physical-device test. Installed builds
+need a new binary because this project has no expo-updates configuration.
