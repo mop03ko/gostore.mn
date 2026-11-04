@@ -577,11 +577,32 @@ window.supplierBrandHref=()=>'/official-stores';
 ;
 /* ==== supplier.js ==== */
 'use strict';
+// Only a fresh original/current pair for the displayed price earns a discount badge.
+function supplierCardDiscount(p,amount,discount=p.card_discount){
+  if(p.sellable===false||!(Number.isFinite(amount)&&amount>0)||!discount||!Number.isFinite(discount.expires)||discount.expires*1000<=Date.now()||discount.current_mnt!==amount||!Number.isFinite(discount.was_mnt)||discount.was_mnt<=amount)return null;
+  const calculated=Math.floor(Number(((discount.was_mnt-amount)/discount.was_mnt*100).toFixed(8)));
+  const percent=Number.isInteger(discount.percent)&&discount.percent>0&&discount.percent<100?discount.percent:calculated;
+  return {...discount,percent};
+}
+let supplierDiscountTimer,supplierDiscountQueued=false;
+function supplierScheduleDiscountExpiry(){
+  clearTimeout(supplierDiscountTimer);let next=Infinity;
+  document.querySelectorAll('[data-discount-expires]').forEach(el=>{const at=Number(el.dataset.discountExpires)*1000;if(at<=Date.now())el.remove();else next=Math.min(next,at);});
+  if(Number.isFinite(next))supplierDiscountTimer=setTimeout(supplierScheduleDiscountExpiry,Math.max(50,Math.min(2147483647,next-Date.now()+20)));
+}
+function supplierQueueDiscountExpiry(){if(supplierDiscountQueued)return;supplierDiscountQueued=true;queueMicrotask(()=>{supplierDiscountQueued=false;supplierScheduleDiscountExpiry();});}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)supplierScheduleDiscountExpiry();});
+function supplierDiscountBadge(p,amount,discount=p.card_discount){
+  const sale=supplierCardDiscount(p,amount,discount);if(!sale||sale.percent<=0)return '';
+  supplierQueueDiscountExpiry();
+  return `<span class="supplier-discount-badge" data-discount-expires="${sale.expires}" aria-label="${sale.percent}% хямдрал">−${sale.percent}%</span>`;
+}
+
 function supplierPromotionHtml(p,amount,discount=p.card_discount,details=false){
   if(p.sellable===false)return '';
   const fresh=p.offers?.expires*1000>Date.now(),offers=fresh?p.offers:null;
-  const sale=discount?.expires*1000>Date.now()&&discount.current_mnt===amount&&discount.was_mnt>amount?discount:null;
-  const price=sale?`<span class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(sale.was_mnt)}</del>${sale.percent>0?`<span>−${sale.percent}%</span>`:''}</span>`:'';
+  const sale=supplierCardDiscount(p,amount,discount);if(sale)supplierQueueDiscountExpiry();
+  const price=sale?`<span class="supplier-discount" data-discount-expires="${sale.expires}"><del aria-label="Үндсэн үнэ">${money(sale.was_mnt)}</del>${sale.percent>0?`<span>−${sale.percent}%</span>`:''}</span>`:'';
   const coupon=offers?.coupon_mnt?`Купонтой ≈ ${money(offers.coupon_mnt)} · нөхцөлтэй`:offers?.promotions?.length?'Урамшуулалтай · нөхцөлтэй':'';
   const conditions=details?(offers?.promotions||[]).map(o=>`<small>${esc(o.name)}</small>`).join(''):'';
   return price+(coupon?`<small class="supplier-coupon">${coupon}</small>`:'')+conditions;
@@ -617,8 +638,9 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
     const step=sold!==null&&sold>=10?10**Math.floor(Math.log10(sold)):1,soldLabel=sold===null?'':sold<10?String(sold):new Intl.NumberFormat('en-US').format(Math.floor(sold/step)*step)+'+';
     const productHref='/v/'+p.id+(p.official_shop_id?'?shop='+encodeURIComponent(p.official_shop_id):p.brand_id?'?brand='+encodeURIComponent(p.brand_id):'');
     const offer=Object.hasOwn(p,'card_discount')?p.card_discount:p.offers?.discount&&{...p.offers.discount,expires:p.offers.expires};
-    const discount=!soldOut&&offer?.expires*1000>Date.now()&&offer.current_mnt===Number(priced?p.mnt:approx)&&Number.isFinite(offer.was_mnt)&&offer.was_mnt>offer.current_mnt?offer:null;
-    return `<article class="supplier-card">${sold!==null&&sold>=1000?'<span class="supplier-hot">HOT</span>':''}
+    const discount=!soldOut?supplierCardDiscount(p,Number(priced?p.mnt:approx),offer):null;
+    const badge=supplierDiscountBadge(p,Number(priced?p.mnt:approx),discount);
+    return `<article class="supplier-card">${badge}${!badge&&sold!==null&&sold>=1000?'<span class="supplier-hot">HOT</span>':''}
       <a class="supplier-photo" href="${productHref}">${/^https:\/\//i.test(p.image||'')?`<img ${supplierImageAttrs(p.image,400)} alt="${esc(p.name)}" loading="${!append&&index<4?'eager':'lazy'}" width="400" height="400" referrerpolicy="no-referrer">`:'Зураггүй'}</a>
       <button class="favorite-button ${saved.has(p.id)?'saved':''}" data-supplier-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${saved.has(p.id)}">${icon('heart')}</button>
       <button class="favorite-button compare-button" data-compare-toggle="${p.id}" data-name="${esc(p.name)}" data-image="${esc(p.image||'')}" aria-label="${esc(p.name)} — харьцуулах" title="Харьцуулах">${icon('compare')}</button>
@@ -626,7 +648,7 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
         ${p.brand_id&&p.shop_rating?`<p class="supplier-delivery-note">Дэлгүүрийн үнэлгээ ${esc(String(p.shop_rating))}/5</p>`:''}<p class="supplier-delivery-note">Карго тусдаа</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${supplierPromotionHtml(p,null,null)}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount" data-discount-expires="${discount.expires}"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${supplierPromotionHtml(p,null,null)}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');

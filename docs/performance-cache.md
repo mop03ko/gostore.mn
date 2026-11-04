@@ -77,3 +77,20 @@ Speculative product prefetch now waits for 350ms hover intent, allows one in fli
 Catalog cards retain the provider's current/original CNY price pair and its own expiry in snapshots. Both MNT amounts use the current exchange rate. The crossed-out original price and percentage appear beneath the current price only while the source is fresh and its current CNY amount matches the displayed SKU/base price. Unavailable stock, stale data, missing original prices and mismatched SKU prices suppress the discount. Fresh cached detail supersedes a search promotion, including when the promotion is gone. Card projection makes no additional provider calls; checkout rules are unchanged.
 
 Existing snapshots gain these fields on their next normal refresh. No original price is inferred for old rows. Browser verification covers compact button-free cards at desktop/mobile sizes and suppresses expired, unavailable and mismatched promotions; PHP checks cover FX recalculation, source expiry and detail-cache replacement.
+
+## Visible discount badges — 2026-11-04
+
+Web catalog, search, recommendation and 11.11 cards display a high-contrast percentage
+badge on the product image when a fresh original/current price pair matches the displayed
+price. It replaces the HOT badge at the same position; favorite controls remain separate.
+Conditional coupons alone never create a percentage. Original-price rows and badges expire
+together while the page is open or resumes. This adds no supplier API calls and does not
+claim official 11.11 campaign membership. The existing native app UI is unchanged.
+
+Validation: discount-cards-ui, eleven-sale-ui and product-page-ui browser suites;
+320/390/1440px controls, unavailable/expired/mismatched data, coupon-only offers, shared
+recommendation rendering and expiry without a reload.
+
+Deployed and verified on 2026-11-04. Backup: `/gostore-backups/discount-badge-1793773034120`.
+The live 11.11 card for `tb-701556726681` displayed −53% and 8,283 MNT from the
+provider response at verification time; live JS/CSS/HTML matched the local release.

@@ -472,3 +472,7 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 .bank-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-top:16px;text-align:left}.bank-links .button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:8px 10px;font-size:13px;line-height:1.25;white-space:normal;text-align:center;overflow-wrap:anywhere}.bank-links img{width:24px;height:24px;flex:none;border-radius:6px;object-fit:contain}
 @media(max-width:374px){.account-menu{grid-template-columns:1fr}}
 .store-cart-actions .text-button{min-width:44px}
+
+/* A real, unexpired discount takes priority over the HOT badge. */
+.supplier-discount-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;justify-content:center;min-width:50px;min-height:30px;padding:4px 9px;border-radius:8px;background:#b93609;color:#fff;font-size:15px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;box-shadow:0 2px 8px #0002;pointer-events:none}
+@media(max-width:600px){.supplier-discount-badge{top:8px;left:8px;min-width:44px;min-height:28px;padding:4px 7px;font-size:13px}}
