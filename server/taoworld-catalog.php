@@ -129,7 +129,13 @@ function tw_catalog_offers(array $p,bool $detail,int $expires): array {
     }
     $current=tw_catalog_price($p,$detail);
     $coupon=tw_catalog_price(['price'=>$p['coupon_price']??null],$detail);
-    return ['expires'=>$expires,'promotions'=>array_slice(array_values($promotions),0,8),'coupon_mnt'=>$coupon!==null&&$current!==null&&$coupon<$current?(int)ceil($coupon*shipping_settings()['cny_rate']):null];
+    // Keep the coupon tied to its own source price; the cheapest SKU may have a different price.
+    $valid=$expires>time()&&$coupon!==null&&$current!==null&&$coupon>0&&$coupon<$current;
+    $rate=shipping_settings()['cny_rate'];
+    return ['expires'=>$expires,'promotions'=>array_slice(array_values($promotions),0,8),
+        'coupon_mnt'=>$valid?(int)ceil($coupon*$rate):null,
+        'coupon_base_mnt'=>$valid?(int)ceil($current*$rate):null,
+        'coupon_percent'=>$valid?(int)floor(round(($current-$coupon)/$current*100,8)):null];
 }
 function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): array {
     product_policy_assert(['id'=>'tb-'.($p['item_id']??''),'name'=>$p['title']??'','original_name'=>$p['multi_language_info']['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]]);

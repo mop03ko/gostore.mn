@@ -179,6 +179,12 @@ check(tw_catalog_product($saleRaw,true,time()-301)['card_discount']===null,'Expi
 check(tw_catalog_discount(['price'=>10000,'promotion_price'=>12000],time()+60)===null,'Higher promotion price is not a discount');
 $searchSale=tw_catalog_product(['item_id'=>'799999999992','mi_id'=>'coupon-fixture','title'=>'Box','price'=>'100','coupon_price'=>'80'],false,time());
 check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&$searchSale['offers']['coupon_mnt']===80*shipping_settings()['cny_rate'],'Search coupon is conditional, and search prices are CNY');
+check($searchSale['offers']['coupon_base_mnt']===$searchSale['approx_mnt']&&$searchSale['offers']['coupon_percent']===20,'Coupon percentage must reference the same search price');
+check($sale['offers']['coupon_base_mnt']===$sale['mnt']&&$sale['offers']['coupon_percent']===12,'Detail coupon uses fen and the promotional base, without combining sale discounts');
+foreach([0,-1,100,120,'invalid'] as $couponPrice){$offer=tw_catalog_offers(['price'=>100,'coupon_price'=>$couponPrice],false,time()+60);check($offer['coupon_mnt']===null&&$offer['coupon_base_mnt']===null&&$offer['coupon_percent']===null,'Invalid/full-price coupons cannot advertise savings');}
+check(tw_catalog_offers(['price'=>100,'coupon_price'=>80],false,time()-1)['coupon_mnt']===null,'Expired coupons cannot advertise savings');
+$changed=$saleRaw;$changed['sku_list'][1]['promotion_price']=7500;$changedSale=tw_catalog_product($changed,true,time());
+check($changedSale['offers']['coupon_base_mnt']!==$changedSale['mnt'],'Changing cheapest SKU must not rebase the source coupon');
 $detailFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$sale['id'],'language'=>'en']).'.json';
 supplier_snapshot_write($detailFile,['time'=>time(),'data'=>$saleRaw]);$before=count($calls);
 $cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);

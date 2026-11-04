@@ -27,7 +27,7 @@
   const target = section.querySelector('#eleven-sale-products');
   const status = section.querySelector('.eleven-sale-status');
   const next = section.querySelector('button');
-  const cacheKey = 'gostore-eleven-offers-v3';
+  const cacheKey = 'gostore-eleven-offers-v4';
   let busy = false, page = 1, rows = [], more = false, stale = false, expiryTimer;
   const valid = product => {
     if (!product || !/^tb-\d{5,20}$/.test(product.id) || product.sellable === false || window.productPolicyBlocked?.(product)) return false;

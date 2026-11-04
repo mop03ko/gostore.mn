@@ -2,7 +2,7 @@
 (()=>{
  const taxonomy=window.GOStoreDiscovery||[],photo=q=>taxonomy.flatMap(c=>[c,...c.children]).find(c=>c.query===q)?.image||'';
  const image=(src,cls='')=>src?`<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:'';
- const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong>${supplierPromotionHtml(p,p.mnt||p.approx_mnt)}</a>`).join('')}</div>`;
+ const products=(items)=>`<div class="discovery-products">${items.map(p=>`<a href="/v/${encodeURIComponent(p.id)}" class="discovery-product">${supplierDiscountBadge(p,p.mnt||p.approx_mnt)}${image(p.image)}<span>${esc(p.name)}</span><strong>${p.mnt?money(p.mnt):p.approx_mnt?'≈ '+money(p.approx_mnt):'Үнэ шалгах'}</strong>${supplierPromotionHtml(p,p.mnt||p.approx_mnt)}</a>`).join('')}</div>`;
  async function load(q,free,signal){const params=new URLSearchParams(free?{action:'supplier-free-shipping'}:{action:'supplier-search',q,page:'1',limit:'12'});const r=await fetch('/api/index.php?'+params,{signal,credentials:'omit'});if(!r.ok)throw Error('unavailable');return r.json();}
  // Shared photos replace emoji on the phone home grid, and generic category portraits.
  document.querySelectorAll('#hub-channels [data-hub-category]').forEach(a=>{const c=taxonomy.find(c=>c.id===a.dataset.hubCategory);if(c?.image)a.querySelector('span').innerHTML=image(c.image);});

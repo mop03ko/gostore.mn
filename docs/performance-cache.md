@@ -94,3 +94,23 @@ recommendation rendering and expiry without a reload.
 Deployed and verified on 2026-11-04. Backup: `/gostore-backups/discount-badge-1793773034120`.
 The live 11.11 card for `tb-701556726681` displayed −53% and 8,283 MNT from the
 provider response at verification time; live JS/CSS/HTML matched the local release.
+
+## Conditional coupon percentages — 2026-11-04
+
+Extends the earlier badge change: web catalog/search, recommendations, discovery category,
+free-shipping/deals and 11.11 cards now show coupon savings as “Купонтой −X%” when no
+verified sale badge takes priority. Coupon text includes its price and conditional qualifier.
+The displayed catalog/checkout price is unchanged; sale and coupon percentages are never added.
+
+The API preserves coupon_base_mnt and coupon_percent from the same provider price pair,
+converting search CNY versus detail fen correctly. The client requires that base to match
+the displayed price. Missing/mismatched bases, unavailable stock, invalid amounts and expired
+offers produce no badge. Discounts below 1% say “<1%”. Coupon text and badges expire
+together. Client catalog and 11.11 cache keys are versioned; no per-card API calls are added.
+
+Validation includes provider normalization/expiry/SKU mismatch, sale priority, conditional
+labels, discovery and recommendation cards, mobile/dark layouts and live-page verification.
+
+Deployed and verified on 2026-11-04. Backup: `/gostore-backups/all-discount-1793773611764`.
+Live verification found 36 eligible homepage cards and confirmed every one displayed a
+percentage badge; the 11.11 coupon cards and deployed JS/CSS/HTML were also verified.
