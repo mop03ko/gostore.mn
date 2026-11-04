@@ -129,7 +129,7 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
-    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=$o['quote']['rates']??shipping_settings();$result['settlement']=$o['settlement']??null;}
+    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['requested_method']=$o['fulfillment_request']['method']??null;
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
@@ -252,6 +252,10 @@ function warehouse_post(string $action,array $b): never {
 function warehouse_error_zh(string $message): string {
     return match($message){
         'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
+        'Нийт жин болон эзлэхүүнийг зөв оруулна уу.'=>'请输入正确的总重量和总体积。',
+        'Жин болон эзлэхүүнийг оруулж автоматаар тооцоолно уу.'=>'请输入重量和体积，系统将自动计算运费。',
+        'Тариф шинэчлэгдсэн. Жин, эзлэхүүнээр дахин тооцоолно уу.'=>'费率已更新，请输入重量和体积重新计算。',
+        'Тээврийн тарифыг шинэчилж дахин тооцоолно уу.'=>'请刷新费率并重新计算运费。',
         'Тээврийн хэмжилт буруу.'=>'请输入正确的重量或体积。',
         'Тээврийн тарифыг админ шалгана уу.'=>'运费费率无效，请联系管理员检查。',
         'Тээврийн дүн хэтэрсэн.'=>'运费金额超出允许范围。',

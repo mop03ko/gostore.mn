@@ -1,0 +1,79 @@
+[
+  {
+    "w": 0.001,
+    "v": 0.001,
+    "category": "small",
+    "basis": "light",
+    "amount": 1000
+  },
+  {
+    "w": 0.5,
+    "v": 1,
+    "category": "small",
+    "basis": "light",
+    "amount": 1000
+  },
+  {
+    "w": 0.501,
+    "v": 0.01,
+    "category": "small",
+    "basis": "weight",
+    "amount": 1253
+  },
+  {
+    "w": 1,
+    "v": 0.1,
+    "category": "small",
+    "basis": "weight",
+    "amount": 2500
+  },
+  {
+    "w": 2,
+    "v": 1,
+    "category": "small",
+    "basis": "weight",
+    "amount": 5000
+  },
+  {
+    "w": 69.999,
+    "v": 1,
+    "category": "small",
+    "basis": "weight",
+    "amount": 174998
+  },
+  {
+    "w": 70,
+    "v": 0.01,
+    "category": "large",
+    "basis": "weight",
+    "amount": 50050
+  },
+  {
+    "w": 70,
+    "v": 1,
+    "category": "large",
+    "basis": "volume",
+    "amount": 214500
+  },
+  {
+    "w": 2,
+    "v": 1.000001,
+    "category": "large",
+    "basis": "volume",
+    "amount": 214501
+  },
+  {
+    "w": 1000,
+    "v": 0.1,
+    "category": "large",
+    "basis": "weight",
+    "amount": 715000
+  },
+  {
+    "w": 1000,
+    "v": 4,
+    "category": "large",
+    "basis": "volume",
+    "amount": 858000
+  }
+]

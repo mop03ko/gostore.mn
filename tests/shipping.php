@@ -4,9 +4,13 @@ putenv('GOSTORE_DATA_DIR='.__DIR__.'/../tmp/shipping-test-'.bin2hex(random_bytes
 require __DIR__.'/../server/bootstrap.php';require __DIR__.'/../server/shipping.php';require __DIR__.'/../server/supplier.php';
 function check(bool $v,string $message):void{if(!$v)throw new RuntimeException($message);}
 $s=shipping_settings();
-foreach([[0.5,1500],[0.501,3000],[1,3000],[1.001,4500]] as [$kg,$expected]){ $q=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>2,'cargo_method'=>'weight','cargo_measure'=>$kg]);check($q['breakdown']['cargo_mnt']===$expected,'Weight rounding');check($q['total']===6600+$expected,'Goods plus domestic');}
-foreach([[0.5,164725],[1,219450],[1.1,241395]] as [$m,$expected]){ $q=shipping_calculate(['goods_cny'=>0,'domestic_cny'=>0,'cargo_method'=>'volume','cargo_measure'=>$m]);check($q['total']===$expected,'Volume tier');}
-foreach([-1,'0.5',INF] as $invalid){try{shipping_calculate(['goods_cny'=>0,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>$invalid]);throw new RuntimeException('Invalid accepted');}catch(ApiError){}}
+foreach(json_decode(file_get_contents(__DIR__.'/cargo-tariff-cases.json'),true) as $case){
+    $q=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>2,'weight_kg'=>$case['w'],'volume_m3'=>$case['v']]);
+    check($q['breakdown']['cargo_mnt']===$case['amount'],'Cargo amount '.json_encode($case));
+    check($q['transport']['category']===$case['category']&&$q['transport']['basis']===$case['basis'],'Automatic classification');
+    check($q['total']===6600+$case['amount'],'Goods and freight included once');
+}
+foreach([['weight_kg'=>0,'volume_m3'=>1],['weight_kg'=>1,'volume_m3'=>0],['weight_kg'=>'1','volume_m3'=>1],['weight_kg'=>1],['weight_kg'=>INF,'volume_m3'=>1],['weight_kg'=>1,'volume_m3'=>1001]] as $invalid){try{shipping_calculate(['goods_cny'=>0,'domestic_cny'=>0]+$invalid);throw new RuntimeException('Invalid accepted');}catch(ApiError){}}
 $fixture=['Id'=>'abb-123456789','Title'=>'Өнгө Үүргэвч','MainPictureUrl'=>'javascript:alert(1)','IsSellAllowed'=>true,'Price'=>['OriginalPrice'=>12.5,'OriginalCurrencyCode'=>'CNY'],'FirstLotQuantity'=>2,'Attributes'=>[['Pid'=>'color','Vid'=>'red','PropertyName'=>'Өнгө','Value'=>'Улаан']],'ConfiguredItems'=>[['Id'=>'sku1','Quantity'=>3,'Configurators'=>[['Pid'=>'color','Vid'=>'red']],'Price'=>['OriginalPrice'=>15,'OriginalCurrencyCode'=>'CNY']]]];
 $p=supplier_normalize($fixture,true);check($p['mnt']===8250&&$p['image']==='','Conversion and unsafe URL');check($p['variants'][0]['label']==='Өнгө: Улаан'&&$p['variants'][0]['stock']===3,'Variant mapping');
 $fixture['Pictures']=[['Url'=>'https://img.alicdn.com/first.jpg'],['Url'=>'https://img.alicdn.com/first.jpg'],['Url'=>'javascript:alert(1)'],['Url'=>'https://untrusted.example/image.jpg']];
@@ -21,12 +25,12 @@ check(supplier_cache_key('/v1/taobao/product/123456789',['language'=>'mn'])!==su
 check(supplier_cny(['OriginalPrice'=>20,'OriginalCurrencyCode'=>'USD'])===null,'Currency isolation');
 $sold=supplier_normalize(array_replace($taobao,['Volume'=>1234]),false,'taobao');check($sold['sold_count']===1234,'Real provider sales count');
 foreach([null,0,-1,'unknown',1.5,INF,9007199254740992] as $volume)check(supplier_normalize(array_replace($taobao,['Volume'=>$volume]),false,'taobao')['sold_count']===null,'Unknown or invalid sales never displayed as zero');
-$before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'cargo_method'=>'weight','cargo_measure'=>0.5]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===7000,'Snapshot preserved');
+$before=shipping_calculate(['goods_cny'=>10,'domestic_cny'=>0,'weight_kg'=>0.5,'volume_m3'=>0.1]);$s['cny_rate']=600;shipping_save($s);check((float)shipping_settings()['cny_rate']===600.0,'Persist rate');check($before['total']===6500,'Snapshot preserved');
 $destination=warehouse_destination(['id'=>'GS-TEST-123'],['family_name'=>'Бат','customer'=>'Тамир','warehouse'=>['recipient'=>'Wrong','address'=>'Wrong']]);
 check($destination['recipient']==='Бат Тамир / GS-TEST-123','Server recipient and code');
 check($destination['address']==='内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号'&&$destination['phone']==='18047981132'&&$destination['contact_phone']==='99889815','Warehouse destination');
 foreach([['family_name'=>'','customer'=>'Тамир'],['family_name'=>"Бат\nOther",'customer'=>'Тамир']] as $invalid){try{warehouse_destination(['id'=>'GS-TEST-123'],$invalid);throw new RuntimeException('Invalid recipient accepted');}catch(ApiError){}}
-echo "Shipping rounding, volume thresholds, validation, rate snapshots, supplier normalization and warehouse recipient passed.\n";
+echo "Automatic small/bulk classification, weight/volume boundaries, validation, rate snapshots, supplier normalization and warehouse recipient passed.\n";
 
 $rich=array_replace($taobao,['Description'=>'<script>alert(1)</script><p>Тайлбар</p><img src="//img.alicdn.com/details.jpg"><img src="https://evil.test/track"><img src="javascript:alert(1)">','BrandName'=>'Брэнд','OriginalTitle'=>'原名','MasterQuantity'=>20,'FeaturedValues'=>[['Name'=>'TotalSales','Value'=>'800'],['Name'=>'SalesInLast30Days','Value'=>'300']],'ActualWeightInfo'=>['Weight'=>0.8,'DisplayName'=>'Ойролцоогоор'],'Videos'=>[['Url'=>'https://cloud.video.taobao.com/test.mp4'],['Url'=>'https://evil.test/video']]]);
 $rp=supplier_normalize($rich,true,'taobao');

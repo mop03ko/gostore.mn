@@ -16,12 +16,12 @@ const seed=spawnSync('tmp/tooling/php/php.exe',[...args,'tests/taoworld-storefro
   await page.goto(base+'/v/'+fixture.id);await page.locator('#pd-options').waitFor();assert.equal(reads,2);mode='paid';await page.locator('[data-pd-logistics]').click();await page.waitForFunction(()=>document.querySelector('[data-pd-logistics-result]').textContent.includes('5,500'));
   await page.locator('#pd-qty').fill('2');assert.match(await page.locator('[data-pd-logistics-result]').innerText(),/¥10/);assert.equal(reads,3,'Quantity does not multiply or re-query an item reference');
   await page.locator('.commerce-calculator summary').click();await page.locator('[data-cargo-method]').selectOption('dimensions');
-  for(const [k,v] of Object.entries({length:'50',width:'40',height:'30',packages:'2'}))await page.locator('[data-cargo-'+k+']').fill(v);
-  assert.match(await page.locator('[data-cargo-estimate]').innerText(),/0\.12 м³/);assert.match(await page.locator('[data-cargo-estimate]').innerText(),/39,534/);assert.equal(await page.locator('[data-cargo-measure]').isHidden(),true);
+  for(const [k,v] of Object.entries({weight:'2',length:'50',width:'40',height:'30',packages:'2'}))await page.locator('[data-cargo-'+k+']').fill(v);
+  assert.match(await page.locator('[data-cargo-estimate]').innerText(),/0\.12 m³/);assert.match(await page.locator('[data-cargo-estimate]').innerText(),/5,000/);assert.equal(await page.locator('[data-cargo-measure]').isHidden(),true);
   for(const width of [320,390,1280]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Shipping calculator fits '+width);}
   await page.setViewportSize({width:390,height:844});await page.locator('.pd-shipping-tools').screenshot({path:'tmp/product-shipping-390.png'});
   await page.locator('[data-cargo-packages]').fill('1.5');assert.match(await page.locator('[data-cargo-estimate]').innerText(),/бүхэл/);
-  await page.locator('[data-cargo-method]').selectOption('weight');await page.locator('[data-cargo-measure]').fill('1.001');assert.match(await page.locator('[data-cargo-estimate]').innerText(),/4,500/);
+  await page.locator('[data-cargo-method]').selectOption('volume');await page.locator('[data-cargo-measure]').fill('0.1');await page.locator('[data-cargo-weight]').fill('1.001');assert.match(await page.locator('[data-cargo-estimate]').innerText(),/2,503/);
   assert.match(await page.locator('.pd-shipping-tools').innerText(),/жин, хэмжээс мэдээлээгүй/);assert.deepEqual(errors,[]);
   console.log('PASS product logistics UI: on-demand read, failure/retry, known zero, reference is not quantity pricing, packed dimensions, multiple packages, kg rounding, mobile widths, unknown supplier measurement.');
  }finally{await browser.close();require('fs').unlinkSync(path.join('assets/uploads/search',fixture.image+'.jpg'));}

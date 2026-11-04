@@ -1,6 +1,6 @@
 // Customer estimates must match checkout rounding without replacing server validation.
 const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
-const ctx={window:{},document:{addEventListener(){}},money:n=>String(n),esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')};
+const ctx={GOStoreCargo:require('../cargo-tariff.js'),window:{},document:{addEventListener(){}},money:n=>String(n),esc:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')};
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../commerce-ui.js'),'utf8'),ctx);
 const ui=ctx.window.commerceUI,s={cny_rate:550,service_percent:5,service_fee_mnt:1000,domestic_default_cny:10};
 const items=[{id:'tb-111111',vendor_id:'a',cny:10,qty:2},{id:'tb-222222',vendor_id:'a',cny:12.5,qty:1}];
@@ -21,14 +21,14 @@ assert.match(html,/17875 × 5% \+ 1000/);assert.match(html,/¥32.5 × 550/);asse
 ctx.window.storeServer={shipping:{...s,cny_rate:999}};assert.match(ui.calculationHtml(snapshot),/¥32.5 × 550/,'Orders show the saved rate');
 assert.match(ui.calculationHtml({...snapshot,domestic_later:true}),/Дараа тооцно/);assert.equal(ui.calculationHtml({breakdown:{},rates:{cny_rate:550},inputs:{}}),'','Incomplete old quotes must not display NaN');
 console.log('PASS commerce estimates: seller grouping, service fee, later domestic fee, old carts, rounding, payment copy and SKU units.');
-const freight={cny_rate:550,weight_step_kg:.5,weight_step_mnt:1500,volume_threshold:1,volume_small_cny:599,volume_large_cny:399};
-assert.equal(ui.cargoEstimate('weight',{measure:.5},freight).amount,1500);
-assert.equal(ui.cargoEstimate('weight',{measure:.501},freight).amount,3000);
-assert.equal(ui.cargoEstimate('weight',{measure:1.001},freight).amount,4500);
-q=ui.cargoEstimate('dimensions',{length:50,width:40,height:30,packages:2},freight);assert.equal(q.measure,.12);assert.equal(q.amount,39534);
-assert.equal(ui.cargoEstimate('dimensions',{length:100,width:100,height:100,packages:1},freight).amount,219450,'Threshold uses the large-volume rate');
-assert.equal(ui.cargoEstimate('dimensions',{length:.1,width:.1,height:.1,packages:1},freight).amount,1,'Tiny positive packages cannot become free');
-for(const bad of [0,-1,NaN,Infinity,'abc'])assert.equal(ui.cargoEstimate('weight',{measure:bad},freight),null);
-for(const packages of [0,1.5,10001])assert.equal(ui.cargoEstimate('dimensions',{length:10,width:10,height:10,packages},freight),null);
-assert.equal(ui.cargoEstimate('volume',{measure:1},{...freight,volume_large_cny:-1}),null);
-console.log('PASS cargo: kg steps, cm-to-m3 conversion, identical packages, threshold, tiny volume, invalid input and tariffs.');
+const {spawnSync}=require('node:child_process');
+const policy=spawnSync('tmp/tooling/php/php.exe',['-r',"require 'server/cargo-tariff.php'; echo json_encode(cargo_tariff_policy());"],{encoding:'utf8'});assert.equal(policy.status,0,policy.stderr);
+const freight={cny_rate:550,cargo_tariff:JSON.parse(policy.stdout)};
+for(const c of require('./cargo-tariff-cases.json'))assert.equal(ui.cargoEstimate('volume',{weight:c.w,measure:c.v},freight).amount,c.amount);
+q=ui.cargoEstimate('dimensions',{weight:2,length:50,width:40,height:30,packages:2},freight);assert.equal(q.measure,.12);assert.equal(q.amount,5000);
+assert.equal(ui.cargoEstimate('dimensions',{weight:.5,length:.1,width:.1,height:.1,packages:1},freight).amount,1000);
+for(const bad of [0,-1,NaN,Infinity,'abc'])assert.equal(ui.cargoEstimate('volume',{weight:bad,measure:1},freight),null);
+for(const packages of [0,1.5,10001])assert.equal(ui.cargoEstimate('dimensions',{weight:1,length:10,width:10,height:10,packages},freight),null);
+assert.equal(ui.cargoEstimate('volume',{measure:1},freight),null);
+assert.equal(ui.cargoEstimate('volume',{weight:1,measure:1},{...freight,cny_rate:-1}),null);
+console.log('PASS automatic cargo estimates: required total weight/volume, package volume conversion, boundaries, fractional kg and invalid inputs.');

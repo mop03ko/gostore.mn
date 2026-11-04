@@ -12,7 +12,7 @@ function shippingOrderHtml(o){if(!o.supplier&&!o.quote&&!o.route)return '';const
 let supplierShop=initialFilters.get('shop')||'';
 let supplierBrand=window.brandStorefront||initialFilters.get('brand')||'';
 let supplierPage=1,supplierQuery=(new URLSearchParams(location.search).get('q')||'__all__').slice(0,100),supplierSort=['default','price','-price','-volume','-updated_time'].includes(initialFilters.get('sort'))?initialFilters.get('sort'):(supplierBrand||supplierShop?'-price':'default'),supplierPriceRange={min:/^\d{1,9}$/.test(initialFilters.get('price_min')||'')?initialFilters.get('price_min'):'',max:/^\d{1,9}$/.test(initialFilters.get('price_max')||'')?initialFilters.get('price_max'):''},supplierBusy=false,supplierSelected=null,supplierImage=/^[a-f0-9]{32}$/.test(initialFilters.get('image')||'')?initialFilters.get('image'):'';
-function supplierRateText(s){return `${s.weight_step_kg} кг тутам ${money(s.weight_step_mnt)} (дээш бүхэлчилнэ) · ${s.volume_threshold} м³-ээс бага: ${money(Math.round(s.volume_small_cny*s.cny_rate))}/м³, түүнээс их буюу тэнцүү: ${money(Math.round(s.volume_large_cny*s.cny_rate))}/м³. Жин эсвэл эзлэхүүнээр тооцох аргыг агуулах бодит хэмжилтээр баталгаажуулна.`;}
+function supplierRateText(s){return GOStoreCargo.tariff(s)||'Агуулах жин, эзлэхүүнээр тээврийг тооцож батална.';}
 
 const SUPPLIER_FAVORITES_KEY='gostore-taobao-favorites-v1';
 function supplierCategoryQuery(id){return categories.find(c=>c.id===id)?.query||'__all__';}

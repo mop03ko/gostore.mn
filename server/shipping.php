@@ -1,11 +1,14 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/cargo-tariff.php';
 
 function shipping_settings(): array {
     $defaults=['cny_rate'=>550,'weight_step_kg'=>0.5,'weight_step_mnt'=>1500,'volume_small_cny'=>599,'volume_large_cny'=>399,'volume_threshold'=>1,'service_percent'=>0,'warehouse_address'=>'内蒙古锡林郭勒盟二连浩特市环宇商贸城10-16号','warehouse_phone'=>'18047981132','warehouse_contact_phone'=>'99889815','supplier_enabled'=>true,'api_daily_limit'=>40,'catalog_snapshot_enabled'=>false,'image_search_enabled'=>false,'domestic_default_cny'=>0,'service_fee_mnt'=>0,'payment_window_hours'=>24,'home_min_price_mnt'=>3000,'catalog_language'=>'mn'];
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['shipping_settings']);
     $defaults['catalog_provider']='otcommerce';
     $settings=array_replace($defaults,json_decode($s->fetchColumn()?:'{}',true));
+    // New calculations use the approved policy; saved order snapshots stay untouched.
+    $settings['cargo_tariff']=cargo_tariff_policy();
     $s->execute(['warehouse_profile_erenhot']);$profile=json_decode($s->fetchColumn()?:'{}',true);
     foreach(['address','phone','contact_phone'] as $key)if(isset($profile[$key]))$settings['warehouse_'.$key]=$profile[$key];
     return $settings;
@@ -15,9 +18,8 @@ function decimal_field(array $b,string $key,float $min,float $max): float {
     return (float)$v;
 }
 function shipping_save(array $b): array {
-    $s=[];
-    foreach(['cny_rate'=>[1,100000],'weight_step_kg'=>[0.01,1000],'weight_step_mnt'=>[0,10000000],'volume_small_cny'=>[0,1000000],'volume_large_cny'=>[0,1000000],'volume_threshold'=>[0.001,1000],'service_percent'=>[0,100]] as $k=>$range)$s[$k]=decimal_field($b,$k,...$range);
-    $existing=shipping_settings();
+    $s=[];$existing=shipping_settings();
+    foreach(['cny_rate'=>[1,100000],'weight_step_kg'=>[0.01,1000],'weight_step_mnt'=>[0,10000000],'volume_small_cny'=>[0,1000000],'volume_large_cny'=>[0,1000000],'volume_threshold'=>[0.001,1000],'service_percent'=>[0,100]] as $k=>$range)$s[$k]=array_key_exists($k,$b)?decimal_field($b,$k,...$range):$existing[$k];
     // Checkout fields are optional so older admin clients keep their saved values.
     foreach(['domestic_default_cny'=>[0,10000],'service_fee_mnt'=>[0,10000000]] as $k=>$range)$s[$k]=array_key_exists($k,$b)?decimal_field($b,$k,...$range):$existing[$k];
     $s['payment_window_hours']=array_key_exists('payment_window_hours',$b)?int_field($b,'payment_window_hours',1,168):$existing['payment_window_hours'];
@@ -67,12 +69,11 @@ function warehouse_profile_save(array $b,bool $withinTransaction=false): array {
 }
 function shipping_calculate(array $b,?array $s=null): array {
     $s??=shipping_settings();$goods=decimal_field($b,'goods_cny',0,1000000);$domestic=decimal_field($b,'domestic_cny',0,1000000);
-    $method=str_field($b,'cargo_method',10);$measure=decimal_field($b,'cargo_measure',0.001,100000);
-    if(!in_array($method,['weight','volume'],true))fail('Каргоны арга буруу.');
-    $cargo=$method==='weight'?ceil(round($measure/$s['weight_step_kg'],9))*$s['weight_step_mnt']:$measure*($measure<$s['volume_threshold']?$s['volume_small_cny']:$s['volume_large_cny'])*$s['cny_rate'];
-    $parts=['goods_mnt'=>(int)ceil(round($goods*$s['cny_rate'],8)),'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goods*$s['cny_rate']*$s['service_percent']/100,8)),'cargo_mnt'=>(int)ceil(round($cargo,8))];
+    $weight=decimal_field($b,'weight_kg',0.001,10000);$volume=decimal_field($b,'volume_m3',0.000000001,1000);
+    $transport=cargo_tariff_calculate($weight,$volume,$s);
+    $parts=['goods_mnt'=>(int)ceil(round($goods*$s['cny_rate'],8)),'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goods*$s['cny_rate']*$s['service_percent']/100,8)),'cargo_mnt'=>$transport['amount_mnt']];
     $total=array_sum($parts);if($total>100000000)fail('Үнийн санал зөвшөөрөх дүнгээс хэтэрсэн.');
-    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'cargo_method'=>$method,'cargo_measure'=>$measure],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c')];
+    return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'cargo_method'=>'auto','weight_kg'=>$weight,'volume_m3'=>$volume],'transport'=>$transport,'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c')];
 }
 function shipping_public(): array {
     $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);

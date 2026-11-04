@@ -55,10 +55,10 @@ o=(await ub('warehouse-shelf',{id,expected_version:o.logistics.version,shelf:'A-
 assert.equal((await ub('warehouse-orders&q=A-03-02')).orders[0].id,id);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'sort',expected_status:'ulaanbaatar_unsorted',method:'pickup',contact_phone:'99112233',address:'',checked:true})).status,200);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:'00000000'})).status,409,'No final bill, no handover');
-const settlement={id,expected_version:o.logistics.version,goods_mnt:97500,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'weight',note:'Measured and verified'};
+const settlement={id,expected_version:o.logistics.version,goods_mnt:98000,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'auto',note:'Measured and verified'};
 assert.equal((await cn('warehouse-settlement',settlement)).status,403);
 assert.equal((await ub('warehouse-settlement',{...settlement,goods_mnt:1})).status,409,'Unresolved refund cannot be silently discarded');
-o=(await ub('warehouse-settlement',settlement)).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1500);assert.equal(o.pickup_code,undefined);
+o=(await ub('warehouse-settlement',settlement)).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1000);assert.equal(o.pickup_code,undefined);
 let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{8}$/);
 assert.deepEqual([...new Set(own.cargo.photos.map(p=>p.location))],['erenhot','ulaanbaatar']);
 assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location,warehouse_name'));

@@ -50,7 +50,7 @@ assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'sort',expec
 o=(await ub('warehouse-order&id='+id)).order;
 assert.equal((await ub('warehouse-shelf',{id,expected_version:o.logistics.version,shelf:'BR-01'})).status,200);
 o=(await ub('warehouse-order&id='+id)).order;
-assert.equal((await ub('warehouse-settlement',{id,expected_version:o.logistics.version,goods_mnt:96000,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'weight',note:'Verified branch total'})).status,200);
+assert.equal((await ub('warehouse-settlement',{id,expected_version:o.logistics.version,goods_mnt:96500,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'auto',note:'Verified branch total'})).status,200);
 const trackingToken=crypto.createHash('sha256').update('warehouse-fixture-1').digest('hex');
 const tracked=(await guest('order-get',{id,token:trackingToken})).order;
 assert.equal(tracked.pickup_warehouse.location,definitions.ulaanbaatar);assert.equal(tracked.pickup_warehouse.address,profile.address);assert.equal(tracked.warehouse_assignment_history,undefined);assert.equal(tracked.warehouse_locations,undefined);assert.ok(!JSON.stringify(tracked).includes(b.id));assert.equal(tracked.cargo.photos.length,2);assert.ok(tracked.cargo.photos.every(p=>p.warehouse_name.includes('branch')));assert.equal(tracked.warehouse_names.erenhot,'erenhot branch');
