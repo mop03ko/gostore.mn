@@ -128,3 +128,9 @@ Validated: full Expo lint, TypeScript, native discount logic fixtures, and Expo 
 UI at 320/390/430px including dark mode and recommendation navigation. This is browser
 verification of the shared React Native UI, not a physical-device test. Installed builds
 need a new binary because this project has no expo-updates configuration.
+
+Native production builds requested from commit `97159a4` on 2026-11-04:
+- Android 1.0.0 (6): `659dd5ba-1d23-46ab-a0e0-265168c8a12d`.
+- iOS 1.0.0 (13): `c32d8cdb-ee23-41d9-ad1e-4adbebd2a888`.
+EAS accepted both with status NEW. These are queued builds, not yet verified binaries
+or TestFlight/Google Play releases.
