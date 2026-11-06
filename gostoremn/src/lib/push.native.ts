@@ -5,6 +5,7 @@ import * as Notifications from "expo-notifications";
 import { AndroidImportance } from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { api } from "./api";
+import { pushConfigured, type PushConfig } from "./push-config";
 
 const preference = "gostore-push-opt-in", savedToken = "gostore-push-token";
 export const pushAvailable = Device.isDevice && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
@@ -18,8 +19,8 @@ export async function disablePush() {
 }
 export async function enablePush(requestPermission = true, stillCurrent: () => boolean = () => true) {
   if (!pushAvailable) throw Error("Утасны мэдэгдлийг шинэ build суулгасан бодит утсан дээр идэвхжүүлнэ.");
-  const config = await api<{ enabled: boolean }>("customer-push-config");
-  if (!config.enabled) throw Error("Утасны мэдэгдлийн тохиргоо удахгүй бэлэн болно.");
+  const config = await api<PushConfig>("customer-push-config");
+  if (!pushConfigured(config, Platform.OS)) throw Error("Утасны мэдэгдлийн тохиргоо удахгүй бэлэн болно.");
   if (Platform.OS === "android") await Notifications.setNotificationChannelAsync("orders", { name: "Захиалгын мэдэгдэл", importance: AndroidImportance.DEFAULT });
   let permission = await Notifications.getPermissionsAsync();
   if (permission.status !== "granted" && requestPermission) permission = await Notifications.requestPermissionsAsync();

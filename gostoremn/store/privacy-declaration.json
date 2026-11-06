@@ -1,7 +1,30 @@
 {
   "purpose": "APP_FUNCTIONALITY",
   "tracking": false,
-  "linked": ["NAME", "EMAIL_ADDRESS", "PHONE_NUMBER", "PHYSICAL_ADDRESS", "USER_ID", "PURCHASE_HISTORY", "PHOTOS_OR_VIDEOS", "CUSTOMER_SUPPORT"],
-  "notLinked": ["SEARCH_HISTORY"],
-  "basis": "Customer profiles, saved delivery addresses, order records, optional uploaded images and support. Public search cache stores queries without a customer account key. The native app has no advertising identifier or analytics SDK. Website Google/Facebook tags are not embedded in the native app. Payment bank credentials are entered in the bank app, not collected by gostore.mn."
+  "linked": [
+    "NAME",
+    "EMAIL_ADDRESS",
+    "PHONE_NUMBER",
+    "PHYSICAL_ADDRESS",
+    "USER_ID",
+    "PURCHASE_HISTORY",
+    "PHOTOS_OR_VIDEOS",
+    "CUSTOMER_SUPPORT"
+  ],
+  "notLinked": [
+    "SEARCH_HISTORY",
+    "PRODUCT_INTERACTION",
+    "DEVICE_ID"
+  ],
+  "basis": "Customer profiles, saved delivery addresses, order records, optional uploaded images and support. Public search cache stores queries without a customer account key. iOS includes Firebase Analytics without advertising identifiers; its data is not linked to the GOStore account. Push tokens are linked to the account for app functionality. Website Google/Facebook tags are not embedded in the native app. Payment bank credentials are entered in the bank app, not collected by gostore.mn.",
+  "analytics": {
+    "purpose": "ANALYTICS",
+    "linked": false,
+    "tracking": false,
+    "types": [
+      "PRODUCT_INTERACTION",
+      "DEVICE_ID"
+    ],
+    "note": "iOS Firebase Analytics: installation ID, session/device metadata and allowlisted screen names; no IDFA, IDFV, ads, user ID, search terms or order IDs. User can disable collection in Account."
+  }
 }

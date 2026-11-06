@@ -4,7 +4,16 @@ declare(strict_types=1);
 function customer_push_schema(): void {
     db()->exec('CREATE TABLE IF NOT EXISTS customer_push_devices (token TEXT PRIMARY KEY,customer_id TEXT NOT NULL REFERENCES customers(id),auth_version INTEGER NOT NULL,session_hash TEXT NOT NULL,platform TEXT NOT NULL,cursor INTEGER NOT NULL,pending_cursor INTEGER NOT NULL DEFAULT 0,ticket TEXT NOT NULL DEFAULT "",ticket_at INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0,next_attempt INTEGER NOT NULL DEFAULT 0,expires INTEGER NOT NULL,last_error TEXT NOT NULL DEFAULT ""); CREATE INDEX IF NOT EXISTS customer_push_owner ON customer_push_devices(customer_id);');
 }
-function customer_push_enabled(): bool {return getenv('GOSTORE_CUSTOMER_PUSH_ENABLED')==='1'||is_file(config()['data_dir'].'/customer-push-enabled');}
+function customer_push_platforms(): array {
+    $value=getenv('GOSTORE_CUSTOMER_PUSH_PLATFORMS');
+    if($value===false){$path=config()['data_dir'].'/customer-push-platforms';$value=is_file($path)?file_get_contents($path):'ios,android';}
+    return array_values(array_intersect(['ios','android'],array_map('trim',explode(',',(string)$value))));
+}
+function customer_push_enabled(?string $platform=null): bool {
+    $enabled=getenv('GOSTORE_CUSTOMER_PUSH_ENABLED')==='1'||is_file(config()['data_dir'].'/customer-push-enabled');
+    $platforms=customer_push_platforms();
+    return $enabled&&($platform===null?count($platforms)>0:in_array($platform,$platforms,true));
+}
 function customer_push_token(array $b): string {
     $token=str_field($b,'token',240);
     if(!preg_match('/^(?:ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]{10,200}\]$/D',$token))fail('Push token буруу.',422);
@@ -17,6 +26,7 @@ function customer_push_register(array $c,array $b): array {
     if(!customer_push_enabled())fail('Утасны мэдэгдлийн тохиргоо бэлэн болоогүй.',503);
     customer_push_schema();limit_attempts('customer-push:'.$c['id'],60,3600);
     $token=customer_push_token($b);$platform=str_field($b,'platform',10);if(!in_array($platform,['ios','android'],true))fail('Төхөөрөмжийн төрөл буруу.',422);
+    if(!customer_push_enabled($platform))fail('Энэ төхөөрөмжийн мэдэгдлийн холболт бэлэн болоогүй.',503);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $q=$db->prepare('SELECT * FROM customer_push_devices WHERE token=?');$q->execute([$token]);$old=$q->fetch();
@@ -56,7 +66,9 @@ function customer_push_drain(int $limit=20,?callable $http=null,int $budget=40):
     try{
         // PIN/password changes, deleted accounts, and expired registrations cannot keep receiving pushes.
         db()->prepare('DELETE FROM customer_push_devices WHERE expires<? OR NOT EXISTS (SELECT 1 FROM customers c WHERE c.id=customer_push_devices.customer_id AND c.auth_version=customer_push_devices.auth_version)')->execute([time()]);
-        $q=db()->prepare('SELECT d.* FROM customer_push_devices d WHERE next_attempt<=? AND (ticket<>"" OR EXISTS (SELECT 1 FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=d.customer_id AND n.id>d.cursor)) ORDER BY next_attempt LIMIT ?');$q->bindValue(1,time(),PDO::PARAM_INT);$q->bindValue(2,$limit,PDO::PARAM_INT);$q->execute();
+        $platforms=customer_push_platforms();$slots=implode(',',array_fill(0,count($platforms),'?'));
+        $q=db()->prepare('SELECT d.* FROM customer_push_devices d WHERE platform IN ('.$slots.') AND next_attempt<=? AND (ticket<>"" OR EXISTS (SELECT 1 FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=d.customer_id AND n.id>d.cursor)) ORDER BY next_attempt LIMIT ?');
+        $i=1;foreach($platforms as $platform)$q->bindValue($i++,$platform);$q->bindValue($i++,time(),PDO::PARAM_INT);$q->bindValue($i,$limit,PDO::PARAM_INT);$q->execute();
         foreach($q->fetchAll() as $d){
             if(microtime(true)-$start>$budget)break;
             try{

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Linking } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useStore } from "@/lib/store";
 import { api } from "@/lib/api";
+import { pushConfigured, type PushConfig } from "@/lib/push-config";
 import { pushAvailable, pushOptedIn, enablePush, disablePush, watchPush, watchPushToken } from "@/lib/push";
 import { Button, Card, Copy, ErrorBox } from "./ui";
 
@@ -39,7 +40,7 @@ export function PushSettings() {
   const [enabled, setEnabled] = useState(false), [configured, setConfigured] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   useFocusEffect(useCallback(() => {
     let active = true;
-    if (customer && pushAvailable) void Promise.all([pushOptedIn(), api<{ enabled: boolean }>("customer-push-config")]).then(([on, config]) => { if (active) { setEnabled(on); setConfigured(config.enabled); } }).catch(() => {});
+    if (customer && pushAvailable) void Promise.all([pushOptedIn(), api<PushConfig>("customer-push-config")]).then(([on, config]) => { if (active) { setEnabled(on); setConfigured(pushConfigured(config, Platform.OS)); } }).catch(() => {});
     return () => { active = false; };
   }, [customer]));
   if (!customer || !pushAvailable) return null;

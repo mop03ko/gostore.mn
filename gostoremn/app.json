@@ -10,6 +10,7 @@
     "ios": {
       "icon": "./assets/images/gostore-icon.png",
       "bundleIdentifier": "mn.gostore.app",
+      "googleServicesFile": "./config/GoogleService-Info.plist",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -65,7 +66,10 @@
           "defaultChannel": "orders",
           "color": "#f76a12"
         }
-      ]
+      ],
+      "./plugins/with-firebase-ios",
+      ["@react-native-firebase/analytics", { "ios": { "withoutAdIdSupport": true } }],
+      ["expo-build-properties", { "ios": { "useFrameworks": "dynamic" } }]
     ],
     "experiments": {
       "typedRoutes": true,

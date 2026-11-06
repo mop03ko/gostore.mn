@@ -4,6 +4,10 @@ const source=ts.transpileModule(fs.readFileSync('gostoremn/src/lib/push.native.t
  const storage=new Map(),calls=[];let allowed=true,permission='granted',prompt=0,responseListener,lastResponse=null;
  const notifications={AndroidImportance:{DEFAULT:3},setNotificationHandler(){},setNotificationChannelAsync:async()=>{},getPermissionsAsync:async()=>({status:permission}),requestPermissionsAsync:async()=>{prompt++;return {status:permission}},getExpoPushTokenAsync:async()=>({data:'ExponentPushToken[abcdefghijklmnop]'}),addNotificationResponseReceivedListener:f=>(responseListener=f,{remove(){}}),getLastNotificationResponseAsync:async()=>lastResponse,clearLastNotificationResponseAsync:async()=>{},addPushTokenListener:()=>({remove(){}})};
  const modules={'react-native':{Platform:{OS:'android'}},'expo-constants':{__esModule:true,default:{executionEnvironment:'standalone',easConfig:{projectId:'test'}},ExecutionEnvironment:{StoreClient:'storeClient'}},'expo-device':{isDevice:true},'expo-notifications':notifications,'expo-secure-store':{getItemAsync:async k=>storage.get(k),setItemAsync:async(k,v)=>storage.set(k,v),deleteItemAsync:async k=>storage.delete(k)},'./api':{api:async(a,b)=>{calls.push([a,b]);return {enabled:allowed}}}};
+ const configExports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync('gostoremn/src/lib/push-config.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:configExports});
+ modules['./push-config']=configExports;
+ assert.equal(configExports.pushConfigured({enabled:true,platforms:['ios']},'android'),false);
+ assert.equal(configExports.pushConfigured({enabled:true,platforms:['ios']},'ios'),true);
  const exports={};vm.runInNewContext(source,{exports,require:n=>modules[n]});
  await exports.enablePush(false);assert.equal(prompt,0);assert.ok(await exports.pushOptedIn());assert.equal(calls.at(-1)[0],'customer-push-register');
  await exports.disablePush();assert.equal(calls.at(-1)[0],'customer-push-unregister');assert.equal(await exports.pushOptedIn(),false);

@@ -112,7 +112,7 @@ function customer_order_access(array $r,array $b): void {
     if(!hash_equals($r['token_hash'],hash('sha256',$token)))fail('Захиалга харах эрхгүй.',403);
 }
 function customer_get(string $action): never {
-    if($action==='customer-push-config'){customer_required();json_out(['enabled'=>customer_push_enabled()]);}
+    if($action==='customer-push-config'){customer_required();json_out(['enabled'=>customer_push_enabled(),'platforms'=>customer_push_platforms()]);}
     if($action==='customer-me')json_out(['customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
     $c=customer_required();
     if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);

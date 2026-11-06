@@ -1,5 +1,15 @@
 # Firebase web Analytics and customer push
 
+## iOS Firebase integration — 2026-11-07
+
+The supplied `GoogleService-Info.plist` matches `mn.gostore.app` in `gostore-27172`. Its copy under `gostoremn/config` is Firebase's public client configuration, not an administrative service-account credential. RN Firebase App/Analytics 27 uses the native iOS SDK through SPM and dynamic frameworks. The iOS-only config plugin and Android autolinking exclusions keep Android buildable until its separate Firebase configuration is provided.
+
+Production iOS records sessions and allowlisted screen names, never route IDs, search terms, account IDs, phone numbers or order details. IDFA/IDFV, ad storage, ad user data and personalized advertising are disabled. Automatic native screen reporting is off to avoid duplicate events. Account includes a persistent Analytics switch; disabling resets local Analytics data. Development/Expo Go and web do not initialize the native SDK. These native dependencies require a new binary/runtime, not an OTA update to build 16.
+
+Push still uses Expo/APNs, not Firebase Messaging on iOS. The backend supports an explicit `GOSTORE_CUSTOMER_PUSH_PLATFORMS` comma-separated allowlist (or private `customer-push-platforms` file). Both registration and delivery enforce the list; the app hides unsupported activation. Android must remain disabled until FCM is configured. Real handset receipt and Firebase Realtime collection must be checked after installing the new TestFlight build.
+
+Validation: `tests/expo-analytics.cjs`, `tests/expo-push.cjs`, `tests/customer-push.php`, Expo lint/typecheck. The mobile privacy policy and local store privacy declaration describe Analytics and notification processing. The store declaration file is not evidence that Apple has saved those changes.
+
 ## Web Analytics
 
 `firebase-web.js` initializes the supplied public Firebase web app in project `gostore-27172`, using SDK 13.2.0 and measurement ID `G-44TMZT4X1E`. It loads 1.2 seconds after window load, catches unavailable/blocked SDK errors, checks Analytics support, and initializes once. A single explicit page view excludes query strings and fragments. Localhost telemetry is disabled; browser tests explicitly opt into mocked SDK modules.

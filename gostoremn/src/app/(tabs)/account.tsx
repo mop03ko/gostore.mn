@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DiscoveryShelf } from "@/components/discovery";
 import type { IconName } from "@/components/shop-ui";
 import { MenuRow } from "@/components/account-ui";
+import { AnalyticsSettings } from "@/components/analytics-settings";
 import { router } from "expo-router";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -118,6 +119,7 @@ function Account() {
       </Card>
     </>}
     <Text style={styles.section}>Тусламж ба үйлчилгээ</Text>
+    <AnalyticsSettings />
     <Card style={{ gap: 0, paddingVertical: 4 }}>
       <MenuRow icon="help" title="Тусламж, үйлчилгээний нөхцөл" subtitle="Хүргэлт, төлбөр, нууцлалын мэдээлэл" onPress={() => router.push("/help")} />
       {customer && <><View style={styles.divider} /><MenuRow icon="close" title="Бүртгэл устгах" danger onPress={() => router.push("/delete-account")} /></>}

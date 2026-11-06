@@ -9,6 +9,9 @@ function notice(string $owner):void{db()->prepare('INSERT INTO order_notificatio
 $now=gmdate('c');foreach(['one','two'] as $id){db()->prepare('INSERT INTO customers VALUES (?,?,?,?,?,?,1,?,?)')->execute([$id,$id.'@example.test',$id,'','','hash',$now,$now]);db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute(['order-'.$id,'hash','key-'.$id,'{}',$now,$now]);db()->prepare('INSERT INTO customer_orders VALUES (?,?,?)')->execute(['order-'.$id,$id,$now]);}
 $c=['id'=>'one','auth_version'=>1];$token='ExponentPushToken[abcdefghijklmnop]';$input=['token'=>$token,'platform'=>'android'];
 notice('one');customer_push_register($c,$input);check(customer_push_drain(20,fn()=>throw new RuntimeException('Historical notification sent'))===0,'Skip historical notices');
+putenv('GOSTORE_CUSTOMER_PUSH_PLATFORMS=ios');check(customer_push_enabled('ios')&&!customer_push_enabled('android'),'Platform activation');
+notice('one');check(customer_push_drain(20,fn()=>throw new RuntimeException('Disabled Android sent'))===0,'Disabled platform never sends');
+putenv('GOSTORE_CUSTOMER_PUSH_PLATFORMS');db()->exec('DELETE FROM order_notifications WHERE id=(SELECT MAX(id) FROM order_notifications)');
 notice('two');check(customer_push_drain(20,fn()=>throw new RuntimeException('Wrong owner'))===0,'Owner scope');
 notice('one');$calls=0;$send=function($op,$payload)use(&$calls){$calls++;check($op==='send','Send endpoint');check(!str_contains(json_encode($payload),'private details')&&!isset($payload['data']['order_id']),'No personal/order content');return [200,['data'=>['status'=>'ok','id'=>'ticket-1']]];};
 check(customer_push_drain(20,$send)===1&&$calls===1,'One send');
