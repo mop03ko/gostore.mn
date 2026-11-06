@@ -10,6 +10,8 @@ Push still uses Expo/APNs, not Firebase Messaging on iOS. The backend supports a
 
 Validation: `tests/expo-analytics.cjs`, `tests/expo-push.cjs`, `tests/customer-push.php`, Expo lint/typecheck. The mobile privacy policy and local store privacy declaration describe Analytics and notification processing. The store declaration file is not evidence that Apple has saved those changes.
 
+Deployment: server source and privacy policy hashes verified; private activation is `ios` only. Added and verified the customer push worker's every-minute cron, preserving existing jobs. There were zero registered customer devices at activation, so handset delivery is unverified. EAS build `95672fdf-418e-4fd5-8677-6a2c43675dae`, version 1.0.1 (17), finished successfully with runtime `52bd47e7637e521598a2f3e4d25ae1bccdf63bbd`; submission `767475ed-fc34-489e-94cb-f9801cc9879b` uploaded to Apple successfully. Apple processing/TestFlight availability is separate from upload success.
+
 ## Web Analytics
 
 `firebase-web.js` initializes the supplied public Firebase web app in project `gostore-27172`, using SDK 13.2.0 and measurement ID `G-44TMZT4X1E`. It loads 1.2 seconds after window load, catches unavailable/blocked SDK errors, checks Analytics support, and initializes once. A single explicit page view excludes query strings and fragments. Localhost telemetry is disabled; browser tests explicitly opt into mocked SDK modules.
