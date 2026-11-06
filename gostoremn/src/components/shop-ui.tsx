@@ -68,8 +68,12 @@ export function Icon({
   );
 }
 export function BrandLogo({ width = 142 }: { width?: number }) {
-  return <View style={{ backgroundColor: "white", padding: 5, borderRadius: 6 }}><Image source={require("../../assets/images/gostore-wordmark.png")}
-    contentFit="contain" style={{ width, height: width * 324 / 2133 }}
+  const colors = usePalette();
+  const source = colors.dark
+    ? require("../../assets/images/gostore-wordmark-white.svg")
+    : require("../../assets/images/gostore-wordmark.png");
+  return <View style={{ backgroundColor: colors.dark ? "transparent" : "white", padding: 5, borderRadius: 6 }}><Image source={source}
+    contentFit="contain" style={{ width, height: width * (colors.dark ? 80.82 / 532.78 : 324 / 2133) }}
     accessibilityLabel="gostore.mn" accessible /></View>;
 }
 export function IconButton({
