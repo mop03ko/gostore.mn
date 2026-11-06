@@ -7,3 +7,5 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 .supplier-coupon{display:block;color:var(--accent-text,#a83c00);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.discovery-product .supplier-discount{display:flex;flex-wrap:wrap;gap:6px}.discovery-product .supplier-discount del{color:var(--muted,#667085)}
 
 .discovery-product{position:relative}
+
+.discovery-fishing-links{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}.discovery-fishing-links a{text-decoration:none}

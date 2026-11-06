@@ -5,9 +5,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Бараа '+n,image:'',variant:'Хар',cny,min_qty:1,step:1,stock:20,vendor_id:vendor,vendor_name:shop});
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'}),errors=[],calls=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://connect.facebook.net/**',r=>r.abort());await page.route('https://www.facebook.com/**',r=>r.abort());await page.route('https://www.googletagmanager.com/**',r=>r.abort());
  await page.route('**/api/index.php?action=supplier-search*',r=>{calls.push(new URL(r.request().url()).searchParams.get('q'));return r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}});});
  await page.goto(base+'/');await page.locator('#hub-cats li').first().waitFor();
- assert.equal(await page.locator('#hub-cats [data-hub-category]').count(),25,'Every department has a row link');
+ assert.equal(await page.locator('#hub-cats [data-hub-category]').count(),26,'Every department has a row link');
  assert.equal(await page.locator('#hub-channels').isVisible(),false,'Phone grid is hidden on desktop');
  assert.equal(await page.locator('.hub-user-guest').isVisible(),true,'Guests see sign-in and registration');
  for(const el of await page.locator('#hub-cats li').all())assert.ok(await el.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Category row fits: '+await el.innerText());
@@ -66,8 +67,9 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  assert.equal(await page.locator('.mobile-nav [data-mobile-tab=cart]').getAttribute('aria-current'),'page');
  await page.screenshot({path:'tmp/home-hub-cart-390.png'});
  assert.deepEqual(errors,[]);
- // The hub is filled after first paint; its reserved size must not change, or the page jumps (CLS).
- for(const width of [1440,1024,390,320]){const sizes=[];for(const javaScriptEnabled of [false,true]){const ctx=await browser.newContext({viewport:{width,height:900},javaScriptEnabled});const p=await ctx.newPage();await p.route('**/api/index.php?action=supplier-*',r=>r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}}));await p.goto(base+'/');if(javaScriptEnabled)await p.locator(width>760?'#hub-cats li':'#hub-channels a').first().waitFor();sizes.push(await p.evaluate(()=>['#home-hub','.hub-main .hero-banner'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [Math.round(r.y),Math.round(r.height)];})));await ctx.close();}
+ // Isolate the base hub from the separately tested 11.11 script, which replaces the hero.
+ // The base hub is filled after first paint; its reserved size must not change.
+ for(const width of [1440,1024,390,320]){const sizes=[];for(const javaScriptEnabled of [false,true]){const ctx=await browser.newContext({viewport:{width,height:900},javaScriptEnabled});const p=await ctx.newPage();await p.route('**/eleven-sale.js*',r=>r.abort());await p.route('https://www.googletagmanager.com/**',r=>r.abort());await p.route('https://connect.facebook.net/**',r=>r.abort());await p.route('https://www.facebook.com/**',r=>r.abort());await p.route('**/api/index.php?action=supplier-*',r=>r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}}));await p.goto(base+'/');if(javaScriptEnabled)await p.locator(width>760?'#hub-cats li':'#hub-channels a').first().waitFor();sizes.push(await p.evaluate(()=>['#home-hub','.hub-main .hero-banner'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [Math.round(r.y),Math.round(r.height)];})));await ctx.close();}
   assert.deepEqual(sizes[1],sizes[0],'Hub keeps its reserved size at '+width);}
  // index.html serves every route; the first screen belongs to the home page only.
  for(const path of ['/brands/nike','/account','/cart']){await page.goto(base+path);await page.waitForLoadState('load');assert.equal(await page.locator('#home-hub').isVisible(),false,'Hub hidden on '+path);}

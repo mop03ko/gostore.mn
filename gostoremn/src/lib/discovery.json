@@ -839,6 +839,54 @@
     ]
   },
   {
+    "id": "fishing",
+    "name": "Загасчлалын хэрэгсэл",
+    "query": "fishing tackle",
+    "image": "https://gostore.mn/assets/category-images/86a08853146a1197.webp",
+    "children": [
+      {
+        "name": "Загасны уурга",
+        "query": "fishing rod",
+        "image": ""
+      },
+      {
+        "name": "Дамар",
+        "query": "fishing reel",
+        "image": ""
+      },
+      {
+        "name": "Загасны утас",
+        "query": "fishing line",
+        "image": ""
+      },
+      {
+        "name": "Дэгээ",
+        "query": "fishing hooks",
+        "image": ""
+      },
+      {
+        "name": "Хиймэл өгөөш",
+        "query": "fishing lures",
+        "image": ""
+      },
+      {
+        "name": "Хөвүүр",
+        "query": "fishing float",
+        "image": ""
+      },
+      {
+        "name": "Хэрэгслийн хайрцаг",
+        "query": "fishing tackle box",
+        "image": ""
+      },
+      {
+        "name": "Загасны тор",
+        "query": "fishing landing net",
+        "image": ""
+      }
+    ]
+  },
+  {
     "id": "outdoor",
     "name": "Аялал, амралт",
     "query": "camping equipment",
@@ -868,11 +916,6 @@
         "name": "Гар чийдэн",
         "query": "flashlight",
         "image": "https://gostore.mn/assets/category-images/610476dc3561c095.webp"
-      },
-      {
-        "name": "Загасчлал",
-        "query": "fishing tackle",
-        "image": "https://gostore.mn/assets/category-images/86a08853146a1197.webp"
       },
       {
         "name": "Уулын хэрэгсэл",

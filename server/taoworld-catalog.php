@@ -239,7 +239,7 @@ function tw_catalog_deals(array $params): array {
     return $result;
 }
 function tw_catalog_departments(): array {
-    return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
+    return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','fishing tackle'=>'渔具','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
 }
 // Recommendations use the viewed product's leaf category, never the mixed home feed.
 function tw_catalog_recommend_query(array $product): string {
@@ -327,6 +327,15 @@ function tw_catalog_search(array $b,bool $display=false): array {
     if($q==='__all__')return tw_catalog_home($page,$limit,$sorts[$sort],$filters,$display);
     if(product_policy_text_blocked($q))return tw_catalog_response(['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false],time(),0);
     $keywords=tw_catalog_departments()+[
+        'загасчлал'=>'渔具', 'загасчлалын хэрэгсэл'=>'渔具',
+        'fishing rod'=>'鱼竿', 'загасны уурга'=>'鱼竿',
+        'fishing reel'=>'渔轮', 'дамар'=>'渔轮',
+        'fishing line'=>'鱼线', 'загасны утас'=>'鱼线',
+        'fishing hooks'=>'鱼钩', 'дэгээ'=>'鱼钩',
+        'fishing lures'=>'路亚饵', 'хиймэл өгөөш'=>'路亚饵',
+        'fishing float'=>'浮漂', 'хөвүүр'=>'浮漂',
+        'fishing tackle box'=>'钓鱼配件盒', 'хэрэгслийн хайрцаг'=>'钓鱼配件盒',
+        'fishing landing net'=>'抄网', 'загасны тор'=>'抄网',
         'барилгын материал'=>'建筑材料',
         'барилгын материалууд'=>'建筑材料',
         'барилгын материалиуд'=>'建筑材料',

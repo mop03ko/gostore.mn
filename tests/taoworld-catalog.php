@@ -165,6 +165,12 @@ foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall pa
 }
 $before=count($calls);supplier_search(['q'=>'Барилгын материал','page'=>1]);check(count($calls)===$before,'Mongolian building search must reuse the translated category cache');
 check(isset(tw_catalog_departments()['building materials']),'Building materials missing from mixed home departments');
+$_SERVER['REMOTE_ADDR']='192.0.2.203';
+foreach(['fishing tackle'=>'渔具','fishing rod'=>'鱼竿','fishing reel'=>'渔轮','fishing line'=>'鱼线','fishing hooks'=>'鱼钩','fishing lures'=>'路亚饵','fishing float'=>'浮漂','fishing tackle box'=>'钓鱼配件盒','fishing landing net'=>'抄网'] as $query=>$keyword){
+    supplier_search(['q'=>$query,'page'=>1]);check(end($calls)[1]['keyword']===$keyword,'Fishing category keyword mismatch: '.$query);
+}
+$before=count($calls);supplier_search(['q'=>'Загасчлал','page'=>1]);check(count($calls)===$before,'Mongolian fishing alias reuses category cache');
+check(isset(tw_catalog_departments()['fishing tackle']),'Fishing missing from mixed departments');
 unset($_SERVER['REMOTE_ADDR']);
 // Discounts must compare the exact available SKU, never a coupon or another variant.
 $saleRaw=['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Storage box','price'=>10000,'promotion_price'=>8000,'coupon_price'=>7000,'sku_list'=>[
