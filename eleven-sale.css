@@ -47,3 +47,5 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .eleven-s
 .eleven-active .home-hub .hero-banner{min-height:400px}
 .eleven-active #eleven-sale:empty,.eleven-active #eleven-sale:not(.eleven-loaded){display:block;min-height:100vh}
 @media(max-width:760px){.eleven-active .home-hub .hero-banner{min-height:316px}}
+/* At 320 px the banner copy is about 165 px wide; the 31 px headline word overflowed it. */
+@media (max-width:360px) { .eleven-hero-copy h1 { font-size:25px; } }

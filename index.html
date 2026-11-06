@@ -51,7 +51,7 @@
   (()=>{const m=location.pathname.match(/^\/v\/((?:tb-)?[0-9]{5,20})\/?$/);if(!m||!window.fetch)return;
   const id=m[1].startsWith('tb-')?m[1]:'abb-'+m[1],brand=new URLSearchParams(location.search).get('brand'),shop=new URLSearchParams(location.search).get('shop'),payload={id,...(brand?{brand}:{}),...(shop?{shop}:{})};
   const key='supplier-product:'+JSON.stringify(Object.keys(payload).sort().map(k=>[k,payload[k]]));
-  try{if(JSON.parse(sessionStorage.getItem('gostore-supplier-cache-v10-offers')||'[]').some(e=>e&&e.key===key&&e.expires>Date.now()&&e.data&&e.data.stale===false))return;}catch{}
+  try{if(JSON.parse(sessionStorage.getItem('gostore-supplier-cache-v11-coupon-base')||'[]').some(e=>e&&e.key===key&&e.expires>Date.now()&&e.data&&e.data.stale===false))return;}catch{}
   const url='/api/index.php?'+new URLSearchParams({action:'supplier-product',...payload,catalog:'taoworld-catalog1'}),response=fetch(url,{credentials:'omit'});
   window.earlySupplierProduct={url,response};
   window.earlySupplierImageUrl=source=>{const original=String(source||'');try{const u=new URL(original);if(u.protocol!=='https:'||!/(^|\.)alicdn\.com$/.test(u.hostname)||u.search||u.hash||!/^\/(?:imgextra|bao|tfs)\//.test(u.pathname)||!/\.(?:jpe?g|png)$/i.test(u.pathname)||/_[0-9]+x[0-9]+/.test(u.pathname))return original;return original+'_800x800q80.jpg_.webp';}catch{return original;}};
@@ -86,7 +86,7 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=402ab3b3edb7">
-  <script src="/app.js?v=9b1bb95b9ae9" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=a4cd312c6c8e" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261107-cls">
   <script src="/eleven-sale.js?v=20261107-cls" defer></script>

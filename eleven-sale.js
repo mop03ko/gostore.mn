@@ -99,7 +99,7 @@
     } catch {}
     void load();
   }
-  if (collection || !('IntersectionObserver' in window)) start();
+  if (collection || typeof IntersectionObserver !== 'function') start();
   else {
     const observer = new IntersectionObserver(entries => {
       if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); start(); }
