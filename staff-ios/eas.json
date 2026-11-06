@@ -24,5 +24,8 @@
       "ios": { "simulator": true }
     }
   },
-  "submit": { "admin": {}, "warehouse": {} }
+  "submit": {
+    "admin": { "ios": { "ascAppId": "6831708168" } },
+    "warehouse": { "ios": { "ascAppId": "6831710242" } }
+  }
 }

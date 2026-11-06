@@ -75,8 +75,43 @@ On 2026-11-07, both native iOS simulator builds completed successfully:
 - [GOStore Admin build](https://expo.dev/accounts/morozkonkts-team/projects/gostore-admin/builds/7411457b-d831-466e-a8d4-1a4cbd8e799d)
 - [GOStore UB Warehouse build](https://expo.dev/accounts/morozkonkts-team/projects/gostore-ub-warehouse/builds/9383c3e2-d3c8-4f27-8b43-269613009c1b)
 
-These builds are **not TestFlight releases**. Apple account reauthentication is
-still required for new-app signing, App Store Connect records and submission.
+The simulator builds are not installable through TestFlight. Separate signed
+App Store builds completed on 2026-11-07:
+
+| App | Version (build) | App Store Connect | EAS store build |
+| --- | --- | --- | --- |
+| Admin | 1.0.0 (3) | `6831708168` | `18fc5dcc-fff8-47cd-9d28-1b1a0c88be0e` |
+| UB Warehouse | 1.0.0 (2) | `6831710242` | `9333d34c-2c70-4f4a-91f7-0d43dc33addc` |
+
+Both have been queued for upload through EAS Submit. Submission IDs are
+`c5e27fdb-642d-4752-b3d6-e831b29db9fa` (Admin) and
+`afb0dd1f-813f-4114-84a0-b28265c53db9` (Warehouse). At the latest check they were
+`IN_QUEUE`; Apple processing and installability have not yet been verified.
+Private tester groups have been created and the owner-specified tester has been
+assigned to each. The warehouse group is external and requires Beta App Review.
+
+## Isolated warehouse demo
+
+The Ulaanbaatar login offers **Демо үзэх / Try demo**, opening
+`https://gostore.mn/warehouse/ulaanbaatar/?demo=1`. The native wrapper already
+allows this same-path URL; no binary change is needed. The demo renders the
+same warehouse UI with clearly labelled synthetic orders. It never loads the
+server bootstrap, database or authentication session. A separate PHP response
+sets `connect-src 'none'`, `worker-src 'none'` and `form-action 'none'`. The demo
+fetch implementation handles sample operations in page memory and never calls
+the original fetch. Push registration is omitted entirely.
+
+Use batch `GB-DEMO01` and its order `GS-DEMO03`: add a receipt photo, scan/reconcile
+the order, receive the batch, then sort for pickup or delivery. The demo pickup
+code is `12345678`. Photos use in-memory blob URLs; all changes disappear on
+reload. No real payment is initiated. Unsupported actions return a clear demo
+error. Exiting the demo returns to the real login without changing its session.
+
+`node tests/run-logistics.cjs warehouse-demo-ui warehouse-entry-ui` verifies the
+receipt/sort/completion flow, reset behavior, no production API traffic, CSP
+blocking of independent XHR, and normal warehouse entry behavior. A separate
+read-only live check verified six sample orders, batch lookup and zero API
+requests in a fresh mobile-sized browser.
 
 Before accepting a device build, check on an iPhone: correct app identity, login,
 session restoration and logout; QR scanning; camera and library upload including
@@ -86,9 +121,10 @@ does not establish that these real-device behaviors have passed.
 
 ## Build and TestFlight
 
-The Apple Developer account must be authenticated for the initial provisioning
-of each new bundle ID. Enter Apple credentials only into the local EAS terminal
-prompt, never into source files or chat.
+Both bundle IDs and App Store provisioning profiles are registered. EAS holds
+the existing distribution certificate and App Store Connect API key used for
+these projects. No secret belongs in this repository. Interactive Apple login
+may be required if those remote credentials expire or need replacement.
 
 ```powershell
 # From the repository root, in an interactive terminal:
@@ -101,9 +137,8 @@ EAS_PROJECT_ROOT so the upload contains only `staff-ios/`. `.easignore` excludes
 private environment files. Store builds require Apple signing; simulator builds
 use `admin-simulator` / `warehouse-simulator` and cannot be installed with TestFlight.
 
-Create a separate App Store Connect record for each exact bundle ID, then record
-each ASC app ID in the corresponding `eas.json` submit profile (`ios.ascAppId`).
-Do not use the customer application's ASC app ID or signing profile.
+The separate App Store Connect IDs are pinned in the `eas.json` submit profiles
+(`ios.ascAppId`). Do not use the customer application's ASC app ID or signing profile.
 
 Submit a specific successful store build ID to prevent selecting a simulator or
 another variant by accident:

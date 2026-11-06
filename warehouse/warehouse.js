@@ -7,6 +7,7 @@ const fixedWarehouse=entryMatch?.[1]||'';
 const requestedCity=fixedWarehouse||new URLSearchParams(location.search).get('location');
 let entrySessionMismatch=false;
 function updateWarehouseEntry(){
+  const demoLink=document.getElementById('warehouse-demo-link');if(demoLink)demoLink.hidden=fixedWarehouse!=='ulaanbaatar';
   const fixed=!!fixedWarehouse,known=warehouseDirectory.find(w=>w.location===fixedWarehouse),zh=known?.role==='erenhot';
   $('#warehouse-entry').hidden=!fixed;$('#login-location-field').hidden=fixed;$('#login-location').disabled=fixed;
   if(!fixed)return;

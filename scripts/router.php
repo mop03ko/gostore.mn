@@ -7,6 +7,8 @@ if ($path==='/api/index.php') {require __DIR__.'/../api/index.php';return true;}
 if ($path==='/api/mobile.php') {require __DIR__.'/../api/mobile.php';return true;}
 if(in_array($path,['/api/taoworld/connect.php','/api/taoworld/callback.php'],true)){require __DIR__.'/..'.$path;return true;}
 if($path==='/admin/taoworld.js')return false;
+if(preg_match('#^/warehouse/ulaanbaatar/?$#',$path)&&($_GET['demo']??'')==='1'){require __DIR__.'/../warehouse/review-demo.php';return true;}
+if($path==='/warehouse/review-demo.js')return false;
 if(preg_match('#^/warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$#',$path)){header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/../warehouse/index.html');return true;}
 // Product pages go through the link-preview script, as .htaccess does in production.
 if(preg_match('#^/v/((?:tb-)?[0-9]{5,20})/?$#',$path,$m)){$_GET['id']=$m[1];require __DIR__.'/../api/product-page.php';return true;}

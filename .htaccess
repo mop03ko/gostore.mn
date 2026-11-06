@@ -39,6 +39,8 @@ RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP_HOST} ^(?:www\.)?gostore\.mn(?::80)?$ [NC]
 RewriteRule ^ https://gostore.mn%{REQUEST_URI} [R=308,L,NE]
 RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
+RewriteCond %{QUERY_STRING} (^|&)demo=1(&|$)
+RewriteRule ^warehouse/ulaanbaatar/?$ warehouse/review-demo.php [L]
 RewriteRule ^warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$ warehouse/index.html [L]
 # iOS and some crawlers ask for these fixed root paths.
 RewriteRule ^apple-touch-icon(?:-precomposed)?\.png$ assets/apple-touch-icon.png [L]
