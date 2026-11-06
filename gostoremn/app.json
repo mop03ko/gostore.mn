@@ -2,7 +2,7 @@
   "expo": {
     "name": "gostore.mn",
     "slug": "gostoremn",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/gostore-icon.png",
     "scheme": "gostoremn",
@@ -57,6 +57,13 @@
           "photosPermission": "Барааг зургаар хайх болон сэтгэгдэлд хавсаргахын тулд таны сонгосон зургийг ашиглана.",
           "cameraPermission": "Барааг хайх болон сэтгэгдэлд зураг хавсаргахын тулд камер ашиглана.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "orders",
+          "color": "#f76a12"
         }
       ]
     ],

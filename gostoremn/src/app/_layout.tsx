@@ -1,3 +1,4 @@
+import { PushLifecycle } from "@/components/push-settings";
 import { usePalette } from "@/lib/palette";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -6,6 +7,7 @@ export default function Root() {
   const colors = usePalette();
   return (
     <StoreProvider>
+      <PushLifecycle />
       <StatusBar style={colors.dark ? "light" : "dark"} />
       <Stack
         screenOptions={{

@@ -1,3 +1,4 @@
+import { PushSettings } from "@/components/push-settings";
 import { useCallback, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
 import { api } from "@/lib/api";
@@ -26,6 +27,7 @@ function Notifications() {
   );
   return (
     <Page>
+      <PushSettings />
       <ErrorBox message={error} retry={() => void load()} />
       <Button title="Шинэчлэх" secondary onPress={() => void load()} />
       {rows.some((n) => !n.read_at) && (

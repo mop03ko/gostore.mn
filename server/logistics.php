@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/warehouse-cargo.php';
+require_once __DIR__.'/customer-push.php';
 
 function logistics_state(array $o): array {
     return array_replace(['version'=>0,'photos'=>[],'issues'=>[],'shelf'=>''], $o['logistics']??[]);
@@ -44,6 +45,7 @@ function logistics_notify(array $o,?array $old): void {
     if(($old['freight']['paid_amount']??0)!==($o['freight']['paid_amount']??0))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
     $oldPhotos=array_column(logistics_state($old)['photos'],'id');
     foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',warehouse_profile($p['location'])['name'].' · зураг нэмэгдлээ'];
+    if($events)customer_push_schedule();
     foreach($events as [$kind,$message])db()->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],$kind,$message,gmdate('c')]);
 }
 function logistics_public(array $o): array {

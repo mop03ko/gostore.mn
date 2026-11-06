@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/product-reviews.php';
 require_once __DIR__.'/phone-auth.php';
+require_once __DIR__.'/customer-push.php';
 
 function current_customer(): ?array {
     if (empty($_SESSION['customer_id'])) return null;
@@ -20,6 +21,7 @@ function customer_public(?array $c): ?array {
     return $public;
 }
 function customer_sign_in(array $c): void {
+    customer_push_revoke_session();
     unset($_SESSION['phone_verified'],$_SESSION['phone_verification']);session_regenerate_id(true);$_SESSION['customer_id']=$c['id'];$_SESSION['customer_version']=(int)$c['auth_version'];$_SESSION['csrf']=bin2hex(random_bytes(32));
 }
 function customer_email(array $b): string {
@@ -110,6 +112,7 @@ function customer_order_access(array $r,array $b): void {
     if(!hash_equals($r['token_hash'],hash('sha256',$token)))fail('Захиалга харах эрхгүй.',403);
 }
 function customer_get(string $action): never {
+    if($action==='customer-push-config'){customer_required();json_out(['enabled'=>customer_push_enabled()]);}
     if($action==='customer-me')json_out(['customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
     $c=customer_required();
     if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);
@@ -148,10 +151,14 @@ function customer_post(string $action,array $b): never {
         customer_sign_in($c);json_out(['customer'=>customer_public($c),'csrf'=>$_SESSION['csrf']]);
     }
     if($action==='customer-logout'){
+        customer_push_revoke_session();
         $_SESSION=[];session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
     }
     $c=customer_required();
+    if($action==='customer-push-register')json_out(customer_push_register($c,$b));
+    if($action==='customer-push-unregister')json_out(customer_push_unregister($c,$b));
     if($action==='customer-delete'){
+        customer_push_schema();
         limit_attempts('customer-delete:'.$c['id'],5,900);
         $record=pin_auth_record($c['id']);
         $valid=isset($b['pin'])?($record&&pin_auth_check($record['phone'],pin_auth_value($b),$record)):password_verify(customer_password($b,'password'),$c['password_hash']);
@@ -164,6 +171,7 @@ function customer_post(string $action,array $b): never {
             $s->execute(['deleted-'.bin2hex(random_bytes(16)).'@invalid.example','Deleted account','','',password_hash(bin2hex(random_bytes(32)),PASSWORD_BCRYPT),gmdate('c'),$c['id'],$c['auth_version']]);
             if($s->rowCount()!==1)fail('Дахин нэвтэрч оролдоно уу.',401);
             reviews_delete_customer($c['id']);
+            $db->prepare('DELETE FROM customer_push_devices WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_phone_auth WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_addresses WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_state WHERE customer_id=?')->execute([$c['id']]);
