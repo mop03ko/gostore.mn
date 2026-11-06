@@ -31,3 +31,11 @@ Expo SDK 58 `expo-notifications` uses Expo Push Service (Android FCM v1 / Apple 
 ## Apple version correction
 
 Apple rejected 1.0.0 (14) after upload with 90062/90186 because the approved 1.0.0 train is closed. App/package version is now 1.0.1; EAS remote build auto-increment remains enabled. An upload success message alone does not establish App Store processing success or TestFlight availability.
+
+## iOS signing repair — 2026-11-07
+
+- Build 1.0.1 (15) failed because the old provisioning profile lacked Push Notifications / `aps-environment`.
+- After the account owner renewed Apple authentication and configured credentials, EAS validated the refreshed profile for `mn.gostore.app`. The existing distribution certificate was retained.
+- An APNs push key was created and assigned to this app in EAS. No private key material was added to the repository.
+- Replacement 1.0.1 (16), EAS build `95686861-ff8b-4675-b76d-a6975323911e`, completed Xcode archive/signing and was uploaded with submission `a8ad807c-26ab-4a9b-9594-c6dbcff9e3f1`.
+- App Store Connect initially showed Processing. Physical-device notification delivery remains unverified; the server push switch remains disabled. Android FCM configuration is still outstanding.
