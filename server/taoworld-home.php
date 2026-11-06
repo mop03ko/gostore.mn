@@ -13,30 +13,39 @@ function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $
         if($sort!=='')$q['sort']=$sort;if($filters)$q['filters']=json_encode($filters,JSON_THROW_ON_ERROR);
         $queries[$i]=$q;
     }
+    // One department that is busy, failing or over quota must not turn the whole homepage into an
+    // error: it uses its last snapshot (up to a day old) or is left out, and the list is marked stale
+    // so the browser revalidates. Only a feed with no department at all fails. Lock waits share one
+    // two-second deadline instead of two seconds per department.
+    $deadline=microtime(true)+2;$failure=null;$degraded=false;$old=[];
     foreach(array_chunk($queries,3,true) as $batch){
         $locks=[];$pending=[];
         try{
             foreach($batch as $i=>$q){
                 $file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$q).'.json';$c=supplier_snapshot_read($file);
                 if(!tw_catalog_fresh($c,$ttl)){
-                    $h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);if(!$h)throw new SupplierBusy();$locks[]=$h;
+                    if(tw_catalog_fresh($c,TW_CATALOG_DISPLAY_FALLBACK))$old[$i]=$c;
+                    $h=supplier_acquire_lock([$file.'.lock'],$deadline);if(!$h){$failure??=new SupplierBusy();continue;}$locks[]=$h;
                     $c=supplier_snapshot_read($file);if(!tw_catalog_fresh($c,$ttl)){$pending[$i]=['query'=>$q,'file'=>$file];continue;}
                 }
                 $snapshots[$i]=$c;
             }
             if(!$pending)continue;
-            $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT home_feed_budget');
-            try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT home_feed_budget');}
-            catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT home_feed_budget');$db->exec('RELEASE SAVEPOINT home_feed_budget');throw $e;}
-            $responses=taoworld_http_search_batch(array_map(fn($p)=>$p['query']+['access_token'=>$token],array_values($pending)));$failure=null;
+            try{
+                $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT home_feed_budget');
+                try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT home_feed_budget');}
+                catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT home_feed_budget');$db->exec('RELEASE SAVEPOINT home_feed_budget');throw $e;}
+                $responses=taoworld_http_search_batch(array_map(fn($p)=>$p['query']+['access_token'=>$token],array_values($pending)));
+            }catch(ApiError $e){$failure??=$e;continue;}
             foreach(array_keys($pending) as $n=>$i){try{
                 $r=$responses[$n]??null;if($r instanceof ApiError)throw $r;if(!is_array($r))fail('Барааны мэдээлэл дутуу.',502);
                 $data=tw_catalog_data($r);if(!is_array($data['data']??null))fail('Барааны мэдээлэл дутуу.',502);
                 $snapshots[$i]=['time'=>time(),'data'=>$data];supplier_snapshot_write($pending[$i]['file'],$snapshots[$i]);
             }catch(ApiError $e){$failure??=$e;}}
-            if($failure)throw $failure;
         }finally{foreach($locks as $h){flock($h,LOCK_UN);fclose($h);}}
     }
+    foreach(array_keys($queries) as $i)if(!isset($snapshots[$i])){$degraded=true;if(isset($old[$i]))$snapshots[$i]=$old[$i];}
+    if(!$snapshots)throw $failure??new SupplierBusy();
     ksort($snapshots);$time=time();$lanes=[];$hasMore=false;
     foreach($snapshots as $c){$time=min($time,$c['time']);$raw=$c['data']['data'];$hasMore=$hasMore||count($raw)===20;$lanes[]=tw_catalog_cards($raw,$c['time']);}
     $products=[];$seen=[];
@@ -47,6 +56,6 @@ function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $
         if($a===null||$b===null)return $a===null?($b===null?0:1):-1;
         return $sort==='PRICE_ASC'?$a<=>$b:$b<=>$a;
     });
-    $stale=$time<=time()-TW_CATALOG_SEARCH_TTL;
-    return tw_catalog_response(['products'=>array_slice($products,0,$limit),'page'=>$page,'total'=>null,'more'=>$page<100&&($hasMore||$page*6<$count),'partial'=>false,'stale'=>$stale,'revalidate'=>$stale,'feed'=>'mixed_departments'],$time,TW_CATALOG_SEARCH_TTL);
+    $stale=$degraded||$time<=time()-TW_CATALOG_SEARCH_TTL;
+    return tw_catalog_response(['products'=>array_slice($products,0,$limit),'page'=>$page,'total'=>null,'more'=>$page<100&&($hasMore||$page*6<$count),'partial'=>false,'stale'=>$stale,'revalidate'=>$stale,'feed'=>'mixed_departments']+($degraded?['cache_ttl'=>0,'cache_expires'=>time()]:[]),$time,TW_CATALOG_SEARCH_TTL);
 }
