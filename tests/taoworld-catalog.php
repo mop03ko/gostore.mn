@@ -130,7 +130,7 @@ denied(fn()=>official_store_detail('tb-700000000000','71955116'),409);
 $shop=official_store('71955116');$shopFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',official_store_query($shop)).'.json';
 $shopCache=supplier_snapshot_read($shopFile);$shopCache['time']=time()-1801;supplier_snapshot_write($shopFile,$shopCache);$before=count($calls);
 $old=official_store_products(['shop'=>$shop['id'],'page'=>1],true);check($old['stale']&&$old['revalidate']&&count($calls)===$before,'Display cache must request revalidation');
-$error=true;$partial=official_stores_directory();check($partial['incomplete']&&count($partial['stores'])===11&&$partial['cache_ttl']===0,'Partial outage must preserve successful shops and permit retry');$error=false;
+$error=true;$partial=official_stores_directory();check(!$partial['incomplete']&&$partial['stale']&&count($partial['stores'])===12&&$partial['cache_ttl']===0,'Partial outage must keep the failed shop\'s last previews and permit retry');$error=false;
 $shopCache=['time'=>time(),'data'=>['data'=>[]]];supplier_snapshot_write($shopFile,$shopCache);
 $empty=official_stores_directory();check(count($empty['stores'])===11&&!$empty['incomplete'],'Empty stores must not be shown or replaced by keyword products');
 unset($_SERVER['REMOTE_ADDR']);

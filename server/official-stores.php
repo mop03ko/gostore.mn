@@ -22,15 +22,18 @@ function official_store_cards(array $raw,array $s,int $time): array {
     foreach($cards as &$p){$p['official_shop_id']=$s['id'];$p['vendor_name']=$s['name'];}unset($p);return $cards;
 }
 // Three independent shop reads at a time; the same per-shop cache serves directory
-// previews and full store pages. Successful reads survive a partial outage.
+// previews and full store pages. Successful reads survive a partial outage, and a shop that
+// cannot be refreshed (busy, failing or over the daily quota) keeps its last snapshot up to a
+// day old; the directory is then marked stale and uncacheable. Lock waits share one deadline.
 function official_stores_directory(): array {
-    tw_catalog_require_ready();$registry=official_stores_registry();$cache=[];$pending=[];$failed=0;
+    tw_catalog_require_ready();$registry=official_stores_registry();$cache=[];$old=[];$pending=[];$failed=0;$deadline=microtime(true)+2;
     foreach($registry as $id=>$s){$q=official_store_query($s);$file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$q).'.json';$c=supplier_snapshot_read($file);
-        if(tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL))$cache[$id]=$c;else $pending[$id]=['q'=>$q,'file'=>$file];}
+        if(tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL)){$cache[$id]=$c;continue;}
+        if(tw_catalog_fresh($c,TW_CATALOG_DISPLAY_FALLBACK))$old[$id]=$c;$pending[$id]=['q'=>$q,'file'=>$file];}
     foreach(array_chunk($pending,3,true) as $chunk){
         $locks=[];$send=[];
         try{
-            foreach($chunk as $id=>$p){$h=supplier_acquire_lock([$p['file'].'.lock'],microtime(true)+2);if(!$h){$failed++;continue;}$locks[]=$h;
+            foreach($chunk as $id=>$p){$h=supplier_acquire_lock([$p['file'].'.lock'],$deadline);if(!$h){$failed++;continue;}$locks[]=$h;
                 $c=supplier_snapshot_read($p['file']);if(tw_catalog_fresh($c,TW_CATALOG_SEARCH_TTL))$cache[$id]=$c;else $send[$id]=$p;}
             if(!$send)continue;
             $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT official_store_budget');
@@ -42,10 +45,11 @@ function official_stores_directory(): array {
         }catch(ApiError){$failed+=count($send);}
         finally{foreach($locks as $h){flock($h,LOCK_UN);fclose($h);}}
     }
+    $stale=false;foreach($old as $id=>$c)if(!isset($cache[$id])){$cache[$id]=$c;$stale=true;}
     $stores=[];$time=time();foreach($registry as $id=>$s){if(!isset($cache[$id]))continue;$c=$cache[$id];$time=min($time,$c['time']);$cards=official_store_cards($c['data']['data']??[],$s,$c['time']);if(!$cards)continue;
         unset($s['verification']);$s['products']=array_slice($cards,0,4);$stores[]=$s;}
     if(!$cache&&$failed)fail('Дэлгүүрүүдийн мэдээллийг түр авч чадсангүй. Дахин оролдоно уу.',503);
-    return tw_catalog_response(['stores'=>$stores,'incomplete'=>$failed>0,'coverage'=>'verified_registry','all_platform_stores'=>false,'checked_stores'=>count($cache),'registered_stores'=>count($registry)],$time,$failed?0:300);
+    return tw_catalog_response(['stores'=>$stores,'incomplete'=>(bool)array_diff_key($registry,$cache),'stale'=>$stale,'revalidate'=>$stale,'coverage'=>'verified_registry','all_platform_stores'=>false,'checked_stores'=>count($cache),'registered_stores'=>count($registry)],$time,$failed?0:300);
 }
 function official_store_products(array $b,bool $display=false): array {
     tw_catalog_require_ready();$s=official_store(str_field($b,'shop',20));$page=int_field($b,'page',1,100);$sort=str_field($b,'sort',20,false)?:'-price';

@@ -34,4 +34,14 @@ $error=true;denied(fn()=>supplier_search($home,true),502);$error=false;
 $_SERVER['REMOTE_ADDR']='192.0.2.92';supplier_search($home,true);$age($searchFile($keywords[0]),7200);$lock=fopen($searchFile($keywords[0]).'.lock','c');flock($lock,LOCK_EX);
 $start=microtime(true);$r=supplier_search($home,true);$took=microtime(true)-$start;flock($lock,LOCK_UN);fclose($lock);
 check(count($r['products'])>0&&$r['stale']&&$took<3,'A locked department uses its snapshot after one short wait');
-echo "PASS: display fallback for search, product detail and homepage departments when TaoWorld is busy or failing; checkout and non-display reads stay strict.\n";
+// Official store directory: failing provider or a spent daily quota keeps the last shop previews.
+$_SERVER['REMOTE_ADDR']='192.0.2.93';$shopFiles=array_map(fn($s)=>tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',official_store_query($s)).'.json',official_stores_registry());
+$r=official_stores_directory();check(count($r['stores'])===12&&!$r['stale']&&!$r['incomplete'],'Directory builds normally');
+foreach($shopFiles as $f)$age($f,7200);
+$error=true;$r=official_stores_directory();$error=false;
+check(count($r['stores'])===12&&$r['stale']&&$r['revalidate']&&!$r['incomplete']&&$r['cache_ttl']===0,'Failing provider shows the last directory, stale, without a missing-shops notice');
+settings(['api_daily_limit'=>1]);$before=count($calls);$r=official_stores_directory();settings(['api_daily_limit'=>5000]);
+check(count($r['stores'])===12&&$r['stale']&&count($calls)===$before,'Spent daily quota shows the last directory without provider calls');
+$age(reset($shopFiles),90000);$error=true;$r=official_stores_directory();$error=false;check(count($r['stores'])===11&&$r['stale']&&$r['incomplete'],'Shops older than a day are left out and reported missing');
+foreach($shopFiles as $f)$age($f,90000);$error=true;denied(fn()=>official_stores_directory(),503);$error=false;
+echo "PASS: display fallback for search, product detail, homepage departments and the official store directory when TaoWorld is busy, failing or over quota; checkout and non-display reads stay strict.\n";

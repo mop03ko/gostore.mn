@@ -16,6 +16,27 @@ error log, the TaoWorld worker log and the full test suite. Fixed on branch `aud
 
 New suites: `taoworld-fallback`, `layout-shift-ui`, `analytics-ui`; link-preview checks in `taoworld-storefront-ui`.
 
+## Daily API budget (after deploy)
+
+The browse budget for UTC day 2026-11-06 ran out at 15:16 UTC (23:16 Ulaanbaatar); new searches
+returned 429 until 00:00 UTC. The homepage and product pages kept showing snapshots. The official
+store directory had no fallback and returned 503; it now keeps each shop's last previews (up to a
+day old), like the homepage departments.
+
+Estimated provider calls from the access log (Nov 5–6, requests up to 20:08 Ulaanbaatar), counting
+distinct cache keys per refresh window:
+
+| Source | Nov 5 | Nov 6 | Why it spends |
+|---|---|---|---|
+| Homepage / deals mixed feed | ~144 | ~168 | every scrolled page is six department searches, refreshed hourly |
+| Product details | ~185 | ~140 | a view older than 5 min refreshes in the background |
+| Category (department) searches | ~76 | ~41 | up to three 20-item provider pages per 50-item site page |
+| Keyword searches, recommendations | ~15 | ~28 | one per new query |
+
+No bots of note (13 crawler requests on Nov 6); the busiest IP made 21% of requests. Possible
+savings: refresh displayed product details after 30 min instead of 5 (checkout still re-checks), and
+let homepage pages after the first few refresh less often.
+
 ## Not changed (need an owner decision)
 
 - **Per-IP limits** (30/min, 120/h on uncached supplier reads): 46 November 429s, 41 from one IP. Mongolian mobile carriers share IPs (CGNAT), so busy periods may block real shoppers.
