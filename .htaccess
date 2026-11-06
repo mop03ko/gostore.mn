@@ -42,7 +42,9 @@ RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
 RewriteRule ^warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$ warehouse/index.html [L]
 # iOS and some crawlers ask for these fixed root paths.
 RewriteRule ^apple-touch-icon(?:-precomposed)?\.png$ assets/apple-touch-icon.png [L]
-RewriteRule ^v/(?:tb-)?[0-9]{5,20}/?$ index.html [L]
+# Product pages: index.html with the product name and photo in the link-preview tags. No QSA, so a
+# visitor's own ?id= cannot replace the path's ID; the page script reads location.search itself.
+RewriteRule ^v/((?:tb-)?[0-9]{5,20})/?$ api/product-page.php?id=$1 [L]
 RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 RewriteRule ^account(?:/[a-z]{1,20})?/?$ index.html [L]
 RewriteRule ^(?:cart|help)/?$ index.html [L]

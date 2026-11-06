@@ -9,6 +9,12 @@ const seed=spawnSync('tmp/tooling/php/php.exe',[...phpArgs,'tests/taoworld-store
  await page.goto(base+'/?q=home%20storage');await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length>=50);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
  assert.ok(await page.locator('[data-image-search]').first().isVisible());assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/?image='+fixture.image);await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===2);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
+ // Link previews: crawlers read the product's name and photo without running JavaScript.
+ const share=await (await fetch(base+'/v/'+fixture.id+'?id=tb-1&brand=x')).text(),tag=p=>share.match(new RegExp('<meta property="'+p+'" content="([^"]*)"'))?.[1];
+ assert.equal(tag('og:title'),'English storage box 0');assert.equal(tag('og:type'),'product');assert.equal(tag('og:url'),'https://gostore.mn/v/'+fixture.id);
+ assert.match(tag('og:image'),/^https:\/\/img\.alicdn\.com\/.+_800x800q80\.jpg$/);assert.ok(!share.includes('og:image:width'),'Logo card size tags are removed with the photo');
+ assert.ok(share.includes('<title>English storage box 0 · GOStore</title>')&&share.includes('<link rel="canonical" href="https://gostore.mn/v/'+fixture.id+'">'));
+ const unknown=await (await fetch(base+'/v/tb-99999999')).text();assert.ok(unknown.includes('<meta property="og:title" content="Gostore.mn — Сонголт нэг дор.">')&&unknown.includes('id="home-hub"'),'Unknown products keep the site preview');
  await page.goto(base+'/v/'+fixture.id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);
  // Seller rating from search, short facts instead of the attribute table, mixed recommendations below.
  assert.equal(await page.locator('.pd-rating').getAttribute('aria-label'),'Дэлгүүрийн үнэлгээ 4.7 / 5');assert.equal(await page.locator('.pd-stars i.on').count(),4);assert.equal(await page.locator('.pd-stars i.half').count(),1);
