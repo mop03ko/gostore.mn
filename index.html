@@ -6,8 +6,15 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
+    // GTM's start event, queued now so its page-view triggers fire and keep the real start time.
+    dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});
+    // Tag scripts (GTM, gtag.js and Meta Pixel, about 400 KB) load 1.2 s after the load event so they
+    // do not compete with product images on slow connections. Earlier gtag()/fbq() calls stay queued.
+    window.gostoreLoadTag = src => addEventListener('load', () => setTimeout(() => {
+      const s = document.createElement('script'); s.async = true; s.src = src; document.head.append(s);
+    }, 1200), {once: true});
+    gostoreLoadTag('https://www.googletagmanager.com/gtm.js?id=GTM-K4VZDWH3');
   </script>
-  <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-K4VZDWH3"></script>
   <script>
   // Homepage sections filled after first paint get their space from the start (no layout shift):
   // discovery (home-route) and, 1–11 November in Ulaanbaatar time, the 11.11 banner and section.
@@ -64,9 +71,7 @@
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
     if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    n.queue=[];gostoreLoadTag(v)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', '1649469149899328');
     fbq('track', 'PageView');
@@ -75,9 +80,7 @@
   <!-- Google tag (gtag.js) -->
   <script>
     gtag('config', 'G-WLC1E39628');
-    // The 178 KB tag loads after the page so it does not compete with product images on slow
-    // connections; gtag() calls made earlier stay queued in dataLayer and are sent when it arrives.
-    addEventListener('load',()=>setTimeout(()=>{const s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=G-WLC1E39628';document.head.append(s);},1200),{once:true});
+    gostoreLoadTag('https://www.googletagmanager.com/gtag/js?id=G-WLC1E39628');
   </script>
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
