@@ -43,6 +43,23 @@
   if(!document.documentElement.matches(".product-view,.official-stores-view,.account-view,.store-page-view")){const l=document.createElement("link");l.rel="preload";l.as="image";l.href="/assets/hero-chair.webp?v=ddfc525a2a";l.fetchPriority="high";document.head.append(l);}
   </script>
   <meta name="facebook-domain-verification" content="ebt236r27oijorkmps2m2pz9vkr4t7" />
+  <!-- Meta Pixel: public ID only; access tokens must never be placed in HTML. -->
+  <script>
+  (() => {
+    if (window.gostoreMetaPixelLoaded) return;
+    window.gostoreMetaPixelLoaded = true;
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1649469149899328');
+    fbq('track', 'PageView');
+  })();
+  </script>
   <!-- Google tag (gtag.js) -->
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -58,12 +75,13 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=66167f977a76">
-  <script src="/app.js?v=a1c540a179d4" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=741d1044b5b5" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261104-discount">
   <script src="/eleven-sale.js?v=20261104-all-discount" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"></head>
 <body>
+  <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1649469149899328&amp;ev=PageView&amp;noscript=1"></noscript>
   <a class="skip-link" href="#main">Үндсэн хэсэг рүү очих</a>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
