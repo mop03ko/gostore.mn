@@ -19,7 +19,7 @@ function updateWarehouseEntry(){
 }
 function entryAccepts(sessionLocation){
   if(!fixedWarehouse||sessionLocation===fixedWarehouse)return true;
-  entrySessionMismatch=true;$('#app').hidden=true;$('#login-screen').hidden=false;language(fixedWarehouse);updateWarehouseEntry();return false;
+  entrySessionMismatch=true;loggedOut();language(fixedWarehouse);updateWarehouseEntry();return false;
 }
 const cityRole=()=>warehouseDirectory.find(w=>w.location===city)?.role||'erenhot';
 function setWarehouseDirectory(rows){if(!rows)return;const previous=$('#login-location').value;warehouseDirectory=rows;$('#login-location').innerHTML=rows.map(w=>`<option value="${esc(w.location)}">${esc(warehouseText[locale][w.location]||w.name)}</option>`).join('');if(rows.some(w=>w.location===previous))$('#login-location').value=previous;}

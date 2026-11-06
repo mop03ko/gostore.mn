@@ -22,6 +22,14 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   const request=page.waitForRequest(r=>r.url().includes('action=warehouse-login'));
   await login('erenhot');assert.equal((await request).postDataJSON().location,'erenhot');
   await page.reload();await page.locator('#app').waitFor({state:'visible'});
+  await page.locator('#scan-code').fill('GS-TEST-010');await page.locator('#scan-form button').click();await page.locator('#editor').waitFor({state:'visible'});
+  // Another tab changes the browser's warehouse session while a detail dialog is open.
+  let session=await (await context.request.get(base+'/api/index.php?action=warehouse-session')).json();
+  await context.request.post(base+'/api/index.php?action=warehouse-logout',{headers:{'X-CSRF-Token':session.csrf},data:{}});
+  session=await (await context.request.get(base+'/api/index.php?action=warehouse-session')).json();
+  const changed=await context.request.post(base+'/api/index.php?action=warehouse-login',{headers:{'X-CSRF-Token':session.csrf},data:{location:'ulaanbaatar',email:'ulaanbaatar@example.test',password:'Warehouse-ui-test-2026'}});assert.ok(changed.ok());
+  await page.evaluate(()=>refresh());await page.locator('#editor').waitFor({state:'hidden'});assert.equal(await page.locator('#records').innerText(),'');assert.equal(await page.evaluate(()=>window.warehouseAuthState),false);
+  await page.locator('#warehouse-entry-switch').click();await page.waitForFunction(()=>!document.querySelector('#login-form button[type=submit]').disabled);await login('erenhot');
   await visit('/warehouse/ulaanbaatar/');assert.ok(await page.locator('#login-screen').isVisible());assert.equal(await page.locator('#app').isVisible(),false);assert.ok(await page.locator('#warehouse-entry-switch').isVisible());assert.ok(await page.locator('#login-form button[type=submit]').isDisabled());
   await page.locator('#warehouse-entry-switch').click();await page.waitForFunction(()=>!document.querySelector('#login-form button[type=submit]').disabled);
   await login('ulaanbaatar');assert.equal(await page.locator('html').getAttribute('lang'),'mn');

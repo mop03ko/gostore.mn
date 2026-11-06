@@ -70,6 +70,14 @@ and warehouse receiving but fails at its final settlement fixture with
 “Өмнө төлсөн дүнгээс бага байна” (settlement below amount already paid). This change
 does not alter settlement or tariff logic. Do not bypass that server validation.
 
+On 2026-11-07, both native iOS simulator builds completed successfully:
+
+- [GOStore Admin build](https://expo.dev/accounts/morozkonkts-team/projects/gostore-admin/builds/7411457b-d831-466e-a8d4-1a4cbd8e799d)
+- [GOStore UB Warehouse build](https://expo.dev/accounts/morozkonkts-team/projects/gostore-ub-warehouse/builds/9383c3e2-d3c8-4f27-8b43-269613009c1b)
+
+These builds are **not TestFlight releases**. Apple account reauthentication is
+still required for new-app signing, App Store Connect records and submission.
+
 Before accepting a device build, check on an iPhone: correct app identity, login,
 session restoration and logout; QR scanning; camera and library upload including
 permission denial; a print preview; external links; offline recovery; and switching
