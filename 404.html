@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Хуудас олдсонгүй · gostore.mn</title>
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<!-- Served by Apache's ErrorDocument for any missing path, so every URL here is absolute. -->
+<style>
+:root{--navy:#132344;--orange:#f16522;--muted:#5f6b7d;--line:#e6e9ef;--bg:#f6f8fb;--surface:#fff}
+@media (prefers-color-scheme:dark){:root{--navy:#eef1f7;--muted:#a7b0c0;--line:#2a3448;--bg:#0f1626;--surface:#172036}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;background:var(--bg);color:var(--navy);font-family:Arimo,Arial,Helvetica,sans-serif}
+main{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:36px 28px;text-align:center}
+.logo{display:inline-block;margin-bottom:28px}.logo img{width:170px;height:auto}
+.code{font-size:64px;font-weight:800;line-height:1;color:var(--orange);margin:0 0 12px}
+h1{font-size:22px;margin:0 0 10px}
+p{color:var(--muted);line-height:1.6;margin:0 0 24px}
+form{display:flex;gap:8px;margin-bottom:20px}
+input{flex:1;min-width:0;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;font-size:16px;background:var(--surface);color:var(--navy)}
+button,.button{min-height:46px;border:0;border-radius:12px;padding:0 18px;font:inherit;font-weight:700;cursor:pointer}
+button{background:var(--orange);color:#fff}
+nav{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.button{display:inline-flex;align-items:center;text-decoration:none;background:var(--bg);color:var(--navy);border:1px solid var(--line)}
+.button.primary{background:var(--navy);color:var(--surface);border-color:var(--navy)}
+</style>
+</head>
+<body>
+<main>
+  <a class="logo" href="/" aria-label="gostore.mn нүүр хуудас"><picture><source srcset="/assets/logo-white.svg" media="(prefers-color-scheme: dark)"><img src="/assets/logo.svg" alt="Gostore.mn" width="200" height="35"></picture></a>
+  <p class="code" aria-hidden="true">404</p>
+  <h1>Хуудас олдсонгүй</h1>
+  <p>Энэ холбоос буруу эсвэл бараа худалдаанаас гарсан байна. Хайлтаар эсвэл нүүр хуудаснаас үргэлжлүүлээрэй.</p>
+  <form action="/" method="get" role="search"><label class="sr-only" for="q" hidden>Бараа хайх</label><input id="q" name="q" type="search" placeholder="Бараа хайх…" enterkeyhint="search" aria-label="Бараа хайх"><button type="submit">Хайх</button></form>
+  <nav aria-label="Холбоосууд"><a class="button primary" href="/">Нүүр хуудас</a><a class="button" href="/official-stores">Албан ёсны дэлгүүрүүд</a><a class="button" href="/help">Тусламж</a></nav>
+</main>
+</body>
+</html>

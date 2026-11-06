@@ -1,0 +1,9 @@
+# The product pages render with JavaScript and the public catalog API, so /api/ stays crawlable.
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /warehouse/
+Disallow: /account
+Disallow: /cart
+
+Sitemap: https://gostore.mn/sitemap.xml
