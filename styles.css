@@ -480,3 +480,10 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 /* Conditional coupon savings keep their qualifier visible on narrow cards. */
 .supplier-discount-badge-coupon{flex-direction:column;gap:2px;background:#6240a4}
 .supplier-discount-badge-coupon small{font-size:10px;font-weight:600;line-height:1.2;color:#fff}
+/* GOStore messages in the bell and the account notifications list */
+.customer-message-body,.account-message span{white-space:pre-line;overflow-wrap:anywhere}
+.account-notices .account-message{display:grid;gap:4px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--theme-surface,#fff)}
+.account-notices .unread .account-message{border-color:var(--blue);background:var(--theme-surface,#f6f8ff)}
+.account-message a{color:var(--blue);font-weight:700;justify-self:start}
+.account-promo-push{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;font-size:14px;line-height:1.4;cursor:pointer}
+.account-promo-push input{width:18px;height:18px;margin:1px 0 0;flex:none}

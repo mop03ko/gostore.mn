@@ -127,3 +127,13 @@ export type Notice = {
   created: string;
   read_at: string | null;
 };
+// Admin-written GOStore message (service notice or promotion); links are gostore.mn paths.
+export type CustomerMessage = {
+  id: number;
+  kind: "service" | "promo";
+  title: string;
+  body: string;
+  link: string;
+  created: string;
+  read_at: string | null;
+};

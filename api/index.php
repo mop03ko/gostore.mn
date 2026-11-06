@@ -53,7 +53,7 @@ try {
         }
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
     }
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||in_array($action,['reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
@@ -69,6 +69,7 @@ try {
         if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
         admin_required();
+        if($action==='admin-messages')json_out(customer_messages_admin());
         if($action==='admin-order'){
             $o=order_row(str_field($_GET,'id',50))['order'];
             $o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
@@ -130,6 +131,9 @@ try {
     if($action==='supplier-search')json_out(supplier_search($b));
     if($action==='supplier-product')json_out(supplier_detail(str_field($b,'id',50)));
     if($action==='shipping-calculate'){admin_required();json_out(['quote'=>shipping_calculate($b)]);}
+    // Preview is a POST so a customer's phone number never lands in URLs or access logs.
+    if($action==='admin-message-preview'){admin_required();json_out(customer_message_preview($b));}
+    if($action==='admin-message-send'){admin_required();json_out(customer_message_send($b),201);}
     if($action==='shipping-save'){admin_required();json_out(['shipping'=>shipping_save($b)]);}
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') {

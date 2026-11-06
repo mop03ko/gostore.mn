@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/product-reviews.php';
 require_once __DIR__.'/phone-auth.php';
 require_once __DIR__.'/customer-push.php';
+require_once __DIR__.'/customer-messages.php';
 
 function current_customer(): ?array {
     if (empty($_SESSION['customer_id'])) return null;
@@ -120,8 +121,11 @@ function customer_get(string $action): never {
     if($action==='customer-products')json_out(['products'=>customer_products($c)]);
     if($action==='customer-notifications'){
         $s=db()->prepare('SELECT n.* FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? ORDER BY n.id DESC LIMIT 100');$s->execute([$c['id']]);
-        $count=db()->prepare('SELECT COUNT(*) FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? AND n.read_at IS NULL');$count->execute([$c['id']]);json_out(['notifications'=>$s->fetchAll(),'unread'=>(int)$count->fetchColumn()]);
+        $count=db()->prepare('SELECT COUNT(*) FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? AND n.read_at IS NULL');$count->execute([$c['id']]);
+        // Admin messages travel in their own fields so older app builds keep reading order notices only.
+        $m=customer_messages_list($c['id']);json_out(['notifications'=>$s->fetchAll(),'unread'=>(int)$count->fetchColumn(),'messages'=>$m['messages'],'messages_unread'=>$m['unread']]);
     }
+    if($action==='customer-message-settings')json_out(customer_message_settings($c['id']));
     if($action==='customer-orders'){
         $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>100000]]);
         if($offset===false)fail('Хуудасны дугаар буруу.');
@@ -157,8 +161,9 @@ function customer_post(string $action,array $b): never {
     $c=customer_required();
     if($action==='customer-push-register')json_out(customer_push_register($c,$b));
     if($action==='customer-push-unregister')json_out(customer_push_unregister($c,$b));
+    if($action==='customer-message-settings-save')json_out(customer_message_settings_save($c['id'],$b));
     if($action==='customer-delete'){
-        customer_push_schema();
+        customer_push_schema();customer_messages_schema();
         limit_attempts('customer-delete:'.$c['id'],5,900);
         $record=pin_auth_record($c['id']);
         $valid=isset($b['pin'])?($record&&pin_auth_check($record['phone'],pin_auth_value($b),$record)):password_verify(customer_password($b,'password'),$c['password_hash']);
@@ -172,6 +177,7 @@ function customer_post(string $action,array $b): never {
             if($s->rowCount()!==1)fail('Дахин нэвтэрч оролдоно уу.',401);
             reviews_delete_customer($c['id']);
             $db->prepare('DELETE FROM customer_push_devices WHERE customer_id=?')->execute([$c['id']]);
+            customer_messages_delete_customer($c['id']);
             $db->prepare('DELETE FROM customer_phone_auth WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_addresses WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_state WHERE customer_id=?')->execute([$c['id']]);
@@ -180,7 +186,8 @@ function customer_post(string $action,array $b): never {
         $_SESSION=[];session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
     }
     if($action==='customer-notifications-read'){
-        $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);json_out(['ok'=>true]);
+        $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);
+        if(isset($b['messages_through_id']))customer_messages_read($c['id'],int_field($b,'messages_through_id',0,PHP_INT_MAX));json_out(['ok'=>true]);
     }
     if($action==='customer-state-save')json_out(customer_state_save($c,$b));
     if($action==='customer-address-save'){limit_attempts('customer-address:'.$c['id'],60,3600);json_out(['addresses'=>customer_address_save($c,$b)]);}
