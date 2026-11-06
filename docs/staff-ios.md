@@ -83,12 +83,24 @@ App Store builds completed on 2026-11-07:
 | Admin | 1.0.0 (3) | `6831708168` | `18fc5dcc-fff8-47cd-9d28-1b1a0c88be0e` |
 | UB Warehouse | 1.0.0 (2) | `6831710242` | `9333d34c-2c70-4f4a-91f7-0d43dc33addc` |
 
-Both have been queued for upload through EAS Submit. Submission IDs are
+Both uploads and Apple processing completed successfully. Submission IDs are
 `c5e27fdb-642d-4752-b3d6-e831b29db9fa` (Admin) and
-`afb0dd1f-813f-4114-84a0-b28265c53db9` (Warehouse). At the latest check they were
-`IN_QUEUE`; Apple processing and installability have not yet been verified.
-Private tester groups have been created and the owner-specified tester has been
-assigned to each. The warehouse group is external and requires Beta App Review.
+`afb0dd1f-813f-4114-84a0-b28265c53db9` (Warehouse), both `FINISHED`. Apple returned
+`VALID` for both builds, with no upload errors or warnings. Minimum iOS is 16.4.
+
+- [Admin TestFlight](https://appstoreconnect.apple.com/apps/6831708168/testflight/ios):
+  build `1dcc54e0-fcaf-43f9-89aa-c1048938fa47` is `IN_BETA_TESTING`, assigned to
+  the private **GOStore Admin Team** group. The owner-specified Admin tester is
+  `INVITED`. Installation on a physical device has not yet been verified.
+- [Warehouse TestFlight](https://appstoreconnect.apple.com/apps/6831710242/testflight/ios):
+  build `625af063-586c-4f82-85a9-058ce4587282` is assigned to the private
+  **Ulaanbaatar Warehouse Managers** external group. Beta review submission
+  succeeded and is `WAITING_FOR_REVIEW` / `WAITING_FOR_BETA_REVIEW`. Its specified
+  tester remains `NOT_INVITED` pending review. Automatic tester notification is
+  enabled; the build is not yet installable by the external tester.
+
+The owner approved the Arvis Trans business contact and demo instructions saved
+in Apple's review fields. No App Store publication was requested or performed.
 
 ## Isolated warehouse demo
 
@@ -112,6 +124,8 @@ receipt/sort/completion flow, reset behavior, no production API traffic, CSP
 blocking of independent XHR, and normal warehouse entry behavior. A separate
 read-only live check verified six sample orders, batch lookup and zero API
 requests in a fresh mobile-sized browser.
+The warehouse photo authorization and barcode UI regression suites also passed.
+Live deployment backup: `/gostore-backups/staff-demo-20261107-8e3bc88dce`.
 
 Before accepting a device build, check on an iPhone: correct app identity, login,
 session restoration and logout; QR scanning; camera and library upload including
