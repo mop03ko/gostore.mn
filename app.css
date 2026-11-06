@@ -686,6 +686,9 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
  .store-cart-bar{bottom:calc(68px + env(safe-area-inset-bottom));padding-bottom:8px}
  .store-cart-filled .pending-pay{bottom:calc(152px + env(safe-area-inset-bottom))}
 }
+/* Store, account and brand pages render after the site data loads. Keeping #main one viewport tall
+   holds the footer below the fold meanwhile, so the arriving content does not push it (layout shift). */
+:is(.store-page-view,.account-view,.brand-page-view,.official-stores-view) #main{min-height:100vh;min-height:100svh}
 /* ==== order-tracking.css ==== */
 .order-tracking{border:1px solid var(--theme-border,#e0e6f0);border-radius:14px;padding:18px;margin:18px 0;background:var(--theme-surface,#fff);color:var(--theme-text,#132344);overflow-wrap:anywhere}
 .order-tracking .tracking-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;font-size:11px;line-height:18px;color:var(--theme-muted,#566580)}
@@ -771,6 +774,14 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 .discovery-product{position:relative}
 
 .discovery-fishing-links{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}.discovery-fishing-links a{text-decoration:none}
+
+/* index.html pre-renders an empty #discovery-home on the homepage. Its usual height (it varies with
+   text wrapping by width) is reserved until discovery.js fills it, so the catalog does not jump. */
+#discovery-home:empty{display:none}
+.home-route #discovery-home:empty{display:block;min-height:445px}
+@media(max-width:1023px){.home-route #discovery-home:empty{min-height:470px}}
+@media(max-width:760px){.home-route #discovery-home:empty{min-height:486px}}
+@media(max-width:340px){.home-route #discovery-home:empty{min-height:532px}}
 /* ==== theme.css ==== */
 /* Light styles retain their existing fallback colors. Only the dark palette
    defines these semantic tokens, so choosing Light restores the original design. */

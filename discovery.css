@@ -9,3 +9,11 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 .discovery-product{position:relative}
 
 .discovery-fishing-links{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}.discovery-fishing-links a{text-decoration:none}
+
+/* index.html pre-renders an empty #discovery-home on the homepage. Its usual height (it varies with
+   text wrapping by width) is reserved until discovery.js fills it, so the catalog does not jump. */
+#discovery-home:empty{display:none}
+.home-route #discovery-home:empty{display:block;min-height:445px}
+@media(max-width:1023px){.home-route #discovery-home:empty{min-height:470px}}
+@media(max-width:760px){.home-route #discovery-home:empty{min-height:486px}}
+@media(max-width:340px){.home-route #discovery-home:empty{min-height:532px}}

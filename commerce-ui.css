@@ -74,3 +74,6 @@
  .store-cart-bar{bottom:calc(68px + env(safe-area-inset-bottom));padding-bottom:8px}
  .store-cart-filled .pending-pay{bottom:calc(152px + env(safe-area-inset-bottom))}
 }
+/* Store, account and brand pages render after the site data loads. Keeping #main one viewport tall
+   holds the footer below the fold meanwhile, so the arriving content does not push it (layout shift). */
+:is(.store-page-view,.account-view,.brand-page-view,.official-stores-view) #main{min-height:100vh;min-height:100svh}

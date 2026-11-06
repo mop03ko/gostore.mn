@@ -8,6 +8,11 @@
     gtag('js', new Date());
   </script>
   <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-K4VZDWH3"></script>
+  <script>
+  // Homepage sections filled after first paint get their space from the start (no layout shift):
+  // discovery (home-route) and, 1–11 November in Ulaanbaatar time, the 11.11 banner and section.
+  (()=>{try{const d=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ulaanbaatar",month:"2-digit",day:"2-digit"}).formatToParts(new Date()),m=d.find(p=>p.type==="month").value,day=Number(d.find(p=>p.type==="day").value);const home=/^\/(?:index\.html)?$/.test(location.pathname);document.documentElement.classList.toggle("home-route",home);document.documentElement.classList.toggle("eleven-active",home&&m==="11"&&day<=11);}catch{}})();
+  </script>
   <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
   <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
@@ -77,11 +82,11 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="/app.css?v=cb9a28a91831">
-  <script src="/app.js?v=ce8773aca10d" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app.css?v=402ab3b3edb7">
+  <script src="/app.js?v=9b1bb95b9ae9" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
-  <link rel="stylesheet" href="/eleven-sale.css?v=20261104-discount">
-  <script src="/eleven-sale.js?v=20261104-all-discount" defer></script>
+  <link rel="stylesheet" href="/eleven-sale.css?v=20261107-cls">
+  <script src="/eleven-sale.js?v=20261107-cls" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"></head>
 <body>
   <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1649469149899328&amp;ev=PageView&amp;noscript=1"></noscript>
@@ -143,6 +148,8 @@
         <p class="hub-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>QPay-ээр төлнө. Каргог бараа Улаанбаатарт ирэхэд бодит жингээр тооцно.</p>
       </aside>
     </section>
+    <section id="eleven-sale" class="eleven-sale page-width" aria-labelledby="eleven-sale-title"></section>
+    <section id="discovery-home" class="discovery-home page-width" aria-label="Барааны сонголтууд"></section>
     <section hidden class="container section official-stores-section" id="official-stores" aria-labelledby="official-stores-title"><div class="section-heading"><h2 id="official-stores-title">Албан ёсны дэлгүүрүүд</h2><a class="text-button" href="/official-stores">Дэлгүүрүүдийг үзэх →</a></div><p class="official-stores-note">API-аар бараа ирж буй баталгаажсан дэлгүүрүүд.</p><div data-official-stores-list aria-live="polite">Дэлгүүрүүдийг ачаалж байна…</div></section>
     <div class="container preview-notice"><svg class="icon"><use href="#i-shield"/></svg><p><strong>Сагслаад шууд худалдан авна.</strong> Барааны үнэд олон улсын карго ороогүй. Каргог бараа Улаанбаатарт ирэхэд бодит жингээр нь тооцно.</p></div>
     
