@@ -40,6 +40,7 @@ export default function Root() {
         <Stack.Screen name="reviews/[id]" options={{ title: "Үнэлгээ, сэтгэгдэл" }} />
         <Stack.Screen name="addresses" options={{ title: "Миний хаягууд" }} />
         <Stack.Screen name="notifications" options={{ title: "Мэдэгдэл" }} />
+        <Stack.Screen name="orders" options={{ title: "Миний захиалгууд" }} />
         <Stack.Screen
           name="delete-account"
           options={{ title: "Бүртгэл устгах" }}

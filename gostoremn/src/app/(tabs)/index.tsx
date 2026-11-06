@@ -1,4 +1,3 @@
-import { ProductDiscountBadge, ProductOffers } from "@/components/product-offers";
 import { usePalette } from "@/lib/palette";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -8,30 +7,25 @@ import {
   View,
   useWindowDimensions,
   TextInput,
-  Modal,
 } from "react-native";
-import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
-import { HomeDiscovery } from "@/components/discovery";
-import { api, catalog } from "@/lib/api";
+import { HomeDiscovery, DiscoveryCard } from "@/components/discovery";
+import { catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import { Button, Busy, Copy, ErrorBox, money } from "@/components/ui";
+import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
 type Results = {
   products: Product[];
   more: boolean;
   revalidate?: boolean;
   stale?: boolean;
 };
-function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; initialPhoto?: boolean }) {
+function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initialImage?: string }) {
   const colors = usePalette();
   const inset = useSafeAreaInsets();
-  const [photoMenu, setPhotoMenu] = useState(initialPhoto);
-  const [searchMode, setSearchMode] = useState(!!initialQuery);
+  const [searchMode, setSearchMode] = useState(!!initialQuery || !!initialImage);
   const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
     { width } = useWindowDimensions(),
@@ -39,15 +33,14 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
   const [draft, setDraft] = useState(initialQuery),
     [query, setQuery] = useState(initialQuery || "__all__"),
     [sort, setSort] = useState("default"),
-    [image, setImage] = useState(""),
+    [image, setImage] = useState(initialImage),
     [page, setPage] = useState(1),
     [items, setItems] = useState<Product[]>([]),
     [more, setMore] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [stale, setStale] = useState(false),
-    [retry, setRetry] = useState(0),
-    [uploading, setUploading] = useState(false);
+    [retry, setRetry] = useState(0);
   const generation = useRef(0),
     list = useRef<FlatList<Product>>(null);
   useEffect(() => {
@@ -122,56 +115,6 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
     setRetry((x) => x + 1);
     list.current?.scrollToOffset({ offset: 0, animated: true });
   };
-  async function photo(camera: boolean) {
-    setUploading(true);
-    setError("");
-    try {
-      if (
-        camera &&
-        !(await ImagePicker.requestCameraPermissionsAsync()).granted
-      )
-        throw Error("Камер ашиглах зөвшөөрөл шаардлагатай.");
-      const result = await (
-        camera
-          ? ImagePicker.launchCameraAsync
-          : ImagePicker.launchImageLibraryAsync
-      )({ mediaTypes: ["images"], quality: 0.8 });
-      if (result.canceled) return;
-      const asset = result.assets[0],
-        resized = await manipulateAsync(
-          asset.uri,
-          [
-            {
-              resize:
-                asset.width >= asset.height ? { width: 800 } : { height: 800 },
-            },
-          ],
-          { compress: 0.8, format: SaveFormat.JPEG },
-        );
-      const form = new FormData();
-      if (process.env.EXPO_OS === "web") {
-        const blob = await (await fetch(resized.uri)).blob();
-        form.append("image", blob, "search.jpg");
-      } else
-        form.append("image", {
-          uri: resized.uri,
-          type: "image/jpeg",
-          name: "search.jpg",
-        } as unknown as Blob);
-      const r = await api<{ image: string }>("supplier-image-upload", form);
-      setPage(1);
-      setItems([]);
-      setImage(r.image);
-      setSearchMode(true);
-      list.current?.scrollToOffset({ offset: 0, animated: true });
-      setRetry((x) => x + 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setUploading(false);
-    }
-  }
-
   const nextPage = () => {
     if (!busy && more && !error && !nextPageLock.current) {
       nextPageLock.current = true;
@@ -208,9 +151,9 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               {searchMode ? "Хайлтын үр дүн" : "Танд зориулсан"}
             </Text>
             <IconButton
-              name="message"
-              label="Захиалгын мэдэгдлүүд"
-              onPress={() => router.push("/notifications")}
+              name="help"
+              label="Тусламж"
+              onPress={() => router.push("/help")}
             />
           </View>
         </View>
@@ -248,14 +191,13 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
             <IconButton
               name="camera"
               label="Зургаар хайх"
-              onPress={() => setPhotoMenu(true)}
+              onPress={() => router.navigate("/search")}
             />
           )}
           {searchMode && <IconButton name="close" label="Нүүр хуудас руу буцах" onPress={() => search("")} />}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Хайх"
-            disabled={uploading}
             onPress={() => search(draft)}
             style={{
               backgroundColor: colors.orange,
@@ -290,6 +232,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
             </View>}
+            {!searchMode && <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy, padding: 5 }}>Танд таалагдаж магадгүй</Text>}
             <View
               style={{
                 flexDirection: "row",
@@ -335,10 +278,9 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
               <Button
                 title="Зурагт хайлтыг цэвэрлэх"
                 secondary
-                onPress={() => search("storage box")}
+                onPress={() => search("")}
               />
             )}
-            {uploading && <Busy />}
             {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}
             <ErrorBox
               message={bootError}
@@ -348,56 +290,7 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           </View>
         }
         renderItem={({ item: p }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={p.name}
-            onPress={() =>
-              router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.brand_id ? { brand: p.brand_id } : {}) } })
-            }
-            style={{
-              flex: 1,
-              maxWidth: columns === 4 ? "25%" : "50%",
-              backgroundColor: colors.surface,
-              borderRadius: 11,
-              overflow: "hidden",
-            }}
-          >
-            <Image
-              source={p.image || undefined}
-              contentFit="cover"
-              recyclingKey={p.id}
-              transition={160}
-              style={{ width: "100%", aspectRatio: 1 }}
-            />
-            <ProductDiscountBadge product={p} amount={p.mnt || p.approx_mnt} />
-            <View style={{ padding: 9, gap: 5 }}>
-              <Text
-                numberOfLines={2}
-                style={{
-                  fontSize: 13,
-                  lineHeight: 18,
-                  color: colors.ink,
-                  minHeight: 36,
-                }}
-              >
-                {p.name}
-              </Text>
-              <Text
-                selectable
-                style={{ fontWeight: "800", fontSize: 21, color: colors.accentText }}
-              >
-                {p.mnt
-                  ? money(p.mnt)
-                  : p.approx_mnt
-                    ? "≈ " + money(p.approx_mnt)
-                    : "Үнэ шалгах"}
-              </Text>
-              <ProductOffers product={p} amount={p.mnt || p.approx_mnt} />
-              <Text style={{ fontSize: 10, color: colors.muted }}>
-                Хүргэлт тусдаа · Хувилбар сонгох
-              </Text>
-            </View>
-          </Pressable>
+          <View style={{ flex: 1, maxWidth: columns === 4 ? "25%" : "50%" }}><DiscoveryCard product={p} /></View>
         )}
         ListFooterComponent={
           <View style={{ paddingVertical: 12, gap: 8 }}>
@@ -416,67 +309,12 @@ function Shop({ initialQuery, initialPhoto = false }: { initialQuery: string; in
           </View>
         }
       />
-      <Modal
-        visible={photoMenu}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPhotoMenu(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            backgroundColor: "#00000055",
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Зурагт хайлтыг хаах"
-            onPress={() => setPhotoMenu(false)}
-            style={{ flex: 1 }}
-          />
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              padding: 20,
-              paddingBottom: Math.max(inset.bottom, 16) + 16,
-              borderTopLeftRadius: 22,
-              borderTopRightRadius: 22,
-              gap: 12,
-            }}
-          >
-            <Text style={{ color: colors.ink, fontSize: 19, fontWeight: "700" }}>
-              Зургаар хайх
-            </Text>
-            <Copy>Таалагдсан барааныхаа зургийг сонгоорой.</Copy>
-            <Button
-              title="Зургийн сангаас сонгох"
-              onPress={() => {
-                setPhotoMenu(false);
-                void photo(false);
-              }}
-            />
-            <Button
-              title="Камер"
-              secondary
-              onPress={() => {
-                setPhotoMenu(false);
-                void photo(true);
-              }}
-            />
-            <Button
-              title="Хаах"
-              secondary
-              onPress={() => setPhotoMenu(false)}
-            />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 export default function ShopRoute() {
-  const { q, photo } = useLocalSearchParams<{ q?: string; photo?: string }>();
+  const { q, image } = useLocalSearchParams<{ q?: string; image?: string }>();
   const query = typeof q === "string" ? q : "";
-  return <Shop key={query + (photo || "")} initialQuery={query} initialPhoto={photo === "1"} />;
+  const token = typeof image === "string" ? image : "";
+  return <Shop key={query + token} initialQuery={query} initialImage={token} />;
 }

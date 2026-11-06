@@ -1,7 +1,7 @@
 import { usePalette, type Palette } from "@/lib/palette";
 import { useCallback, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
@@ -9,12 +9,12 @@ import { statusName, dateText, matchesOrderFilter, orderFilters, type OrderFilte
 import { Page, Button, Busy, ErrorBox, money } from "@/components/ui";
 import { Icon, IconButton } from "@/components/shop-ui";
 import { EmptyState } from "@/components/account-ui";
-function Orders() {
+function Orders({ initialFilter }: { initialFilter: OrderFilter }) {
   const colors = usePalette();
   const styles = createStyles(colors);
   const { customer, ready, error: bootError, refresh } = useStore();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<OrderFilter>("all");
+  const [filter, setFilter] = useState<OrderFilter>(initialFilter);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -81,7 +81,12 @@ function Orders() {
     {more && <Text style={styles.footnote}>Шүүлтүүр нь одоогоор ачаалсан захиалгуудад үйлчилнэ.</Text>}
   </Page>;
 }
-export default function OrdersRoute() { const { customer } = useStore(); return <Orders key={customer?.id || "guest"} />; }
+export default function OrdersRoute() {
+  const { customer } = useStore();
+  const { filter } = useLocalSearchParams<{ filter?: string }>();
+  const initialFilter = orderFilters.find(f => f.key === filter)?.key || "all";
+  return <Orders key={(customer?.id || "guest") + initialFilter} initialFilter={initialFilter} />;
+}
 const createStyles = (colors: Palette) => StyleSheet.create({
   summary: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: colors.accentSurface, borderRadius: 20 },
   summaryIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, borderRadius: 16 },

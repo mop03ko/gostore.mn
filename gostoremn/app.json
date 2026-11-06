@@ -43,6 +43,15 @@
       ],
       "expo-secure-store",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Барааны зураг авч төстэй барааг хайхын тулд камер ашиглана.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Барааг зургаар хайх болон сэтгэгдэлд хавсаргахын тулд таны сонгосон зургийг ашиглана.",

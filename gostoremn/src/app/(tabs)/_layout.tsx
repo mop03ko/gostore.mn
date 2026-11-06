@@ -36,22 +36,24 @@ export default function TabLayout() {
         name="categories"
         options={{
           title: "Ангилал",
+          headerShown: false,
           tabBarLabel: "Ангилал",
           tabBarIcon: ({ color }) => <Icon name="grid" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="search"
         options={{
-          title: "Миний захиалгууд",
-          tabBarLabel: "Захиалга",
-          tabBarIcon: ({ color }) => <Icon name="box" color={color} />,
+          title: "Хайлт",
+          headerShown: false,
+          tabBarIcon: ({ color }) => <Icon name="camera" color={color} />,
         }}
       />
       <Tabs.Screen
         name="cart"
         options={{
           title: "Миний сагс",
+          headerShown: false,
           tabBarLabel: "Сагс",
           tabBarBadge: cart.length || undefined,
           tabBarIcon: ({ color }) => <Icon name="cart" color={color} />,
@@ -60,8 +62,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: "Профайл",
-          tabBarLabel: "Профайл",
+          title: "Миний",
+          headerShown: false,
           tabBarIcon: ({ color }) => <Icon name="user" color={color} />,
         }}
       />

@@ -53,7 +53,7 @@ function ElevenSale() {
   const colors = usePalette();
   const [now, setNow] = useState(() => Date.now());
   const [data, setData] = useState<Product[] | null>(null);
-  const [error, setError] = useState(false), [retry, setRetry] = useState(0);
+  const [error, setError] = useState(false);
   const active = elevenSaleActive(now);
   useEffect(() => {
     // Clock checks do not request the API; resume also removes offers that expired in the background.
@@ -74,10 +74,11 @@ function ElevenSale() {
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => clearTimeout(timer));
     return () => { cancelled = true; clearTimeout(timer); controller.abort(); };
-  }, [active, retry]);
+  }, [active]);
   if (!active) return null;
   const products = elevenSaleProducts(data || [], now);
-  return <View testID="eleven-sale" style={{ padding: 12, gap: 12, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}>
+  if (error || (data && !products.length)) return null;
+  return <View testID="eleven-sale" style={{ padding: 12, gap: 12, borderRadius: 18, backgroundColor: colors.accentSurface, borderWidth: 1, borderColor: colors.line }}>
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
       <Text style={{ color: colors.orange, fontSize: 42, fontWeight: "900", letterSpacing: -2 }}>11.11</Text>
       <View style={{ flex: 1, gap: 3 }}>
@@ -85,15 +86,11 @@ function ElevenSale() {
         <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 19, fontWeight: "800" }}>Хямдрал, купонтой бараа</Text>
       </View>
     </View>
-    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Нийлүүлэгчийн одоогийн саналууд. Купон, урамшуулал нь нөхцөлтэй; бүх бараа албан ёсны 11.11 аянд хамрагдсан гэсэн үг биш. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</Text>
+    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Нийлүүлэгчийн хямдрал, купон · Нөхцөл болон эцсийн үнийг захиалах үед шалгана.</Text>
     {!data && !error && <View accessibilityLabel="11.11 хямдрал ачаалж байна"><Busy /></View>}
-    {error ? <View style={{ gap: 6 }}>
-      <Text accessibilityLiveRegion="polite" style={{ color: colors.muted }}>Хямдралын мэдээлэл түр боломжгүй байна.</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="11.11 хямдралыг дахин ачаалах" onPress={() => { setError(false); setRetry(n => n + 1); }} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.accentText, fontWeight: "700" }}>Дахин ачаалах</Text></Pressable>
-    </View> : data && !products.length ? <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, lineHeight: 20 }}>Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй.</Text> : null}
-    {!error && <View testID="eleven-sale-grid" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
-      {products.map(p => <View key={p.id} testID="eleven-sale-item" style={{ width: "48%", borderWidth: 1, borderColor: colors.line, borderRadius: 12, overflow: "hidden" }}><DiscoveryCard product={p} /></View>)}
-    </View>}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="eleven-sale-grid" contentContainerStyle={{ gap: 10 }}>
+      {products.map(p => <View key={p.id} testID="eleven-sale-item" style={{ width: 152 }}><DiscoveryCard product={p} /></View>)}
+    </ScrollView>
   </View>;
 }
 function DealsShelf() {
@@ -126,15 +123,26 @@ export function HomeDiscovery({ onSearch }: { onSearch: (q: string) => void }) {
   const [tab, setTab] = useState("explore");
   const channels = [["explore", "Танд зориулсан"], ["deals", "Хямдрал"], ["free", "0¥ хүргэлт"], ["fashion", "Хувцас"], ["home", "Гэр ахуй"], ["tech", "Технологи"]];
   return <View style={{ gap: 14 }}>
-    <ElevenSale />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 18 }}>
       {channels.map(([id, label]) => <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: tab === id }} onPress={() => setTab(id)} style={[s.tab, tab === id && { borderBottomColor: colors.orange }]}><Text style={{ fontSize: 15, fontWeight: "700", color: id === "free" ? colors.success : tab === id ? colors.ink : colors.muted }}>{label}</Text></Pressable>)}
     </ScrollView>
     {tab === "deals" ? <DealsShelf /> : tab !== "explore" ? <DiscoveryShelf key={tab} free={tab === "free"} query={tab === "fashion" ? "women clothing" : tab === "tech" ? "electronics" : "home storage"} /> : <>
-      <View style={{ flexDirection: "row", gap: 8 }}>{[{ q: "women clothing", title: "Өөрийн хэв маяг", photo: "women" }, { q: "home storage", title: "Тухтай гэр", photo: "home" }].map(c => <Pressable key={c.q} onPress={() => onSearch(c.q)} accessibilityRole="button" style={s.collection}><Text style={s.heading}>{c.title}</Text><Text style={s.note}>Сонголтоо нээгээрэй ›</Text><CategoryPhoto image={categories.find(x => x.id === c.photo)?.image || ""} size={100} /></Pressable>)}</View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}>
+        {[{ id: "home", title: "Тухтай гэр", sub: "Өдөр тутмыг хялбар болгоё" }, { id: "women", title: "Өөрийн хэв маяг", sub: "Шинэ сонголтоо олоорой" }, { id: "tech", title: "Ухаалаг хэрэглээ", sub: "Танд хэрэгтэй технологи" }].map((c, n) => {
+          const category = categories.find(x => x.id === c.id) || categories[n];
+          return <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={c.title} onPress={() => onSearch(category.query)} style={[s.collection, { backgroundColor: n % 2 ? colors.accentSurface : colors.subtle }]}>
+            <Text style={s.heading}>{c.title} ↗</Text><Text style={s.note}>{c.sub}</Text>
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <CategoryPhoto image={category.image} size={132} />
+              <View style={{ gap: 8 }}>{category.children.slice(0, 2).map(t => <CategoryPhoto key={t.query} image={t.image} size={62} />)}</View>
+            </View>
+          </Pressable>;
+        })}
+      </ScrollView>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
         {categories.slice(0, 12).map(c => <Pressable key={c.id} accessibilityRole="button" accessibilityLabel={c.name} onPress={() => onSearch(c.query)} style={{ width: 72, alignItems: "center", gap: 6 }}><CategoryPhoto image={c.image} /><Text numberOfLines={2} style={{ fontSize: 11, textAlign: "center", color: colors.ink }}>{c.name}</Text></Pressable>)}
       </ScrollView>
+      <ElevenSale />
       <Pressable onPress={() => setTab("free")} accessibilityRole="button" accessibilityLabel="Үнэгүй хүргэлттэй бараа харах" style={s.freeBanner}><Icon name="truck" size={28} color={colors.success} /><View style={{ flex: 1, gap: 3 }}><Text style={{ fontWeight: "800", color: colors.success }}>Хятад дотор 0¥ хүргэлт</Text><Text style={s.note}>Эрээн хүртэл · Монголын тээвэр тусдаа</Text></View><Icon name="chevron" size={16} /></Pressable>
     </>}
   </View>;
@@ -142,7 +150,7 @@ export function HomeDiscovery({ onSearch }: { onSearch: (q: string) => void }) {
 const createStyles = (colors: Palette) => StyleSheet.create({
   heading: { fontSize: 17, fontWeight: "800", color: colors.ink }, note: { fontSize: 12, lineHeight: 18, color: colors.muted },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
-  card: { borderRadius: 12, overflow: "hidden", backgroundColor: colors.surface }, name: { fontSize: 12, lineHeight: 17, minHeight: 34, color: colors.ink }, price: { fontSize: 17, fontWeight: "800", color: colors.accentText },
+  card: { borderRadius: 12, overflow: "hidden", backgroundColor: colors.surface }, name: { fontSize: 13, lineHeight: 18, minHeight: 36, color: colors.ink }, price: { fontSize: 19, fontWeight: "800", color: colors.accentText },
   empty: { padding: 16, borderRadius: 12, backgroundColor: colors.subtle }, tab: { minHeight: 44, justifyContent: "center", borderBottomWidth: 3, borderBottomColor: "transparent" },
-  collection: { flex: 1, backgroundColor: colors.subtle, borderRadius: 16, padding: 12, gap: 8, alignItems: "center" }, freeBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, backgroundColor: colors.successSurface, borderRadius: 14 },
+  collection: { width: 238, backgroundColor: colors.subtle, borderRadius: 18, padding: 14, gap: 8 }, freeBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, backgroundColor: colors.successSurface, borderRadius: 14 },
 });
