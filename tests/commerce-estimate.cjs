@@ -25,7 +25,7 @@ const {spawnSync}=require('node:child_process');
 const policy=spawnSync('tmp/tooling/php/php.exe',['-r',"require 'server/cargo-tariff.php'; echo json_encode(cargo_tariff_policy());"],{encoding:'utf8'});assert.equal(policy.status,0,policy.stderr);
 const freight={cny_rate:550,cargo_tariff:JSON.parse(policy.stdout)};
 for(const c of require('./cargo-tariff-cases.json'))assert.equal(ui.cargoEstimate('volume',{weight:c.w,measure:c.v},freight).amount,c.amount);
-q=ui.cargoEstimate('dimensions',{weight:2,length:50,width:40,height:30,packages:2},freight);assert.equal(q.measure,.12);assert.equal(q.amount,5000);
+q=ui.cargoEstimate('dimensions',{weight:2,length:50,width:40,height:30,packages:2},freight);assert.equal(q.measure,.12);assert.equal(q.amount,4000);
 assert.equal(ui.cargoEstimate('dimensions',{weight:.5,length:.1,width:.1,height:.1,packages:1},freight).amount,1000);
 for(const bad of [0,-1,NaN,Infinity,'abc'])assert.equal(ui.cargoEstimate('volume',{weight:bad,measure:1},freight),null);
 for(const packages of [0,1.5,10001])assert.equal(ui.cargoEstimate('dimensions',{weight:1,length:10,width:10,height:10,packages},freight),null);

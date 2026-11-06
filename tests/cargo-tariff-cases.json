@@ -17,29 +17,50 @@
     "w": 0.501,
     "v": 0.01,
     "category": "small",
-    "basis": "weight",
-    "amount": 1253
+    "basis": "light",
+    "amount": 1000
   },
   {
     "w": 1,
     "v": 0.1,
     "category": "small",
+    "basis": "light",
+    "amount": 1000
+  },
+  {
+    "w": 1.001,
+    "v": 0.1,
+    "category": "small",
     "basis": "weight",
-    "amount": 2500
+    "amount": 2002
+  },
+  {
+    "w": 1.0001,
+    "v": 0.1,
+    "category": "small",
+    "basis": "weight",
+    "amount": 2001
+  },
+  {
+    "w": 1.5,
+    "v": 0.1,
+    "category": "small",
+    "basis": "weight",
+    "amount": 3000
   },
   {
     "w": 2,
     "v": 1,
     "category": "small",
     "basis": "weight",
-    "amount": 5000
+    "amount": 4000
   },
   {
     "w": 69.999,
     "v": 1,
     "category": "small",
     "basis": "weight",
-    "amount": 174998
+    "amount": 139998
   },
   {
     "w": 70,

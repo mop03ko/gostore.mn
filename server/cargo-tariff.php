@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// Owner-approved Erenhot -> Ulaanbaatar tariff, 2026-11-04. Historical invoices are not migrated.
+// Owner-approved Erenhot -> Ulaanbaatar tariff, 2026-11-06. Historical invoices are not migrated.
 function cargo_tariff_policy(): array {
-    return ['version'=>2,'small_weight_limit_kg'=>70,'small_volume_limit_m3'=>1,'light_limit_kg'=>0.5,'light_mnt'=>1000,'small_per_kg_mnt'=>2500,'large_per_m3_cny'=>390,'large_per_tonne_cny'=>1300];
+    return ['version'=>2,'small_weight_limit_kg'=>70,'small_volume_limit_m3'=>1,'light_limit_kg'=>1,'light_mnt'=>1000,'small_per_kg_mnt'=>2000,'large_per_m3_cny'=>390,'large_per_tonne_cny'=>1300];
 }
 function cargo_tariff_calculate(float $weight,float $volume,array $rates): array {
     if(!is_finite($weight)||$weight<0.001||$weight>10000||!is_finite($volume)||$volume<=0||$volume>1000)fail('Нийт жин болон эзлэхүүнийг зөв оруулна уу.',400);
