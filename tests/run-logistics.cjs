@@ -4,7 +4,7 @@ const args=['-d','extension_dir='+path.join(root,'tmp/tooling/php/ext'),'-d','ex
 async function run(test){
   const data=path.join(root,'tmp/warehouse-test-'+crypto.randomBytes(8).toString('hex'));fs.mkdirSync(data,{recursive:true});
   const hash=spawnSync(php,[],{cwd:root,input:"<?php $b=json_decode(file_get_contents('tmp/admin-preview.json'),true);echo password_hash($b['password'],PASSWORD_BCRYPT);",encoding:'utf8'});if(hash.status!==0)throw Error('Test credential setup failed');
-  const env={...process.env,GOSTORE_DATA_DIR:data,GOSTORE_DISABLE_QPAY:'1',GOSTORE_DISABLE_SUPPLIER_NETWORK:'1',GOSTORE_ADMIN_HASH:hash.stdout.trim(),GOSTORE_LOCAL_PRODUCTS_ENABLED:['api','customers','audit'].includes(test)?'1':'0'};
+  const env={...process.env,GOSTORE_DATA_DIR:data,GOSTORE_PIN_PEPPER:'a'.repeat(64),GOSTORE_DISABLE_QPAY:'1',GOSTORE_DISABLE_SUPPLIER_NETWORK:'1',GOSTORE_ADMIN_HASH:hash.stdout.trim(),GOSTORE_LOCAL_PRODUCTS_ENABLED:['api','customers','audit'].includes(test)?'1':'0'};
   const seed=spawnSync(php,[...args,'tests/warehouse-fixtures.php'],{cwd:root,env,encoding:'utf8'});if(seed.status)throw Error(seed.stderr||seed.stdout);
   require('./supplier-fixture.cjs').seedSupplier(data);
   const socket=net.createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));

@@ -1,11 +1,61 @@
 {
-  "cli": { "version": ">= 18.0.0", "appVersionSource": "remote" },
-  "build": {
-    "preview": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } },
-    "simulator": { "extends": "preview", "ios": { "simulator": true } },
-    "screenshots": { "extends": "simulator", "config": "build-store-screenshots.yml", "env": { "GOSTORE_CAPTURE_SCREENSHOTS": "1" } },
-    "screenshots-capture": { "extends": "simulator", "config": "capture-existing-ios.yml", "env": { "GOSTORE_CAPTURE_SCREENSHOTS": "1", "GOSTORE_SIMULATOR_ARCHIVE_URL": "https://expo.dev/artifacts/eas/Y0g-MtQ9dae2-VzJT4VXxA35sswfQmsKgSnfGPcRIF8.tar.gz" } },
-    "production": { "autoIncrement": true, "env": { "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn" } }
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
   },
-  "submit": { "production": { "ios": { "ascAppId": "6828991827" }, "android": { "track": "internal", "releaseStatus": "draft" } } }
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn"
+      },
+      "channel": "preview",
+      "autoIncrement": true
+    },
+    "simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      },
+      "channel": "simulator"
+    },
+    "screenshots": {
+      "extends": "simulator",
+      "config": "build-store-screenshots.yml",
+      "env": {
+        "GOSTORE_CAPTURE_SCREENSHOTS": "1"
+      },
+      "channel": "screenshots"
+    },
+    "screenshots-capture": {
+      "extends": "simulator",
+      "config": "capture-existing-ios.yml",
+      "env": {
+        "GOSTORE_CAPTURE_SCREENSHOTS": "1",
+        "GOSTORE_SIMULATOR_ARCHIVE_URL": "https://expo.dev/artifacts/eas/Y0g-MtQ9dae2-VzJT4VXxA35sswfQmsKgSnfGPcRIF8.tar.gz"
+      },
+      "channel": "screenshots-capture"
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_ORIGIN": "https://gostore.mn"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6828991827"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
 }

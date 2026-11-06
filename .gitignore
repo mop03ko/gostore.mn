@@ -19,3 +19,5 @@ assets/uploads/*
 
 /verifymn.txt
 /server/verify-mn.env
+
+/server/pin-auth.env

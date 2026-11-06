@@ -23,6 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "mn.gostore.app",
       "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -64,6 +65,12 @@
         "projectId": "e080a821-71c8-481b-9ece-642bf7793d95"
       }
     },
-    "owner": "morozkonkts-team"
+    "owner": "morozkonkts-team",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e080a821-71c8-481b-9ece-642bf7793d95"
+    }
   }
 }

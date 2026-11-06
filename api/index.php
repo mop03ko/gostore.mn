@@ -101,6 +101,9 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if($action==='customer-pin-login')json_out(pin_auth_login($b));
+    if($action==='customer-pin-setup')json_out(pin_auth_setup($b));
+    if($action==='customer-pin-change')json_out(pin_auth_change($b));
     if($action==='phone-verification-start')json_out(verify_mn_start($b));
     if($action==='phone-verification-status')json_out(verify_mn_status($b));
     if(in_array($action,['review-delete','review-report','review-block','review-unblock-all'],true))json_out(reviews_post($action,$b));

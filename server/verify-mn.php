@@ -31,6 +31,9 @@ function verify_mn_expiry($value): int {
     return $at;
 }
 function verify_mn_start(array $b): array {
+    $purpose=$b['purpose']??'verify';if(!in_array($purpose,['verify','register','reset','link'],true))fail('Баталгаажуулалтын төрөл буруу.');
+    if($purpose==='link')customer_required();
+    if($purpose!=='verify')pin_auth_secret();
     verify_mn_key();$phone=verify_mn_phone(str_field($b,'phone',30));
     limit_attempts('verify-phone-ip:'.($_SERVER['REMOTE_ADDR']??''),10,3600);
     limit_attempts('verify-phone-number:'.$phone,5,3600);
@@ -41,7 +44,7 @@ function verify_mn_start(array $b): array {
     $id=$r['sessionId']??null;$expires=verify_mn_expiry($r['expiresAt']??null);
     if(!is_string($id)||!preg_match('/^[A-Za-z0-9_-]{1,200}$/D',$id)||($r['shortcode']??null)!=='144773'||($r['text']??null)!==$text||verify_mn_phone((string)($r['phone']??''))!==$phone||!is_string($r['displayInstruction']??null)||trim($r['displayInstruction'])===''||strlen($r['displayInstruction'])>4000||$expires<=time()||$expires>time()+310)fail('Баталгаажуулалтын хариу буруу байна.',503);
     $expires=min($expires,time()+300);$challenge=bin2hex(random_bytes(24));
-    $_SESSION['phone_verification']=['challenge'=>$challenge,'session_id'=>$id,'phone'=>$phone,'expires'=>$expires,'status'=>'PENDING','checked'=>0,'customer'=>$_SESSION['customer_id']??null];
+    $_SESSION['phone_verification']=['challenge'=>$challenge,'session_id'=>$id,'phone'=>$phone,'expires'=>$expires,'status'=>'PENDING','checked'=>0,'purpose'=>$purpose,'auth_version'=>$_SESSION['customer_version']??null,'customer'=>$_SESSION['customer_id']??null];
     // Build an equivalent URI from validated fields instead of accepting an arbitrary provider URL.
     return ['challenge'=>$challenge,'phone'=>$phone,'shortcode'=>'144773','text'=>$text,'smsUri'=>'sms:144773?body='.rawurlencode($text),'displayInstruction'=>$r['displayInstruction'],'expiresAt'=>gmdate('c',$expires),'remainingSeconds'=>max(0,$expires-time())];
 }

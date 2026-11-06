@@ -43,7 +43,7 @@ function Account() {
     {customer ? <View style={styles.hero}>
       <View style={styles.identity}>
         <View style={styles.avatar}><Text style={styles.initial}>{(customer.name.trim()[0] || "G").toUpperCase()}</Text></View>
-        <View style={{ flex: 1, gap: 5 }}><Text style={styles.name}>{customer.name}</Text><Text style={styles.email}>{customer.email}</Text></View>
+        <View style={{ flex: 1, gap: 5 }}><Text style={styles.name}>{customer.name}</Text><Text style={styles.email}>{customer.login_phone || customer.email}</Text></View>
         <Pressable onPress={() => toggle("profile")} accessibilityRole="button" accessibilityLabel="Хувийн мэдээлэл засах" style={styles.edit}><Icon name="settings" color={colors.accentText} /></Pressable>
       </View>
       <View style={styles.shortcuts}>
@@ -68,12 +68,23 @@ function Account() {
         <MenuRow icon="user" title="Хувийн мэдээлэл" subtitle="Нэр, утасны дугаараа шинэчлэх" expanded={panel === "profile"} onPress={() => toggle("profile")} />
         {panel === "profile" && <View style={styles.form}>
           <Field label="Нэр" value={name ?? customer.name} onChangeText={setName} autoComplete="name" />
-          <Field label="Утас" value={phone ?? customer.phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" />
+          <Field label="Утас" value={phone ?? customer.phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" editable={!customer.pin_enabled} />
           <Button title={busy ? "Хадгалж байна…" : "Өөрчлөлт хадгалах"} disabled={busy || !(name ?? customer.name).trim()}
             onPress={() => void save("customer-profile", { name: (name ?? customer.name).trim(), phone: phone ?? customer.phone })} />
         </View>}
         <View style={styles.divider} />
-        <MenuRow icon="shield" title="Нууц үг ба аюулгүй байдал" subtitle="Нэвтрэх нууц үгээ солих" expanded={panel === "password"} onPress={() => toggle("password")} />
+        <MenuRow icon="shield" title={customer.pin_enabled ? "Нэвтрэх утсаа солих" : "Утас, PIN холбох"} subtitle="SMS-ээр дугаараа баталгаажуулах" onPress={() => router.push({pathname:"/login",params:{mode:"link",next:"/account",phone:customer.phone}})} />
+        {customer.pin_enabled && <>
+          <MenuRow icon="shield" title="PIN код солих" expanded={panel === "password"} onPress={() => toggle("password")} />
+          {panel === "password" && <View style={styles.form}>
+            <Field label="Одоогийн PIN" value={old} onChangeText={v=>setOld(v.replace(/[^0-9]/g,"").slice(0,4))} secureTextEntry keyboardType="number-pad" maxLength={4}/>
+            <Field label="Шинэ PIN" value={password} onChangeText={v=>setPassword(v.replace(/[^0-9]/g,"").slice(0,4))} secureTextEntry keyboardType="number-pad" maxLength={4}/>
+            <Field label="PIN давтах" value={confirm} onChangeText={v=>setConfirm(v.replace(/[^0-9]/g,"").slice(0,4))} secureTextEntry keyboardType="number-pad" maxLength={4}/>
+            <Button title="PIN шинэчлэх" disabled={busy || old.length!==4 || password.length!==4 || password!==confirm} onPress={()=>void save("customer-pin-change",{current_pin:old,pin:password,pin_confirm:confirm})}/>
+            <Button title="PIN мартсан — SMS-ээр сэргээх" secondary onPress={()=>router.push({pathname:"/login",params:{mode:"reset",phone:customer.login_phone,next:"/account"}})}/>
+          </View>}
+        </>}
+        {!customer.pin_enabled && <><MenuRow icon="shield" title="Нууц үг ба аюулгүй байдал" subtitle="Нэвтрэх нууц үгээ солих" expanded={panel === "password"} onPress={() => toggle("password")} />
         {panel === "password" && <View style={styles.form}>
           <Field label="Одоогийн нууц үг" value={old} onChangeText={setOld} secureTextEntry autoCapitalize="none" autoComplete="current-password" />
           <Field label="Шинэ нууц үг" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" />
@@ -82,7 +93,7 @@ function Account() {
           {!!confirm && password !== confirm && <Text style={{ color: colors.danger, fontSize: 12 }}>Нууц үгүүд таарахгүй байна.</Text>}
           <Button title={busy ? "Шинэчилж байна…" : "Нууц үг шинэчлэх"} disabled={busy || !old || password.length < 10 || password !== confirm}
             onPress={() => void save("customer-password", { current_password: old, password, password_confirm: confirm })} />
-        </View>}
+        </View>}</>}
       </Card>
     </>}
     <Text style={styles.section}>Тусламж ба үйлчилгээ</Text>

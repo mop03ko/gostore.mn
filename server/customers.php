@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/product-reviews.php';
+require_once __DIR__.'/phone-auth.php';
 
 function current_customer(): ?array {
     if (empty($_SESSION['customer_id'])) return null;
@@ -13,10 +14,13 @@ function current_customer(): ?array {
 function customer_required(): array { $c=current_customer();if(!$c)fail('Бүртгэлээрээ нэвтэрнэ үү.',401);return $c; }
 function customer_public(?array $c): ?array {
     if(!$c)return null;
-    return array_intersect_key($c,array_flip(['id','email','name','phone','address','created']));
+    $public=array_intersect_key($c,array_flip(['id','email','name','phone','address','created']));
+    $record=pin_auth_record($c['id']);$public['pin_enabled']=$record!==null;$public['login_phone']=$record['phone']??'';
+    $public['email_login']=!str_ends_with($c['email'],'@phone.gostore.invalid');if(!$public['email_login'])$public['email']='';
+    return $public;
 }
 function customer_sign_in(array $c): void {
-    session_regenerate_id(true);$_SESSION['customer_id']=$c['id'];$_SESSION['customer_version']=(int)$c['auth_version'];$_SESSION['csrf']=bin2hex(random_bytes(32));
+    unset($_SESSION['phone_verified'],$_SESSION['phone_verification']);session_regenerate_id(true);$_SESSION['customer_id']=$c['id'];$_SESSION['customer_version']=(int)$c['auth_version'];$_SESSION['csrf']=bin2hex(random_bytes(32));
 }
 function customer_email(array $b): string {
     $email=strtolower(str_field($b,'email',200));if(!filter_var($email,FILTER_VALIDATE_EMAIL))fail('Имэйл хаягаа зөв оруулна уу.');return $email;
@@ -149,7 +153,9 @@ function customer_post(string $action,array $b): never {
     $c=customer_required();
     if($action==='customer-delete'){
         limit_attempts('customer-delete:'.$c['id'],5,900);
-        if(($b['confirmation']??'')!=='DELETE'||!password_verify(customer_password($b,'password'),$c['password_hash']))fail('Устгах баталгаажуулалт эсвэл нууц үг буруу.',400);
+        $record=pin_auth_record($c['id']);
+        $valid=isset($b['pin'])?($record&&pin_auth_check($record['phone'],pin_auth_value($b),$record)):password_verify(customer_password($b,'password'),$c['password_hash']);
+        if(($b['confirmation']??'')!=='DELETE'||!$valid)fail('Устгах баталгаажуулалт эсвэл нууц код буруу.',400);
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try{
             // Keep the order relationship for fulfilment/accounting, but remove the login and profile.
@@ -158,6 +164,7 @@ function customer_post(string $action,array $b): never {
             $s->execute(['deleted-'.bin2hex(random_bytes(16)).'@invalid.example','Deleted account','','',password_hash(bin2hex(random_bytes(32)),PASSWORD_BCRYPT),gmdate('c'),$c['id'],$c['auth_version']]);
             if($s->rowCount()!==1)fail('Дахин нэвтэрч оролдоно уу.',401);
             reviews_delete_customer($c['id']);
+            $db->prepare('DELETE FROM customer_phone_auth WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_addresses WHERE customer_id=?')->execute([$c['id']]);
             $db->prepare('DELETE FROM customer_state WHERE customer_id=?')->execute([$c['id']]);
             $db->exec('COMMIT');
@@ -173,6 +180,7 @@ function customer_post(string $action,array $b): never {
     if($action==='customer-profile'){
         // The account page edits addresses in the address book; older forms may still send one.
         $name=str_field($b,'name',100);$phone=customer_phone($b);$address=array_key_exists('address',$b)?str_field($b,'address',500,false):$c['address'];
+        $record=pin_auth_record($c['id']);if($record){if(verify_mn_phone($phone)!==$record['phone'])fail('Нэвтрэх утсаа солихын тулд SMS-ээр баталгаажуулна уу.',409);$phone=$record['phone'];}
         db()->prepare('UPDATE customers SET name=?,phone=?,address=?,updated=? WHERE id=?')->execute([$name,$phone,$address,gmdate('c'),$c['id']]);
         if($address!==$c['address']&&$address!=='')db()->prepare('UPDATE customer_addresses SET address=?,updated=? WHERE customer_id=? AND is_default=1')->execute([$address,gmdate('c'),$c['id']]);
         json_out(['customer'=>customer_public(current_customer())]);

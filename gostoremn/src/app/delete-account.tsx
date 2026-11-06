@@ -22,7 +22,7 @@ export default function DeleteAccount() {
     if (!customer) return;
     setBusy(true);
     try {
-      await api("customer-delete", { password, confirmation });
+      await api("customer-delete", { ...(customer.pin_enabled ? {pin:password} : {password}), confirmation });
       await AsyncStorage.multiRemove([
         "gostore-cart-" + customer.id,
         "gostore-pending-" + customer.id,
@@ -57,7 +57,9 @@ export default function DeleteAccount() {
           холбогдохгүй.
         </Copy>
         <Field
-          label="Одоогийн нууц үг"
+          label={customer?.pin_enabled ? "Одоогийн 4 оронтой PIN" : "Одоогийн нууц үг"}
+          keyboardType={customer?.pin_enabled ? "number-pad" : "default"}
+          maxLength={customer?.pin_enabled ? 4 : 72}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
