@@ -1,6 +1,13 @@
 <!doctype html>
 <html lang="mn">
 <head>
+  <!-- Google Tag Manager: initialize the shared queue once before async loading. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  </script>
+  <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-K4VZDWH3"></script>
   <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
   <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
@@ -62,10 +69,6 @@
   </script>
   <!-- Google tag (gtag.js) -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
     gtag('config', 'G-WLC1E39628');
     // The 178 KB tag loads after the page so it does not compete with product images on slow
     // connections; gtag() calls made earlier stay queued in dataLayer and are sent when it arrives.
