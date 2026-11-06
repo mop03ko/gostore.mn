@@ -29,3 +29,13 @@ Expo Update is configured with preview/production channels and the fingerprint r
 - `npm run typecheck` and `npm run lint` in `gostoremn`.
 
 Physical Android/iPhone SMS testing is still required; browser fixtures do not establish carrier delivery or provider authorization. Production backend deployment and PIN secret provisioning were explicitly approved by the user on 2026-11-07 after automatic review requested confirmation. Backend activation precedes distribution of the new login UI.
+
+## Production rollout — 2026-11-07
+
+Backend deployment completed after explicit approval. Live checks confirmed verification enabled, invalid PIN login rejected, unverified setup rejected, and private configuration files denied over HTTP. No real SMS or customer account was created during these checks. Backup: `/gostore-backups/phone-pin-1793982908593`.
+
+- iOS 1.0.0 (14): [native build completed](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/builds/5a921ef3-5159-49db-98ff-41e2d1d82fa6). [Submission 826499c2](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/submissions/826499c2-b9d2-410a-92cd-26d0a2fb5e44) successfully uploaded the binary to App Store Connect. Apple processing was pending at upload completion; TestFlight availability is not yet independently confirmed.
+- iOS production update published: [group 10faceb1](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/updates/10faceb1-a6a0-477e-859e-2f3fe4a7f182), runtime `08e7b907d489920fedb909620bc1bc7fc1d222eb`, matching build 14.
+- Android 1.0.0 (7): [preview APK build](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/builds/bea052fb-7f33-4f9b-a332-00911b2d7e5c), runtime `39f08fbc9f739fc3f6796dd5eff2ac03c1d9c6fb`. This is internal testing, not a Google Play production release.
+
+Install the new native binary once. Then test registration → sending the SMS → returning to the app → creating a PIN → logout/login, plus SMS reset and existing-email linking, on physical devices. Opening the SMS composer is not successful verification.

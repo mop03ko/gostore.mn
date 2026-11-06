@@ -4,6 +4,8 @@ Source: `gostoremn/`. Expo SDK 58, Expo Router, React Native. EAS project: `@mor
 
 ## Implemented
 
+New mobile accounts use phone → verify.mn SMS confirmation → a four-digit PIN. Existing email accounts can still sign in and link a verified phone from their profile. PIN reset requires fresh SMS verification. See [Phone/PIN authentication and release notes](phone-pin-auth.md).
+
 Catalog, brand/category/price search, camera/gallery image search (when server-enabled), gallery/SKUs, customer-scoped persistent cart, registration/login, profile/password, addresses, in-app order notifications and account deletion. Guest selections merge on login without replacing existing customer quantities.
 
 The shopping layout follows the Taobao browsing pattern: persistent rounded search bar, two-row category shortcuts, two-column product feed, price sorting, dedicated category navigation, five bottom tabs, full-width gallery, SKU bottom sheet and persistent cart/order actions. GOStore naming, Mongolian UI, English catalog titles and the existing shipping/payment flow are retained. Campaign tiles open actual category searches; they do not advertise invented discounts, sales counts or shipping guarantees. Account profile/password fields expand from the customer dashboard.
@@ -18,7 +20,7 @@ Only `EXPO_PUBLIC_API_ORIGIN` is public configuration (default `https://gostore.
 
 Deploy in order: `server/mobile-session.php`, `server/bootstrap.php`, `server/customers.php`, `mobile-privacy.html`, `api/mobile.php`. Back up and compare existing live files before replacement. The new endpoint is enabled last; existing browser session behavior is preserved.
 
-Deletion removes login/profile/address-book/server-cart data and revokes sessions. Historical order/payment/fulfilment records and receiver information remain; active orders are not cancelled. The app explains this before password-confirmed deletion. Public privacy/deletion-request URL: `https://gostore.mn/mobile-privacy.html`.
+Deletion removes login/profile/address-book/server-cart data and revokes sessions. Historical order/payment/fulfilment records and receiver information remain; active orders are not cancelled. The app explains this before PIN-confirmed deletion (or password confirmation for legacy accounts). Public privacy/deletion-request URL: `https://gostore.mn/mobile-privacy.html`.
 
 ## Development and validation
 
