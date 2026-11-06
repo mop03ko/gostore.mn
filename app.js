@@ -484,6 +484,77 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
 document.addEventListener('submit',async e=>{const f=e.target;if(f.id!=='server-cart-form')return;e.preventDefault();const submit=f.querySelector('[type="submit"]');submit.disabled=true;try{if(!customerAccount.require())return;const fields=Object.fromEntries(new FormData(f));fields.type='cart';fields.items=state.cart.map(x=>({...x}));f.dataset.requestToken ||= Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');fields.token=f.dataset.requestToken;fields.require_account=true;const result=await shopApi('order-create',fields);const requests=savedRequests().filter(x=>x.id!==result.order.id);requests.unshift({id:result.order.id,token:fields.token,title:fields.title});try{if(!window.customerAccount?.user)localStorage.setItem(REQUESTS_KEY,JSON.stringify(requests.slice(0,100)));}catch{throw Error('Хүсэлт серверт ирсэн боловч хөтөч хадгалах боломжгүй. Захиалгын дугаар: '+result.order.id);}state.cart=[];persist();toast('Хүсэлт амжилттай илгээгдлээ');storeServer.orders();}catch(e){const error=f.querySelector('#request-error');if(error)error.textContent=e.message;}finally{submit.disabled=false;}});
 window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol))return;try{const result=await shopApi('catalog');if(!Array.isArray(result.products))return;localProductsEnabled=result.local_products_enabled===true;document.querySelectorAll('[data-filter="local"]').forEach(el=>el.hidden=true);products.splice(0,products.length,...result.products);Object.assign(state,readState());qpayEnabled=result.qpay;storeServer.shipping=result.shipping;document.querySelectorAll('[data-image-search]').forEach(el=>el.hidden=!(result.supplier===true&&result.shipping?.image_search_enabled===true));storeServer.customer=result.customer;window.customerAccount?.setUser(result.customer);storeServer.ready=true;helpContent.help.html='<p class="modal-intro">Бараагаа сонгоод сагслан, QPay-ээр шууд төлнө.</p><ol class="help-list"><li>Бараа, хувилбар, тоо ширхэгээ сонгоно.</li><li>Сагсандаа нэмээд «Төлбөр тооцох» дарна. Барааны үнэ, үйлчилгээний дүн шууд гарна.</li><li>QPay-ээр 24 цагийн дотор төлнө. Хятад доторх хүргэлт, олон улсын каргог Улаанбаатарт ирэхэд бодит дүнгээр тооцож төлнө.</li><li>Бараагаа Улаанбаатар дахь каргоны хаягаас авах кодоороо авна.</li></ol>'+pickupHtml()+'<div class="info-box">'+(qpayEnabled?'Үнийн санал баталгаажмагц QPay QR эсвэл банкны апп-аар төлнө.':'QPay холболт одоогоор идэвхгүй байна.')+' Жишээ бараагаар төлбөр авахгүй.</div>';renderProducts();updateCounts();$('#catalog .sample-label').textContent='QPay · Улаанбаатарт хүргэлт';$('.preview-notice').innerHTML=icon('shield')+'<div><strong>Сагслаад шууд худалдан авна.</strong> '+esc(commerceUI.paymentText(result.shipping))+'</div>';helpContent.privacy.html='<p class="detail-copy">Вэб сайт Google Analytics болон Meta Pixel ашиглан хуудасны хандалт, зар сурталчилгааны үр дүнг хэмжинэ. Хуудасны URL, хөтөч/төхөөрөмжийн мэдээлэл болон cookie танигчид эдгээр үйлчилгээнд дамжиж болно. Cookie болон tracking-ийг хөтөчийн тохиргоогоор хязгаарлаж болно.</p><p class="modal-intro">Сагс, хадгалсан бараа хөтөчид хадгалагдана. Нэвтэрсэн үед өөр төхөөрөмжөөс үргэлжлүүлэхийн тулд таны бүртгэлд мөн хадгалагдаж, бүртгэлээс гарахад энэ төхөөрөмжөөс цэвэрлэгдэнэ. Бүртгэлийн нэр, имэйл, утас, хүргэлтийн хаяг болон захиалга GOStore-ийн серверт хадгалагдана. Зургаар хайхад сонгосон зургийг TaoWorld-д дамжуулна; GOStore дээр хайлтын зургийг 7 хоног хүртэл хадгална. Профайлд нэвтрэх нууц үгийг hash хэлбэрээр хадгална. Нэвтэрсэн хэрэглэгч өөрийн захиалгыг, админ захиалгын хүргэлтийн мэдээллийг харна. Эрээн агуулахын менежер хүлээн авагчийн нэр, код, бараа болон багцыг харна. Улаанбаатар агуулахын менежер барааг ангилж хүлээлгэн өгөхдөө холбоо барих утас, хүргэлтийн хаягийг ашиглана.</p><p class="detail-copy">Бүртгэлтэй холбогдсон захиалгаа өөр төхөөрөмжөөс нэвтэрч харж болно. Зочны хүсэлтийн түлхүүр зөвхөн энэ хөтөчид хадгалагдана. Нууц үг, картын мэдээллийг тэмдэглэлд оруулахгүй.</p>';}catch{/* A static preview has no PHP endpoint. */}})();
 ;
+/* ==== phone-verification.js ==== */
+'use strict';
+(() => {
+  let active=null;
+  /** Resolves true only after our backend independently observes VERIFIED. */
+  window.verifyPhone=function verifyPhone(phone){
+    if(active)return Promise.resolve(false);
+    let finish;
+    const promise=new Promise(resolve=>{finish=resolve;});
+    active=promise;
+    const dialog=document.createElement('dialog');
+    dialog.className='phone-verification-dialog';
+    dialog.setAttribute('aria-labelledby','phone-verification-title');
+    dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><div data-sms hidden><p>Илгээх дугаар: <strong>144773</strong></p><p>SMS текст: <strong data-text></strong></p><a class="button blue" data-sms-link>SMS нээх</a><p>Энэ дугаартай SIM-ээс SMS-ээ өөрөө илгээнэ үү. Операторын SMS төлбөр үйлчилж болно.</p><p>Баталгаажуулахын тулд утасны дугаар verify.mn үйлчилгээнд дамжина.</p></div><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
+    document.body.append(dialog);dialog.showModal();
+    let done=false,timer,clock,deadline=Date.now()+300000,challenge;
+    const status=dialog.querySelector('[data-status]');
+    const end=value=>{if(done)return;done=true;clearTimeout(timer);clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
+    const cancel=()=>end(false);
+    dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
+    dialog.addEventListener('close',cancel);
+    dialog.querySelector('[data-cancel]').addEventListener('click',cancel);
+    window.addEventListener('pagehide',cancel);
+    clock=setInterval(()=>{
+      if(Date.now()>=deadline){window.toast?.('Баталгаажуулах хугацаа дууслаа. Дахин оролдоно уу.');end(false);return;}
+      dialog.querySelector('[data-time]').textContent=challenge?'Үлдсэн хугацаа: '+Math.ceil((deadline-Date.now())/1000)+' сек':'';
+    },250);
+    const poll=async()=>{
+      if(done)return;
+      try{
+        const r=await shopApi('phone-verification-status',{challenge});
+        if(done)return;
+        if(Date.now()>=deadline||r.sessionStatus==='EXPIRED'){end(false);return;}
+        if(r.sessionStatus==='VERIFIED'){end(true);return;}
+        if(r.sessionStatus!=='PENDING'){end(false);return;}
+        status.textContent='Таны SMS-ийг хүлээж байна…';
+      }catch{if(done)return;status.textContent='Холболтыг дахин шалгаж байна…';}
+      if(!done)timer=setTimeout(poll,3000);
+    };
+    (async()=>{
+      try{
+        const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
+        if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
+        if(done)return;
+        const r=await shopApi('phone-verification-start',{phone});
+        if(done)return;
+        if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||!/^sms:144773\?body=/.test(r.smsUri))throw Error('Баталгаажуулалт эхэлсэнгүй.');
+        challenge=r.challenge;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
+        dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
+        dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
+        dialog.querySelector('[data-text]').textContent=r.text;
+        dialog.querySelector('[data-sms-link]').href=r.smsUri;
+        dialog.querySelector('[data-sms]').hidden=false;
+        status.textContent='SMS нээгээд илгээх товчийг дарна уу.';
+        timer=setTimeout(poll,3000);
+      }catch(e){if(!done){window.toast?.(e.message||'Баталгаажуулалт эхэлсэнгүй.');end(false);}}
+    })();
+    return promise;
+  };
+  document.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-verify-phone]');if(!button)return;
+    const input=button.closest('form')?.querySelector('[name="phone"]');if(!input)return;
+    const phone=input.value;button.disabled=true;
+    try{const ok=await window.verifyPhone(phone);if(button.isConnected&&input.value===phone)button.textContent=ok?'Утас баталгаажлаа':'Утас баталгаажуулах';}
+    finally{button.disabled=false;}
+  });
+  document.addEventListener('input',e=>{
+    if(e.target.name==='phone'){const button=e.target.closest('form')?.querySelector('[data-verify-phone]');if(button)button.textContent='Утас баталгаажуулах';}
+  });
+})();
+;
 /* ==== account.js ==== */
 'use strict';
 window.customerAccount={user:window.storeServer.customer||null};
@@ -516,7 +587,7 @@ customerAccount.forCheckout=async resume=>{
 document.querySelector('#modal').addEventListener('close',()=>{checkoutResume=null;});
 function profileForm(mode='profile'){
   const user=customerAccount.user;if(!user)return accountForm();
-  openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email)}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs"><button class="button ${mode==='profile'?'blue':'outline'}" data-account-mode="profile">Профайл</button><button class="button ${mode==='password'?'blue':'outline'}" data-account-mode="password">Нууц үг</button></div>${mode==='password'?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Нууц үг солих</button></form>`:`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
+  openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email)}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs"><button class="button ${mode==='profile'?'blue':'outline'}" data-account-mode="profile">Профайл</button><button class="button ${mode==='password'?'blue':'outline'}" data-account-mode="password">Нууц үг</button></div>${mode==='password'?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Нууц үг солих</button></form>`:`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
 }
 customerAccount.open=async(mode)=>{
   // Signed-in customers get the full account page; the modal keeps login and registration.
@@ -1326,7 +1397,7 @@ window.productCompare=(()=>{
       if(section==='notifications'){const r=await shopApi('customer-notifications');if(section!==wanted)return;box.innerHTML=`<h2>${sections.notifications}</h2>`+(r.notifications.length?`<ol class="account-notices">${r.notifications.map(n=>`<li class="${n.read_at?'':'unread'}"><button type="button" data-server-order="${esc(n.order_id)}"><strong>${esc(n.order_id)}</strong><span>${esc(n.message)}</span><small>${new Date(n.created).toLocaleString('mn-MN')}</small></button></li>`).join('')}</ol>`:empty('Мэдэгдэл алга','Захиалгын явц өөрчлөгдөхөд энд мэдэгдэнэ.'));
         if(r.unread&&r.notifications.length)shopApi('customer-notifications-read',{through_id:Math.max(...r.notifications.map(n=>Number(n.id)))}).then(()=>window.refreshCargoNotifications?.()).catch(()=>{});return;}
       const u=customerAccount.user;
-      box.innerHTML=`<h2>${sections.profile}</h2><form id="account-profile-form" class="account-form account-card"><div class="form-grid"><label class="field">Таны нэр<input name="name" value="${esc(u.name)}" autocomplete="name" maxlength="100" required></label><label class="field">Утасны дугаар<input name="phone" value="${esc(u.phone)}" type="tel" autocomplete="tel" maxlength="25"></label><label class="field full">Имэйл<input value="${esc(u.email)}" disabled></label></div><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form><h3 class="account-subtitle">Нууц үг солих</h3><form id="account-password-form" class="account-form account-card"><div class="form-grid"><label class="field full">Одоогийн нууц үг<input name="current_password" type="password" autocomplete="current-password" maxlength="72" required></label><label class="field">Шинэ нууц үг<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label><label class="field">Шинэ нууц үг давтах<input name="password_confirm" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label></div><p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">Нууц үг солих</button></form>`;
+      box.innerHTML=`<h2>${sections.profile}</h2><form id="account-profile-form" class="account-form account-card"><div class="form-grid"><label class="field">Таны нэр<input name="name" value="${esc(u.name)}" autocomplete="name" maxlength="100" required></label><label class="field">Утасны дугаар<input name="phone" value="${esc(u.phone)}" type="tel" autocomplete="tel" maxlength="25"></label><label class="field full">Имэйл<input value="${esc(u.email)}" disabled></label></div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form><h3 class="account-subtitle">Нууц үг солих</h3><form id="account-password-form" class="account-form account-card"><div class="form-grid"><label class="field full">Одоогийн нууц үг<input name="current_password" type="password" autocomplete="current-password" maxlength="72" required></label><label class="field">Шинэ нууц үг<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label><label class="field">Шинэ нууц үг давтах<input name="password_confirm" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label></div><p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">Нууц үг солих</button></form>`;
     }catch(e){if(section!==wanted)return;box.innerHTML=`<h2>${esc(sections[section])}</h2><p class="form-error" role="alert">${esc(e.message)}</p><button class="button outline" data-account-section="${section}">Дахин оролдох</button>`;}
   }
   function renderOrders(){

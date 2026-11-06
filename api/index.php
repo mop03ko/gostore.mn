@@ -4,6 +4,8 @@ require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
+require __DIR__.'/../server/verify-mn-http.php';
+require __DIR__.'/../server/verify-mn.php';
 require_once __DIR__.'/../server/product-reviews.php';
 require __DIR__.'/../server/customer-state.php';
 require __DIR__.'/../server/shipping.php';
@@ -58,6 +60,7 @@ try {
     // Unpaid instant checkouts are released lazily (at most every five minutes).
     if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due();
     if ($method==='GET') {
+        if($action==='phone-verification-config')json_out(['enabled'=>verify_mn_environment()!=='','csrf'=>$_SESSION['csrf']]);
         if($warehouseAction)warehouse_get($action);
         if($action==='product-reviews')json_out(reviews_get());
         if($action==='review-photo')review_photo();
@@ -98,6 +101,8 @@ try {
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();
+    if($action==='phone-verification-start')json_out(verify_mn_start($b));
+    if($action==='phone-verification-status')json_out(verify_mn_status($b));
     if(in_array($action,['review-delete','review-report','review-block','review-unblock-all'],true))json_out(reviews_post($action,$b));
     if($action==='review-moderate')json_out(reviews_moderate($b));
     if(str_starts_with($action,'taoworld-'))tw_admin_post($action,$b);

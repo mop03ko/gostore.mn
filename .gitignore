@@ -16,3 +16,6 @@ server/taoworld.local.php
 .vscode/
 assets/uploads/*
 !assets/uploads/.htaccess
+
+/verifymn.txt
+/server/verify-mn.env

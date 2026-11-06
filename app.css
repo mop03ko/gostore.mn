@@ -804,3 +804,11 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 
 /* Translucent overlays keep their original opacity in both appearances. */
 :root[data-theme="dark"]{--theme-surface-af0:rgba(29,31,37,0.941);--theme-surface-ac2:rgba(29,31,37,0.761);--theme-text-a18:rgba(241,242,245,0.094);--theme-surface-af5:rgba(29,31,37,0.961);--theme-border-a90:rgba(60,65,76,0.565);--theme-surface-a12:rgba(29,31,37,0.071);--theme-surface-a25:rgba(29,31,37,0.145);--theme-border-aad:rgba(60,65,76,0.678);--theme-surface-ac9:rgba(29,31,37,0.788);--theme-border-a26:rgba(60,65,76,0.149);--theme-surface-a09:rgba(29,31,37,0.035);--theme-text-a08:rgba(241,242,245,0.031);--theme-surface-a88:rgba(29,31,37,0.533)}
+/* ==== phone-verification.css ==== */
+.phone-verification-dialog{width:min(440px,calc(100vw - 32px));max-height:85dvh;overflow:auto;padding:24px;border:1px solid #aeb3c2;border-radius:20px;background:var(--surface,#fff);color:var(--text,#172342)}
+.phone-verification-dialog::backdrop{background:rgb(0 0 0 / .55)}
+.phone-verification-dialog h2{font-size:22px;margin:0 0 16px}
+.phone-verification-dialog p{line-height:1.6;margin:12px 0;overflow-wrap:anywhere}
+.phone-verification-dialog [data-text]{user-select:all}
+.phone-verification-dialog [data-cancel]{margin-top:12px}
+html[data-theme="dark"] .phone-verification-dialog{background:#192135;color:#f5f6fa}
