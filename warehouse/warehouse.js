@@ -2,6 +2,25 @@
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let locale='zh',city='erenhot',csrf='',records=[],tab='orders',status='all',query='',offset=0,sequence=0,currentBatch=null,toastTimer;
 let warehouseDirectory=[{location:'erenhot',role:'erenhot',name:'Эрээн агуулах'},{location:'ulaanbaatar',role:'ulaanbaatar',name:'Улаанбаатар агуулах'}];
+const entryMatch=location.pathname.match(/^\/warehouse\/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})\/?$/);
+const fixedWarehouse=entryMatch?.[1]||'';
+const requestedCity=fixedWarehouse||new URLSearchParams(location.search).get('location');
+let entrySessionMismatch=false;
+function updateWarehouseEntry(){
+  const fixed=!!fixedWarehouse,known=warehouseDirectory.find(w=>w.location===fixedWarehouse),zh=known?.role==='erenhot';
+  $('#warehouse-entry').hidden=!fixed;$('#login-location-field').hidden=fixed;$('#login-location').disabled=fixed;
+  if(!fixed)return;
+  $('[data-i18n="loginIntro"]').textContent=zh?'请使用下方仓库的管理员账号登录。':'Доорх агуулахын менежерийн эрхээр нэвтэрнэ үү.';
+  $('#warehouse-entry-name').textContent=known?(warehouseText[zh?'zh':'mn'][known.location]||known.name):'Агуулах олдсонгүй';
+  $('#warehouse-entry-note').textContent=!known?'Энэ агуулах идэвхгүй эсвэл байхгүй байна.':entrySessionMismatch?(zh?'当前已登录其他仓库，请先退出后登录此仓库。':'Өөр агуулахын эрхээр нэвтэрсэн байна. Гараад энэ агуулахын эрхээр нэвтэрнэ үү.'):(zh?'请使用此仓库的管理员账号登录。':'Энэ агуулахын менежерийн эрхээр нэвтэрнэ үү.');
+  $('#warehouse-entry-general').textContent=zh?'选择其他仓库':'Бусад агуулах сонгох';
+  $('#warehouse-entry-switch').hidden=!entrySessionMismatch;$('#warehouse-entry-switch').textContent=zh?'退出并切换仓库':'Гараад энэ агуулахт нэвтрэх';
+  $('#login-form button[type="submit"]').disabled=!known||entrySessionMismatch;
+}
+function entryAccepts(sessionLocation){
+  if(!fixedWarehouse||sessionLocation===fixedWarehouse)return true;
+  entrySessionMismatch=true;$('#app').hidden=true;$('#login-screen').hidden=false;language(fixedWarehouse);updateWarehouseEntry();return false;
+}
 const cityRole=()=>warehouseDirectory.find(w=>w.location===city)?.role||'erenhot';
 function setWarehouseDirectory(rows){if(!rows)return;const previous=$('#login-location').value;warehouseDirectory=rows;$('#login-location').innerHTML=rows.map(w=>`<option value="${esc(w.location)}">${esc(warehouseText[locale][w.location]||w.name)}</option>`).join('');if(rows.some(w=>w.location===previous))$('#login-location').value=previous;}
 const selected=new Set();
@@ -15,6 +34,7 @@ function language(location){
   document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));document.querySelectorAll('[data-placeholder]').forEach(e=>e.placeholder=t(e.dataset.placeholder));
   $('#close-editor').setAttribute('aria-label',t('close'));$('#warehouse-title').textContent=t(city);$('#warehouse-city').textContent=t(city);document.title='GOStore · '+t(city);
   $('#login-location').value=city;if(cityRole()==='ulaanbaatar'){$('#overview-received-heading').textContent=t(city)+' · ирсэн';}$('#received-stat').dataset.status=cityRole()==='erenhot'?'erenhot':'pending_sort';$('#third-stat').dataset.status=cityRole()==='erenhot'?'erenhot_dispatched':'completed';$('#create-batch').hidden=cityRole()!=='erenhot';$('#ready-stat').hidden=cityRole()!=='erenhot';filters();
+  updateWarehouseEntry();
 }
 function filters(){
   const options=tab==='batches'?(cityRole()==='erenhot'?['all','draft','ready','dispatched','received','sorted','cancelled']:['all','dispatched','received','sorted']):(cityRole()==='erenhot'?['all','waiting','erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled']:['all','confirmed','shipping','erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud','waiting','pending_sort','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled']);
@@ -31,7 +51,7 @@ function orderCard(o){const eligible=cityRole()==='erenhot'&&o.status==='erenhot
 function batchCard(b){return `<article class="order-card"><div><button type="button" class="order-code order-code-link" data-batch="${esc(b.id)}">${esc(b.id)} →</button><h3>${b.order_count} ${t('orderCount')} · ${b.piece_count} ${t('pieces')}</h3><p>${esc(b.note)}</p><small>${date(b.created)}</small></div><div class="order-actions"><span class="tag ${b.status==='sorted'?'green':b.status==='received'?'yellow':''}">${esc(batchText(b.status))}</span><button class="quiet" data-batch="${esc(b.id)}">${t('details')}</button></div></article>`;}
 async function refresh(){
   const request=++sequence;$('#records').setAttribute('aria-busy','true');$('#list-error').textContent='';$('#refresh').disabled=true;filters();
-  try{const params=new URLSearchParams({q:query,status,offset:String(offset)}),data=await api('warehouse-'+tab+'&'+params);if(request!==sequence)return;if(data.location!==city)language(data.location);records=tab==='orders'?data.orders:data.batches;
+  try{const params=new URLSearchParams({q:query,status,offset:String(offset)}),data=await api('warehouse-'+tab+'&'+params);if(request!==sequence)return;if(!entryAccepts(data.location))return;if(data.location!==city)language(data.location);records=tab==='orders'?data.orders:data.batches;
     if(tab==='orders'){setCounts(data);$('#manager-email').textContent=data.email;}else{const summary=await api('warehouse-orders');if(request!==sequence)return;setCounts(summary);$('#manager-email').textContent=summary.email;}
     $('#records').innerHTML=records.length?records.map(tab==='orders'?orderCard:batchCard).join(''):`<div class="empty"><h3>${t('empty')}</h3><p>${t('emptyHint')}</p></div>`;$('#result-count').textContent=t('count',data.total);$('#previous').hidden=offset===0;$('#next').hidden=!data.more;$('#page-label').textContent=records.length?`${offset+1}–${offset+records.length} / ${data.total}`:'';$('#login-screen').hidden=true;$('#app').hidden=false;selectionBar();
   }catch(e){if(request===sequence){$('#list-error').textContent=e.message;if(!records.length)$('#records').replaceChildren();}throw e;}finally{if(request===sequence){$('#refresh').disabled=false;$('#records').setAttribute('aria-busy','false');}}
@@ -88,7 +108,8 @@ document.addEventListener('change',e=>{if(e.target.dataset.select){if(e.target.c
 $('#editor').addEventListener('close',()=>{currentBatch=null;});
 $('#login-location').addEventListener('change',e=>language(e.target.value));$('#close-editor').addEventListener('click',()=>$('#editor').close());$('#create-batch').addEventListener('click',()=>createBatch());$('#pack-selected').addEventListener('click',()=>createBatch([...selected]));
 $('#search-form').addEventListener('submit',e=>{e.preventDefault();query=$('#search').value.trim();status=$('#status-filter').value;offset=0;selected.clear();refresh().catch(e=>toast(e.message));});$('#status-filter').addEventListener('change',()=>$('#search-form').requestSubmit());$('#refresh').addEventListener('click',()=>refresh().catch(e=>toast(e.message)));$('#previous').addEventListener('click',()=>{offset=Math.max(0,offset-50);refresh().catch(e=>toast(e.message));});$('#next').addEventListener('click',()=>{offset+=50;refresh().catch(e=>toast(e.message));});
-$('#login-form').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,button=f.querySelector('button');button.disabled=true;$('#login-error').textContent='';try{await api('warehouse-session');const d=await api('warehouse-login',Object.fromEntries(new FormData(f)));f.elements.password.value='';language(d.location);offset=0;status='all';query='';$('#search').value='';tab='orders';await refresh();}catch(error){$('#login-error').textContent=error.message;}finally{button.disabled=false;}});
+$('#login-form').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,button=f.querySelector('button[type="submit"]');button.disabled=true;$('#login-error').textContent='';try{const s=await api('warehouse-session');if(s.authenticated&&!entryAccepts(s.location))return;if(fixedWarehouse&&!warehouseDirectory.some(w=>w.location===fixedWarehouse))throw Error('Агуулах олдсонгүй.');const payload=Object.fromEntries(new FormData(f));if(fixedWarehouse)payload.location=fixedWarehouse;const d=await api('warehouse-login',payload);f.elements.password.value='';language(d.location);offset=0;status='all';query='';$('#search').value='';tab='orders';await refresh();}catch(error){$('#login-error').textContent=error.message;}finally{button.disabled=false;updateWarehouseEntry();}});
 $('#logout').addEventListener('click',async()=>{try{await api('warehouse-logout',{});loggedOut();await api('warehouse-session');}catch(e){toast(e.message);}});
-const requestedCity=new URLSearchParams(location.search).get('location');language(requestedCity==='ulaanbaatar'?'ulaanbaatar':'erenhot');
-(async()=>{try{const s=await api('warehouse-session');if(!s.authenticated)language(warehouseDirectory.some(w=>w.location===requestedCity)?requestedCity:'erenhot');if(s.authenticated){language(s.location);tab='orders';await refresh();}}catch(e){$('#login-error').textContent=e.message;}})();
+$('#warehouse-entry-switch').addEventListener('click',async e=>{e.preventDefault();try{await api('warehouse-logout',{});entrySessionMismatch=false;loggedOut();await api('warehouse-session');language(fixedWarehouse);}catch(e){$('#login-error').textContent=e.message;}});
+language(requestedCity==='ulaanbaatar'?'ulaanbaatar':'erenhot');
+(async()=>{try{const s=await api('warehouse-session');if(!s.authenticated)language(warehouseDirectory.some(w=>w.location===requestedCity)?requestedCity:(fixedWarehouse||'erenhot'));if(s.authenticated&&entryAccepts(s.location)){language(s.location);tab='orders';await refresh();}}catch(e){$('#login-error').textContent=e.message;}})();

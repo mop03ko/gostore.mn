@@ -1,0 +1,28 @@
+{
+  "cli": { "version": ">= 18.0.0", "appVersionSource": "remote" },
+  "build": {
+    "admin": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": { "APP_VARIANT": "admin" }
+    },
+    "warehouse": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "env": { "APP_VARIANT": "warehouse" }
+    },
+    "admin-simulator": {
+      "extends": "admin",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "ios": { "simulator": true }
+    },
+    "warehouse-simulator": {
+      "extends": "warehouse",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "ios": { "simulator": true }
+    }
+  },
+  "submit": { "admin": {}, "warehouse": {} }
+}

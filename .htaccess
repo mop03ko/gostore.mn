@@ -29,6 +29,7 @@ RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP_HOST} ^(?:www\.)?gostore\.mn(?::80)?$ [NC]
 RewriteRule ^ https://gostore.mn%{REQUEST_URI} [R=308,L,NE]
 RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
+RewriteRule ^warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$ warehouse/index.html [L]
 RewriteRule ^v/(?:tb-)?[0-9]{5,20}/?$ index.html [L]
 RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 RewriteRule ^account(?:/[a-z]{1,20})?/?$ index.html [L]

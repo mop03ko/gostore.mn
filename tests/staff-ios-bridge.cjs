@@ -1,0 +1,23 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright');
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const source=fs.readFileSync('staff-ios/lib/bridge.ts','utf8');
+const bridge=source.slice(source.indexOf('`')+1,source.lastIndexOf('`'));
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const page=await browser.newPage();
+ await page.setContent('<div id="app" hidden></div><input type="password" value="fixture-secret-must-stay-in-webview"><div id="print-area"><p>GB-ABC123</p></div><button id="print" onclick="print()">Print</button>');
+ await page.evaluate(()=>{window.bridgeMessages=[];window.ReactNativeWebView={postMessage:value=>window.bridgeMessages.push(JSON.parse(value))};});
+ await page.evaluate(bridge);
+ assert.deepEqual(await page.evaluate(()=>window.bridgeMessages),[{type:'state',authenticated:false}]);
+ await page.evaluate(()=>document.querySelector('#app').hidden=false);
+ await page.waitForFunction(()=>window.bridgeMessages.some(m=>m.authenticated===true));
+ await page.evaluate(()=>{window.print();document.querySelector('#print').click();});
+ assert.equal(await page.evaluate(()=>window.bridgeMessages.filter(m=>m.type==='print').length),0,'programmatic prints are ignored');
+ await page.locator('#print').click();
+ const message=await page.evaluate(()=>window.bridgeMessages.find(m=>m.type==='print'));
+ assert.match(message.html,/GB-ABC123/);assert.doesNotMatch(message.html,/fixture-secret-must-stay-in-webview/);assert.match(message.html,/https:\/\/gostore.mn\/warehouse\//);
+ await page.evaluate(()=>document.querySelector('#app').hidden=true);
+ await page.waitForFunction(()=>window.bridgeMessages.at(-1).authenticated===false);
+ const count=await page.evaluate(()=>window.bridgeMessages.length);await page.evaluate(bridge);
+ assert.equal(await page.evaluate(()=>window.bridgeMessages.length),count,'reinjection does not duplicate observers');
+ console.log('PASS iOS bridge: login/logout state, explicit print only, print scope excludes credentials, reinjection safe');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
