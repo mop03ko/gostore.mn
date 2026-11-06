@@ -23,7 +23,9 @@ $age(1805);$old=supplier_snapshot_read($paths[0]);$error=true;denied(fn()=>suppl
 check(supplier_snapshot_read($paths[0])===$old,'Failed refresh changed the cached data or its age');
 check(supplier_search($query,true)['stale'],'Failed background read hid the old list');
 denied(fn()=>supplier_search($query,false),502); // Non-display callers cannot use stale lists.
-$age(3601);denied(fn()=>supplier_search($query,true),502);
+// Past the 60-minute display window a failing provider still shows the list (up to a day), stale and uncacheable.
+$age(3601);$r=supplier_search($query,true);check($r['stale']&&$r['revalidate']&&$r['cache_ttl']===0&&count($r['products'])===50,'Day-old fallback must be stale and uncacheable');
+$age(86401);denied(fn()=>supplier_search($query,true),502);
 $age(-10);denied(fn()=>supplier_search($query,true),502);$error=false;
 denied(fn()=>supplier_search($query+['preview'=>2],true),400);
 denied(fn()=>supplier_search($query+['refresh'=>2],true),400);

@@ -16,7 +16,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // The home page has a single category row (in the catalog); the empty kids-shoes category is gone.
  assert.equal(await page.locator('#quick-categories').count(),0);assert.equal(await page.locator('#category-grid').count(),0);
  assert.equal(await page.locator('.catalog-category-list').count(),1);assert.equal(await page.locator('.catalog-category-list [data-catalog-category="kids-shoes"]').count(),0);
- assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['Дараагийн 50 барааг харах'],'Load more replaces numbered pages');
+ assert.deepEqual(await page.locator('#supplier-paging button').allInnerTexts(),['Дараагийн бараануудыг харах'],'Load more replaces numbered pages');
  await page.locator('#catalog').screenshot({path:'tmp/shop-tools-catalog-1440.png',clip:undefined});
  await page.locator('[data-supplier-more]').click();await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===100);assert.equal(searches.at(-1).page,'2');
  // Price range in MNT is sent to the server and kept in the URL.

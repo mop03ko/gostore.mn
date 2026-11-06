@@ -49,7 +49,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.locator('.help-nav a[href="#pickup"]').click();
  await page.waitForFunction(()=>document.querySelector('#pickup').getBoundingClientRect().top<innerHeight);
  assert.ok((await page.locator('#pickup').innerText()).includes('8 оронтой'));
- assert.ok((await page.locator('#delivery .store-tariff').innerText()).includes('кг тутам'));assert.equal(await page.locator('#delivery .store-route li').count(),4);
+ assert.ok((await page.locator('#delivery .help-delivery-grid .help-panel').first().innerText()).includes('1 кг хүртэл 1,000 ₮'),'Help shows the current cargo tariff');assert.equal(await page.locator('#delivery .store-route li').count(),4);
  await page.goto(base+'/help#delivery');await page.waitForFunction(()=>document.querySelector('#delivery').getBoundingClientRect().top<innerHeight);
  for(const url of ['/cart','/help']){await page.setViewportSize({width:390,height:844});await page.goto(base+url);await page.locator('#store-page h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile fit '+url);await page.screenshot({path:'tmp/store-page'+url.replace('/','-')+'-390.png',fullPage:true});}
  for(const width of [320,760,1440]){await page.setViewportSize({width,height:960});await page.goto(base+'/help');await page.locator('.help-hero h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Help fits '+width);await page.screenshot({path:'tmp/help-'+width+'.png',fullPage:true});}

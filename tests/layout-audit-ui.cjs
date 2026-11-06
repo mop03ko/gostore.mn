@@ -61,7 +61,7 @@ function audit(){
  await visit('/','.supplier-card');await check('home');
  await visit('/?q=bag#catalog','.supplier-card');await check('search');
  await visit('/v/tb-123456789','#pd-options');await check('product');
- await visit('/brands/nike','#brand-storefront');await check('brand');
+ await visit('/official-stores','#official-stores:not([hidden])');await check('official stores');
  await visit('/help','.help-page, main');await check('help');
  await page.evaluate(l=>taobaoCart.save(l),[line('tb-123456789','Тест үүргэвч маш урт нэртэй бараа Taobao-оос'),line('tb-987654321','Second item')]);
  await visit('/cart','.store-cart-unit, main');await check('cart');

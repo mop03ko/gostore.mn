@@ -1,5 +1,11 @@
 # Cache and checkout freshness — 2026-10-20
 
+## Display fallback when TaoWorld is busy or failing — 2026-11-07
+
+- November access logs showed 80 homepage `supplier-search` 503s (rising to ~28/day), 13 `supplier-deals` and 6 `supplier-product`, including visitors from Facebook ads. The homepage mix reads six departments and failed completely when any one was locked, failing or over quota; each department also waited up to 2 s for its lock.
+- Display reads now fall back to the last snapshot up to 24 hours old (`TW_CATALOG_DISPLAY_FALLBACK`) when the provider is busy, fails or the quota is exhausted: keyword search pages, product details and each homepage department. Such lists are `stale`/`revalidate` with `cache_ttl=0`; a department without any snapshot is left out, and only a homepage with no department fails. Homepage lock waits share one 2-second deadline.
+- Product details older than 30 minutes shown this way are `stale=true`, so the page shows the refresh prompt and ordering stays disabled. Checkout, POST detail reads, procurement and non-display reads keep their strict freshness rules. `tests/taoworld-fallback.php` covers these paths.
+
 ## Product page and first visit — 2026-10-31
 
 - Live baseline (390 px, 4x CPU, ~1.6 Mbps, 150 ms RTT): uncached product detail API 1.5–2.2 s versus 0.08 s cached, and detail snapshots lasted only 5 minutes, so a cold product page reached LCP at 5.4 s. Home cold LCP 2.0 s with 756 KB, of which gtag.js was 178 KB and the three hero JPEGs 250 KB.

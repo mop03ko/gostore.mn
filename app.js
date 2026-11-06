@@ -413,6 +413,7 @@ function savedRequests(){try{return JSON.parse(localStorage.getItem(REQUESTS_KEY
 async function shopApi(action,payload){const response=await fetch('/api/index.php?action='+action,{method:payload?'POST':'GET',credentials:'same-origin',headers:payload?{'Content-Type':'application/json','X-CSRF-Token':shopCsrf}:{},body:payload?JSON.stringify(payload):undefined});const result=await response.json();if(!response.ok){if(response.status===401&&['order-create','customer-orders','customer-me'].includes(action.split('&')[0]))window.customerAccount?.setUser(null);throw Error(result.error||'Сервертэй холбогдсонгүй.');}if(result.csrf)shopCsrf=result.csrf;return result;}
 // Only public supplier data is cached; sessions, orders and payments always use shopApi.
 window.supplierApi=(()=>{
+  // index.html's early product request reads this same key; change both together.
   const key='gostore-supplier-cache-v11-coupon-base',pending=new Map(),maxEntries=40,maxBytes=1500000;
   let entries=[];
   const clone=value=>JSON.parse(JSON.stringify(value));
@@ -977,9 +978,12 @@ $('#image-search-input').addEventListener('change',e=>{const file=e.target.files
  if(suggestions)new MutationObserver(()=>{if(!suggestions.querySelector('.category-photo-link'))current='';decorateCategories();}).observe(suggestions,{childList:true});
  const flyout=document.querySelector('#hub-flyout');if(flyout)new MutationObserver(()=>{flyout.querySelectorAll('[data-hub-query]:not(.discovery-flyout-photo)').forEach(a=>{a.classList.add('discovery-flyout-photo');a.insertAdjacentHTML('afterbegin',image(photo(a.dataset.hubQuery)));});}).observe(flyout,{childList:true});
  const hub=document.querySelector('#home-hub');if(!hub||!/^\/(?:index\.html)?$/.test(location.pathname))return;
- const section=document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
+ // index.html pre-renders the empty section with its usual height reserved (see discovery.css).
+ const section=document.getElementById('discovery-home')||document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
  const tabs=[['explore','Танд зориулсан'],['fishing','Загасчлал'],['deals','Хямдрал'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
- section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;hub.after(section);
+ section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;
+ // After the pre-rendered 11.11 section (hidden outside the campaign), keeping hub → sale → discovery.
+ if(!section.isConnected)(document.getElementById('eleven-sale')||hub).after(section);
  const panel=section.querySelector('.discovery-panel');let request;
  const freeNote='Эрээн агуулах хүртэлх лавлах үнэ 0¥. Монгол хүртэлх тээвэр тусдаа; сонгосон хувилбар, тоо ширхэгийн эцсийн хүргэлтийг сагсанд шалгана.';
  function select(tab){

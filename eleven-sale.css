@@ -40,3 +40,12 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .eleven-s
   .eleven-hero-ticket { display:none; }
 }
 @media (prefers-reduced-motion:no-preference) { .eleven-hero-cta { transition:transform .2s; } .eleven-hero-link:hover .eleven-hero-cta { transform:translateX(4px); } }
+/* index.html's head script sets .eleven-active during the campaign. The sale banner's height and the
+   pre-rendered #eleven-sale (one viewport tall until its products arrive) are reserved from the first
+   paint, so eleven-sale.js filling them later does not push the page down. Otherwise it stays hidden. */
+#eleven-sale:empty{display:none}
+.eleven-active .home-hub .hero-banner{min-height:400px}
+.eleven-active #eleven-sale:empty,.eleven-active #eleven-sale:not(.eleven-loaded){display:block;min-height:100vh}
+@media(max-width:760px){.eleven-active .home-hub .hero-banner{min-height:316px}}
+/* At 320 px the banner copy is about 165 px wide; the 31 px headline word overflowed it. */
+@media (max-width:360px) { .eleven-hero-copy h1 { font-size:25px; } }

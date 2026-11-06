@@ -17,13 +17,15 @@
     document.documentElement.classList.add('eleven-sale-view');
     document.title = '11.11 — Хямдрал, купоны сонголт · GOStore';
   }
-  const section = document.createElement('section');
+  // index.html already holds an empty #eleven-sale right after the hub, sized by CSS while the
+  // campaign is active, so filling it later does not push the catalog down (layout shift).
+  const section = document.getElementById('eleven-sale') || document.createElement('section');
   section.id = 'eleven-sale';
   section.className = 'eleven-sale page-width';
   section.setAttribute('aria-labelledby', 'eleven-sale-title');
   const heading = collection ? 'h1' : 'h2';
   section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдрал, купонтой бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/?sale=11.11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Нийлүүлэгчээс ирсэн хүчинтэй хямдрал, купоны сонголт. Купон, урамшуулал нь нөхцөлтэй. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
-  hub.after(section);
+  if (!section.isConnected) hub.after(section);
   const target = section.querySelector('#eleven-sale-products');
   const status = section.querySelector('.eleven-sale-status');
   const next = section.querySelector('button');
@@ -44,6 +46,7 @@
       } else section.remove();
       return;
     }
+    section.classList.add('eleven-loaded');
     const seen = new Set();
     const all = rows.filter(product => valid(product) && !seen.has(product.id) && seen.add(product.id));
     const items = collection ? all : all.slice(0, 8);
@@ -79,6 +82,7 @@
       page++;
       render();
     } catch {
+      section.classList.add('eleven-loaded');
       target.setAttribute('aria-busy', 'false');
       status.textContent = 'Хямдралын мэдээлэл түр боломжгүй байна.';
       next.hidden = false;
@@ -95,7 +99,7 @@
     } catch {}
     void load();
   }
-  if (collection || !('IntersectionObserver' in window)) start();
+  if (collection || typeof IntersectionObserver !== 'function') start();
   else {
     const observer = new IntersectionObserver(entries => {
       if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); start(); }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // A copied application with fake credentials and fake QPay transport; no real payments.
 $root=__DIR__.'/../tmp/checkout-freshness-'.bin2hex(random_bytes(5));mkdir($root.'/server',0700,true);
-foreach(['product-policy','bootstrap','shipping','supplier','supplier-brands','supplier-titles','supplier-budget','supplier-snapshot','checkout','qpay','config.example'] as $f)copy(__DIR__.'/../server/'.$f.'.php',$root.'/server/'.$f.'.php');
+foreach(['product-policy','bootstrap','cargo-tariff','shipping','supplier','supplier-brands','supplier-titles','supplier-budget','supplier-snapshot','checkout','qpay','config.example'] as $f)copy(__DIR__.'/../server/'.$f.'.php',$root.'/server/'.$f.'.php');
 copy(__DIR__.'/../server/seed.json',$root.'/server/seed.json');
 file_put_contents($root.'/server/config.local.php','<?php return '.var_export(['data_dir'=>$root.'/data','site_url'=>'https://example.test','otcommerce'=>['api_key'=>'fake'],'qpay'=>['enabled'=>true,'environment'=>'sandbox','client_id'=>'fake','client_secret'=>'fake','invoice_code'=>'TEST']],true).';');
 putenv('GOSTORE_DATA_DIR='.$root.'/data');putenv('GOSTORE_DISABLE_SUPPLIER_NETWORK=1');putenv('GOSTORE_DISABLE_QPAY=0');

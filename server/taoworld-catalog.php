@@ -8,6 +8,7 @@ if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
 const TW_CATALOG_DETAIL_DISPLAY_MAX = 1800;
+const TW_CATALOG_DISPLAY_FALLBACK = 86400;
 function tw_catalog_require_ready(): void {
     if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
 }
@@ -35,11 +36,15 @@ function tw_catalog_cached(string $path,array $params,bool $purchase=false,?arra
     if($display&&!$purchase&&$path==='/traffic/item/search')$ttl=TW_CATALOG_SEARCH_MAX_AGE;
     // Atomic rename makes complete fresh snapshots safe to read while a writer holds the lock.
     $c=supplier_snapshot_read($file);if(tw_catalog_fresh($c,$ttl))return $c;
+    // Display reads show the last snapshot (up to a day old) instead of an error when the provider
+    // is busy, failing or over quota; callers see its age and mark it stale. Purchases never do.
+    $fallback=$display&&!$purchase&&tw_catalog_fresh($c,TW_CATALOG_DISPLAY_FALLBACK)?$c:null;
     $h=supplier_acquire_lock([$file.'.lock'],microtime(true)+2);
-    if(!$h)throw new SupplierBusy();
+    if(!$h){if($fallback)return $fallback;throw new SupplierBusy();}
     try{
         $c=supplier_snapshot_read($file);if(tw_catalog_fresh($c,$ttl))return $c;
-        $data=tw_catalog_call($path,$params,$purchase);$c=['time'=>time(),'data'=>$data];supplier_snapshot_write($file,$c);return $c;
+        try{$data=tw_catalog_call($path,$params,$purchase);}catch(ApiError $e){if($fallback)return $fallback;throw $e;}
+        $c=['time'=>time(),'data'=>$data];supplier_snapshot_write($file,$c);return $c;
     }finally{flock($h,LOCK_UN);fclose($h);}
 }
 // First page is fetched separately to stop empty/short searches without spending extra quota.
@@ -52,23 +57,30 @@ function tw_catalog_search_pages(array $params,int $first,int $last,bool $displa
             $query=$params+['page_no'=>(string)$n,'page_size'=>'20'];$file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
             $c=supplier_snapshot_read($file);
             if(!tw_catalog_fresh($c,$ttl)){
-                $h=supplier_acquire_lock([$file.'.lock'],$deadline);if(!$h)throw new SupplierBusy();$locks[]=$h;
-                $c=supplier_snapshot_read($file);
-                if(!tw_catalog_fresh($c,$ttl)){$pending[$n]=['query'=>$query,'file'=>$file];continue;}
+                $old=$display&&tw_catalog_fresh($c,TW_CATALOG_DISPLAY_FALLBACK)?$c:null;
+                $h=supplier_acquire_lock([$file.'.lock'],$deadline);
+                if(!$h){if(!$old)throw new SupplierBusy();$pages[$n]=$old;if(count($old['data']['data']??[])<20)break;continue;}
+                $locks[]=$h;$c=supplier_snapshot_read($file);
+                if(!tw_catalog_fresh($c,$ttl)){$pending[$n]=['query'=>$query,'file'=>$file,'old'=>$old];continue;}
             }
             $pages[$n]=$c;if(count($c['data']['data']??[])<20)break;
         }
         if($pending){
             $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT tw_catalog_batch_budget');
             try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
-            catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT tw_catalog_batch_budget');$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');throw $e;}
+            catch(Throwable $e){
+                $db->exec('ROLLBACK TO SAVEPOINT tw_catalog_batch_budget');$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');
+                // Over quota: display pages that still have a day-old snapshot show it instead.
+                if(!$e instanceof ApiError||in_array(null,array_column($pending,'old'),true))throw $e;
+                foreach($pending as $n=>$p)$pages[$n]=$p['old'];ksort($pages,SORT_NUMERIC);return $pages;
+            }
             $queries=array_map(fn($v)=>$v['query']+['access_token'=>$token],array_values($pending));$responses=taoworld_http_search_batch($queries);$failure=null;
             foreach(array_keys($pending) as $i=>$n){
                 try{
                     $r=$responses[$i]??null;if($r instanceof ApiError)throw $r;if(!is_array($r))fail('TaoWorld хайлтын хариу дутуу.',502);
                     $data=tw_catalog_data($r);if(!is_array($data['data']??null))fail('TaoWorld хайлтын хариу дутуу.',502);
                     $pages[$n]=['time'=>time(),'data'=>$data];supplier_snapshot_write($pending[$n]['file'],$pages[$n]);
-                }catch(ApiError $e){$failure??=$e;}
+                }catch(ApiError $e){if($pending[$n]['old'])$pages[$n]=$pending[$n]['old'];else $failure??=$e;}
             }
             if($failure)throw $failure;
         }
@@ -193,11 +205,13 @@ function tw_catalog_detail(string $id,bool $purchase=false,string $brand='',bool
         $old=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',$key).'.json');
         if(tw_catalog_fresh($old,TW_CATALOG_DETAIL_DISPLAY_MAX)&&'tb-'.($old['data']['item_id']??'')===$id){$c=$old;if(!tw_catalog_fresh($old,300))tw_catalog_schedule_refresh('/traffic/item/get',$params,$key);}
     }
-    $c??=tw_catalog_cached('/traffic/item/get',$params,$purchase,$key);
+    $c??=tw_catalog_cached('/traffic/item/get',$params,$purchase,$key,$display&&!$purchase);
     if('tb-'.($c['data']['item_id']??'')!==$id)fail('Барааны дугаар зөрлөө.',502);
     if($brand!==''&&!tw_catalog_product_brand_matches($c['data'],$brand))fail('Энэ барааны брэнд сонгосон брэндтэй тохирохгүй байна.',409);
     $p=tw_catalog_product($c['data'],true,$c['time']);$p['price_expires']=$c['time']+($purchase?120:300);
-    return tw_catalog_response(['product'=>$p],$c['time'],$purchase?120:300);
+    // A snapshot older than the display allowance (shown because TaoWorld is unavailable) is stale:
+    // the page shows it with a refresh prompt and ordering stays disabled.
+    return tw_catalog_response(['product'=>$p]+($c['time']<=time()-TW_CATALOG_DETAIL_DISPLAY_MAX?['stale'=>true]:[]),$c['time'],$purchase?120:300);
 }
 // shop_id is a store identity, not the numeric seller/user ID. Search is scoped by
 // the documented shop_id parameter; names and any returned IDs must also agree.

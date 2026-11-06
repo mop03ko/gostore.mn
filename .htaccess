@@ -13,6 +13,14 @@ Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{QUERY_STR
 <FilesMatch "\.html$">
 Header set Cache-Control "no-cache"
 </FilesMatch>
+# Security headers on every response, including errors. Other sites may not frame the shop
+# (account, checkout and QPay pages); the camera stays available to the site itself for image
+# search and warehouse QR scanning. HSTS omits subdomains, which this host does not all serve on HTTPS.
+Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=()"
 </IfModule>
 # Apache already serves Brotli on this host. Gzip is the compatible fallback.
 <IfModule mod_deflate.c>
@@ -20,6 +28,8 @@ AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript appl
 </IfModule>
 Options -Indexes
 DirectoryIndex index.html
+# Missing paths get a branded page with search instead of Apache's default text.
+ErrorDocument 404 /404.html
 <FilesMatch "^(config.*|open taobao keys\.txt|verifymn\.txt|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
 Require all denied
 </FilesMatch>
@@ -30,7 +40,11 @@ RewriteCond %{HTTP_HOST} ^(?:www\.)?gostore\.mn(?::80)?$ [NC]
 RewriteRule ^ https://gostore.mn%{REQUEST_URI} [R=308,L,NE]
 RewriteRule ^(?:server|scripts|tests|tmp|output|\.git|\.vscode)(?:/|$) - [F,L]
 RewriteRule ^warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$ warehouse/index.html [L]
-RewriteRule ^v/(?:tb-)?[0-9]{5,20}/?$ index.html [L]
+# iOS and some crawlers ask for these fixed root paths.
+RewriteRule ^apple-touch-icon(?:-precomposed)?\.png$ assets/apple-touch-icon.png [L]
+# Product pages: index.html with the product name and photo in the link-preview tags. No QSA, so a
+# visitor's own ?id= cannot replace the path's ID; the page script reads location.search itself.
+RewriteRule ^v/((?:tb-)?[0-9]{5,20})/?$ api/product-page.php?id=$1 [L]
 RewriteRule ^p/[a-z0-9-]{1,60}/?$ index.html [L]
 RewriteRule ^account(?:/[a-z]{1,20})?/?$ index.html [L]
 RewriteRule ^(?:cart|help)/?$ index.html [L]

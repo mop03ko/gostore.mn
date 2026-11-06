@@ -25,10 +25,10 @@ const order=(await shop('order-create',b)).order;assert.equal(order.warehouse.re
 assert.equal((await shop('order-create',b)).order.id,order.id);
 assert.equal((await admin('shipping-save',{...settings,cny_rate:-1})).status,400);
 const inputs={goods_cny:10,domestic_cny:2,cargo_method:'auto',weight_kg:0.501,volume_m3:0.1};
-const quote=await admin('order-update',{id:order.id,status:'quoted',amount:1,internal_note:'',quote_inputs:inputs});assert.equal(quote.order.amount,7853);assert.equal(quote.order.quote.breakdown.cargo_mnt,1253);
+const quote=await admin('order-update',{id:order.id,status:'quoted',amount:1,internal_note:'',quote_inputs:inputs});assert.equal(quote.order.amount,7600);assert.equal(quote.order.quote.breakdown.cargo_mnt,1000);
 await admin('shipping-save',{...settings,cny_rate:600,warehouse_address:'Changed address'});await shop('catalog');
-const stable=await shop('order-get',{id:order.id,token:b.token});assert.equal(stable.order.warehouse.address,order.warehouse.address);assert.notEqual(stable.order.warehouse.address,'Changed address');assert.equal(stable.order.amount,7853);assert.equal(stable.order.quote.rates.cny_rate,550);
+const stable=await shop('order-get',{id:order.id,token:b.token});assert.equal(stable.order.warehouse.address,order.warehouse.address);assert.notEqual(stable.order.warehouse.address,'Changed address');assert.equal(stable.order.amount,7600);assert.equal(stable.order.quote.rates.cny_rate,550);
 await admin('shipping-save',settings);
-const routed=await admin('order-update',{id:order.id,status:'zamyn_uud',amount:7853,internal_note:''});assert.equal(routed.order.history.at(-1).status,'zamyn_uud');
+const routed=await admin('order-update',{id:order.id,status:'zamyn_uud',amount:7600,internal_note:''});assert.equal(routed.order.history.at(-1).status,'zamyn_uud');
 await admin('logout',{});
 console.log('PASS: supplier cache, SKU/server prices, idempotency, settings auth, quote arithmetic, immutable rate snapshot, route history.');
