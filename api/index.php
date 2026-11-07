@@ -4,6 +4,7 @@ require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';
 require __DIR__.'/../server/customers.php';
+require __DIR__.'/../server/admin-customers.php';
 require __DIR__.'/../server/verify-mn-http.php';
 require __DIR__.'/../server/verify-mn.php';
 require_once __DIR__.'/../server/product-reviews.php';
@@ -55,7 +56,7 @@ try {
         }
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
     }
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
@@ -72,6 +73,8 @@ try {
         if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
         admin_required();
         if($action==='admin-messages')json_out(customer_messages_admin());
+        if($action==='admin-customers')json_out(admin_customers($_GET));
+        if($action==='admin-customer')json_out(admin_customer_detail(str_field($_GET,'id',64)));
         if($action==='admin-order'){
             $o=order_row(str_field($_GET,'id',50))['order'];
             $o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
@@ -209,6 +212,7 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):$r['order'])]);
     }
     admin_required();
+    if($action==='admin-customer-save')json_out(admin_customer_save($b));
     if ($action==='product-delete') {
         $id=str_field($b,'id',60);
         if(($b['confirm_id']??'')!==$id)fail('Устгах барааг баталгаажуулна уу.');
