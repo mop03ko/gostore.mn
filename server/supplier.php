@@ -96,12 +96,16 @@ function supplier_response(string $path,bool $ok,int $status,string $raw): array
     if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
     return $response['Result'];
 }
+// Per-IP caps on uncached supplier reads. Mongolian mobile carriers put many shoppers behind one IP
+// (CGNAT), so they are generous; the shared daily budget remains the cost limit.
+const SUPPLIER_IP_MINUTE_LIMIT=60;
+const SUPPLIER_IP_HOUR_LIMIT=300;
 function supplier_limits(bool $warming,bool $purchase=false): void {
     if(!$warming){
         $ip=$_SERVER['REMOTE_ADDR']??'cli';
         try {
-            limit_attempts('supplier-ip-minute:'.$ip,30,60);
-            limit_attempts('supplier-ip:'.$ip,120,3600);
+            limit_attempts('supplier-ip-minute:'.$ip,SUPPLIER_IP_MINUTE_LIMIT,60);
+            limit_attempts('supplier-ip:'.$ip,SUPPLIER_IP_HOUR_LIMIT,3600);
         } catch(ApiError $e){
             if($e->getCode()!==429)throw $e;
             fail('Богино хугацаанд олон шинэ бараа нээсэн байна. Түр хүлээгээд дахин оролдоно уу. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);

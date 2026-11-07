@@ -22,7 +22,7 @@ supplier_snapshot_write(supplier_snapshot_dir().'/current.json',['version'=>1,'p
 $a=supplier_search(['q'=>'__all__','page'=>1,'limit'=>50]);$b=supplier_search(['q'=>'__all__','page'=>2,'limit'=>50]);check(count($a['products'])===50&&count($b['products'])===50,'Home uses 50 cached cards');check(!array_intersect(array_column($a['products'],'id'),array_column($b['products'],'id')),'Home batches do not overlap');
 $last=supplier_search(['q'=>'__all__','page'=>$a['pages'],'limit'=>50]);check(!$last['more']&&count($last['products'])===$a['total']-50*($a['pages']-1),'Last home batch stops');
 $settings=shipping_settings();$settings['image_search_enabled']=true;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($settings)]);
-$hash=str_repeat('a',32);file_put_contents(supplier_image_search_dir().'/'.$hash.'.jpg','synthetic');
+$hash=str_repeat('a',32);if(!is_dir(supplier_image_search_dir()))mkdir(supplier_image_search_dir(),0755,true);file_put_contents(supplier_image_search_dir().'/'.$hash.'.jpg','synthetic');
 $query=['language'=>'mn','image_url'=>rtrim(config()['site_url'],'/').'/assets/uploads/search/'.$hash.'.jpg','page'=>1,'limit'=>50];
 cache_batch('/v1/taobao/search',$query,['Items'=>['Items'=>['Content'=>rows(0,50),'TotalCount'=>51],'MaximumPageCount'=>2]]);
 $r=supplier_image_search($hash,1,false,50);check(count($r['products'])===50&&$r['more'],'Image search uses the requested batch size');

@@ -44,4 +44,9 @@ settings(['api_daily_limit'=>1]);$before=count($calls);$r=official_stores_direct
 check(count($r['stores'])===12&&$r['stale']&&count($calls)===$before,'Spent daily quota shows the last directory without provider calls');
 $age(reset($shopFiles),90000);$error=true;$r=official_stores_directory();$error=false;check(count($r['stores'])===11&&$r['stale']&&$r['incomplete'],'Shops older than a day are left out and reported missing');
 foreach($shopFiles as $f)$age($f,90000);$error=true;denied(fn()=>official_stores_directory(),503);$error=false;
-echo "PASS: display fallback for search, product detail, homepage departments and the official store directory when TaoWorld is busy, failing or over quota; checkout and non-display reads stay strict.\n";
+// Homepage pages after the third refresh every six hours; earlier pages keep the hourly allowance.
+$_SERVER['REMOTE_ADDR']='192.0.2.94';$deep=['q'=>'__all__','page'=>4,'limit'=>50];$r=supplier_search($deep,true);check(count($r['products'])>0,'Deep page builds');
+foreach(array_slice($keywords,18,6) as $k)$age($searchFile($k),7200);$before=count($calls);$r=supplier_search($deep,true);check(count($calls)===$before&&!$r['stale']&&!$r['revalidate'],'A two-hour-old deep page is reused without provider calls or revalidation');
+foreach(array_slice($keywords,0,6) as $k)if(is_file($searchFile($k)))$age($searchFile($k),2400);$r=supplier_search($home,true);check($r['stale']&&$r['revalidate'],'The first page still asks for revalidation after its allowance');
+foreach(array_slice($keywords,18,6) as $k)$age($searchFile($k),25000);$before=count($calls);supplier_search($deep,true);check(count($calls)===$before+6,'A deep page older than six hours is fetched again');
+echo "PASS: display fallback for search, product detail, homepage departments and the official store directory when TaoWorld is busy, failing or over quota; deep homepage pages refresh every six hours; checkout and non-display reads stay strict.\n";

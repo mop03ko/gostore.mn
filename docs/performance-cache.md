@@ -140,3 +140,19 @@ Native production builds requested from commit `97159a4` on 2026-11-04:
 - iOS 1.0.0 (13): `c32d8cdb-ee23-41d9-ad1e-4adbebd2a888`.
 EAS accepted both with status NEW. These are queued builds, not yet verified binaries
 or TestFlight/Google Play releases.
+
+## API budget changes — 2026-11-07
+
+Access logs for Nov 5–6 showed the daily TaoWorld budget going mostly to homepage department searches
+(~150/day, six per scrolled page) and product details (~150/day, every view more than 5 minutes after the
+last fetch). The budget ran out at 23:16 Ulaanbaatar on Nov 6.
+
+- Product details refresh in the background after **30 minutes** (was 5) and product pages may show a
+  detail up to **60 minutes** old (was 30); older ones are fetched before display, and fallback copies
+  older than that are `stale` with ordering disabled. Detail-based card prices, discounts and offers are
+  valid for the same 30 minutes. Checkout, invoices and procurement still re-read details at most
+  120 seconds old, so payment never uses an older price.
+- Homepage feed pages after the third refresh every **six hours** and are not marked for browser
+  revalidation before that; pages 1–3 keep the hourly display allowance and 30-minute revalidation.
+- Per-IP caps on uncached supplier reads were raised from 30/min and 120/h to **60/min and 300/h**
+  because Mongolian carriers share IP addresses (CGNAT); the shared daily budget remains the cost limit.

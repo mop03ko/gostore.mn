@@ -6,7 +6,7 @@ declare(strict_types=1);
 // with category searches. Fetch only six departments, three requests at a time.
 function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $display): array {
     $departments=array_values(tw_catalog_departments());$count=count($departments);
-    $queries=[];$snapshots=[];$ttl=$display?TW_CATALOG_SEARCH_MAX_AGE:TW_CATALOG_SEARCH_TTL;
+    $queries=[];$snapshots=[];$deep=$display&&$page>TW_CATALOG_HOME_DEEP_PAGE;$ttl=$deep?TW_CATALOG_HOME_DEEP_MAX_AGE:($display?TW_CATALOG_SEARCH_MAX_AGE:TW_CATALOG_SEARCH_TTL);
     for($i=0;$i<6;$i++){
         $position=($page-1)*6+$i;
         $q=['keyword'=>$departments[$position%$count],'language'=>'en','page_no'=>(string)(intdiv($position,$count)+1),'page_size'=>'20'];
@@ -56,6 +56,7 @@ function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $
         if($a===null||$b===null)return $a===null?($b===null?0:1):-1;
         return $sort==='PRICE_ASC'?$a<=>$b:$b<=>$a;
     });
-    $stale=$degraded||$time<=time()-TW_CATALOG_SEARCH_TTL;
+    // Deep pages are not marked for revalidation until they pass their six-hour allowance.
+    $stale=$degraded||$time<=time()-($deep?TW_CATALOG_HOME_DEEP_MAX_AGE:TW_CATALOG_SEARCH_TTL);
     return tw_catalog_response(['products'=>array_slice($products,0,$limit),'page'=>$page,'total'=>null,'more'=>$page<100&&($hasMore||$page*6<$count),'partial'=>false,'stale'=>$stale,'revalidate'=>$stale,'feed'=>'mixed_departments']+($degraded?['cache_ttl'=>0,'cache_expires'=>time()]:[]),$time,TW_CATALOG_SEARCH_TTL);
 }

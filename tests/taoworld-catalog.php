@@ -114,7 +114,7 @@ $before=count($calls);$im=supplier_image_search($hash,2);check($im['products']==
 $imageLock=fopen(tw_catalog_dir().'/image-'.$hash.'.json.lock','c');flock($imageLock,LOCK_EX);$start=microtime(true);supplier_image_search($hash,1);check(microtime(true)-$start<.5,'Warm image result waited for writer');flock($imageLock,LOCK_UN);fclose($imageLock);
 $before=count($calls);settings(['supplier_enabled'=>false]);denied(fn()=>supplier_search(['q'=>'box','page'=>1]),503);denied(fn()=>supplier_detail('tb-700000000000'),503);denied(fn()=>supplier_image_search($hash,1),503);check(count($calls)===$before,'Disabled catalog spent API quota');settings(['supplier_enabled'=>true]);
 $health=supplier_snapshot_health();check($health['provider']==='taoworld'&&$health['search_ttl']===1800&&!isset($health['cron_overdue']),'Native health reports legacy snapshot cron');
-$_SERVER['REMOTE_ADDR']='192.0.2.55';for($i=0;$i<30;$i++)limit_attempts('supplier-ip-minute:192.0.2.55',30,60);
+$_SERVER['REMOTE_ADDR']='192.0.2.55';for($i=0;$i<SUPPLIER_IP_MINUTE_LIMIT;$i++)limit_attempts('supplier-ip-minute:192.0.2.55',SUPPLIER_IP_MINUTE_LIMIT,60);
 $before=count($calls);$budget=supplier_budget_status()['used'];denied(fn()=>supplier_search(['q'=>'rate limited cold','page'=>1]),429);check(count($calls)===$before&&supplier_budget_status()['used']===$budget,'Rate-limited call reached provider or spent daily quota');supplier_search(['q'=>'box','page'=>1]);check(count($calls)===$before,'Rate limit blocked cached browsing');unset($_SERVER['REMOTE_ADDR']);
 // Official directory uses a bounded verified registry, never a keyword fallback.
 $_SERVER['REMOTE_ADDR']='192.0.2.200';
@@ -181,7 +181,7 @@ $sale=tw_catalog_product($saleRaw,true,time());
 check($sale['cny']===80.0&&$sale['card_discount']['percent']===20,'Discount must match cheapest in-stock SKU');
 check($sale['variants'][0]['card_discount']===null&&$sale['variants'][2]['card_discount']===null,'Sold out and full-price SKUs cannot inherit discount');
 check($sale['offers']['coupon_mnt']===7000/100*shipping_settings()['cny_rate'],'Conditional coupon must remain separate from displayed SKU price');
-check(tw_catalog_product($saleRaw,true,time()-301)['card_discount']===null,'Expired detail cannot advertise discount');
+check(tw_catalog_product($saleRaw,true,time()-TW_CATALOG_DETAIL_REFRESH-1)['card_discount']===null,'Expired detail cannot advertise discount');
 check(tw_catalog_discount(['price'=>10000,'promotion_price'=>12000],time()+60)===null,'Higher promotion price is not a discount');
 $searchSale=tw_catalog_product(['item_id'=>'799999999992','mi_id'=>'coupon-fixture','title'=>'Box','price'=>'100','coupon_price'=>'80'],false,time());
 check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&$searchSale['offers']['coupon_mnt']===80*shipping_settings()['cny_rate'],'Search coupon is conditional, and search prices are CNY');

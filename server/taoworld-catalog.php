@@ -7,7 +7,13 @@ require_once __DIR__.'/taoworld-home.php';
 if(!function_exists('taoworld_http'))require_once __DIR__.'/taoworld-http.php';
 const TW_CATALOG_SEARCH_TTL = 1800;
 const TW_CATALOG_SEARCH_MAX_AGE = 3600;
-const TW_CATALOG_DETAIL_DISPLAY_MAX = 1800;
+// Product details: refreshed in the background after 30 minutes and shown up to an hour old (TaoWorld
+// API budget); checkout always re-reads details at most 120 seconds old before payment.
+const TW_CATALOG_DETAIL_REFRESH = 1800;
+const TW_CATALOG_DETAIL_DISPLAY_MAX = 3600;
+// Homepage pages after the third (each costs six department searches) refresh every six hours.
+const TW_CATALOG_HOME_DEEP_PAGE = 3;
+const TW_CATALOG_HOME_DEEP_MAX_AGE = 21600;
 const TW_CATALOG_DISPLAY_FALLBACK = 86400;
 function tw_catalog_require_ready(): void {
     if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
@@ -156,7 +162,7 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
     $image=supplier_image((string)($p['main_image_url']??$p['pic_urls'][0]??''));
     $r=['id'=>$id,'provider'=>'taobao','catalog_provider'=>'taoworld','provider_label'=>'Taobao','name'=>supplier_text($title,300),'original_name'=>supplier_text($p['title']??'',500),'image'=>$image,'url'=>'/v/'.$id,'min_qty'=>1,'step'=>1,'sellable'=>true,'variants'=>[],'sold_count'=>null,'sales_30_days'=>null,'cny'=>null,'mnt'=>null,'approx_cny'=>$price,'approx_mnt'=>$price===null?null:(int)ceil($price*$rate),'price_status'=>'unverified','card_discount'=>null];
     $r['shop_rating']=tw_catalog_seller_info($p)['shop_rating']??null;
-    $expires=($fetched??time())+($detail?300:TW_CATALOG_SEARCH_TTL);
+    $expires=($fetched??time())+($detail?TW_CATALOG_DETAIL_REFRESH:TW_CATALOG_SEARCH_TTL);
     $r['offers']=tw_catalog_offers($p,$detail,$expires);
     if(!$detail)return $r;
     $meta=supplier_snapshot_read(tw_catalog_dir().'/item-'.substr($id,3).'.json')??[];
@@ -199,16 +205,16 @@ function tw_catalog_detail(string $id,bool $purchase=false,string $brand='',bool
     if($brand!=='')supplier_brand($brand);
     product_policy_assert(['id'=>$id]);$resource=tw_catalog_resource($id);
     $params=$resource+['item_resource'=>'taobao','language'=>'en'];$key=['id'=>$id,'language'=>'en'];$c=null;
-    // Product pages may show a detail up to 30 minutes old while it refreshes in the background;
+    // Product pages may show a detail up to an hour old; after 30 minutes it refreshes in the background;
     // checkout still re-reads details at most 120 seconds old, so prices are re-verified before payment.
     if($display&&!$purchase){
         $old=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',$key).'.json');
-        if(tw_catalog_fresh($old,TW_CATALOG_DETAIL_DISPLAY_MAX)&&'tb-'.($old['data']['item_id']??'')===$id){$c=$old;if(!tw_catalog_fresh($old,300))tw_catalog_schedule_refresh('/traffic/item/get',$params,$key);}
+        if(tw_catalog_fresh($old,TW_CATALOG_DETAIL_DISPLAY_MAX)&&'tb-'.($old['data']['item_id']??'')===$id){$c=$old;if(!tw_catalog_fresh($old,TW_CATALOG_DETAIL_REFRESH))tw_catalog_schedule_refresh('/traffic/item/get',$params,$key);}
     }
     $c??=tw_catalog_cached('/traffic/item/get',$params,$purchase,$key,$display&&!$purchase);
     if('tb-'.($c['data']['item_id']??'')!==$id)fail('Барааны дугаар зөрлөө.',502);
     if($brand!==''&&!tw_catalog_product_brand_matches($c['data'],$brand))fail('Энэ барааны брэнд сонгосон брэндтэй тохирохгүй байна.',409);
-    $p=tw_catalog_product($c['data'],true,$c['time']);$p['price_expires']=$c['time']+($purchase?120:300);
+    $p=tw_catalog_product($c['data'],true,$c['time']);$p['price_expires']=$c['time']+($purchase?120:TW_CATALOG_DETAIL_REFRESH);
     // A snapshot older than the display allowance (shown because TaoWorld is unavailable) is stale:
     // the page shows it with a refresh prompt and ordering stays disabled.
     return tw_catalog_response(['product'=>$p]+($c['time']<=time()-TW_CATALOG_DETAIL_DISPLAY_MAX?['stale'=>true]:[]),$c['time'],$purchase?120:300);
@@ -225,10 +231,10 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
     $cards=[];foreach($rows as $p){if(!is_array($p))continue;try{
         $card=tw_catalog_product($p,false,$fetched);
         $cached=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$card['id'],'language'=>'en']).'.json');
-        if(tw_catalog_fresh($cached,300)&&'tb-'.($cached['data']['item_id']??'')===$card['id']){
+        if(tw_catalog_fresh($cached,TW_CATALOG_DETAIL_REFRESH)&&'tb-'.($cached['data']['item_id']??'')===$card['id']){
             $detail=tw_catalog_product($cached['data'],true,$cached['time']);
             foreach(['cny','mnt','approx_cny','approx_mnt','price_status','sellable','card_discount','offers'] as $key)$card[$key]=$detail[$key];
-            $card['price_expires']=$cached['time']+300;
+            $card['price_expires']=$cached['time']+TW_CATALOG_DETAIL_REFRESH;
         }
         $cards[]=$card;
     }catch(ApiError){}}

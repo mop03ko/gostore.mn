@@ -30,14 +30,14 @@ function seed_limit(string $key,int $hits):void {
 $_SERVER['REMOTE_ADDR']='192.0.2.1';
 seed_limit('supplier-ip:192.0.2.1',10);
 supplier_limits(false); // The old ten-per-hour restriction no longer blocks normal browsing.
-seed_limit('supplier-ip:192.0.2.1',120);
+seed_limit('supplier-ip:192.0.2.1',SUPPLIER_IP_HOUR_LIMIT);
 $cold='/v1/taobao/product/999999999';$coldFile=$dir.'/'.supplier_cache_key($cold,['language'=>'mn']).'.json';
 expect_error(fn()=>supplier_request($cold,['language'=>'mn'],true),429);
 if(is_file($coldFile.'.retry'))throw new RuntimeException('One visitor blocked the shared product cache');
 // Cached products remain readable even while the visitor is rate-limited.
 if(supplier_request($path,['language'=>'mn'],true)['data']!==$result)throw new RuntimeException('Rate limit blocked cached product');
 $_SERVER['REMOTE_ADDR']='192.0.2.2';supplier_limits(false);
-seed_limit('supplier-ip-minute:192.0.2.2',30);
+seed_limit('supplier-ip-minute:192.0.2.2',SUPPLIER_IP_MINUTE_LIMIT);
 expect_error(fn()=>supplier_request($cold,['language'=>'mn'],true),429);
 if(is_file($coldFile.'.retry'))throw new RuntimeException('Burst limit poisoned the shared cache');
 $_SERVER['REMOTE_ADDR']='192.0.2.3';

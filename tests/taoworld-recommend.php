@@ -50,11 +50,13 @@ check(supplier_snapshot_read(tw_catalog_dir().'/item-700000000000.json')==$saved
 tw_catalog_cards([['item_id'=>'700000000000','mi_id'=>'rotated-id','title'=>'收纳盒','price'=>'1.00','shopDsr'=>'9.9','shippingOrigin'=>'多仓发货']],$saved['time']);
 $saved=supplier_snapshot_read(tw_catalog_dir().'/item-700000000000.json');check(!isset($saved['ships_48h'])&&$saved['shop_rating']===4.8&&tw_catalog_ship_from($saved['ship_from'])==='Хятад, олон агуулахаас','Newer rows update facts; invalid ratings are ignored');
 check(tw_catalog_ship_from('火星')===''&&tw_catalog_ship_from('内蒙古呼和浩特')==='Хятад, Өвөр Монгол','Unknown regions are omitted');
-// Product pages show details up to 30 minutes old; checkout and older snapshots go to the provider.
+// Product pages show details up to an hour old (background refresh after 30 minutes); checkout and
+// older snapshots go to the provider.
 $detailFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>'tb-700000000000','language'=>'en']).'.json';
 $age=function(int $seconds)use($detailFile){$c=supplier_snapshot_read($detailFile);$c['time']=time()-$seconds;supplier_snapshot_write($detailFile,$c);};
 $age(900);$before=count($calls);$d=supplier_detail('tb-700000000000',true);check(count($calls)===$before&&$d['product']['id']==='tb-700000000000'&&$d['cache_ttl']===0&&!$d['stale'],'A 15-minute-old detail is shown at once and not cached by browsers');
 $before=count($calls);supplier_detail('tb-700000000000');check(count($calls)===$before+1,'Non-display reads keep the 5-minute detail limit');
 $age(900);$before=count($calls);supplier_detail('tb-700000000000',false,'',true);check(count($calls)===$before+1,'Checkout never uses the display allowance');
-$age(1900);$before=count($calls);supplier_detail('tb-700000000000',true);check(count($calls)===$before+1,'Details older than 30 minutes are fetched again');
+$age(1900);$before=count($calls);$d=supplier_detail('tb-700000000000',true);check(count($calls)===$before&&!$d['stale'],'A 31-minute-old detail is still shown at once (refreshed in the background)');
+$age(3700);$before=count($calls);supplier_detail('tb-700000000000',true);check(count($calls)===$before+1,'Details older than an hour are fetched again');
 echo "PASS: category-specific recommendations, independent query caches, stable scrolling, price/category/current/duplicate filtering, missing metadata and retryable failure, seller facts and detail freshness.\n";

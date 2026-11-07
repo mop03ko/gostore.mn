@@ -3,7 +3,7 @@ declare(strict_types=1);
 $root=__DIR__.'/../tmp/ot-test-'.bin2hex(random_bytes(6));mkdir($root.'/server',0700,true);
 foreach(['product-policy.php','bootstrap.php','config.example.php','seed.json'] as $file)copy(__DIR__.'/../server/'.$file,$root.'/server/'.$file);
 file_put_contents($root.'/server/config.local.php','<?php return '.var_export(['data_dir'=>$root.'/data','otcommerce'=>['api_key'=>'fake-key']],true).';');
-putenv('GOSTORE_DATA_DIR');
+putenv('GOSTORE_DATA_DIR');putenv('GOSTORE_OTCOMMERCE_API_KEY'); // This suite owns its config file.
 require $root.'/server/bootstrap.php';require __DIR__.'/../server/ot-operator.php';
 $mode='ok';$calls=[];
 function check(bool $ok,string $message):void{if(!$ok)throw new RuntimeException($message);}
