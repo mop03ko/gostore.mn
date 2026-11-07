@@ -1,5 +1,12 @@
 # cPanel суулгалт
 
+## Admin customers list and editor — 2026-11-07
+
+- Admin → «Хэрэглэгчид»: paged list of registered customers with search (name, email, phone digits) and filters (active, phone/PIN, email, deleted), plus an editor for name, contact phone and the login email of email accounts. PIN login phones stay locked, deleted accounts are read-only, stale edits and duplicate emails return 409. Details in README.
+- Full `tests/run-all.cjs` passed on `d53a72f` (rebased onto `674636a`), including the new `admin-customers` and `admin-customers-ui` suites; the CI web ESLint config passed.
+- Deployed `server/admin-customers.php` (new), `api/index.php`, `admin/admin.css`, `admin/admin.js`, `admin/index.html` from `d53a72f` over FTPS with baseline/backup/hash verification. Live matched `674636a`; the new server file was published before `api/index.php`, which requires it. Backup: `/gostore-backups/customers-20261107-4d0c3b338f`. No database changes.
+- Live checks: health and catalog 200; `admin-customers` 401 without admin login, `admin-customer-save` 403 without CSRF, 404 on the mobile API, `/server/admin-customers.php` 403; served admin JS/CSS match the deployed hashes; the admin page at 1440/390 px loads the new code with no JS errors, failed requests or overflow. Signed-in use was not exercised on live (no live admin credentials used); no customer data was read or changed.
+
 ## Faster product pages and first visit — 2026-10-31
 
 - Deployed `20d3fa3` server files and hero WebP images, plus HEAD `index.html`: live already ran HEAD's bundle (`app.js?v=240cefcd6e15`, deployed separately), and HEAD's index differed from live only by this change. Baseline/backup/hash verification; backup `/gostore-backups/speed-20261031-60c3f1b43b`. New images serve `max-age=31536000, immutable`.
