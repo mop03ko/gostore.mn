@@ -62,6 +62,9 @@ autolinking; enabling it would also need the Play Data safety declaration. The i
 (`52bd47e7637e521598a2f3e4d25ae1bccdf63bbd`), so build 17 keeps receiving OTA updates; Android needs a new
 binary (fingerprint `7bb34ca75e224d3e958e2ee55510338e0effe0ad`).
 
-Still required before Android push: an FCM v1 service-account key for `gostore-27172` uploaded to EAS
-(expo.dev → project → Credentials → Android `mn.gostore.app` → FCM V1 service account key), a new Android
-build tested on a device, then adding `android` to the server's `customer-push-platforms`.
+The FCM V1 service-account key (`firebase-adminsdk-fbsvc`, private key ID starting `a8bb23dd`) was uploaded to EAS
+and assigned to Android credentials `a47c1ace-a530-44ca-be21-360ff3f49f3c` on 2026-11-07. Key files are
+git-ignored (`*-firebase-adminsdk-*.json`); keep the downloaded file outside the repository.
+
+Still required before Android push: a new Android build tested on a device, then adding `android` to the
+server's `customer-push-platforms`.

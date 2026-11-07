@@ -21,3 +21,7 @@ assets/uploads/*
 /server/verify-mn.env
 
 /server/pin-auth.env
+
+# Private Google/Firebase service-account keys (this repository is public).
+*-firebase-adminsdk-*.json
+*service-account*.json
