@@ -68,3 +68,8 @@ git-ignored (`*-firebase-adminsdk-*.json`); keep the downloaded file outside the
 
 Still required before Android push: a new Android build tested on a device, then adding `android` to the
 server's `customer-push-platforms`.
+
+Android builds with the FCM configuration: production AAB versionCode 8 (`ed71b300-2ea4-4f8c-aaab-aff4467871b2`)
+and preview APK versionCode 9 (`5cd94932-9a8c-4d03-a2ee-f28c2ba2e15b`), both finished 2026-11-07. The server's
+private `customer-push-platforms` was changed from `ios` to `ios,android` the same day (previous value backed
+up under `/gostore-backups/android-push-*`). Android handset delivery has not yet been verified.
