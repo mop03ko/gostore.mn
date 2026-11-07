@@ -9,7 +9,7 @@ subscription (cancellation itself happens in the OT Commerce account, outside th
   so a cancelled OT key cannot be selected by accident. Legacy OT-mode installs still see both options.
 - The OT code paths, operator panel and tests remain for now (they only run in OT mode). Removing them is a
   separate clean-up.
-- The OT catalog snapshot cron still runs daily on the host but returns `disabled`; it can be removed in
-  cPanel → Cron Jobs (the line running `server/cache-refresh.php`).
+- The OT catalog snapshot cron (`*/10 * * * *`, `server/cache-refresh.php`) still runs but returns `disabled`; it can be removed in
+  cPanel → Cron Jobs.
 - `server/config.local.php` on the host still contains the OT API key; it is unused in TaoWorld mode and can
   be blanked after cancellation.
