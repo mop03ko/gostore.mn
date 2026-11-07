@@ -51,3 +51,17 @@ Apple rejected 1.0.0 (14) after upload with 90062/90186 because the approved 1.0
 - An APNs push key was created and assigned to this app in EAS. No private key material was added to the repository.
 - Replacement 1.0.1 (16), EAS build `95686861-ff8b-4675-b76d-a6975323911e`, completed Xcode archive/signing and was uploaded with submission `a8ad807c-26ab-4a9b-9594-c6dbcff9e3f1`.
 - App Store Connect initially showed Processing. Physical-device notification delivery remains unverified; the server push switch remains disabled. Android FCM configuration is still outstanding.
+
+## Android Firebase configuration — 2026-11-07
+
+The owner supplied `google-services.json` for Android app `1:428447938231:android:54b7dde869a162f7bfff32`
+(package `mn.gostore.app`, project `gostore-27172`). It is Firebase's public client configuration (like the
+iOS plist), stored at `gostoremn/config/google-services.json` and referenced by
+`expo.android.googleServicesFile` for Expo push (FCM v1). RN Firebase Analytics stays excluded from Android
+autolinking; enabling it would also need the Play Data safety declaration. The iOS fingerprint is unchanged
+(`52bd47e7637e521598a2f3e4d25ae1bccdf63bbd`), so build 17 keeps receiving OTA updates; Android needs a new
+binary (fingerprint `7bb34ca75e224d3e958e2ee55510338e0effe0ad`).
+
+Still required before Android push: an FCM v1 service-account key for `gostore-27172` uploaded to EAS
+(expo.dev → project → Credentials → Android `mn.gostore.app` → FCM V1 service account key), a new Android
+build tested on a device, then adding `android` to the server's `customer-push-platforms`.

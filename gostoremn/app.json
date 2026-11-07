@@ -23,6 +23,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "mn.gostore.app",
+      "googleServicesFile": "./config/google-services.json",
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
