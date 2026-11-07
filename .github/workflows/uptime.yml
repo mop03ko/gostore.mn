@@ -1,0 +1,31 @@
+# Checks gostore.mn every 15 minutes. A failed run makes GitHub e-mail the repository owner
+# (GitHub notification settings decide the address). See docs/monitoring.md.
+name: Uptime
+# The 15-minute schedule is enabled once action=health is live on gostore.mn:
+#   schedule:
+#     - cron: '*/15 * * * *'
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Storefront, admin and API health
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch() { curl -fsS --retry 3 --retry-delay 20 --retry-all-errors --max-time 25 -A 'gostore-uptime/1 (GitHub Actions)' "$@"; }
+          fetch -o home.html https://gostore.mn/
+          grep -q 'gostore' home.html || { echo '::error::Storefront HTML is missing its content'; exit 1; }
+          fetch -o /dev/null https://gostore.mn/admin/
+          fetch -o health.json 'https://gostore.mn/api/index.php?action=health'
+          jq -e '.ok == true' health.json > /dev/null || { echo '::error::Health check failed'; cat health.json; exit 1; }
+          age=$(jq -r '.backup_age_hours // "none"' health.json)
+          echo "Newest database backup: ${age} h"
+          if [ "$age" != "none" ] && awk "BEGIN{exit !($age > 36)}"; then echo "::error::Database backup is ${age} hours old"; exit 1; fi

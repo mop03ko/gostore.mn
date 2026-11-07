@@ -26,6 +26,8 @@ try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
+    // Uptime probe: no session; database reachable and the age of the newest daily backup (hours).
+    if($action==='health'&&$method==='GET'){db()->query('SELECT 1')->fetchColumn();$b=glob(config()['data_dir'].'/backups/daily/gostore-*.sqlite.gz')?:[];$age=$b?round((time()-max(array_map('filemtime',$b)))/3600,1):null;header('Cache-Control: no-store');json_out(['ok'=>true,'time'=>gmdate('c'),'backup_age_hours'=>$age]);}
     if($action==='warehouse-push-delivery'&&$method==='GET')json_out(warehouse_push_delivery());
     if($action==='warehouse-push-revoke'&&$method==='POST')json_out(warehouse_push_revoke_token());
     if($action==='warehouse-fcm-rotate'&&$method==='POST')json_out(warehouse_fcm_rotate(body()));
@@ -259,4 +261,4 @@ try {
     fail('Үйлдэл олдсонгүй.',404);
 } catch(SupplierBusy $e) { header('Retry-After: 2');json_out(['error'=>$e->getMessage(),'code'=>'supplier_busy','retry_after'=>2],503); }
 catch(ApiError $e) { json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?warehouse_error_zh($e->getMessage()):$e->getMessage()],$e->getCode()?:400); }
-catch(Throwable $e) { error_log('GOStore API: '.get_class($e));json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?'服务器暂时不可用，请联系管理员。':'Серверийн тохиргоо эсвэл өгөгдлийн алдаа. Админтай холбогдоно уу.'],503); }
+catch(Throwable $e) { error_log('GOStore API: '.get_class($e).' action='.(preg_match('/^[a-z0-9-]{1,40}$/D',(string)($_GET['action']??''))?$_GET['action']:'?').' at '.basename($e->getFile()).':'.$e->getLine().($e instanceof PDOException?' '.substr((string)preg_replace('/\s+/',' ',$e->getMessage()),0,160):''));json_out(['error'=>(($warehouseAction??false)&&($_GET['lang']??'')==='zh')?'服务器暂时不可用，请联系管理员。':'Серверийн тохиргоо эсвэл өгөгдлийн алдаа. Админтай холбогдоно уу.'],503); }
