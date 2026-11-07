@@ -2,8 +2,10 @@
 
 `server/daily-worker.php` runs once a day from cron (07:30 Ulaanbaatar):
 
-1. **Backup**: `VACUUM INTO` makes a consistent copy of the live SQLite database while the site keeps
-   writing. The copy must pass `PRAGMA integrity_check`, is gzipped to
+1. **Backup**: a consistent copy of the live SQLite database while the site keeps writing: `VACUUM INTO`
+   on SQLite 3.27+, otherwise SQLite's online backup API (ext/sqlite3) or, failing that, a copy of the
+   database and its WAL taken under the write lock. The production host's SQLite predates `VACUUM INTO`
+   (the first run on 2026-11-07 failed with `near "INTO": syntax error`). The method is recorded in the status. The copy must pass `PRAGMA integrity_check`, is gzipped to
    `<data_dir>/backups/daily/gostore-YYYYMMDD-HHMMSS.sqlite.gz` (mode 0600), and the newest 30 are kept.
    The pre-deployment snapshots in `<data_dir>/backups/*.sqlite` (October 2026) are separate and untouched.
 2. **Google Drive copy** (when `<data_dir>/backup-drive.json` exists): resumable upload into the

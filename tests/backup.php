@@ -15,6 +15,16 @@ check((PHP_OS_FAMILY==='Windows'||substr(sprintf('%o',fileperms($b['file'])),-4)
 $restored=$dir.'/restored.sqlite';file_put_contents($restored,gzdecode((string)file_get_contents($b['file'])));
 $r=new PDO('sqlite:'.$restored);check($r->query('PRAGMA integrity_check')->fetchColumn()==='ok'&&$r->query("SELECT name FROM customers WHERE id='c1'")->fetchColumn()==='Нууц Нэр'&&$r->query('SELECT COUNT(*) FROM orders')->fetchColumn()==1,'Restorable copy');$r=null;
 
+// Every snapshot method (the live host's old SQLite lacks VACUUM INTO) includes rows still in the WAL.
+$methods=['vacuum','locked-copy'];if(class_exists('SQLite3'))$methods[]='backup-api';
+foreach($methods as $i=>$m){
+    db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute(['GS-M'.$i,'hash','key-m'.$i,'{"status":"new"}',$now,$now]);
+    $x=backup_create(time()+10+$i,$m);file_put_contents($restored,gzdecode((string)file_get_contents($x['file'])));$r=new PDO('sqlite:'.$restored);
+    check($x['method']===$m&&$r->query('PRAGMA integrity_check')->fetchColumn()==='ok'&&(int)$r->query('SELECT COUNT(*) FROM orders')->fetchColumn()===2+$i&&$r->query('PRAGMA journal_mode')->fetchColumn()!=='wal','Snapshot method '.$m);
+    $r=null;unlink($x['file']);check(!glob(backup_dir().'/.gostore-*'),'No temporary files after '.$m);
+}
+db()->exec("DELETE FROM orders WHERE id LIKE 'GS-M%'");
+
 // Newest 30 copies are kept.
 for($i=1;$i<=33;$i++)touch(backup_dir().sprintf('/gostore-202601%02d-000000.sqlite.gz',$i));
 check(backup_prune()===4&&count(glob(backup_dir().'/gostore-*.sqlite.gz'))===30&&is_file($b['file'])&&!is_file(backup_dir().'/gostore-20260101-000000.sqlite.gz'),'Oldest copies pruned, today kept');

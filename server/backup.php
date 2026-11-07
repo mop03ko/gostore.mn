@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-// Daily database backup. A consistent copy of the live SQLite database (VACUUM INTO, safe while the
-// site writes), integrity-checked and gzipped under <data_dir>/backups/daily, newest 30 kept.
+// Daily database backup. A consistent copy of the live SQLite database (see backup_snapshot; safe
+// while the site writes), integrity-checked and gzipped under <data_dir>/backups/daily, newest 30 kept.
 // Off-server copy: Google Drive through an owner-authorised OAuth refresh token (drive.file scope)
 // in <data_dir>/backup-drive.json. Service accounts cannot own files in a personal Drive, so the
 // token belongs to the owner's Google account; the server never stores a Google password.
@@ -13,11 +13,30 @@ function backup_dir(): string {
     if(!is_dir($dir)&&!mkdir($dir,0700,true))throw new RuntimeException('Backup directory unavailable');
     return $dir;
 }
-function backup_create(?int $now=null): array {
+// The production host's SQLite predates VACUUM INTO (3.27), so the method depends on what is
+// available: VACUUM INTO, else SQLite's online backup API through ext/sqlite3, else a copy of the
+// database and its WAL taken while holding the write lock (readers continue, writers wait briefly).
+function backup_snapshot(string $tmp,?string $method=null): string {
+    $method??=version_compare((string)db()->query('SELECT sqlite_version()')->fetchColumn(),'3.27.0','>=')?'vacuum':(class_exists('SQLite3')?'backup-api':'locked-copy');
+    $live=config()['data_dir'].'/gostore.sqlite';
+    if($method==='vacuum'){db()->exec('VACUUM INTO '.db()->quote($tmp));return $method;}
+    if($method==='backup-api'){
+        $src=new SQLite3($live);$src->busyTimeout(10000);$dst=new SQLite3($tmp);
+        try{if(!$src->backup($dst))throw new RuntimeException('SQLite backup API failed');}finally{$dst->close();$src->close();}
+    }else{
+        $db=db();$db->exec('BEGIN IMMEDIATE');
+        try{if(!copy($live,$tmp)||(is_file($live.'-wal')&&!copy($live.'-wal',$tmp.'-wal')))throw new RuntimeException('Database copy failed');}
+        finally{$db->exec('ROLLBACK');}
+    }
+    // Fold any copied WAL into the copy and leave WAL mode, so the backup is one self-contained file.
+    $copy=new PDO('sqlite:'.$tmp,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$copy->query('PRAGMA wal_checkpoint(TRUNCATE)')->fetchAll();$copy->query('PRAGMA journal_mode=DELETE')->fetchAll();$copy=null;
+    return $method;
+}
+function backup_create(?int $now=null,?string $method=null): array {
     $now??=time();$dir=backup_dir();$name='gostore-'.gmdate('Ymd-His',$now).'.sqlite';$tmp=$dir.'/.'.$name.'.tmp';$gz=$dir.'/'.$name.'.gz';
-    foreach([$tmp,$gz.'.part'] as $f)if(is_file($f))unlink($f);
+    $temps=[$tmp,$tmp.'-wal',$tmp.'-shm',$tmp.'-journal',$gz.'.part'];foreach($temps as $f)if(is_file($f))unlink($f);
     try{
-        db()->exec('VACUUM INTO '.db()->quote($tmp));
+        $used=backup_snapshot($tmp,$method);
         $copy=new PDO('sqlite:'.$tmp,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
         $check=(string)$copy->query('PRAGMA integrity_check')->fetchColumn();$tables=(int)$copy->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")->fetchColumn();$copy=null;
         if($check!=='ok'||$tables<1)throw new RuntimeException('Backup copy failed its integrity check');
@@ -25,8 +44,8 @@ function backup_create(?int $now=null): array {
         try{while(!feof($in)){$chunk=fread($in,1<<20);if($chunk===false||gzwrite($out,$chunk)===false)throw new RuntimeException('Backup write failed');}}
         finally{fclose($in);gzclose($out);}
         chmod($gz.'.part',0600);if(!rename($gz.'.part',$gz))throw new RuntimeException('Backup publish failed');
-    }finally{foreach([$tmp,$gz.'.part'] as $f)if(is_file($f))unlink($f);}
-    return ['name'=>basename($gz),'file'=>$gz,'bytes'=>filesize($gz),'sha256'=>hash_file('sha256',$gz),'tables'=>$tables,'created'=>gmdate('c',$now)];
+    }finally{foreach($temps as $f)if(is_file($f))unlink($f);}
+    return ['name'=>basename($gz),'file'=>$gz,'bytes'=>filesize($gz),'sha256'=>hash_file('sha256',$gz),'tables'=>$tables,'method'=>$used,'created'=>gmdate('c',$now)];
 }
 // Keeps the newest BACKUP_KEEP daily copies; returns how many were removed.
 function backup_prune(int $keep=BACKUP_KEEP): int {
@@ -84,7 +103,7 @@ function backup_status(): array {$s=json_decode((string)@file_get_contents(backu
 function backup_run(?callable $http=null): array {
     $status=['time'=>gmdate('c'),'ok'=>false];
     try{
-        $b=backup_create();$status+=['name'=>$b['name'],'bytes'=>$b['bytes'],'sha256'=>$b['sha256'],'tables'=>$b['tables'],'pruned'=>backup_prune()];$status['ok']=true;
+        $b=backup_create();$status+=['name'=>$b['name'],'method'=>$b['method'],'bytes'=>$b['bytes'],'sha256'=>$b['sha256'],'tables'=>$b['tables'],'pruned'=>backup_prune()];$status['ok']=true;
         try{$status['drive']=backup_drive_upload($b,$http)+['ok'=>true];}catch(Throwable $e){$status['drive']=['configured'=>true,'ok'=>false,'error'=>substr($e->getMessage(),0,120)];}
     }catch(Throwable $e){$status['error']=substr($e->getMessage(),0,160);}
     file_put_contents(backup_status_path(),json_encode($status,JSON_UNESCAPED_SLASHES),LOCK_EX);@chmod(backup_status_path(),0600);
