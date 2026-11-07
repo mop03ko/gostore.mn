@@ -39,7 +39,9 @@ function warehouse_push_keys(): array {
     $lock=fopen($path.'.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException('Push key lock unavailable');
     try{
         if(is_file($path))return json_decode(file_get_contents($path),true,512,JSON_THROW_ON_ERROR);
-        $options=['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1','config'=>__DIR__.'/warehouse-push-openssl.cnf'];$key=openssl_pkey_new($options);
+        // PHP 8.3 checks private_key_bits for every key type and reads 0 from this minimal config, so
+        // EC generation failed on Linux ("configured to 0"); the curve, not the bit count, sets the size.
+        $options=['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1','private_key_bits'=>2048,'config'=>__DIR__.'/warehouse-push-openssl.cnf'];$key=openssl_pkey_new($options);
         if(!$key||!openssl_pkey_export($key,$private,null,$options))throw new RuntimeException('Push key generation failed');
         $details=openssl_pkey_get_details($key);$public=warehouse_push_b64("\x04".str_pad($details['ec']['x'],32,"\0",STR_PAD_LEFT).str_pad($details['ec']['y'],32,"\0",STR_PAD_LEFT));
         $value=['public'=>$public,'private'=>$private];$tmp=$path.'.'.bin2hex(random_bytes(6));

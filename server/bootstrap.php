@@ -9,6 +9,7 @@ function config(): array {
     if (is_file(__DIR__ . '/config.local.php')) $value = array_replace_recursive($value, require __DIR__ . '/config.local.php');
     if (getenv('GOSTORE_DATA_DIR')) $value['data_dir'] = getenv('GOSTORE_DATA_DIR');
     if (getenv('GOSTORE_ADMIN_HASH')) $value['admin_password_hash'] = getenv('GOSTORE_ADMIN_HASH');
+    if (getenv('GOSTORE_OTCOMMERCE_API_KEY')) $value['otcommerce']['api_key'] = getenv('GOSTORE_OTCOMMERCE_API_KEY'); // CI placeholder; tests disable supplier network.
     if (getenv('GOSTORE_DISABLE_QPAY') === '1') $value['qpay']['enabled'] = false;
     if (getenv('GOSTORE_LOCAL_PRODUCTS_ENABLED') === '1') $value['local_products_enabled'] = true;
     return $value;

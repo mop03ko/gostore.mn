@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/ci-php-tests.cjs
+        env:
+          # Supplier suites need a configured catalog; their network calls are disabled in tests.
+          GOSTORE_OTCOMMERCE_API_KEY: ci-placeholder
   app:
     name: Mobile app typecheck and lint
     runs-on: ubuntu-latest
