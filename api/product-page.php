@@ -2,8 +2,9 @@
 declare(strict_types=1);
 // /v/<id> (see .htaccess): link-preview crawlers (Facebook, Messenger, Telegram) do not run
 // JavaScript, so the product's name and photo are written into index.html's title and Open Graph
-// tags. Only an existing detail snapshot is read and TaoWorld is never called, so the 800+ crawler
-// visits a month spend no API quota. Anything unexpected serves index.html unchanged.
+// tags, plus schema.org Product data for search engines. Only an existing detail snapshot is read
+// and TaoWorld is never called, so the 800+ crawler visits a month spend no API quota. Anything
+// unexpected serves index.html unchanged.
 $html=(string)file_get_contents(__DIR__.'/../index.html');
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache');
@@ -43,6 +44,17 @@ try{
         foreach(['og:image:type','og:image:width','og:image:height'] as $tag)$set('#\s*<meta property="'.preg_quote($tag,'#').'" content="[^"]*">#u','');
         $set('#<meta property="og:image:alt" content="[^"]*">#u','<meta property="og:image:alt" content="'.$e($name).'">');
         $set('#<meta name="twitter:image:alt" content="[^"]*">#u','<meta name="twitter:image:alt" content="'.$e($name).'">');
+    }
+    // Search engines: schema.org Product with the same lowest in-stock price the page shows, only while
+    // the snapshot is within the product page's display allowance (Google requires matching prices).
+    if(($c['time']??0)>=time()-TW_CATALOG_DETAIL_DISPLAY_MAX){
+        $prices=[];foreach($p['sku_list']??[] as $v){if(!is_array($v)||!is_numeric($v['quantity']??null)||(int)$v['quantity']<=0)continue;$cny=tw_catalog_price($v,true);if($cny!==null)$prices[]=$cny;}
+        if($prices){
+            $product=['@context'=>'https://schema.org','@type'=>'Product','name'=>$name,'sku'=>$id,'url'=>$url,
+                'offers'=>['@type'=>'Offer','url'=>$url,'priceCurrency'=>'MNT','price'=>(int)ceil(min($prices)*shipping_settings()['cny_rate']),'availability'=>'https://schema.org/InStock','itemCondition'=>'https://schema.org/NewCondition','seller'=>['@type'=>'Organization','name'=>'GOStore']]];
+            if(isset($photo))$product['image']=[$photo];
+            $set('#</head>#u','<script type="application/ld+json">'.json_encode($product,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_THROW_ON_ERROR).'</script>'."\n</head>");
+        }
     }
 }catch(Throwable){/* Plain index.html: the browser app renders the product as before. */}
 echo $html;

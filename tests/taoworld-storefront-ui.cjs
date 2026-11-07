@@ -14,6 +14,9 @@ const seed=spawnSync('tmp/tooling/php/php.exe',[...phpArgs,'tests/taoworld-store
  assert.equal(tag('og:title'),'English storage box 0');assert.equal(tag('og:type'),'product');assert.equal(tag('og:url'),'https://gostore.mn/v/'+fixture.id);
  assert.match(tag('og:image'),/^https:\/\/img\.alicdn\.com\/.+_800x800q80\.jpg$/);assert.ok(!share.includes('og:image:width'),'Logo card size tags are removed with the photo');
  assert.ok(share.includes('<title>English storage box 0 · GOStore</title>')&&share.includes('<link rel="canonical" href="https://gostore.mn/v/'+fixture.id+'">'));
+ // Search engines get schema.org Product data whose price matches the API's displayed price.
+ const ld=JSON.parse(share.split('<script type="application/ld+json">')[1]?.split('</script>')[0]||'null'),api=await (await fetch(base+'/api/index.php?action=supplier-product&id='+fixture.id)).json();
+ assert.equal(ld?.['@type'],'Product');assert.equal(ld.name,'English storage box 0');assert.equal(ld.offers.priceCurrency,'MNT');assert.equal(ld.offers.price,api.product.mnt);assert.equal(ld.offers.availability,'https://schema.org/InStock');
  const unknown=await (await fetch(base+'/v/tb-99999999')).text();assert.ok(unknown.includes('<meta property="og:title" content="Gostore.mn — Сонголт нэг дор.">')&&unknown.includes('id="home-hub"'),'Unknown products keep the site preview');
  await page.goto(base+'/v/'+fixture.id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);
  // Seller rating from search, short facts instead of the attribute table, mixed recommendations below.
