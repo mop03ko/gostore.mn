@@ -51,7 +51,10 @@ check($sent[0]==='shop@gostore.mn'&&str_starts_with($sent[1],'=?UTF-8?B?')&&str_
 
 // CLI worker: runs once (lock), backs up and reports without mailing in tests.
 unlink($dir.'/backup-drive.json');$php=PHP_BINARY;
-$cmd=[$php,'-d','extension_dir='.ini_get('extension_dir'),'-d','extension=pdo_sqlite','-d','extension=mbstring','-d','extension=curl','-d','extension=openssl',__DIR__.'/../server/daily-worker.php','--no-mail'];
+// The bundled Windows PHP has no php.ini and gets extensions on the command line; an installed PHP
+// (CI, server) already loads them, and repeating -d extension= would print warnings into the output.
+$cmd=[$php];if(php_ini_loaded_file()===false){array_push($cmd,'-d','extension_dir='.ini_get('extension_dir'));foreach(['pdo_sqlite','mbstring','curl','openssl'] as $x)array_push($cmd,'-d','extension='.$x);}
+array_push($cmd,__DIR__.'/../server/daily-worker.php','--no-mail');
 $p=proc_open($cmd,[1=>['pipe','w'],2=>['pipe','w']],$pipes,null,['GOSTORE_DATA_DIR'=>$dir]+getenv());$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);$code=proc_close($p);
 $o=json_decode(trim($out),true);check($code===0&&$o['backup_ok']===true&&$o['mail_sent']===false,'Worker run: '.$out.$err);
 echo "PASS backup: restorable gzip copy, 30-copy pruning, Drive refresh-token upload/checksum/pruning/validation, failure status, private-free daily report, mail encoding, CLI worker.\n";

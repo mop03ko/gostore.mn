@@ -14,3 +14,15 @@ GitHub sends failed-workflow e-mails to the GitHub account's notification addres
 (Settings → Notifications → Default notifications email; *Actions* → "Only notify for failed workflows").
 GitHub pauses scheduled workflows in public repositories after 60 days without repository activity;
 re-enable it under Actions → Uptime if that happens. Scheduled runs can start a few minutes late.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests:
+
+- **server**: PHP 8.3 on Linux, `php -l` / `node --check` for every tracked PHP and JavaScript file, and
+  every PHP suite registered in `tests/run-all.cjs` (`scripts/ci-php-tests.cjs` reads the list, so new
+  suites are picked up automatically).
+- **app**: `npm ci`, `npm run typecheck` and `npm run lint` in `gostoremn/`.
+
+Browser and local HTTP-server suites (Playwright with Chrome, the Windows tool bundle) still run with
+`node tests/run-all.cjs` before deployment. CI never deploys and holds no production credentials.
