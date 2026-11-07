@@ -23,6 +23,10 @@ re-enable it under Actions → Uptime if that happens. Scheduled runs can start 
   every PHP suite registered in `tests/run-all.cjs` (`scripts/ci-php-tests.cjs` reads the list, so new
   suites are picked up automatically).
 - **app**: `npm ci`, `npm run typecheck` and `npm run lint` in `gostoremn/`.
+- **web**: `scripts/bundle.cjs` must reproduce the committed `app.js`, `app.css` and `index.html` (catches a
+  forgotten rebuild), and ESLint (`scripts/eslint-web.config.cjs`) runs the recommended correctness rules
+  on storefront, admin and warehouse JavaScript plus an undefined-name check on the concatenated `app.js`.
+  Locally: `node gostoremn/node_modules/eslint/bin/eslint.js -c scripts/eslint-web.config.cjs .`
 
 Browser and local HTTP-server suites (Playwright with Chrome, the Windows tool bundle) still run with
 `node tests/run-all.cjs` before deployment. CI never deploys and holds no production credentials.

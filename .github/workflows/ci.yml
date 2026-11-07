@@ -46,3 +46,20 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+  web:
+    name: Web lint and bundle freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Bundle matches its sources
+        run: |
+          node scripts/bundle.cjs
+          git diff --exit-code -- app.js app.css index.html || { echo '::error::app.js/app.css/index.html are stale: run node scripts/bundle.cjs and commit the result'; exit 1; }
+      - name: ESLint (storefront, admin, warehouse)
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund eslint@9.39.5 @eslint/js@9.39.5 globals@14.0.0
+          npx eslint -c scripts/eslint-web.config.cjs .
