@@ -22,10 +22,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   await page.locator('[data-operation=batch-receive] button').click();
   await page.locator('[data-operation=batch-receive]').waitFor({state:'detached'});
   await page.locator('.manifest [data-order]').click();
-  await page.locator('[data-operation=sort] input[name=checked]').check();await page.locator('[data-operation=sort] button').click();
-  await page.locator('[data-operation=complete]').waitFor();
-  await page.locator('[data-operation=complete] input[name=pickup_code]').fill('12345678');await page.locator('[data-operation=complete] input[name=received_by]').fill('Demo recipient');await page.locator('[data-operation=complete] button').click();
-  await page.locator('[data-operation=complete]').waitFor({state:'detached'});
+  // One-step sorting, then the counter handover window with the demo pickup code.
+  await page.locator('[data-ub-sort] input[name=shelf]').fill('A-01');await page.locator('[data-ub-sort] input[name=checked]').check();await page.locator('[data-ub-sort] button.primary').click();
+  await page.locator('[data-ub-handover-open]').click();await page.locator('[data-ub-code="GS-DEMO03"]').fill('12345678');await page.locator('[data-ub-received]').fill('Demo recipient');await page.locator('[data-ub-handover]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.ub-handover-list li').length===0);
   assert.equal(await page.evaluate(async()=>{const r=await fetch('/api/index.php?action=warehouse-order&id=GS-DEMO03');return (await r.json()).order.status;}),'completed');
   await page.reload();await page.locator('#app').waitFor({state:'visible'});
   const reset=await page.evaluate(async()=>{const r=await fetch('/api/index.php?action=warehouse-order&id=GS-DEMO03');return (await r.json()).order;});

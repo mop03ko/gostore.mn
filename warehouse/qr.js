@@ -16,17 +16,20 @@ function stopBatchScanner(){
   const video=$('#qr-video');video.pause();video.srcObject=null;
 }
 function qrError(key){$('#qr-error').textContent=t(key);}
-let qrLastOutbound={code:'',at:0};
+let qrLastScan={code:'',at:0};
 async function acceptBatchQr(value){
   const id=String(value||'').trim().toUpperCase();
-  if(!/^(?:G[BS]-[A-Z0-9-]{1,45}|[A-Z0-9-]{6,40})$/.test(id)||(!/^G[BS]-/.test(id)&&cityRole()!=='erenhot')){qrError('qrInvalid');return false;}
-  // Scan-to-dispatch keeps the camera open: each waybill joins the list and the next one can follow.
-  if(window.warehouseOutboundActive?.()){
-    if(id===qrLastOutbound.code&&Date.now()-qrLastOutbound.at<3000)return false;
-    qrLastOutbound={code:id,at:Date.now()};qrError('');
-    try{$('#qr-status').textContent=await warehouseOutboundAdd(id);}catch(e){$('#qr-status').textContent=id+': '+e.message;}
-    qrLastOutbound.at=Date.now();return false;
+  // A window that takes a series of codes (scan-out, batch check, counter handover) keeps the camera open:
+  // each code is handed to it and the next one can follow. The same code is ignored for 3 seconds.
+  const target=(window.warehouseScanTargets||[]).map(f=>f()).find(Boolean);
+  if(target){
+    if(!/^[A-Z0-9-]{4,50}$/.test(id)){qrError('qrInvalid');return false;}
+    if(id===qrLastScan.code&&Date.now()-qrLastScan.at<3000)return false;
+    qrLastScan={code:id,at:Date.now()};qrError('');
+    try{$('#qr-status').textContent=await target(id);}catch(e){$('#qr-status').textContent=id+': '+e.message;}
+    qrLastScan.at=Date.now();return false;
   }
+  if(!/^(?:G[BS]-[A-Z0-9-]{1,45}|[A-Z0-9-]{6,40})$/.test(id)||(!/^G[BS]-/.test(id)&&cityRole()!=='erenhot')){qrError('qrInvalid');return false;}
   stopBatchScanner();$('#qr-scanner').close();
   $('#scan-code').value=id;try{await openWarehouseCode(id);}catch(e){toast(e.message);}
   return true;

@@ -19,7 +19,7 @@
     const filtered=orders.filter(o=>(!q||(o.id+' '+o.title+' '+o.customer).toLowerCase().includes(q))&&(status==='all'||(status==='waiting'?['erenhot_dispatched','zamyn_uud'].includes(o.status):status==='pending_sort'?['ulaanbaatar_unsorted','ulaanbaatar'].includes(o.status):o.status===status)));
     const count=(...s)=>orders.filter(o=>s.includes(o.status)).length;
     const totals=s=>({orders:count(...s),quantity:count(...s)});
-    return {orders:filtered.slice(start,start+50),total:filtered.length,more:filtered.length>start+50,location:'ulaanbaatar',email:'Demo · Local sample data',counts:{waiting:count('erenhot_dispatched','zamyn_uud'),received:count('ulaanbaatar'),unsorted:count('ulaanbaatar_unsorted'),ready:count('erenhot_ready'),dispatched:count('erenhot_dispatched'),completed:count('completed')},overview:{ordered:{orders:orders.length,quantity:orders.length},erenhot:totals(['erenhot','erenhot_ready']),ulaanbaatar:totals(['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'])}};
+    return {orders:filtered.slice(start,start+50),total:filtered.length,more:filtered.length>start+50,location:'ulaanbaatar',email:'Demo · Local sample data',counts:{unpaid:0,stale:0,waiting:count('erenhot_dispatched','zamyn_uud'),received:count('ulaanbaatar'),unsorted:count('ulaanbaatar_unsorted'),ready:count('erenhot_ready'),dispatched:count('erenhot_dispatched'),completed:count('completed')},overview:{ordered:{orders:orders.length,quantity:orders.length},erenhot:totals(['erenhot','erenhot_ready']),ulaanbaatar:totals(['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'])}};
   }
   function handle(action,params,b){
     if(action==='warehouse-session')return {authenticated,location:'ulaanbaatar',warehouses:directory,csrf:'demo-only'};
@@ -36,8 +36,21 @@
     if(action==='warehouse-batch-receive'){
       if(b.id!==batch.id||batch.status!=='dispatched')fail('Багцын төлөвийг шалгана уу.');
       if(!batch.scanned.includes(orders[2].id))fail('GS-DEMO03 кодыг эхлээд тулгана уу.');
-      requirePhoto(orders[2]);batch.status='received';batch.version++;batch.history.push({event:'received',at:now()});transition(orders[2],'ulaanbaatar_unsorted');orders[2].contact={phone:'00000000',address:'Демо хаяг'};return {batch:batchView()};
+      batch.status='received';batch.version++;batch.history.push({event:'received',at:now()});transition(orders[2],'ulaanbaatar_unsorted');orders[2].contact={phone:'00000000',address:'Демо хаяг'};return {batch:batchView()};
     }
+    // Ulaanbaatar counter handover and courier runs (one-step flow); the demo pickup code is 12345678.
+    const card=o=>({id:o.id,customer:o.customer,phone:o.contact?.phone||'',status:o.status,shelf:o.logistics.shelf||'',pieces:1,address:o.contact?.address||'',due:0,refund_due:0,reason:o.status==='ready_pickup'?'':o.status==='ready_delivery'?'delivery':o.status==='out_for_delivery'?'out_for_delivery':'not_sorted'});
+    if(action==='warehouse-handover-lookup'){
+      const q=(params.get('q')||'').trim().toUpperCase(),digits=q.replace(/\D/g,'');
+      const found=orders.filter(o=>['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)&&(o.id===q||digits==='12345678'||(digits.length>=6&&(o.contact?.phone||'').replace(/\D/g,'').endsWith(digits))));
+      if(!found.length)fail('Энэ агуулахад тохирох захиалга олдсонгүй.');return {orders:found.map(o=>({...card(o),verified:digits==='12345678'&&o.status==='ready_pickup'}))};
+    }
+    if(action==='warehouse-handover'){
+      for(const i of b.items||[]){if(get(i.id).status!=='ready_pickup')fail('Захиалгыг хүлээлгэн өгөх боломжгүй.');if(i.code!=='12345678')fail('Демо авах код: 12345678');}
+      return {orders:(b.items||[]).map(i=>{const o=get(i.id);o.fulfillment={...o.fulfillment,received_by:b.received_by};transition(o,'completed');return o;})};
+    }
+    if(action==='warehouse-delivery-list')return {orders:orders.filter(o=>o.status==='ready_delivery').map(o=>({...card(o),ready:true,reason:''})),couriers:[{name:'Демо хүргэгч',phone:'00000000'}]};
+    if(action==='warehouse-delivery-dispatch')return {orders:(b.ids||[]).map(id=>{const o=get(id);if(o.status!=='ready_delivery')fail('Захиалга хүргэлтэд бэлэн биш байна.');o.fulfillment={...o.fulfillment,courier_name:b.courier_name,courier_phone:b.courier_phone};transition(o,'out_for_delivery');return o;})};
     const o=get(b.id);
     if(o.read_only||['completed','cancelled'].includes(o.status))fail('Энэ жишээ захиалга зөвхөн харах төлөвтэй.');
     if(action==='warehouse-photo-upload'){
@@ -49,6 +62,12 @@
       const m=Object.fromEntries(['weight_kg','length_cm','width_cm','height_cm','pieces'].map(k=>[k,Number(b[k])]));if(Object.values(m).some(v=>!Number.isFinite(v)||v<=0))fail('Эерэг хэмжээс оруулна уу.');m.volume_m3=m.length_cm*m.width_cm*m.height_cm/1e6;o.logistics.measurement=m;
     }else if(action==='warehouse-issue'){o.logistics.issues.push({id:crypto.randomUUID(),kind:b.kind,note:String(b.note).slice(0,1000),state:'open'});
     }else if(action==='warehouse-issue-resolve'){const issue=o.logistics.issues.find(i=>i.id===b.issue_id);if(!issue)fail('Зөрчил олдсонгүй.');issue.state='resolved';issue.resolution=String(b.resolution).slice(0,1000);
+    }else if(action==='warehouse-sort'){
+      if(b.expected_status!==o.status)fail('Төлөв өөрчлөгдсөн. Дахин нээнэ үү.');
+      if(!['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'].includes(o.status)||b.checked!==true||!['pickup','delivery'].includes(b.method)||!String(b.shelf||'').trim())fail('Ангилах мэдээллийг шалгана уу.');
+      requirePhoto(o);o.logistics.shelf=String(b.shelf).slice(0,50);o.fulfillment={method:b.method,contact_phone:b.contact_phone,address:b.address,sorted_at:now()};o.contact={phone:b.contact_phone,address:b.address};
+      const next=b.method==='delivery'?'ready_delivery':'ready_pickup';if(o.status!==next)transition(o,next);
+      if(o.batch_id&&batchView().unsorted_count===0)batch.status='sorted';
     }else if(action==='warehouse-fulfillment-update'){
       if(b.expected_status!==o.status)fail('Төлөв өөрчлөгдсөн. Дахин нээнэ үү.');
       if(b.operation==='sort'){
@@ -73,7 +92,7 @@
   window.GOStoreWarehouseDemo={photoUrl:id=>photos.get(id)||''};
   document.addEventListener('DOMContentLoaded',()=>{
     const banner=document.createElement('aside');banner.className='receipt-info';banner.id='demo-banner';banner.setAttribute('role','status');
-    banner.innerHTML='<strong>ДЕМО / DEMO — зөвхөн жишээ өгөгдөл</strong><p>All changes and photos stay on this device until reload. No real orders or payments.</p><p>Багц / Batch: <b>GB-DEMO01</b> · Доторх захиалга / Order: <b>GS-DEMO03</b> · Авах код / Pickup code: <b>12345678</b></p><p>Scan → photo → receive → sort. Reload to reset.</p><a href="/warehouse/ulaanbaatar/">Демо горимоос гарах / Exit demo</a>';
+    banner.innerHTML='<strong>ДЕМО / DEMO — зөвхөн жишээ өгөгдөл</strong><p>All changes and photos stay on this device until reload. No real orders or payments.</p><p>Багц / Batch: <b>GB-DEMO01</b> · Доторх захиалга / Order: <b>GS-DEMO03</b> · Авах код / Pickup code: <b>12345678</b></p><p>Scan → receive → sort (photo, shelf) → hand over. Reload to reset.</p><a href="/warehouse/ulaanbaatar/">Демо горимоос гарах / Exit demo</a>';
     document.body.prepend(banner);
   });
 })();

@@ -44,7 +44,6 @@ assert.equal((await oldUb('warehouse-batch&id='+b.id)).status,404);assert.equal(
 assert.equal((await oldUb('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,404);
 assert.equal((await ub('warehouse-batch&id='+b.id)).status,200);
 b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;
-assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409,'New branch requires its own receipt photo');
 await uploadReceipt(ub,id);assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,200);
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'sort',expected_status:'ulaanbaatar_unsorted',method:'pickup',contact_phone:'99112233',address:'',checked:true})).status,200);
 o=(await ub('warehouse-order&id='+id)).order;

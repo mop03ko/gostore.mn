@@ -28,6 +28,8 @@ function outboundRender(){
 }
 function outboundOpen(){outbound=outboundLoad();outboundRender();}
 window.warehouseOutboundActive=()=>$('#editor').open&&$('#editor').dataset.outbound==='1';
+window.warehouseScanTargets=window.warehouseScanTargets||[];
+window.warehouseScanTargets.push(()=>warehouseOutboundActive()?warehouseOutboundAdd:null);
 // Adds every ready order behind a scanned code; returns a short summary for the camera view.
 async function warehouseOutboundAdd(raw){
  const code=String(raw||'').trim().toUpperCase();if(!code)return '';

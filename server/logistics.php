@@ -18,9 +18,11 @@ function logistics_open_issues(array $o): bool {
 }
 function settlement_summary(array $o): array {
     $s=$o['settlement']??null;
-    $paid=(($o['paid']??false)?(int)($o['amount']??0):0)+(int)($o['freight']['paid_amount']??0);
+    // Refunds the admin has sent back (order-refund) reduce what counts as paid.
+    $refunded=array_sum(array_map(fn($r)=>(int)($r['amount']??0),$o['refunds']??[]));
+    $paid=(($o['paid']??false)?(int)($o['amount']??0):0)+(int)($o['freight']['paid_amount']??0)-$refunded;
     $total=$s['total']??(int)($o['amount']??0);
-    return ['finalized'=>$s!==null,'total'=>$total,'paid'=>$paid,'due'=>max(0,$total-$paid),'refund_due'=>max(0,$paid-$total),'breakdown'=>$s['breakdown']??($o['quote']['breakdown']??[]),'confirmed_at'=>$s['confirmed_at']??null];
+    return ['finalized'=>$s!==null,'total'=>$total,'paid'=>$paid,'refunded'=>$refunded,'due'=>max(0,$total-$paid),'refund_due'=>max(0,$paid-$total),'breakdown'=>$s['breakdown']??($o['quote']['breakdown']??[]),'confirmed_at'=>$s['confirmed_at']??null];
 }
 function logistics_ready(array $o): void {
     if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
@@ -33,16 +35,19 @@ function logistics_touch(array &$o,string $event): void {
 }
 function logistics_notify(array $o,?array $old): void {
     if(!$old)return;
-    $events=[];
-    if($old['status']!==$o['status']){
+    $events=[];$billed=isset($o['settlement'])&&($old['settlement']??null)!==$o['settlement'];
+    // Ready in Ulaanbaatar, or leaving Erenhot with a new bill: one message that says what is due.
+    if($old['status']!==$o['status']&&isset($o['settlement'])&&(in_array($o['status'],['ready_pickup','ready_delivery'],true)||($o['status']==='erenhot_dispatched'&&$billed))&&function_exists('warehouse_bill_message')){$events[]=['settlement',warehouse_bill_message($o)];$billed=false;}
+    elseif($old['status']!==$o['status']){
         $message=$o['status'];$kind='status';
         if(isset($o['warehouse_locations'])&&in_array($o['status'],['erenhot','erenhot_ready','ulaanbaatar','ulaanbaatar_unsorted'],true)){
             $role=$o['status']==='erenhot'?'erenhot':'ulaanbaatar';$message=warehouse_profile(warehouse_order_location($o,$role))['name'].match($o['status']){'erenhot_ready'=>' руу гарахад бэлэн','ulaanbaatar_unsorted'=>' · ангилж байна',default=>' · бараа ирсэн'};$kind='warehouse_status';
         }$events[]=[$kind,$message];
     }
-    if(($old['settlement']??null)!==($o['settlement']??null))$events[]=['settlement','Эцсийн тооцоо баталгаажлаа'];
+    if($billed)$events[]=['settlement','Эцсийн тооцоо баталгаажлаа'];
     if(!($old['paid']??false)&&($o['paid']??false))$events[]=['payment','Төлбөр баталгаажлаа'];
     if(($old['freight']['paid_amount']??0)!==($o['freight']['paid_amount']??0))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
+    foreach(array_slice($o['refunds']??[],count($old['refunds']??[])) as $r)$events[]=['payment','Илүү төлсөн '.number_format((int)$r['amount']).'₮ буцааж шилжүүллээ'];
     $oldPhotos=array_column(logistics_state($old)['photos'],'id');
     foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',warehouse_profile($p['location'])['name'].' · зураг нэмэгдлээ'];
     if($events)customer_push_schedule();
@@ -112,7 +117,9 @@ function logistics_post(string $action,array $b,string $location): never {
         }elseif($action==='warehouse-settlement'){
             if(warehouse_role($location)!=='ulaanbaatar')fail('УБ агуулахад эцсийн тооцоог батална.',403);
             if(!in_array($o['status'],['ready_pickup','ready_delivery'],true))fail('Эхлээд барааг ангилж авах хэлбэрийг сонгоно уу.',409);
-            if(isset($o['freight']['invoice']))fail('Нэхэмжлэл үүссэн тул тооцоог өөрчлөхгүй.',409);
+            // After the freight invoice is paid the bill may only go down (the admin refunds the difference).
+            $freightPaid=isset($o['freight']['invoice'])&&(int)($o['freight']['paid_amount']??0)>=(int)($o['freight']['amount']??PHP_INT_MAX);
+            if(isset($o['freight']['invoice'])&&!$freightPaid)fail('Нэхэмжлэл үүссэн тул тооцоог өөрчлөхгүй.',409);
             if(isset($o['invoice'])&&!$o['paid'])fail('Эхний нэхэмжлэлийн төлбөрийг баталгаажуулна уу.',409);
             warehouse_cargo_required($o);
             $method=str_field($b,'cargo_method',20);
@@ -127,7 +134,7 @@ function logistics_post(string $action,array $b,string $location): never {
             }
             $parts=[];foreach(['goods_mnt','domestic_mnt','service_mnt','delivery_mnt'] as $key)$parts[$key]=int_field($b,$key,0,100000000);
             $parts['cargo_mnt']=(int)ceil($cargo);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');
-            if($total<settlement_summary($o)['paid'])fail('Өмнө төлсөн дүнгээс бага байна. Буцаалтыг админтай тулган шийднэ үү.',409);
+            if($freightPaid&&$total>($o['settlement']['total']??0))fail('Төлбөр төлөгдсөн тул дүнг нэмэхгүй. Нэмэлт төлбөрийг админтай шийднэ үү.',409);
             $o['settlement']=['total'=>$total,'breakdown'=>$parts,'cargo_method'=>$method,'measure'=>$measure,'rates'=>$rates,'transport'=>$q,'confirmed_at'=>gmdate('c'),'note'=>str_field($b,'note',500)];
             $o['pickup_code']=str_pad((string)random_int(0,99999999),8,'0',STR_PAD_LEFT);
         }else fail('Үйлдэл олдсонгүй.',404);

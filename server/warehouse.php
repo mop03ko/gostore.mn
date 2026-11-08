@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/warehouse-notifications.php';
 require_once __DIR__.'/warehouse-session.php';
 require_once __DIR__.'/warehouse-flow.php';
+require_once __DIR__.'/warehouse-ub.php';
 
 // A warehouse has an immutable operational role and an independent manager session.
 function warehouse_definitions(): array {
@@ -132,11 +133,12 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
     if(warehouse_role($location)==='erenhot'){$result['parcels']=warehouse_parcels($o);$result['alerts']=warehouse_alerts($o);$result['expected_pieces']=warehouse_expected_pieces($o);}
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
-    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;}
+    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;$result['freight_locked']=isset($o['freight']['invoice']);}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['requested_method']=$o['fulfillment_request']['method']??null;
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
         if(isset($o['fulfillment']))$result['fulfillment']=$o['fulfillment'];
+        $result['flags']=warehouse_ub_flags($o);
     }
     $result['next_status']=isset($o['batch_id'])?null:(warehouse_role($location)==='ulaanbaatar'
         ? ($o['status']==='zamyn_uud'?'ulaanbaatar':null)
@@ -179,6 +181,8 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
     if($action==='warehouse-tracking')json_out(warehouse_tracking_matches(str_field($_GET,'number',40),$location));
     if($action==='warehouse-outbound-lookup')json_out(warehouse_outbound_lookup(str_field($_GET,'code',50),$location));
+    if($action==='warehouse-handover-lookup')json_out(warehouse_handover_lookup(str_field($_GET,'q',50),$location));
+    if($action==='warehouse-delivery-list')json_out(warehouse_delivery_list($location));
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
     if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
     if($action==='warehouse-exception-photo'){$id=str_field($_GET,'id',50);logistics_exception($id,$location);logistics_photo_read(['logistics'=>['photos'=>logistics_exception_photos($id)]],str_field($_GET,'photo',32));}
@@ -187,7 +191,7 @@ function warehouse_get(string $action): never {
     $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
-    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
+    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
     $overview=array_fill_keys(['ordered','erenhot','ulaanbaatar'],['orders'=>0,'quantity'=>0]);
     $waiting=warehouse_role($location)==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
     $received=warehouse_role($location)==='ulaanbaatar'?'ulaanbaatar':'erenhot';
@@ -198,6 +202,7 @@ function warehouse_get(string $action): never {
         if(in_array($o['status'],$waiting,true))$counts['waiting']++;
         $alerted=warehouse_role($location)==='erenhot'&&warehouse_alerts($o);if($alerted)$counts['alerts']++;
         $packed=warehouse_role($location)==='erenhot'&&(($o['status']==='erenhot'&&isset($o['batch_id']))||$o['status']==='erenhot_ready');if($packed)$counts['packed']++;
+        $flags=warehouse_role($location)==='ulaanbaatar'?warehouse_ub_flags($o):[];foreach(['unpaid','stale'] as $flag)if(isset($flags[$flag]))$counts[$flag]++;
         if($o['status']===$received)$counts['received']++;
         if($o['status']==='erenhot_ready')$counts['ready']++;
         if($o['status']==='erenhot_dispatched')$counts['dispatched']++;
@@ -208,8 +213,12 @@ function warehouse_get(string $action): never {
         elseif($status==='alerts'){if(!$alerted)continue;}
         elseif($status==='packed'){if(!$packed)continue;}
         elseif($status==='pending_sort'){if(!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar'],true))continue;}
+        elseif(in_array($status,['unpaid','stale'],true)){if(!isset($flags[$status]))continue;}
         elseif($status!==''&&$status!=='all'&&$o['status']!==$status)continue;
-        if($query!==''&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
+        // Ulaanbaatar also finds a customer by phone (digits only, so spaces and dashes do not matter).
+        $phones=warehouse_role($location)==='ulaanbaatar'?' '.warehouse_phone_digits($o['phone']??'').' '.warehouse_phone_digits($o['fulfillment']['contact_phone']??''):'';
+        $digits=warehouse_phone_digits($query);$byPhone=$phones!==''&&strlen($digits)>=4&&preg_match('/^[\d +()-]+$/D',$query)&&str_contains($phones,$digits);
+        if($query!==''&&!$byPhone&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);
     }
@@ -239,6 +248,9 @@ function warehouse_post(string $action,array $b): never {
     }
     if($action==='warehouse-receive')json_out(['order'=>warehouse_order_public(warehouse_receive($b,$location),$location)]);
     if($action==='warehouse-outbound-pack')json_out(['batch'=>warehouse_batch_public(warehouse_outbound_pack($b,$location),$location,true)]);
+    if($action==='warehouse-sort')json_out(['order'=>warehouse_order_public(warehouse_ub_sort($b,$location),$location)]);
+    if($action==='warehouse-handover')json_out(['orders'=>array_map(fn($o)=>warehouse_order_public($o,$location),warehouse_handover($b,$location))]);
+    if($action==='warehouse-delivery-dispatch')json_out(['orders'=>array_map(fn($o)=>warehouse_order_public($o,$location),warehouse_delivery_dispatch($b,$location))]);
     if($action==='warehouse-parcel-arrive')json_out(['order'=>warehouse_order_public(warehouse_parcel_arrive($b,$location),$location)]);
     if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm','warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);

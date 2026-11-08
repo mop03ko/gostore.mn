@@ -118,6 +118,18 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                     warehouse_change_order($o,'erenhot');
                 }
                 $batch['status']='draft';$batch['checks']['erenhot']=[];unset($batch['ready_at']);
+            }elseif($action==='warehouse-batch-receive'){
+                // Ulaanbaatar receives the scanned batch at once; receipt photos are taken while sorting. Orders not
+                // scanned need the explicit partial confirmation and get an automatic "missing" issue.
+                if(!$members)fail('Хоосон багцыг хүлээн авах боломжгүй.',409);
+                $missing=array_values(array_diff(array_column($members,'id'),$batch['checks'][$location]??[]));
+                if($missing&&($b['partial']??false)!==true)fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
+                foreach($members as $o){
+                    if($o['status']!=='erenhot_dispatched')fail('Багцын захиалгын төлөв зөрсөн байна.',409);
+                    if(in_array($o['id'],$missing,true)){$l=logistics_state($o);$l['issues'][]=['id'=>bin2hex(random_bytes(8)),'kind'=>'missing','note'=>$batch['id'].' багцыг хүлээн авахад уншигдаагүй.','state'=>'open','location'=>$location,'at'=>gmdate('c'),'auto'=>'batch'];$l['version']++;$o['logistics']=$l;}
+                    warehouse_change_order($o,'ulaanbaatar_unsorted');
+                }
+                $batch['status']='received';$batch['received_at']=gmdate('c');if($missing)$batch['missing']=$missing;
             }else{
                 if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true)&&($b['checked']??false)!==true)fail('Багц агуулахаас бодитоор гарсныг батална уу.');
                 if(!$members)fail('Хоосон багцыг илгээх боломжгүй.',409);
@@ -127,7 +139,8 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                     if(warehouse_role($location)==='erenhot')warehouse_cargo_required($o);
                     $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready','warehouse-batch-ship'=>$batch['status']==='draft'?'erenhot':'erenhot_ready',default=>'erenhot_dispatched'};
                     if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
-                    if($action==='warehouse-batch-receive')logistics_receipt_photo_required($o,$location);
+                    // Pickup orders leave Erenhot with their final bill so the customer can pay on the way.
+                    if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true))warehouse_early_settlement($o);
                     warehouse_change_order($o,match($action){'warehouse-batch-ready'=>'erenhot_ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'erenhot_dispatched',default=>'ulaanbaatar_unsorted'});
                 }
                 $batch['status']=match($action){'warehouse-batch-ready'=>'ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'dispatched',default=>'received'};$batch[$batch['status'].'_at']=gmdate('c');
@@ -158,6 +171,7 @@ function warehouse_fulfillment(array $b,string $location): never {
             if(!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('Эхлээд багцыг хүлээн авна уу.',409);
             if(($b['checked']??false)!==true)fail('Бараа, хувилбар, тоо ширхэгийг тулгаж шалгана уу.');
             $method=str_field($b,'method',20);if(!in_array($method,['pickup','delivery'],true))fail('Хүлээлгэн өгөх хэлбэр буруу.');
+            if(isset($o['freight']['invoice'])&&$method!==($o['fulfillment']['method']??'pickup'))fail('Тээврийн төлбөрийн нэхэмжлэл үүссэн тул авах хэлбэрийг өөрчлөхгүй. Админтай шийднэ үү.',409);
             if(isset($o['settlement'])&&isset($o['fulfillment'])&&$method!==$o['fulfillment']['method'])fail('Эцсийн тооцооны дараа авах хэлбэрийг өөрчлөхгүй.',409);
             $phone=str_field($b,'contact_phone',30);if(!preg_match('/^[+\d ()-]{8,25}$/D',$phone))fail('Холбогдох утасны дугаараа шалгана уу.');
             $address=str_field($b,'address',500,$method==='delivery');

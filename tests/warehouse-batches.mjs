@@ -66,11 +66,7 @@ assert.equal((await ub('warehouse-fulfillment-update',sort)).status,409,'Cannot 
 assert.equal((await cn('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,403);
 assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'Unscanned receipt blocked');
 batch=await scanAll(ub,batch);
-assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'Batch requires UB photos for every order');
-await uploadReceipt(ub,ids[0]);
-assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,409,'One photographed member cannot receive whole batch');
-assert.ok((await ub('warehouse-batch&id='+batch.id)).batch.orders.every(o=>o.status==='erenhot_dispatched'),'Missing photo rolls back all earlier member changes');
-await uploadReceipt(ub,ids[1]);
+// Since 2026-11-09 the scanned batch is received without per-order photos (they are taken while sorting).
 const receiveVersion=batch.version;const receive=await ub('warehouse-batch-receive',{id:batch.id,expected_version:receiveVersion});assert.equal(receive.status,200);batch=receive.batch;assert.equal(batch.status,'received');assert.equal(batch.unsorted_count,2);assert.ok(batch.orders.every(o=>o.status==='ulaanbaatar_unsorted'));
 await checkTracking('ulaanbaatar_unsorted');
 assert.equal(batch.orders[0].contact.address,'Legacy appended address');assert.equal(batch.orders[1].contact.address,'Legacy address only');assert.ok(!JSON.stringify(batch.orders[0].contact).includes('PRIVATE'));assert.equal((await ub('warehouse-orders&status=pending_sort')).total,2);

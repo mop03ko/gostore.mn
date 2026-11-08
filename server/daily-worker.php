@@ -13,7 +13,11 @@ if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){fwrite(STDERR,"Daily worker already ru
 try{
     $backup=backup_run();
     $sessions=session_files_prune();
+    // Ulaanbaatar pickup/payment reminders (2 and 5 days after sorting); never stops the backup report.
+    $reminders=null;
+    try{require_once __DIR__.'/warehouse.php';require_once __DIR__.'/logistics.php';$reminders=warehouse_pickup_reminders();}
+    catch(Throwable $e){error_log('GOStore pickup reminders failed: '.get_class($e));}
     $report=daily_report_build();$sent=in_array('--no-mail',$argv,true)?false:daily_report_send($report);
-    echo json_encode(['backup_ok'=>$backup['ok'],'drive'=>$backup['drive']['ok']??null,'mail_sent'=>$sent,'sessions_pruned'=>$sessions,'warnings'=>count($report['warnings'])],JSON_UNESCAPED_UNICODE).PHP_EOL;
+    echo json_encode(['backup_ok'=>$backup['ok'],'drive'=>$backup['drive']['ok']??null,'mail_sent'=>$sent,'sessions_pruned'=>$sessions,'reminders'=>$reminders,'warnings'=>count($report['warnings'])],JSON_UNESCAPED_UNICODE).PHP_EOL;
     exit($backup['ok']?0:1);
 }finally{flock($lock,LOCK_UN);fclose($lock);}

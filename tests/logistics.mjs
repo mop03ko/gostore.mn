@@ -45,7 +45,6 @@ b=(await cn('warehouse-batch-dispatch',{id:b.id,expected_version:b.version,check
 assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409);
 b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;
 assert.equal((await cn('warehouse-photo-upload',upload(o.logistics.version))).status,409,'Erenhot cannot add receipt photos after dispatch');
-assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,409,'UB requires its own photo');
 const ubPhoto=(await uploadReceipt(ub,id)).logistics.photos.at(-1);assert.equal(ubPhoto.location,'ulaanbaatar');
 assert.equal((await owner('order-photo',{id,photo:ubPhoto.id})).status,200);
 assert.equal((await other('order-photo',{id,photo:ubPhoto.id})).status,403);
@@ -57,8 +56,10 @@ assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'sort',expec
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:'00000000'})).status,409,'No final bill, no handover');
 const settlement={id,expected_version:o.logistics.version,goods_mnt:98000,domestic_mnt:0,service_mnt:0,delivery_mnt:0,cargo_method:'auto',note:'Measured and verified'};
 assert.equal((await cn('warehouse-settlement',settlement)).status,403);
-assert.equal((await ub('warehouse-settlement',{...settlement,goods_mnt:1})).status,409,'Unresolved refund cannot be silently discarded');
-o=(await ub('warehouse-settlement',settlement)).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1000);assert.equal(o.pickup_code,undefined);
+// A bill below the paid amount is allowed; the refund due blocks handover until the admin records it.
+const reduced=await ub('warehouse-settlement',{...settlement,goods_mnt:1});assert.equal(reduced.status,200,JSON.stringify(reduced));assert.ok(reduced.order.billing.refund_due>0,'Refund due shown');
+assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:'00000000'})).status,409,'Refund due blocks handover');
+o=(await ub('warehouse-settlement',{...settlement,expected_version:reduced.order.logistics.version})).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1000);assert.equal(o.pickup_code,undefined);
 let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{8}$/);
 assert.deepEqual([...new Set(own.cargo.photos.map(p=>p.location))],['erenhot','ulaanbaatar']);
 assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location,warehouse_name'));

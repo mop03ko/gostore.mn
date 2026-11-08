@@ -56,7 +56,7 @@ try {
         }
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
     }
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','order-refund','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
@@ -81,7 +81,7 @@ try {
             json_out(['order'=>$o]);
         }
         if ($action==='dashboard') {
-            $orders=array_map(fn($r)=>json_decode($r['data'],true),db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
+            $orders=array_map(function($r){$o=json_decode($r['data'],true);$o['billing']=settlement_summary($o);return $o;},db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
             json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier_health'=>supplier_snapshot_health(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'taobao_buyer'=>taobao_buyer_public(),'taoworld'=>tw_settings_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
@@ -244,6 +244,16 @@ try {
             $db->exec('COMMIT');
         } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         json_out(['product'=>$p]);
+    }
+    // The admin records money sent back after the final bill went below what was paid; handover waits for it.
+    if($action==='order-refund'){
+        $db=db();$db->exec('BEGIN IMMEDIATE');
+        try{
+            $o=order_row(str_field($b,'id',50))['order'];$amount=int_field($b,'amount',1,100000000);
+            if($amount>settlement_summary($o)['refund_due'])fail('Буцаах дүн илүү төлсөн дүнгээс их байна.',409);
+            $o['refunds'][]=['amount'=>$amount,'note'=>str_field($b,'note',500),'at'=>gmdate('c')];save_order($o);$db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        $o['billing']=settlement_summary($o);json_out(['order'=>$o]);
     }
     if ($action==='order-update') {
         $db=db();$db->exec('BEGIN IMMEDIATE');

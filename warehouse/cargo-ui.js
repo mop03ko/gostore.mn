@@ -35,6 +35,12 @@ ${field(lt('Нийт барааны тоо','商品总数量'),'pieces',m?.piece
 <label class="check"><input type="checkbox" name="checked" required><span>${lt('Бараа, хувилбар, тоо ширхэг, жин, хэмжээг тулгаж шалгасан','我已核对商品、规格、数量、重量和尺寸')}</span></label>
 ${errorBox()}<button class="primary">${again?lt('Тээвэр батлах','确认运费'):lt('Хүлээн авч, тээвэр батлах','确认收货并确认运费')}</button></form>`;
 }
+// Uploads a resized receipt photo for this warehouse; returns the order's new logistics version.
+async function warehouseReceiptUpload(id,version,file){
+ const fd=new FormData();fd.set('id',id);fd.set('expected_version',String(version));fd.set('image',await receiptPhotoFile(file));
+ const r=await fetch('../api/index.php?action=warehouse-photo-upload&lang='+locale,{method:'POST',headers:{'X-CSRF-Token':csrf},body:fd}),d=await r.json();
+ if(!r.ok)throw Error(d.error||t('error'));return d.order.logistics.version;
+}
 function warehouseCargoPreview(){
  const f=document.querySelector('[data-receive-form]');if(!f)return;const direct=f.elements.volume_input.value==='direct';
  for(const [selector,show] of [['[data-cargo-dimensions]',!direct],['[data-cargo-direct]',direct]]){const el=f.querySelector(selector);el.hidden=!show;el.querySelectorAll('input').forEach(i=>i.disabled=!show);}
@@ -53,13 +59,8 @@ document.addEventListener('submit',async e=>{
  try{
   const file=f.elements.image.files[0];
   if(!file&&!f.dataset.hasPhoto)throw Error(lt('Хүлээн авах зургаа авна уу.','请先拍摄收货照片。'));
-  if(file){
-   const fd=new FormData();fd.set('id',f.dataset.id);fd.set('expected_version',f.dataset.version);fd.set('image',await receiptPhotoFile(file));
-   const r=await fetch('../api/index.php?action=warehouse-photo-upload&lang='+locale,{method:'POST',headers:{'X-CSRF-Token':csrf},body:fd}),d=await r.json();
-   if(!r.ok)throw Error(d.error||t('error'));
-   // The photo is saved even if the receipt below fails, so a retry does not ask for it again.
-   f.dataset.version=String(d.order.logistics.version);f.dataset.hasPhoto='1';f.elements.image.value='';
-  }
+  // The photo is saved even if the receipt below fails, so a retry does not ask for it again.
+  if(file){f.dataset.version=String(await warehouseReceiptUpload(f.dataset.id,f.dataset.version,file));f.dataset.hasPhoto='1';f.elements.image.value='';}
   const v=k=>Number(f.elements[k].value),direct=f.elements.volume_input.value==='direct';
   const body={id:f.dataset.id,expected_status:f.dataset.expected,expected_version:Number(f.dataset.version),weight_kg:v('weight_kg'),volume_input:direct?'direct':'dimensions',pieces:v('pieces'),checked:f.elements.checked.checked,partial:!f.querySelector('[data-partial-row]').hidden&&f.elements.partial.checked,...(direct?{volume_m3:v('volume_m3')}:{length_cm:v('length_cm'),width_cm:v('width_cm'),height_cm:v('height_cm')})};
   const d=await api('warehouse-receive',body);
