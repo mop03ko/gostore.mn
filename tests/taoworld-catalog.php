@@ -144,24 +144,8 @@ $next=supplier_search(['q'=>'__all__','page'=>2,'limit'=>12]);check(count($calls
 $firstKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before-6,6));$nextKeywords=array_map(fn($c)=>$c[1]['keyword'],array_slice($calls,$before,6));check(!array_intersect($firstKeywords,$nextKeywords),'Next page repeated the same department group');
 check(tw_catalog_deals(['page'=>'1'])['page']===1,'Deals must accept an HTTP query page string');
 denied(fn()=>tw_catalog_deals(['page'=>'bad']),400);
+denied(fn()=>tw_catalog_deals(['page'=>'0']),400);
 // Category-scoped recommendations and scroll windows are covered in taoworld-recommend.php.
-// An upstream outage may use display snapshots, but cannot resurrect expired discounts.
-$offerSnapshots=[];
-foreach(array_slice(tw_catalog_home_order(),0,6) as $keyword){
-    $query=['keyword'=>$keyword,'language'=>'en','page_no'=>'1','page_size'=>'20'];
-    $file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
-    $snapshot=supplier_snapshot_read($file);$offerSnapshots[$file]=$snapshot;
-    $snapshot['time']=time()-1801;
-    foreach($snapshot['data']['data'] as &$row)$row['coupon_price']='1';unset($row);
-    supplier_snapshot_write($file,$snapshot);
-}
-// A 31-minute-old list keeps its offers (six-hour display window); older than six hours they are hidden.
-$error=true;$fallback=tw_catalog_deals(['page'=>1]);$error=false;
-check($fallback['stale']&&count($fallback['products'])>0,'Offers within six hours stay visible during fallback');
-foreach(array_keys($offerSnapshots) as $file){$snapshot=supplier_snapshot_read($file);$snapshot['time']=time()-TW_CATALOG_OFFER_DISPLAY-1;supplier_snapshot_write($file,$snapshot);}
-$error=true;$fallback=tw_catalog_deals(['page'=>1]);$error=false;
-check($fallback['stale']&&$fallback['products']===[],'Offers older than six hours remain hidden during fallback');
-foreach($offerSnapshots as $file=>$snapshot)supplier_snapshot_write($file,$snapshot);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
 foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){
@@ -187,17 +171,11 @@ $saleRaw=['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Storag
 $sale=tw_catalog_product($saleRaw,true,time());
 check($sale['cny']===80.0&&$sale['card_discount']['percent']===20,'Discount must match cheapest in-stock SKU');
 check($sale['variants'][0]['card_discount']===null&&$sale['variants'][2]['card_discount']===null,'Sold out and full-price SKUs cannot inherit discount');
-check($sale['offers']['coupon_mnt']===7000/100*shipping_settings()['cny_rate'],'Conditional coupon must remain separate from displayed SKU price');
+check(array_keys($sale['offers'])===['expires','promotions','discount'],'Conditional coupon prices are never offered');
 check(tw_catalog_product($saleRaw,true,time()-TW_CATALOG_DETAIL_REFRESH-1)['card_discount']===null,'Expired detail cannot advertise discount');
 check(tw_catalog_discount(['price'=>10000,'promotion_price'=>12000],time()+60)===null,'Higher promotion price is not a discount');
 $searchSale=tw_catalog_product(['item_id'=>'799999999992','mi_id'=>'coupon-fixture','title'=>'Box','price'=>'100','coupon_price'=>'80'],false,time());
-check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&$searchSale['offers']['coupon_mnt']===80*shipping_settings()['cny_rate'],'Search coupon is conditional, and search prices are CNY');
-check($searchSale['offers']['coupon_base_mnt']===$searchSale['approx_mnt']&&$searchSale['offers']['coupon_percent']===20,'Coupon percentage must reference the same search price');
-check($sale['offers']['coupon_base_mnt']===$sale['mnt']&&$sale['offers']['coupon_percent']===12,'Detail coupon uses fen and the promotional base, without combining sale discounts');
-foreach([0,-1,100,120,'invalid'] as $couponPrice){$offer=tw_catalog_offers(['price'=>100,'coupon_price'=>$couponPrice],false,time()+60);check($offer['coupon_mnt']===null&&$offer['coupon_base_mnt']===null&&$offer['coupon_percent']===null,'Invalid/full-price coupons cannot advertise savings');}
-check(tw_catalog_offers(['price'=>100,'coupon_price'=>80],false,time()-1)['coupon_mnt']===null,'Expired coupons cannot advertise savings');
-$changed=$saleRaw;$changed['sku_list'][1]['promotion_price']=7500;$changedSale=tw_catalog_product($changed,true,time());
-check($changedSale['offers']['coupon_base_mnt']!==$changedSale['mnt'],'Changing cheapest SKU must not rebase the source coupon');
+check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&array_keys($searchSale['offers'])===['expires','promotions'],'Search coupon prices are dropped, and search prices are CNY');
 $detailFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$sale['id'],'language'=>'en']).'.json';
 supplier_snapshot_write($detailFile,['time'=>time(),'data'=>$saleRaw]);$before=count($calls);
 $cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);
@@ -206,4 +184,4 @@ $saleRaw['sku_list'][1]['promotion_price']=10000;supplier_snapshot_write($detail
 $cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);
 check($cards[0]['card_discount']===null,'Different cheapest SKU must clear old discount');
 $state=taoworld_state();$state['account_id']='another-buyer';taoworld_store($state);denied(fn()=>supplier_detail('tb-700000000000'),409);
-echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search; no OT calls.\n";
+echo "PASS native catalog: parallel pages, partial retry, budget rollback, lock-free fresh reads, 30-minute list cache, no redundant identifier writes, yuan/fen, mi_id/account scope, SKU/stock, fresh checkout, policy, image search, no coupon prices; no OT calls.\n";

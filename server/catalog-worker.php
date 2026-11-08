@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Catalog cron, every 15 minutes:
-// - always: rebuild the deals index from cached searches (no TaoWorld calls);
+// - always: rebuild the deals index from saved product details (no TaoWorld calls);
 // - once a day from 06:00 Ulaanbaatar (or with --warm): pre-fetch the whole homepage rotation so the
 //   morning starts with fresh lists and a full deals index. Pages 1-3 refresh when older than 30
 //   minutes, deeper pages when older than six hours. Pre-fetching uses the background half of the

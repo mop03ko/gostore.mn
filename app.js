@@ -657,14 +657,6 @@ function supplierCardDiscount(p,amount,discount=p.card_discount){
   const percent=Number.isInteger(discount.percent)&&discount.percent>0&&discount.percent<100?discount.percent:calculated;
   return {...discount,percent};
 }
-// Coupon savings are conditional and must compare against the same displayed base price.
-function supplierCardCoupon(p,amount){
-  const offer=p.offers;
-  if(p.sellable===false||!(Number.isFinite(amount)&&amount>0)||!offer||!Number.isFinite(offer.expires)||offer.expires*1000<=Date.now()||offer.coupon_base_mnt!==amount||!Number.isFinite(offer.coupon_mnt)||offer.coupon_mnt<=0||offer.coupon_mnt>=amount)return null;
-  const calculated=Math.floor(Number(((amount-offer.coupon_mnt)/amount*100).toFixed(8)));
-  const percent=Number.isInteger(offer.coupon_percent)&&offer.coupon_percent>=0&&offer.coupon_percent<100?offer.coupon_percent:calculated;
-  return {percent,expires:offer.expires,amount:offer.coupon_mnt};
-}
 const supplierPercentLabel=percent=>percent>0?'−'+percent+'%':'<1%';
 let supplierDiscountTimer,supplierDiscountQueued=false;
 function supplierScheduleDiscountExpiry(){
@@ -675,10 +667,10 @@ function supplierScheduleDiscountExpiry(){
 function supplierQueueDiscountExpiry(){if(supplierDiscountQueued)return;supplierDiscountQueued=true;queueMicrotask(()=>{supplierDiscountQueued=false;supplierScheduleDiscountExpiry();});}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)supplierScheduleDiscountExpiry();});
 function supplierDiscountBadge(p,amount,discount=p.card_discount){
-  const sale=supplierCardDiscount(p,amount,discount),coupon=supplierCardCoupon(p,amount),offer=sale||coupon;if(!offer)return '';
+  const sale=supplierCardDiscount(p,amount,discount);if(!sale)return '';
   supplierQueueDiscountExpiry();
-  const label=supplierPercentLabel(offer.percent);
-  return `<span class="supplier-discount-badge${sale?'':' supplier-discount-badge-coupon'}" data-discount-expires="${offer.expires}" aria-label="${sale?'':'Купонтой, нөхцөлтэй '}${esc(label)} хямдрал">${sale?'':'<small>Купонтой</small>'}${esc(label)}</span>`;
+  const label=supplierPercentLabel(sale.percent);
+  return `<span class="supplier-discount-badge" data-discount-expires="${sale.expires}" aria-label="${esc(label)} хямдрал">${esc(label)}</span>`;
 }
 
 function supplierPromotionHtml(p,amount,discount=p.card_discount,details=false){
@@ -686,11 +678,11 @@ function supplierPromotionHtml(p,amount,discount=p.card_discount,details=false){
   const fresh=p.offers?.expires*1000>Date.now(),offers=fresh?p.offers:null;
   const sale=supplierCardDiscount(p,amount,discount);if(sale)supplierQueueDiscountExpiry();
   const price=sale?`<span class="supplier-discount" data-discount-expires="${sale.expires}"><del aria-label="Үндсэн үнэ">${money(sale.was_mnt)}</del>${sale.percent>0?`<span>−${sale.percent}%</span>`:''}</span>`:'';
-  const saving=supplierCardCoupon(p,amount);
-  const coupon=saving?`Купонтой ${supplierPercentLabel(saving.percent)} · ≈ ${money(saving.amount)} · нөхцөлтэй`:offers?.promotions?.length?'Урамшуулалтай · нөхцөлтэй':'';
-  if(coupon)supplierQueueDiscountExpiry();
+  // Conditional promotions are named, never priced; coupon prices are not shown at all.
+  const promotion=offers?.promotions?.length?'Урамшуулалтай · нөхцөлтэй':'';
+  if(promotion)supplierQueueDiscountExpiry();
   const conditions=details?(offers?.promotions||[]).map(o=>`<small>${esc(o.name)}</small>`).join(''):'';
-  return price+(coupon?`<small class="supplier-coupon" data-discount-expires="${offers.expires}">${esc(coupon)}</small>`:'')+conditions;
+  return price+(promotion?`<small class="supplier-promotion" data-discount-expires="${offers.expires}">${esc(promotion)}</small>`:'')+conditions;
 }
 function shippingOrderHtml(o){if(!o.supplier&&!o.quote&&!o.route)return '';const b=o.quote?.breakdown;return `<div class="info-box"><strong>Эрээн → Замын-Үүд → Улаанбаатар</strong><p>Ачааны байршлын төлөвийг GOStore шинэчилнэ.</p>${o.fulfillment?`<p>Авах хэлбэр: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.warehouse?`<h3>Эрээн агуулахын хүлээн авах мэдээлэл</h3><p><strong>${esc(o.warehouse.recipient)}</strong></p><p>${esc(o.warehouse.address)}<br>手机号: ${esc(o.warehouse.phone)}<br>Утас: ${esc(o.warehouse.contact_phone)}</p><p>Ачааг энэ овог нэр, захиалгын кодоор бүртгэнэ.</p>`:''}${o.supplier?`<p>${esc(o.supplier.variant)} × ${o.supplier.qty} · Барааны лавлах дүн ${money(Math.ceil(o.supplier.goods_cny*(o.supplier.rate||storeServer.shipping?.cny_rate||0)))}</p>`:''}${o.type==='checkout'&&o.items?.length?`<ul>${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty} · ${money((i.price||0)*i.qty)}</li>`).join('')}</ul>`:''}${b?`<p>Бараа: ${money(b.goods_mnt)}<br>Хятад доторх хүргэлт: ${money(b.domestic_mnt)}<br>Үйлчилгээ: ${money(b.service_mnt)}<br>Карго: ${b.cargo_mnt||!o.quote.cargo_later?money(b.cargo_mnt):'Улаанбаатарт ирэхэд бодит жингээр тооцно'}</p>`:''}${o.history?.length?`<ol>${o.history.map(h=>`<li>${esc(orderLabels[h.status]||h.status)} · ${new Date(h.at).toLocaleString('mn-MN')}</li>`).join('')}</ol>`:''}</div>`;}
 let supplierShop=initialFilters.get('shop')||'';
@@ -993,11 +985,11 @@ $('#image-search-input').addEventListener('change',e=>{const file=e.target.files
   request?.abort();request=new AbortController();const own=request;
   section.querySelectorAll('[data-discovery-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.discoveryTab===tab)));
   if(tab==='deals'){
-   panel.innerHTML='<h2>Хямдрал, купон</h2><p>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
+   panel.innerHTML='<h2>Хямдрал</h2><p>Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнийг захиалах үед дахин шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
    const target=panel.querySelector('[data-deals-results]'),next=panel.querySelector('[data-deals-next]');let page=1;
    const run=async()=>{next.hidden=true;target.innerHTML='<p role="status">Ачаалж байна…</p>';try{
     const response=await fetch('/api/index.php?action=supplier-deals&page='+page,{signal:own.signal,credentials:'omit'});if(!response.ok)throw Error('Unavailable');const result=await response.json();if(own.signal.aborted)return;
-    target.innerHTML=result.products.length?products(result.products):'<p>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</p>';next.hidden=!result.more;
+    target.innerHTML=result.products.length?products(result.products):'<p>Одоогоор баталгаатай хямдралтай бараа алга.</p>';next.hidden=!result.more;
    }catch{if(own.signal.aborted)return;target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}};
    next.onclick=()=>{page++;run();};run();return;
   }

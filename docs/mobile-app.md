@@ -26,9 +26,10 @@ Deletion removes login/profile/address-book/server-cart data and revokes session
 
 The home screen includes a seasonal 11.11 shelf from November 1 through November 11
 (Ulaanbaatar time). It uses the existing `supplier-deals` endpoint and catalog cache,
-shows at most eight currently valid supplier offers in two columns, and removes
-expired offers on clock checks or app resume. Coupons remain conditional and are
-not represented as automatic checkout discounts or guaranteed campaign membership.
+shows at most eight products with a real price cut (confirmed within 24 hours, see
+[performance-cache.md](performance-cache.md)) and removes expired offers on clock checks
+or app resume. Coupon prices are not shown; the shelf hides itself on an error or when
+nothing qualifies. It does not claim official campaign membership.
 No API polling is added. The shelf supports loading, empty and retry states.
 
 Run `node tests/expo-eleven-sale.cjs` for date/offer rules. With Expo web running,

@@ -1,5 +1,31 @@
 # Cache and checkout freshness — 2026-10-20
 
+## Real price cuts only; coupons removed — 2026-11-08
+
+Owner decision: deal sections show only products whose own price was really cut, confirmed within the
+last 24 hours, and coupon prices are not shown anywhere. TaoWorld search rows carry only `price` and
+`coupon_price`; a real cut (SKU `promotion_price` below `price`) is visible only in a product detail. On
+2026-11-07 the live deals feed had 121 products: 2 with a real cut confirmed within 30 minutes, 119
+coupon-only. Among cached details for those products, 42 of 65 showed a real cut, 27 within 24 hours. The
+search-based deals index released earlier the same day (below) served 600 coupon items and no real cut.
+
+- **Deals index** (`server/taoworld-deals.php`) is now built from saved product details, not search lists:
+  every detail saved within 24 hours (`TW_DEALS_MAX_AGE`) whose cheapest in-stock SKU has a real cut,
+  biggest cut first, newer confirmation breaking ties, up to 600 items, 50 per page. The catalog worker
+  rebuilds it every 15 minutes; a request rebuilds it when it is missing or over an hour old, so there is
+  no homepage-sample fallback. A product whose detail was saved again since the build is re-checked
+  against that detail when served, so an ended sale disappears at once. It never calls TaoWorld.
+- Deal cards carry a discount valid for 24 hours after their detail; other list cards keep the 30-minute
+  detail rule and the six-hour promotion window. Product pages re-read details older than 60 minutes and
+  checkout re-verifies at most 120 seconds old, so an ended sale is never charged.
+- The API sends no `coupon_mnt`, `coupon_base_mnt` or `coupon_percent`, which also removes coupon badges
+  from installed app builds. Web and app drop the «Купонтой» badge/text and coupon wording in the deals
+  tab and the 11.11 section; named promotions still show as «Урамшуулалтай · нөхцөлтэй».
+- Validation: `tests/taoworld-deals.php` (24-hour window, coupon-only/sold-out/old details excluded,
+  ordering, compact cards, re-saved detail re-check, read-time expiry, on-demand rebuild, paging, six-hour
+  list promotions, worker build), `tests/taoworld-catalog.php` (no coupon fields), discount-cards-ui,
+  eleven-sale-ui, expo-eleven-sale(-ui) and expo-product-discounts.
+
 ## Display fallback when TaoWorld is busy or failing — 2026-11-07
 
 - November access logs showed 80 homepage `supplier-search` 503s (rising to ~28/day), 13 `supplier-deals` and 6 `supplier-product`, including visitors from Facebook ads. The homepage mix reads six departments and failed completely when any one was locked, failing or over quota; each department also waited up to 2 s for its lock.
@@ -163,10 +189,10 @@ Fresh homepage lists carry offers on 70–85% of items, but deals vanished whene
 30 minutes (for example after the daily budget ran out), and both the homepage and the deals page drew
 on 27 fixed departments.
 
-- **Offer window**: discounts, coupons and promotions on list cards stay visible for six hours after the
+- **Offer window**: discounts and promotions (coupons were removed the same day; see the top section) on list cards stay visible for six hours after the
   list was fetched (`TW_CATALOG_OFFER_DISPLAY`); product pages keep the 30-minute detail refresh and
   checkout still re-reads the price within 120 seconds, so payment never uses an expired offer.
-- **Deals index** (`server/taoworld-deals.php`): every sellable discounted card from any search snapshot
+- **Deals index** (`server/taoworld-deals.php`) — superseded the same day by the detail-based index of real price cuts (top section). Originally: every sellable discounted card from any search snapshot
   of the last six hours (homepage departments, categories, keyword, brand, store and recommendation
   searches), newest copy per product, biggest cut first, up to 600 items, 50 per page. `supplier-deals`
   serves it while it is under an hour old, drops offers that expired since the build, and otherwise falls

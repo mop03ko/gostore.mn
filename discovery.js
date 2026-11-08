@@ -32,11 +32,11 @@
   request?.abort();request=new AbortController();const own=request;
   section.querySelectorAll('[data-discovery-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.discoveryTab===tab)));
   if(tab==='deals'){
-   panel.innerHTML='<h2>Хямдрал, купон</h2><p>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
+   panel.innerHTML='<h2>Хямдрал</h2><p>Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнийг захиалах үед дахин шалгана.</p><div data-deals-results></div><button type="button" class="discovery-more" data-deals-next hidden>Дараагийн сонголт →</button>';
    const target=panel.querySelector('[data-deals-results]'),next=panel.querySelector('[data-deals-next]');let page=1;
    const run=async()=>{next.hidden=true;target.innerHTML='<p role="status">Ачаалж байна…</p>';try{
     const response=await fetch('/api/index.php?action=supplier-deals&page='+page,{signal:own.signal,credentials:'omit'});if(!response.ok)throw Error('Unavailable');const result=await response.json();if(own.signal.aborted)return;
-    target.innerHTML=result.products.length?products(result.products):'<p>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</p>';next.hidden=!result.more;
+    target.innerHTML=result.products.length?products(result.products):'<p>Одоогоор баталгаатай хямдралтай бараа алга.</p>';next.hidden=!result.more;
    }catch{if(own.signal.aborted)return;target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}};
    next.onclick=()=>{page++;run();};run();return;
   }

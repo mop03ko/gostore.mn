@@ -4,7 +4,7 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 
 .category-photo-fallback{width:76px;height:76px;display:grid;place-items:center;background:var(--theme-surface,#f8f8f8);border-radius:12px;color:var(--theme-muted,#777)}.category-photo-fallback .icon{width:24px;height:24px}@media(max-width:760px){.category-photo-fallback{width:56px;height:56px}}
 
-.supplier-coupon{display:block;color:var(--accent-text,#a83c00);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.discovery-product .supplier-discount{display:flex;flex-wrap:wrap;gap:6px}.discovery-product .supplier-discount del{color:var(--muted,#667085)}
+.supplier-promotion{display:block;color:var(--accent-text,#a83c00);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.discovery-product .supplier-discount{display:flex;flex-wrap:wrap;gap:6px}.discovery-product .supplier-discount del{color:var(--muted,#667085)}
 
 .discovery-product{position:relative}
 

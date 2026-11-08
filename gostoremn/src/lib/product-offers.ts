@@ -6,11 +6,8 @@ export function productSavings(product: Product, amount: number | null | undefin
     ...discount, percent: validPercent(discount.percent) ? discount.percent : percentOff(discount.was_mnt, amount),
   } : null;
   const offers = available && product.offers && Number.isFinite(product.offers.expires) && product.offers.expires > now ? product.offers : null;
-  const coupon = typeof amount === "number" && offers && offers.coupon_base_mnt === amount && typeof offers.coupon_mnt === "number" && Number.isFinite(offers.coupon_mnt) && offers.coupon_mnt > 0 && offers.coupon_mnt < amount ? {
-    amount: offers.coupon_mnt, expires: offers.expires,
-    percent: validPercent(offers.coupon_percent) ? offers.coupon_percent : percentOff(amount, offers.coupon_mnt),
-  } : null;
-  return { sale, coupon, offers };
+  // Only real price cuts count; coupon prices are conditional and never shown.
+  return { sale, offers };
 }
 function validPercent(value: unknown): value is number { return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < 100; }
 function percentOff(base: number, current: number) { return Math.floor(Number(((base - current) / base * 100).toFixed(8))); }

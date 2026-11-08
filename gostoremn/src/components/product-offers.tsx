@@ -20,29 +20,28 @@ function useSavings({ product, amount, discount = product.card_discount }: Props
 }
 
 export function ProductDiscountBadge(props: Props) {
-  const { sale, coupon } = useSavings(props), offer = sale || coupon;
-  if (!offer) return null;
-  const label = percentLabel(offer.percent);
-  return <View testID="product-discount-badge" pointerEvents="none" accessible accessibilityLabel={(sale ? "" : "Купонтой, нөхцөлтэй ") + label + " хямдрал"}
-    style={{ position: "absolute", top: 8, left: 8, zIndex: 2, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, alignItems: "center", backgroundColor: sale ? "#b93609" : "#6240a4" }}>
-    {!sale && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "600" }}>Купонтой</Text>}
+  const { sale } = useSavings(props);
+  if (!sale) return null;
+  const label = percentLabel(sale.percent);
+  return <View testID="product-discount-badge" pointerEvents="none" accessible accessibilityLabel={label + " хямдрал"}
+    style={{ position: "absolute", top: 8, left: 8, zIndex: 2, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, alignItems: "center", backgroundColor: "#b93609" }}>
     <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>{label}</Text>
   </View>;
 }
 
 export function ProductOffers({ details = false, ...props }: Props) {
   const colors = usePalette();
-  const { sale, coupon, offers } = useSavings(props);
-  if (!sale && !coupon && !offers?.promotions?.length) return null;
+  const { sale, offers } = useSavings(props);
+  if (!sale && !offers?.promotions?.length) return null;
   return <View style={{ gap: 4 }}>
     {sale && <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
       <Text accessibilityLabel="Үндсэн үнэ" style={{ color: colors.muted, textDecorationLine: "line-through", fontSize: 12 }}>{money(sale.was_mnt)}</Text>
       <Text style={{ color: colors.accentText, fontWeight: "700", fontSize: 12 }}>{percentLabel(sale.percent)}</Text>
     </View>}
-    {coupon ? <Text style={{ color: colors.accentText, fontSize: 12 }}>Купонтой {percentLabel(coupon.percent)} · ≈ {money(coupon.amount)} · нөхцөлтэй</Text> : offers?.promotions?.length ? <Text style={{ color: colors.accentText, fontSize: 12 }}>Урамшуулалтай · нөхцөлтэй</Text> : null}
+    {!!offers?.promotions?.length && <Text style={{ color: colors.accentText, fontSize: 12 }}>Урамшуулалтай · нөхцөлтэй</Text>}
     {details && <>
       {offers?.promotions?.map(p => <Text key={p.name} style={{ color: colors.muted, fontSize: 12 }}>{p.name}</Text>)}
-      <Text style={{ color: colors.muted, fontSize: 12 }}>Нийлүүлэгчийн лавлах үнэ. Купоны нөхцөл, сонгосон хувилбарын эцсийн үнийг захиалах үед шалгана.</Text>
+      <Text style={{ color: colors.muted, fontSize: 12 }}>Нийлүүлэгчийн лавлах үнэ. Урамшууллын нөхцөл, сонгосон хувилбарын эцсийн үнийг захиалах үед шалгана.</Text>
     </>}
   </View>;
 }

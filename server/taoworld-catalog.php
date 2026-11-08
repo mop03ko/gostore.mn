@@ -14,7 +14,7 @@ const TW_CATALOG_DETAIL_DISPLAY_MAX = 3600;
 // Homepage pages after the third (each costs six department searches) refresh every six hours.
 const TW_CATALOG_HOME_DEEP_PAGE = 3;
 const TW_CATALOG_HOME_DEEP_MAX_AGE = 21600;
-// Discounts, coupons and promotions on list cards stay visible for six hours after the list was
+// Discounts and promotions on list cards stay visible for six hours after the list was
 // fetched (Taobao promotions usually run for days); checkout re-reads the real price within 120 s.
 const TW_CATALOG_OFFER_DISPLAY = 21600;
 const TW_CATALOG_DISPLAY_FALLBACK = 86400;
@@ -144,31 +144,26 @@ function tw_catalog_discount(array $p,int $expires): ?array {
     $rate=shipping_settings()['cny_rate'];
     return ['current_mnt'=>(int)ceil($current*$rate),'was_mnt'=>(int)ceil($original*$rate),'percent'=>(int)floor(round(($original-$current)/$original*100,8)),'expires'=>$expires];
 }
-function tw_catalog_offers(array $p,bool $detail,int $expires): array {
+// Coupon prices are conditional and GOStore's checkout never charges them, so no coupon price or
+// percentage is passed on (owner decision 2026-11-08); only real price cuts count as discounts.
+function tw_catalog_offers(array $p,int $expires): array {
     $promotions=[];
     foreach($p['promotion_displays']??[] as $group)foreach($group['promotion_info_list']??[] as $promotion){
         $name=supplier_text($promotion['promotion_name']??'',300);
         if($name!=='')$promotions[$name]=['name'=>$name];
     }
-    $current=tw_catalog_price($p,$detail);
-    $coupon=tw_catalog_price(['price'=>$p['coupon_price']??null],$detail);
-    // Keep the coupon tied to its own source price; the cheapest SKU may have a different price.
-    $valid=$expires>time()&&$coupon!==null&&$current!==null&&$coupon>0&&$coupon<$current;
-    $rate=shipping_settings()['cny_rate'];
-    return ['expires'=>$expires,'promotions'=>array_slice(array_values($promotions),0,8),
-        'coupon_mnt'=>$valid?(int)ceil($coupon*$rate):null,
-        'coupon_base_mnt'=>$valid?(int)ceil($current*$rate):null,
-        'coupon_percent'=>$valid?(int)floor(round(($current-$coupon)/$current*100,8)):null];
+    return ['expires'=>$expires,'promotions'=>array_slice(array_values($promotions),0,8)];
 }
-function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): array {
+// $ttl overrides how long prices, discounts and offers stay valid after $fetched (deal lists).
+function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null,?int $ttl=null): array {
     product_policy_assert(['id'=>'tb-'.($p['item_id']??''),'name'=>$p['title']??'','original_name'=>$p['multi_language_info']['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]]);
     $id=tw_catalog_remember($p,$fetched);$price=tw_catalog_price($p,$detail);$rate=shipping_settings()['cny_rate'];
     $title=$p['multi_language_info']['title']??$p['title']??$id;
     $image=supplier_image((string)($p['main_image_url']??$p['pic_urls'][0]??''));
     $r=['id'=>$id,'provider'=>'taobao','catalog_provider'=>'taoworld','provider_label'=>'Taobao','name'=>supplier_text($title,300),'original_name'=>supplier_text($p['title']??'',500),'image'=>$image,'url'=>'/v/'.$id,'min_qty'=>1,'step'=>1,'sellable'=>true,'variants'=>[],'sold_count'=>null,'sales_30_days'=>null,'cny'=>null,'mnt'=>null,'approx_cny'=>$price,'approx_mnt'=>$price===null?null:(int)ceil($price*$rate),'price_status'=>'unverified','card_discount'=>null];
     $r['shop_rating']=tw_catalog_seller_info($p)['shop_rating']??null;
-    $expires=($fetched??time())+($detail?TW_CATALOG_DETAIL_REFRESH:TW_CATALOG_OFFER_DISPLAY);
-    $r['offers']=tw_catalog_offers($p,$detail,$expires);
+    $expires=($fetched??time())+($ttl??($detail?TW_CATALOG_DETAIL_REFRESH:TW_CATALOG_OFFER_DISPLAY));
+    $r['offers']=tw_catalog_offers($p,$expires);
     if(!$detail)return $r;
     $meta=supplier_snapshot_read(tw_catalog_dir().'/item-'.substr($id,3).'.json')??[];
     $r['shop_rating']=is_numeric($meta['shop_rating']??null)?(float)$meta['shop_rating']:null;$r['ship_from']=tw_catalog_ship_from((string)($meta['ship_from']??''));$r['ships_48h']=!empty($meta['ships_48h']);
@@ -245,26 +240,13 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
     }catch(ApiError){}}
     return $cards;
 }
+// Deals: real price cuts from saved product details (server/taoworld-deals.php); never calls TaoWorld.
 function tw_catalog_deals(array $params): array {
-    $page=filter_var($params['page']??1,FILTER_VALIDATE_INT);
-    if($page===false||$page<1||$page>100)fail('Хуудасны дугаар буруу.');
-    // Prefer the deals index built from every recent search; fall back to the homepage sample.
+    tw_catalog_require_ready();
+    $page=filter_var($params['page']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>100]]);
+    if($page===false)fail('Хуудасны дугаар буруу.');
     require_once __DIR__.'/taoworld-deals.php';
-    if($indexed=tw_deals_from_index($page))return $indexed;
-    $query=['q'=>'__all__','page'=>$page,'limit'=>50];
-    try {
-        $result=tw_catalog_search($query);
-    } catch(ApiError $error) {
-        if(!in_array($error->getCode(),[429,502,503],true))throw $error;
-        // Display cache can retain fresh detail offers during a temporary upstream failure.
-        // The offer-expiry filter below still excludes expired promotions.
-        $result=tw_catalog_search($query,true);
-    }
-    $result['products']=array_values(array_filter($result['products'],static function($p){
-        return ($p['sellable']??true)&&($p['offers']['expires']??0)>time()&&(!empty($p['card_discount'])||!empty($p['offers']['coupon_mnt'])||!empty($p['offers']['promotions']));
-    }));
-    $result['scope']='catalog_sample';
-    return $result;
+    return tw_deals_from_index($page);
 }
 // A pasted product link or item number. TaoWorld details need the account's mi_id, which only its
 // searches issue (item numbers are no longer accepted), so: a product seen in a search within 89 days

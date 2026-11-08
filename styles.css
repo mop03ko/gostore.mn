@@ -477,9 +477,6 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 .supplier-discount-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;justify-content:center;min-width:50px;min-height:30px;padding:4px 9px;border-radius:8px;background:#b93609;color:#fff;font-size:15px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;box-shadow:0 2px 8px #0002;pointer-events:none}
 @media(max-width:600px){.supplier-discount-badge{top:8px;left:8px;min-width:44px;min-height:28px;padding:4px 7px;font-size:13px}}
 
-/* Conditional coupon savings keep their qualifier visible on narrow cards. */
-.supplier-discount-badge-coupon{flex-direction:column;gap:2px;background:#6240a4}
-.supplier-discount-badge-coupon small{font-size:10px;font-weight:600;line-height:1.2;color:#fff}
 /* GOStore messages in the bell and the account notifications list */
 .customer-message-body,.account-message span{white-space:pre-line;overflow-wrap:anywhere}
 .account-notices .account-message{display:grid;gap:4px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--theme-surface,#fff)}

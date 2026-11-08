@@ -11,11 +11,11 @@
   const originalHero = hero?.innerHTML;
   if (hero) {
     hero.classList.add('eleven-hero');
-    hero.innerHTML = '<a class="eleven-hero-link" href="/?sale=11.11" aria-label="11.11-ийн хямдрал, купоны бүх сонголтыг үзэх"><div class="eleven-hero-copy"><span class="eleven-hero-label">GOSTORE · 11.11</span><h1>Хүссэнээ<br>хямдралтай.</h1><p>Хямдрал, купонтой барааны<br>сонголтоо нээгээрэй.</p><span class="eleven-hero-cta">Хямдралуудыг үзэх <span aria-hidden="true">↗</span></span></div><div class="eleven-hero-art" aria-hidden="true"><strong>11.11</strong><span class="eleven-hero-orbit"></span><img class="eleven-hero-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" width="330" height="220" alt="" fetchpriority="high"><img class="eleven-hero-bag" src="/assets/hero-bag.webp?v=1d3094dc10" width="300" height="450" alt=""><span class="eleven-hero-ticket">КУПОН<br><b>+</b> ХЯМДРАЛ</span></div></a>';
+    hero.innerHTML = '<a class="eleven-hero-link" href="/?sale=11.11" aria-label="11.11-ийн хямдралтай бүх барааг үзэх"><div class="eleven-hero-copy"><span class="eleven-hero-label">GOSTORE · 11.11</span><h1>Хүссэнээ<br>хямдралтай.</h1><p>Бодит хямдралтай барааны<br>сонголтоо нээгээрэй.</p><span class="eleven-hero-cta">Хямдралуудыг үзэх <span aria-hidden="true">↗</span></span></div><div class="eleven-hero-art" aria-hidden="true"><strong>11.11</strong><span class="eleven-hero-orbit"></span><img class="eleven-hero-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" width="330" height="220" alt="" fetchpriority="high"><img class="eleven-hero-bag" src="/assets/hero-bag.webp?v=1d3094dc10" width="300" height="450" alt=""><span class="eleven-hero-ticket">БОДИТ<br><b>−%</b> ХЯМДРАЛ</span></div></a>';
   }
   if (collection) {
     document.documentElement.classList.add('eleven-sale-view');
-    document.title = '11.11 — Хямдрал, купоны сонголт · GOStore';
+    document.title = '11.11 — Хямдралын сонголт · GOStore';
   }
   // index.html already holds an empty #eleven-sale right after the hub, sized by CSS while the
   // campaign is active, so filling it later does not push the catalog down (layout shift).
@@ -24,18 +24,19 @@
   section.className = 'eleven-sale page-width';
   section.setAttribute('aria-labelledby', 'eleven-sale-title');
   const heading = collection ? 'h1' : 'h2';
-  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдрал, купонтой бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/?sale=11.11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Нийлүүлэгчээс ирсэн хүчинтэй хямдрал, купоны сонголт. Купон, урамшуулал нь нөхцөлтэй. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
+  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдралтай бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/?sale=11.11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
   if (!section.isConnected) hub.after(section);
   const target = section.querySelector('#eleven-sale-products');
   const status = section.querySelector('.eleven-sale-status');
   const next = section.querySelector('button');
-  const cacheKey = 'gostore-eleven-offers-v4';
+  const cacheKey = 'gostore-eleven-offers-v5';
   let busy = false, page = 1, rows = [], more = false, stale = false, expiryTimer;
   const valid = product => {
     if (!product || !/^tb-\d{5,20}$/.test(product.id) || product.sellable === false || window.productPolicyBlocked?.(product)) return false;
     const now = Date.now() / 1000, amount = product.mnt || product.approx_mnt;
-    const discount = product.card_discount, offers = product.offers;
-    return amount > 0 && ((discount?.expires > now && discount.current_mnt === amount && discount.was_mnt > amount) || (offers?.expires > now && (offers.coupon_mnt > 0 && offers.coupon_mnt < amount || offers.promotions?.some(promotion => promotion.name))));
+    const discount = product.card_discount;
+    // Only a real price cut for the shown price qualifies; coupons and conditional promotions do not.
+    return amount > 0 && discount?.expires > now && discount.current_mnt === amount && discount.was_mnt > amount;
   };
   function render() {
     clearTimeout(expiryTimer);

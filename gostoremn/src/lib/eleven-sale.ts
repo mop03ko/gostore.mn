@@ -10,12 +10,10 @@ export function elevenSaleProducts(rows: Product[], now = Date.now()): Product[]
   const seen = new Set<string>();
   return rows.filter(p => {
     if (!p || !/^tb-\d{5,20}$/.test(p.id) || p.sellable === false || seen.has(p.id)) return false;
-    const amount = p.mnt || p.approx_mnt || 0, discount = p.card_discount, offers = p.offers;
+    // Only a real price cut for the shown price qualifies; coupons and conditional promotions do not.
+    const amount = p.mnt || p.approx_mnt || 0, discount = p.card_discount;
     const sale = discount && discount.expires * 1000 > now && discount.current_mnt === amount && discount.was_mnt > amount;
-    const coupon = offers && offers.expires * 1000 > now && (
-      (offers.coupon_mnt && offers.coupon_mnt > 0 && offers.coupon_mnt < amount) || offers.promotions?.some(o => o.name)
-    );
-    if (amount <= 0 || (!sale && !coupon)) return false;
+    if (amount <= 0 || !sale) return false;
     seen.add(p.id);
     return true;
   }).slice(0, 8);

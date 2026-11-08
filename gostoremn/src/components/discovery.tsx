@@ -83,10 +83,10 @@ function ElevenSale() {
       <Text style={{ color: colors.orange, fontSize: 42, fontWeight: "900", letterSpacing: -2 }}>11.11</Text>
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={{ color: colors.accentText, fontSize: 10, fontWeight: "700" }}>11.11-ИЙН СОНГОЛТ</Text>
-        <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 19, fontWeight: "800" }}>Хямдрал, купонтой бараа</Text>
+        <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 19, fontWeight: "800" }}>Хямдралтай бараа</Text>
       </View>
     </View>
-    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Нийлүүлэгчийн хямдрал, купон · Нөхцөл болон эцсийн үнийг захиалах үед шалгана.</Text>
+    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Сүүлийн 24 цагт шалгагдсан бодит хямдрал · Эцсийн үнийг захиалах үед шалгана.</Text>
     {!data && !error && <View accessibilityLabel="11.11 хямдрал ачаалж байна"><Busy /></View>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="eleven-sale-grid" contentContainerStyle={{ gap: 10 }}>
       {products.map(p => <View key={p.id} testID="eleven-sale-item" style={{ width: 152 }}><DiscoveryCard product={p} /></View>)}
@@ -106,11 +106,11 @@ function DealsShelf() {
     return () => controller.abort();
   }, [page, retry]);
   return <View style={{ gap: 10 }}>
-    <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>Хямдрал, купон</Text>
-    <Text style={{ color: colors.muted, fontSize: 12 }}>Каталогийн сонголт. Купон хэрэглэх нөхцөлтэй бөгөөд эцсийн үнийг захиалах үед шалгана.</Text>
+    <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>Хямдрал</Text>
+    <Text style={{ color: colors.muted, fontSize: 12 }}>Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнийг захиалах үед дахин шалгана.</Text>
     {!data && !error && <Busy />}
     {error && <Pressable accessibilityRole="button" onPress={() => { setError(false); setRetry(x => x + 1); }}><Text style={{ color: colors.accentText }}>Дахин оролдох</Text></Pressable>}
-    {data && !data.products.length && <Text style={{ color: colors.muted }}>Энэ сонголтод баталгаатай хямдрал, купон олдсонгүй.</Text>}
+    {data && !data.products.length && <Text style={{ color: colors.muted }}>Одоогоор баталгаатай хямдралтай бараа алга.</Text>}
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
       {data?.products.map(p => <View key={p.id} style={{ width: "48%" }}><DiscoveryCard product={p} /></View>)}
     </View>
