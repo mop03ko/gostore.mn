@@ -6,7 +6,7 @@
   const root=document.createElement('section');root.id='product-page';root.className='container pd-page';
   document.querySelector('#main').prepend(root);
   let product,details,images=[],photo=0;
-  function stateMessage(title,message,retry=false){root.innerHTML=`<div class="pd-state"><span class="section-kicker">GOSTORE / БАРАА</span><h1>${esc(title)}</h1><p>${esc(message)}</p>${retry?'<button class="button blue" data-pd-retry>Дахин оролдох</button>':''}<a class="button outline" href="/#supplier-catalog">Дэлгүүр рүү буцах</a></div>`;}
+  function stateMessage(title,message,retry=false){root.innerHTML=`<div class="pd-state"><span class="section-kicker">GOSTORE / БАРАА</span><h1>${esc(title)}</h1><p>${esc(message)}</p>${retry?'<button class="button blue" data-pd-retry>Дахин оролдох</button>':''}<a class="button outline" href="/products">Дэлгүүр рүү буцах</a></div>`;}
   function selection(){
     const form=document.querySelector('#pd-options');if(!form)return null;
     const chosen=supplier?form.querySelector('[name=variant]:checked')?.value:form.elements.variant.value,variant=product.variants.find(v=>(supplier?v.id:v)===chosen),qty=Number(form.elements.qty.value);
@@ -113,7 +113,7 @@
     document.title=p.name+' · GOStore';
     document.querySelector('meta[name=description]').content=p.name+' — GOStore. Барааны сонголт, үнэ, хүргэлтийн мэдээлэл.';
     let canonical=document.querySelector('link[rel=canonical]');if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.append(canonical);}canonical.href=location.origin+'/'+match[1]+'/'+match[2];
-    root.innerHTML=`<nav class="pd-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span>/</span><a href="/${supplier?'#supplier-catalog':'#catalog'}">${supplier?'Бараанууд':'Бараа бүтээгдэхүүн'}</a><span>/</span><span aria-current="page">${esc(p.name)}</span></nav>
+    root.innerHTML=`<nav class="pd-breadcrumb" aria-label="Хуудасны зам"><a href="/">Нүүр</a><span>/</span><a href="/products">${supplier?'Бараанууд':'Бараа бүтээгдэхүүн'}</a><span>/</span><span aria-current="page">${esc(p.name)}</span></nav>
     <div class="pd-layout"><div class="pd-gallery"><div class="pd-image-stage">${images.length?`<button type="button" class="pd-zoom" data-pd-zoom aria-label="Зургийг томруулж харах"><img id="pd-main-image" ${supplierImageAttrs(images[0],800)} alt="${esc(p.name)}" referrerpolicy="no-referrer" fetchpriority="high"></button><span id="pd-image-count" class="pd-image-count">1 / ${images.length}</span>`:`<div class="pd-no-image">${icon('box')}<p>Зураг оруулаагүй байна</p></div>`}<span class="pd-source">${supplier?'QPay-ээр төлнө':'GOStore'}</span></div>
     ${images.length>1?`<div class="pd-thumbnails" aria-label="Барааны зургууд">${images.map((url,i)=>`<button type="button" data-pd-photo="${i}" aria-label="${i+1}-р зураг" aria-pressed="${i===0}"><img ${supplierImageAttrs(url,120)} alt="" loading="lazy" fetchpriority="low" referrerpolicy="no-referrer"></button>`).join('')}</div>`:''}
     <div class="pd-gallery-foot"><span>Барааны код: <strong>${esc(match[2])}</strong></span><span class="pd-foot-actions">${supplier?`<button type="button" class="text-button" data-compare-toggle="${esc(p.id)}" data-name="${esc(p.name)}" data-image="${esc(p.image||'')}" data-label-on="Харьцуулж байна ✓" data-label-off="Харьцуулах ⇄"><span>Харьцуулах ⇄</span></button>`:''}<button type="button" class="text-button" data-pd-share>Холбоос хуулах ↗</button></span></div></div>
@@ -176,7 +176,7 @@
     if(b.hasAttribute('data-pd-delta')){const input=root.querySelector('#pd-qty'),min=Number(input.min),step=Number(input.step);input.value=String(Math.min(Number(input.max),Math.max(min,(Number(input.value)||min)+Number(b.dataset.pdDelta)*step)));update();}
     if(b.hasAttribute('data-pd-share')){const url=location.origin+'/'+match[1]+'/'+match[2];try{await navigator.clipboard.writeText(url);toast('Барааны холбоосыг хууллаа');}catch{openModal('Барааны холбоос',`<label class="field">Холбоос<input value="${esc(url)}" readonly></label>`);}}
   });
-  document.addEventListener('submit',e=>{if(e.target.id==='search-form'){e.preventDefault();e.stopImmediatePropagation();location.assign('/?q='+encodeURIComponent(document.querySelector('#search').value.trim())+'#supplier-catalog');}},true);
-  document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&(b.hasAttribute('data-filter')||b.hasAttribute('data-category')||['browse','favorites'].includes(b.dataset.action))){e.preventDefault();e.stopImmediatePropagation();const query=b.dataset.action==='favorites'?'?filter=saved':b.dataset.category?'?category='+encodeURIComponent(b.dataset.category):'';location.assign('/'+query+'#'+(b.dataset.filter==='china'?'supplier-catalog':'catalog'));}},true);
+  document.addEventListener('submit',e=>{if(e.target.id==='search-form'){e.preventDefault();e.stopImmediatePropagation();location.assign(catalogHref('',document.querySelector('#search').value.trim()));}},true);
+  document.addEventListener('click',e=>{const b=e.target.closest('button');if(b&&(b.hasAttribute('data-filter')||b.hasAttribute('data-category')||['browse','favorites'].includes(b.dataset.action))){e.preventDefault();e.stopImmediatePropagation();location.assign(b.dataset.action==='favorites'?'/saved':b.dataset.category?catalogHref(b.dataset.category):'/products');}},true);
   load();
 })();

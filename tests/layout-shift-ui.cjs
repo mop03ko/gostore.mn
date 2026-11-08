@@ -6,7 +6,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const assets=['backpack','headphones','chair','watch','sneakers','lamp','skincare'],expires=Math.floor(Date.parse('2026-11-30T00:00:00Z')/1000);
  const list={products:Array.from({length:24},(_,i)=>({id:'tb-'+(123456789+i),name:'Item '+i,image:'https://img.alicdn.com/'+i+'.jpg',mnt:15500+i*100,cny:30,price_status:'available',price_expires:expires,card_discount:i%2?{current_mnt:15500+i*100,was_mnt:31000,percent:50,expires}:null})),shipping:{cny_rate:550},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600};
- for(const [day,campaign] of [['2026-11-07T12:00:00+08:00',true],['2026-11-15T12:00:00+08:00',false]])for(const [width,height] of [[1440,900],[1024,800],[390,844],[320,700]])for(const route of ['/','/?q=headphones','/help','/cart','/account','/official-stores']){
+ for(const [day,campaign] of [['2026-11-07T12:00:00+08:00',true],['2026-11-15T12:00:00+08:00',false]])for(const [width,height] of [[1440,900],[1024,800],[390,844],[320,700]])for(const route of ['/','/?q=headphones','/c/tech','/search?q=red%20lamp','/help','/cart','/account','/official-stores']){
   const page=await browser.newPage({viewport:{width,height}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.clock.setFixedTime(new Date(day));
   await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/'+assets[(Number(new URL(r.request().url()).pathname.slice(1).split('.')[0])||0)%7]+'.jpg',contentType:'image/jpeg'}));

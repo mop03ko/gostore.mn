@@ -52,7 +52,36 @@ function readState() {
 }
 const state = readState();
 let filters = {type:'all',category:'all',query:'',sort:'featured'};
-const initialFilters=new URLSearchParams(location.search);
+// Catalog pages: /c/<category>, /c/<category>/<sub-category>, /search?q=…, /products and /saved show
+// only the product list (the 11.11 collection is /11-11). Older /?q=… and /?category=… links still work.
+const catalogHomeTitle=document.title;
+const catalogSlug=q=>String(q||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+function catalogChild(query){for(const c of categories){const child=c.children?.find(x=>x.query===query);if(child)return {category:c,child};}return null;}
+function catalogHref(category,query){
+  const c=categories.find(x=>x.id===category);
+  if(c&&(!query||query==='__all__'||query===c.query))return '/c/'+c.id;
+  const found=c?{category:c,child:c.children?.find(x=>x.query===query)}:catalogChild(query);
+  if(found?.child&&catalogSlug(found.child.query))return '/c/'+found.category.id+'/'+catalogSlug(found.child.query);
+  return query&&query!=='__all__'?'/search?q='+encodeURIComponent(query):'/products';
+}
+// The page a URL shows, with its catalog parameters (q, category, filter…) for the catalog to load.
+function catalogRoute(loc=location){
+  const params=new URLSearchParams(loc.search),path=loc.pathname.replace(/(.)\/$/,'$1');let m;
+  if(path==='/search')return {page:'search',params};
+  if(path==='/products'){params.delete('q');params.delete('category');return {page:'products',params};}
+  if(path==='/saved'){params.set('filter','saved');return {page:'saved',params};}
+  if((m=/^\/c\/([a-z0-9-]{1,40})(?:\/([a-z0-9-]{1,60}))?$/.exec(path))){
+    const c=categories.find(x=>x.id===m[1]);
+    if(c){const child=m[2]?c.children?.find(x=>catalogSlug(x.query)===m[2]):null;params.set('category',c.id);if(child)params.set('q',child.query);else params.delete('q');return {page:'category',params,category:c,child:child||null};}
+    return {page:null,params};
+  }
+  if(path==='/'||path==='/index.html')return {page:params.has('q')||params.has('category')||params.has('image')||params.get('filter')==='saved'?'legacy':'home',params};
+  return {page:null,params};
+}
+// An unknown category or sub-category address shows every product instead.
+if(/^\/c\//.test(location.pathname)&&!catalogRoute().page)history.replaceState(null,'','/products'+location.search);
+else if(catalogRoute().page==='category'&&location.pathname.split('/').length>3&&!catalogRoute().child)history.replaceState(null,'','/c/'+catalogRoute().category.id+location.search);
+const initialFilters=catalogRoute().params;
 if(initialFilters.get('filter')==='saved')filters.type='saved';
 if(categories.some(c=>c.id===initialFilters.get('category')))filters.category=initialFilters.get('category');
 let toastTimer;
@@ -111,7 +140,7 @@ function renderProducts() {
     <button class="favorite-button ${state.favorites.includes(p.id)?'saved':''}" data-favorite="${p.id}" aria-label="${esc(p.name)} — хадгалах" aria-pressed="${state.favorites.includes(p.id)}">${icon('heart')}</button>
     <div class="product-info"><span class="product-source">${esc(p.source)}</span><a class="product-name" href="/p/${encodeURIComponent(p.id)}">${esc(p.name)}</a><div class="product-meta"><span class="product-price">${money(p.price)}</span><button class="quick-add" data-add="${p.id}" aria-label="${esc(p.name)} — сагсанд нэмэх">${icon('plus')}</button></div><p class="product-sub">${p.demo!==false?'Жишээ үнэ':'Үнэ'} · хүргэлт ороогүй</p></div></article>`).join(''):`<div class="empty-state">${icon(filters.type==='saved'?'heart':'search')}<h3>${filters.type==='saved'?'Хадгалсан бараа алга':'Тохирох бараа олдсонгүй'}</h3><p>${filters.type==='saved'?'Таалагдсан барааныхаа зүрхэн тэмдгийг дараарай.':'Өөр түлхүүр үг эсвэл ангилал сонгож үзээрэй.'}</p><button class="button blue" data-reset>Бүх барааг үзэх</button></div>`;
 }
-function scrollCatalog() { $('#catalog').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
+function scrollCatalog() { if(document.documentElement.classList.contains('listing-view')){scrollTo({top:0,behavior:'instant'});return;} $('#catalog').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}); }
 function resetFilters() { filters={type:'all',category:'all',query:'',sort:'featured'};$('#search').value='';if($('#sort'))$('#sort').value='featured';if(window.supplierBrowse)window.supplierBrowse('__all__',false,'all');renderCategories();renderProducts(); }
 function filterType(type) { if(window.supplierBrowse){window.supplierBrowse(type==='saved'?null:'__all__',type==='saved');scrollCatalog();return;} if(type==='local'&&!localProductsEnabled)return toast('Бэлэн барааны худалдаа түр зогссон.');if(type==='china'&&window.storeServer?.ready){$('#supplier-catalog').scrollIntoView({behavior:'smooth'});return;} filters.type=type;filters.category='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
 function filterCategory(category) { if(window.supplierBrowse){filters.category=category;renderCategories();window.supplierBrowse(supplierCategoryQuery(category));scrollCatalog();return;} filters.category=category;filters.type='all';filters.query='';$('#search').value='';renderCategories();renderProducts();scrollCatalog(); }
@@ -209,6 +238,7 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
    let tab='home';
    if(location.pathname==='/cart')tab='cart';
+   if(location.pathname.startsWith('/c/'))tab='categories';
    if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
    if(document.documentElement.classList.contains('auth-view-open'))tab='account';
    if(menu?.open)tab='categories';
@@ -224,7 +254,7 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  const menu=$('#category-menu'),trigger=$('#category-trigger');if(!menu||!trigger)return;
 
  let selected=categories[0].id;
- function draw(){const q=$('#category-search').value.trim().toLocaleLowerCase('mn');const visible=categories.filter(c=>[c.name,c.query,...c.children.map(x=>x.name+' '+x.query)].join(' ').toLocaleLowerCase('mn').includes(q));if(visible.length&&!visible.some(c=>c.id===selected))selected=visible[0].id;const c=categories.find(c=>c.id===selected);$('#category-departments').innerHTML=visible.map(x=>`<button type="button" data-department="${x.id}" aria-pressed="${selected===x.id}">${esc(x.name)}<span aria-hidden="true">›</span></button>`).join('');$('#category-suggestions').innerHTML=visible.length?`<div class="category-suggestion-heading"><div><small>АНГИЛЛААР ХАЙХ</small><h3>${esc(c.name)}</h3><p>${esc(c.subtitle)}</p></div><img src="/assets/${c.image}.jpg" alt=""></div><div class="category-suggestion-grid">${c.children.map(({name:label,query:q})=>`<a href="/?q=${encodeURIComponent(q)}#catalog" data-menu-query="${esc(q)}">${esc(label)}<svg class="icon"><use href="#i-arrow"/></svg></a>`).join('')}</div><a class="button dark category-view-all" href="/?category=${selected}#catalog" data-menu-category="${selected}">${esc(c.name)} · бүгдийг үзэх →</a>`:'<p role="status">Тохирох ангилал олдсонгүй. Өөр нэрээр хайна уу.</p>';}
+ function draw(){const q=$('#category-search').value.trim().toLocaleLowerCase('mn');const visible=categories.filter(c=>[c.name,c.query,...c.children.map(x=>x.name+' '+x.query)].join(' ').toLocaleLowerCase('mn').includes(q));if(visible.length&&!visible.some(c=>c.id===selected))selected=visible[0].id;const c=categories.find(c=>c.id===selected);$('#category-departments').innerHTML=visible.map(x=>`<button type="button" data-department="${x.id}" aria-pressed="${selected===x.id}">${esc(x.name)}<span aria-hidden="true">›</span></button>`).join('');$('#category-suggestions').innerHTML=visible.length?`<div class="category-suggestion-heading"><div><small>АНГИЛЛААР ХАЙХ</small><h3>${esc(c.name)}</h3><p>${esc(c.subtitle)}</p></div><img src="/assets/${c.image}.jpg" alt=""></div><div class="category-suggestion-grid">${c.children.map(({name:label,query:q})=>`<a href="${catalogHref(selected,q)}" data-menu-query="${esc(q)}">${esc(label)}<svg class="icon"><use href="#i-arrow"/></svg></a>`).join('')}</div><a class="button dark category-view-all" href="/c/${selected}" data-menu-category="${selected}">${esc(c.name)} · бүгдийг үзэх →</a>`:'<p role="status">Тохирох ангилал олдсонгүй. Өөр нэрээр хайна уу.</p>';}
  $('#category-search').addEventListener('input',draw);
  document.querySelector('[data-open-categories]')?.addEventListener('click',()=>trigger.click());
  trigger.addEventListener('click',()=>{draw();menu.showModal();trigger.setAttribute('aria-expanded','true');});

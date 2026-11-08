@@ -21,7 +21,7 @@ const age=(dir,id,seconds)=>{const file=path.join(data,dir,'sess_'+id);let s=ret
  await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));assert.equal(new URL(page.url()).pathname,'/');assert.equal(await homeVisible(),true);
  // The header search acts on the store, leaving the sign-in page.
  await page.evaluate(()=>customerAccount.open());await form.waitFor();await page.locator('#search').fill('цүнх');await page.locator('#search-form [type=submit]').click();
- await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));assert.equal(new URL(page.url()).pathname,'/');assert.equal(await page.locator('#catalog').isVisible(),true);
+ await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));assert.equal(new URL(page.url()).pathname,'/search','Search results are their own page');assert.equal(await page.locator('#catalog').isVisible(),true);
  await page.evaluate(()=>customerAccount.open());await form.waitFor();
  assert.equal(await page.locator('#customer-register-form').count(),0,'No e-mail registration form');
  assert.equal(await page.locator('[data-account-mode=email]').count(),1,'Older e-mail accounts can still sign in');
@@ -29,7 +29,7 @@ const age=(dir,id,seconds)=>{const file=path.join(data,dir,'sess_'+id);let s=ret
  await form.locator('[data-account-error]').getByText('PIN буруу').waitFor();
  // Signing in returns to the page it was opened from.
  await pinLogin(page);await page.waitForFunction(()=>customerAccount.user?.pin_enabled===true&&!document.documentElement.classList.contains('auth-view-open'));
- await page.waitForFunction(()=>location.pathname==='/');assert.equal(new URL(page.url()).searchParams.get('q'),'цүнх','Back on the search it was opened from');assert.equal(await page.locator('#catalog').isVisible(),true);
+ await page.waitForFunction(()=>location.pathname==='/search');assert.equal(new URL(page.url()).searchParams.get('q'),'цүнх','Back on the search it was opened from');assert.equal(await page.locator('#catalog').isVisible(),true);
  // Opening /login while signed in goes to the account page.
  await page.goto(base+'/login');await page.waitForURL(base+'/account');await ready();
  // Persistent cookie and server session: still signed in after two idle hours, not after 31 days.

@@ -11,7 +11,7 @@
   // Short labels keep the phone grid to one line per tile.
   const channels=[['women','👗','Эмэгтэй'],['men','👔','Эрэгтэй'],['shoes','👟','Гутал'],['bags','👜','Цүнх'],['beauty','💄','Гоо сайхан'],['tech','🎧','Техник'],['home','🏠','Гэр ахуй'],['kids','🧸','Хүүхэд'],['sports','🏃','Спорт']].filter(([id])=>byId(id));
   const hot=[['Пүүз','men sneakers'],['Чихэвч','headphones'],['Үүргэвч','backpack'],['Даашинз','dress'],['Ухаалаг цаг','smart watch'],['Агаар шарагч','air fryer'],['Хадгалах хайрцаг','storage box'],['Арьс арчилгаа','skincare']];
-  const categoryHref=id=>'/?category='+encodeURIComponent(id)+'#catalog',queryHref=q=>'/?q='+encodeURIComponent(q)+'#catalog';
+  const categoryHref=id=>catalogHref(id),queryHref=q=>catalogHref('',q);
 
   const cats=hub.querySelector('#hub-cats'),flyout=hub.querySelector('#hub-flyout');
   cats.innerHTML=`<h2 class="hub-cats-title">${icon('grid')}Ангилал</h2><ul>${rows.map((r,i)=>`<li data-hub-row="${i}">${r.map(c=>`<a href="${categoryHref(c.id)}" data-hub-category="${esc(c.id)}"${c.label===c.name?'':` aria-label="${esc(c.name)}"`}>${esc(c.label)}</a>`).join('<span aria-hidden="true">/</span>')}</li>`).join('')}</ul>`;

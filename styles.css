@@ -496,3 +496,14 @@ html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 
 .auth-card h1{font-size:28px;line-height:1.2;margin:0 0 8px}.auth-card h1:focus{outline:0}
 .auth-card .account-tabs{margin-top:4px}
 @media(max-width:760px){html.auth-view-open #main>#auth-view{padding-block:12px 40px}.auth-card{border:0;border-radius:0;padding:4px 0 0;margin-top:0;background:transparent}.auth-card h1{font-size:24px}}
+
+/* Catalog pages (/c/…, /search, /products, /saved): the product list is the page. */
+.listing-view #main>:not(#catalog):not(#auth-view){display:none!important}
+.catalog-breadcrumb[hidden]{display:none}
+.catalog-breadcrumb{margin:0 0 12px}
+.listing-view #catalog{margin-top:0;padding-top:20px}
+.listing-view #catalog .section-kicker{display:none}
+@media(max-width:760px){.listing-view #catalog{padding-top:12px}}
+.listing-view .catalog-breadcrumb{min-height:44px}.listing-view .catalog-breadcrumb[hidden]{display:flex!important;visibility:hidden}
+/* While the first results load, the list keeps a screen of room so what follows it does not jump. */
+.listing-view #supplier-grid:empty,.listing-view #supplier-grid[aria-busy=true]{min-height:100vh}

@@ -16,13 +16,15 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  await page.locator('#hub-cats li').first().hover();await page.locator('#hub-flyout').waitFor();
  assert.equal(await page.locator('#hub-flyout section').count(),2);
  const before=calls.length;await page.locator('#hub-flyout [data-hub-query="dress"]').click();
- await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='dress');assert.equal(calls.at(-1),'dress');assert.ok(calls.length>before);
+ await page.waitForFunction(()=>location.pathname==='/c/women/dress');assert.equal(calls.at(-1),'dress');assert.ok(calls.length>before);
  assert.equal(await page.locator('#hub-flyout').isHidden(),true,'Choosing closes the flyout');
+ // A sub-category is its own page; Back returns to the home page.
+ await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
  // Keyboard: focus opens the row, Escape closes and returns focus to the row link.
  await page.evaluate(()=>scrollTo(0,0));await page.locator('#hub-cats [data-hub-category=tech]').focus();await page.locator('#hub-flyout').waitFor();
  assert.ok((await page.locator('#hub-flyout h3').first().innerText()).includes('Электроник'));
  await page.keyboard.press('Escape');await page.locator('#hub-flyout').waitFor({state:'hidden'});
- await page.locator('#hub-hot [data-hub-query="headphones"]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='headphones');
+ await page.locator('#hub-hot [data-hub-query="headphones"]').click();await page.waitForFunction(()=>location.pathname==='/c/tech/headphones');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
  await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-pin-setup-form[data-purpose=register]').waitFor();assert.equal(new URL(page.url()).pathname,'/register','Registration is a page');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));
  for(const width of [1024,1280])assert.ok(await page.setViewportSize({width,height:900}).then(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)),'Hub fits '+width);
  await page.setViewportSize({width:1024,height:900});assert.equal(await page.locator('.hub-user').isVisible(),false,'Narrow desktops drop the customer panel');
@@ -34,7 +36,7 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
   for(const el of await page.locator('#hub-channels > *').all()){const box=await el.boundingBox();assert.ok(box.width>=44&&box.height>=44,'Grid tile is a touch target');}
   assert.equal(await page.locator('.mobile-nav [data-mobile-tab]').count(),5);
  }
- await page.locator('#hub-channels [data-hub-category=shoes]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='men shoes');
+ await page.locator('#hub-channels [data-hub-category=shoes]').click();await page.waitForFunction(()=>location.pathname==='/c/shoes');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
  await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-all-categories]').click();await page.locator('#category-menu').waitFor({state:'visible'});
  assert.equal(await page.locator('.mobile-nav [data-mobile-tab=categories]').getAttribute('aria-current'),'page');await page.keyboard.press('Escape');
 

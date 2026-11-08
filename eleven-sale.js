@@ -5,13 +5,16 @@
     return parts.find(part => part.type === 'month').value === '11' && Number(parts.find(part => part.type === 'day').value) <= 11;
   };
   const hub = document.getElementById('home-hub');
-  if (!hub || !/^\/(?:index\.html)?$/.test(location.pathname) || !active()) return;
-  const collection = new URLSearchParams(location.search).get('sale') === '11.11';
+  // The collection is /11-11 (older links: /?sale=11.11); after the campaign it sends visitors home.
+  const collection = /^\/11-11\/?$/.test(location.pathname) || (/^\/(?:index\.html)?$/.test(location.pathname) && new URLSearchParams(location.search).get('sale') === '11.11');
+  if (collection && !active()) { location.replace('/'); return; }
+  if (!hub || !(collection || /^\/(?:index\.html)?$/.test(location.pathname) || document.documentElement.classList.contains('listing-view')) || !active()) return;
+  if (collection && location.pathname !== '/11-11') history.replaceState(null, '', '/11-11');
   const hero = hub.querySelector('.hero-banner');
   const originalHero = hero?.innerHTML;
   if (hero) {
     hero.classList.add('eleven-hero');
-    hero.innerHTML = '<a class="eleven-hero-link" href="/?sale=11.11" aria-label="11.11-ийн хямдралтай бүх барааг үзэх"><div class="eleven-hero-copy"><span class="eleven-hero-label">GOSTORE · 11.11</span><h1>Хүссэнээ<br>хямдралтай.</h1><p>Бодит хямдралтай барааны<br>сонголтоо нээгээрэй.</p><span class="eleven-hero-cta">Хямдралуудыг үзэх <span aria-hidden="true">↗</span></span></div><div class="eleven-hero-art" aria-hidden="true"><strong>11.11</strong><span class="eleven-hero-orbit"></span><img class="eleven-hero-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" width="330" height="220" alt="" fetchpriority="high"><img class="eleven-hero-bag" src="/assets/hero-bag.webp?v=1d3094dc10" width="300" height="450" alt=""><span class="eleven-hero-ticket">БОДИТ<br><b>−%</b> ХЯМДРАЛ</span></div></a>';
+    hero.innerHTML = '<a class="eleven-hero-link" href="/11-11" aria-label="11.11-ийн хямдралтай бүх барааг үзэх"><div class="eleven-hero-copy"><span class="eleven-hero-label">GOSTORE · 11.11</span><h1>Хүссэнээ<br>хямдралтай.</h1><p>Бодит хямдралтай барааны<br>сонголтоо нээгээрэй.</p><span class="eleven-hero-cta">Хямдралуудыг үзэх <span aria-hidden="true">↗</span></span></div><div class="eleven-hero-art" aria-hidden="true"><strong>11.11</strong><span class="eleven-hero-orbit"></span><img class="eleven-hero-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" width="330" height="220" alt="" fetchpriority="high"><img class="eleven-hero-bag" src="/assets/hero-bag.webp?v=1d3094dc10" width="300" height="450" alt=""><span class="eleven-hero-ticket">БОДИТ<br><b>−%</b> ХЯМДРАЛ</span></div></a>';
   }
   if (collection) {
     document.documentElement.classList.add('eleven-sale-view');
@@ -24,7 +27,7 @@
   section.className = 'eleven-sale page-width';
   section.setAttribute('aria-labelledby', 'eleven-sale-title');
   const heading = collection ? 'h1' : 'h2';
-  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдралтай бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/?sale=11.11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
+  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдралтай бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/11-11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
   if (!section.isConnected) hub.after(section);
   const target = section.querySelector('#eleven-sale-products');
   const status = section.querySelector('.eleven-sale-status');
@@ -52,7 +55,7 @@
     const all = rows.filter(product => valid(product) && !seen.has(product.id) && seen.add(product.id));
     const items = collection ? all : all.slice(0, 12);
     target.setAttribute('aria-busy', 'false');
-    target.innerHTML = items.length ? '<div class="eleven-sale-grid">' + items.map(product => '<a class="eleven-sale-card" href="/v/' + encodeURIComponent(product.id) + '">' + supplierDiscountBadge(product, product.mnt || product.approx_mnt) + (product.image ? '<img src="' + esc(product.image) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '<div class="eleven-sale-placeholder" aria-hidden="true">GOStore</div>') + '<div class="eleven-sale-card-body"><h3>' + esc(product.name) + '</h3><strong>' + (product.mnt ? '' : '≈ ') + money(product.mnt || product.approx_mnt) + '</strong>' + supplierPromotionHtml(product, product.mnt || product.approx_mnt) + '<small class="eleven-sale-details">Үнэ, нөхцөл харах →</small></div></a>').join('') + '</div>' : '<p class="eleven-sale-empty">Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй. <a href="/#supplier-catalog">Бүх барааг үзэх →</a></p>';
+    target.innerHTML = items.length ? '<div class="eleven-sale-grid">' + items.map(product => '<a class="eleven-sale-card" href="/v/' + encodeURIComponent(product.id) + '">' + supplierDiscountBadge(product, product.mnt || product.approx_mnt) + (product.image ? '<img src="' + esc(product.image) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '<div class="eleven-sale-placeholder" aria-hidden="true">GOStore</div>') + '<div class="eleven-sale-card-body"><h3>' + esc(product.name) + '</h3><strong>' + (product.mnt ? '' : '≈ ') + money(product.mnt || product.approx_mnt) + '</strong>' + supplierPromotionHtml(product, product.mnt || product.approx_mnt) + '<small class="eleven-sale-details">Үнэ, нөхцөл харах →</small></div></a>').join('') + '</div>' : '<p class="eleven-sale-empty">Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй. <a href="/products">Бүх барааг үзэх →</a></p>';
     status.textContent = collection && items.length ? items.length + ' бараа харагдаж байна' : '';
     if (stale && !items.length) target.innerHTML = '<p class="eleven-sale-empty">Хямдралын шинэ мэдээлэл түр хязгаарлагдсан байна. Дараа дахин ачаална уу.</p>';
     next.hidden = !collection || !more;

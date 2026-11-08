@@ -2,33 +2,34 @@
 <!-- Storefront entry points. Product pages are found through category and search links. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://gostore.mn/</loc></url>
+  <url><loc>https://gostore.mn/products</loc></url>
   <url><loc>https://gostore.mn/official-stores</loc></url>
   <url><loc>https://gostore.mn/help</loc></url>
-  <url><loc>https://gostore.mn/?category=home</loc></url>
-  <url><loc>https://gostore.mn/?category=tech</loc></url>
-  <url><loc>https://gostore.mn/?category=bags</loc></url>
-  <url><loc>https://gostore.mn/?category=shoes</loc></url>
-  <url><loc>https://gostore.mn/?category=accessories</loc></url>
-  <url><loc>https://gostore.mn/?category=beauty</loc></url>
-  <url><loc>https://gostore.mn/?category=lighting</loc></url>
-  <url><loc>https://gostore.mn/?category=men</loc></url>
-  <url><loc>https://gostore.mn/?category=women</loc></url>
-  <url><loc>https://gostore.mn/?category=kids</loc></url>
-  <url><loc>https://gostore.mn/?category=women-shoes</loc></url>
-  <url><loc>https://gostore.mn/?category=kitchen</loc></url>
-  <url><loc>https://gostore.mn/?category=appliances</loc></url>
-  <url><loc>https://gostore.mn/?category=furniture</loc></url>
-  <url><loc>https://gostore.mn/?category=decor</loc></url>
-  <url><loc>https://gostore.mn/?category=baby</loc></url>
-  <url><loc>https://gostore.mn/?category=toys</loc></url>
-  <url><loc>https://gostore.mn/?category=sports</loc></url>
-  <url><loc>https://gostore.mn/?category=fishing</loc></url>
-  <url><loc>https://gostore.mn/?category=outdoor</loc></url>
-  <url><loc>https://gostore.mn/?category=auto</loc></url>
-  <url><loc>https://gostore.mn/?category=tools</loc></url>
-  <url><loc>https://gostore.mn/?category=building</loc></url>
-  <url><loc>https://gostore.mn/?category=garden</loc></url>
-  <url><loc>https://gostore.mn/?category=pets</loc></url>
-  <url><loc>https://gostore.mn/?category=office</loc></url>
-  <url><loc>https://gostore.mn/?category=health</loc></url>
+  <url><loc>https://gostore.mn/c/home</loc></url>
+  <url><loc>https://gostore.mn/c/tech</loc></url>
+  <url><loc>https://gostore.mn/c/bags</loc></url>
+  <url><loc>https://gostore.mn/c/shoes</loc></url>
+  <url><loc>https://gostore.mn/c/accessories</loc></url>
+  <url><loc>https://gostore.mn/c/beauty</loc></url>
+  <url><loc>https://gostore.mn/c/lighting</loc></url>
+  <url><loc>https://gostore.mn/c/men</loc></url>
+  <url><loc>https://gostore.mn/c/women</loc></url>
+  <url><loc>https://gostore.mn/c/kids</loc></url>
+  <url><loc>https://gostore.mn/c/women-shoes</loc></url>
+  <url><loc>https://gostore.mn/c/kitchen</loc></url>
+  <url><loc>https://gostore.mn/c/appliances</loc></url>
+  <url><loc>https://gostore.mn/c/furniture</loc></url>
+  <url><loc>https://gostore.mn/c/decor</loc></url>
+  <url><loc>https://gostore.mn/c/baby</loc></url>
+  <url><loc>https://gostore.mn/c/toys</loc></url>
+  <url><loc>https://gostore.mn/c/sports</loc></url>
+  <url><loc>https://gostore.mn/c/fishing</loc></url>
+  <url><loc>https://gostore.mn/c/outdoor</loc></url>
+  <url><loc>https://gostore.mn/c/auto</loc></url>
+  <url><loc>https://gostore.mn/c/tools</loc></url>
+  <url><loc>https://gostore.mn/c/building</loc></url>
+  <url><loc>https://gostore.mn/c/garden</loc></url>
+  <url><loc>https://gostore.mn/c/pets</loc></url>
+  <url><loc>https://gostore.mn/c/office</loc></url>
+  <url><loc>https://gostore.mn/c/health</loc></url>
 </urlset>
