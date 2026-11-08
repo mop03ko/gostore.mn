@@ -45,3 +45,25 @@ Official references:
 - [Display API restrictions, notice 135](https://open.taobao.global/announcement/index.htm#/announcement/detail?id=135)
 - [Traffic access and quota policy, notice 137](https://open.taobao.global/announcement/index.htm#/announcement/detail?id=137)
 - [mi_id migration, notice 150](https://open.taobao.global/announcement/index.htm#/announcement/detail?id=150)
+
+## Search input (2026-11-08)
+
+`server/search-query.php` interprets the shopper's text before any TaoWorld call. November's access log
+had 149 distinct queries (86% English category keywords, 9% Mongolian, 2% Chinese). TaoWorld already
+understands ordinary Mongolian words (малгай → hats, өмд → trousers, чихэвч → headsets), so they are
+passed through.
+
+- **Links and item numbers**: Taobao/Tmall item links (`?id=`, `/item/….htm`, `a.m.taobao.com/i….htm`),
+  `tb-` IDs and bare 9–20-digit item numbers, including inside app share texts. TaoWorld details require
+  the account's search-issued `mi_id` and no longer accept item numbers, so a product seen in a search
+  within 89 days opens directly (`redirect: /v/tb-…`, single result); otherwise the share text's
+  `「title」` (or the text around the link) is searched and the product opens if it is among the results,
+  else same-name products are shown with a notice; a bare unseen link returns guidance to search by name
+  or photo. `m.tb.cn` share links are resolved with a 4-second request (cached 30 days) when allowed.
+- **Normalisation**: spacing and letter case are normalised (equivalent searches share one cache entry and
+  one API call); brand misspellings and Mongolian transliterations map to the brand (uniclo → uniqlo,
+  найк → nike, сяоми → xiaomi, айфон → iphone …), whole words only.
+- Web (`supplier.js`) and app (`(tabs)/index.tsx`) follow `redirect` and show `notice`; the browser
+  cache whitelist (`store-server.js`) keeps both fields. Older app builds show the single product.
+
+Tests: `tests/taoworld-search.php`, link search in `tests/taoworld-storefront-ui.cjs`.

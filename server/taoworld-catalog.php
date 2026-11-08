@@ -266,6 +266,26 @@ function tw_catalog_deals(array $params): array {
     $result['scope']='catalog_sample';
     return $result;
 }
+// A pasted product link or item number. TaoWorld details need the account's mi_id, which only its
+// searches issue (item numbers are no longer accepted), so: a product seen in a search within 89 days
+// opens directly (single result plus a redirect); otherwise the share text's title is searched and the
+// product opens if it is among the results, else similar products are shown; a bare link without a
+// title explains how to find the item. Budget and outage errors still surface.
+function tw_catalog_search_product(string $id,int $page,string $title,array $b,bool $display): array {
+    $empty=['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false,'partial'=>false];
+    $known=true;try{tw_catalog_resource($id);}catch(ApiError){$known=false;}
+    if($known&&$page===1){
+        try{$d=tw_catalog_detail($id,false,'',true);return tw_catalog_response(['products'=>[$d['product']],'page'=>1,'total'=>1,'pages'=>1,'more'=>false,'partial'=>false,'redirect'=>'/v/'.$id],time(),300);}
+        catch(ApiError $e){if(in_array($e->getCode(),[429,503],true))throw $e;}
+    }
+    if($title!==''){
+        $r=tw_catalog_search(['q'=>$title,'page'=>$page]+array_intersect_key($b,array_flip(['limit','sort','price_min','price_max','preview','refresh'])),$display);
+        if($page===1&&in_array($id,array_column($r['products'],'id'),true))return $r+['redirect'=>'/v/'.$id];
+        return $r+['notice'=>'Холбоосын бараа шууд олдсонгүй. Ижил нэртэй бараануудыг харуулж байна.'];
+    }
+    if($known)return tw_catalog_response($empty,time(),0);
+    return tw_catalog_response($empty+['notice'=>'Энэ холбоосын барааг шууд нээх боломжгүй. Барааны нэр эсвэл зургаар хайна уу.'],time(),0);
+}
 function tw_catalog_departments(): array {
     return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','fishing tackle'=>'渔具','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
 }
@@ -345,6 +365,13 @@ function tw_catalog_search(array $b,bool $display=false): array {
     if(!empty($b['shop']))return official_store_products($b,$display&&empty($b['refresh']));
     tw_catalog_require_ready();
     $limit=supplier_page_size($b);$page=int_field($b,'page',1,100);$q=str_field($b,'q',100,false)?:'home storage';
+    // Pasted links, item numbers and share texts open the product; other text is normalised.
+    if($q!=='__all__'&&str_field($b,'brand',30,false)===''){
+        require_once __DIR__.'/search-query.php';$intent=search_query_intent($q);
+        if($intent['type']==='product')return tw_catalog_search_product($intent['id'],$page,$intent['title'],$b,$display);
+        if($intent['type']==='empty')return tw_catalog_response(['products'=>[],'page'=>$page,'total'=>0,'pages'=>$page,'more'=>false],time(),0);
+        $q=$intent['q'];
+    }
     $refresh=isset($b['refresh'])?int_field($b,'refresh',0,1):0;
     $preview=isset($b['preview'])?int_field($b,'preview',0,1):0;
     $display=$display&&!$refresh;

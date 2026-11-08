@@ -56,7 +56,7 @@ window.supplierApi=(()=>{
         if(!response.ok){const error=Error(result.error||'Барааны мэдээлэл авч чадсангүй.');error.status=response.status;throw error;}
         // Whitelist fields: never persist an API response's CSRF token or customer data.
         const data={fetched:result.fetched,stale:result.stale,shipping:result.shipping};
-        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null,store:result.store??null,partial:result.partial===true,revalidate:result.revalidate===true});
+        if(action==='supplier-search')Object.assign(data,{products:result.products,page:result.page,more:result.more,total:result.total??null,pages:result.pages??null,brand:result.brand??null,store:result.store??null,partial:result.partial===true,revalidate:result.revalidate===true,redirect:typeof result.redirect==='string'&&/^\/v\/tb-[0-9]{5,20}$/.test(result.redirect)?result.redirect:null,notice:typeof result.notice==='string'?result.notice.slice(0,200):null});
         else if(action==='supplier-official-stores')Object.assign(data,{stores:result.stores,incomplete:result.incomplete===true});
         else if(action==='supplier-recommend')Object.assign(data,{products:result.products,page:result.page,more:result.more===true});
         else data.product=result.product;

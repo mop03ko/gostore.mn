@@ -145,6 +145,8 @@ async function loadSupplier(page=1,append=false){
   $('#supplier-paging').innerHTML='<span role="status">'+(append||resume?'Дараагийн бараануудыг ачаалж байна…':'')+'</span>';
   let failure=false,shown=resume;
   const paint=r=>{
+    // A pasted Taobao/Tmall link or item number opens that product directly.
+    if(r.redirect&&/^\/v\/tb-[0-9]{5,20}$/.test(r.redirect)&&page===1&&!append){location.replace(r.redirect);return;}
     const seen=new Set(base.map(p=>p.id)),incoming=(r.products||[]).filter(p=>{if(!/^tb-[0-9]{5,20}$/.test(p.id)||seen.has(p.id))return false;seen.add(p.id);return true;});
     const next=[...base,...incoming];
     if((brand||supplierShop)&&['default','-price','price'].includes(sort))next.sort((a,b)=>{const pa=a.mnt??a.approx_mnt??null,pb=b.mnt??b.approx_mnt??null;if((pa===null)!==(pb===null))return pa===null?1:-1;return sort==='price'?pa-pb:pb-pa;});
@@ -160,6 +162,7 @@ async function loadSupplier(page=1,append=false){
     const sourceLink=document.querySelector('[data-brand-source]');
     if(sourceLink&&r.brand?.id===brand&&/^https:\/\/[a-z0-9.-]+\.tmall\.com\/category\.htm$/.test(r.brand.source_url||'')){sourceLink.href=r.brand.source_url;sourceLink.hidden=false;}
     $('#supplier-status').textContent=(supplierResults.length?supplierResults.length+' бараа харуулж байна'+(total!==null?' · нийт '+new Intl.NumberFormat('en-US').format(total)+' үр дүн':''):'Тохирох бараа олдсонгүй.')+(range.price_min||range.price_max?' · Үнэ: '+(range.price_min?money(Number(range.price_min)):'0 ₮')+' – '+(range.price_max?money(Number(range.price_max)):'дээд хязгааргүй'):'')+(brand?' · Хямдрал, урамшууллын мэдээллийг бараа дээр дарж үзнэ.':'')+(r.stale?' · Хадгалсан мэдээлэл. Үнэ, үлдэгдлийг барааны хуудаснаас шалгана уу.':'');
+    if(r.notice)$('#supplier-status').textContent=r.notice+(supplierResults.length?' · '+supplierResults.length+' бараа':'');
     $('#shipping-rates').textContent=supplierRateText(r.shipping)+' Бараа, Хятад доторх хүргэлт, үйлчилгээний шимтгэл тусдаа тооцогдоно.';
     $('#supplier-search button').disabled=false;
   };

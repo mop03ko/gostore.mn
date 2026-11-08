@@ -19,6 +19,8 @@ import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
 type Results = {
   products: Product[];
   more: boolean;
+  redirect?: string;
+  notice?: string;
   revalidate?: boolean;
   stale?: boolean;
 };
@@ -65,6 +67,13 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           controller.signal,
         );
         if (g !== generation.current) return;
+        // A pasted Taobao/Tmall link or item number opens that product directly.
+        const product = page === 1 && /^\/v\/(tb-\d{5,20})$/.exec(r.redirect ?? "");
+        if (product) {
+          router.replace({ pathname: "/product/[id]", params: { id: product[1] } });
+          return;
+        }
+        if (page === 1 && r.notice && !r.products.length) setError(r.notice);
         setItems((prev) =>
           page === 1
             ? r.products

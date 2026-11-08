@@ -9,6 +9,8 @@ const seed=spawnSync('tmp/tooling/php/php.exe',[...phpArgs,'tests/taoworld-store
  await page.goto(base+'/?q=home%20storage');await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length>=50);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
  assert.ok(await page.locator('[data-image-search]').first().isVisible());assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/?image='+fixture.image);await page.waitForFunction(()=>document.querySelectorAll('.supplier-card').length===2);assert.equal(await page.locator('.supplier-card h3').first().innerText(),'English storage box 0');
+ // A pasted Taobao link opens the product page instead of a keyword search.
+ await page.goto(base+'/?q='+encodeURIComponent('https://item.taobao.com/item.htm?spm=x&id='+fixture.id.slice(3)));await page.waitForURL(u=>new URL(u).pathname==='/v/'+fixture.id,{timeout:15000});
  // Link previews: crawlers read the product's name and photo without running JavaScript.
  const share=await (await fetch(base+'/v/'+fixture.id+'?id=tb-1&brand=x')).text(),tag=p=>share.match(new RegExp('<meta property="'+p+'" content="([^"]*)"'))?.[1];
  assert.equal(tag('og:title'),'English storage box 0');assert.equal(tag('og:type'),'product');assert.equal(tag('og:url'),'https://gostore.mn/v/'+fixture.id);
