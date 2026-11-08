@@ -1,5 +1,13 @@
 # cPanel суулгалт
 
+## Real price cuts only, no coupons — 2026-11-08
+
+- Deals tab and 11.11 list only real price cuts from product details saved within 24 hours; coupon prices are no longer sent or shown (see docs/performance-cache.md). Full `tests/run-all.cjs` passed on `f38c3cd`.
+- Before deploying, live served the search-based index from `331b515`: 600 deals, page 1 all coupon-only, no real cut. Live files matched `0cea954` exactly.
+- Deployed `server/taoworld-deals.php`, `server/taoworld-catalog.php`, `server/catalog-worker.php`, `eleven-sale.js`, `app.css`, `app.js`, `index.html` from `f38c3cd` over FTPS with baseline/backup/hash verification (deals module before the catalog code that calls it). Backup: `/gostore-backups/realdeals-20261108-b542d7f512`. No database changes.
+- The old `deals-index.json` (search-based, 556 KB) was saved to ignored `tmp/realdeals-deployment/deals-index-before.json` and removed; the next request rebuilt it from details in about 1 s. The 15-minute catalog worker keeps rebuilding it.
+- Live checks: health and catalog 200; `supplier-deals` returned 83 real cuts (50 on page 1, all with a discount matching the shown price, no coupon fields); homepage cards carry no coupon fields; homepage at 1440/390 px showed 8 discounted 11.11 cards and 50 on the deals tab, no «купон» text, no JS errors, failed requests or overflow.
+
 ## Admin customers list and editor — 2026-11-07
 
 - Admin → «Хэрэглэгчид»: paged list of registered customers with search (name, email, phone digits) and filters (active, phone/PIN, email, deleted), plus an editor for name, contact phone and the login email of email accounts. PIN login phones stay locked, deleted accounts are read-only, stale edits and duplicate emails return 409. Details in README.
