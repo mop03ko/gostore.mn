@@ -14,6 +14,9 @@ const TW_CATALOG_DETAIL_DISPLAY_MAX = 3600;
 // Homepage pages after the third (each costs six department searches) refresh every six hours.
 const TW_CATALOG_HOME_DEEP_PAGE = 3;
 const TW_CATALOG_HOME_DEEP_MAX_AGE = 21600;
+// Discounts, coupons and promotions on list cards stay visible for six hours after the list was
+// fetched (Taobao promotions usually run for days); checkout re-reads the real price within 120 s.
+const TW_CATALOG_OFFER_DISPLAY = 21600;
 const TW_CATALOG_DISPLAY_FALLBACK = 86400;
 function tw_catalog_require_ready(): void {
     if(!shipping_settings()['supplier_enabled']||empty(taoworld_state()['access_token']))fail('Нийлүүлэгчийн каталог түр идэвхгүй байна. Дараа дахин оролдоно уу.',503);
@@ -24,8 +27,10 @@ function tw_catalog_dir(): string {
     if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Каталог хадгалах боломжгүй.',503);
     return $dir;
 }
+// The catalog cron pre-fetches with the background share of the daily budget (no per-IP limits).
+function tw_catalog_warming(): bool {return defined('GOSTORE_CATALOG_WARMING');}
 function tw_catalog_call(string $path,array $params,bool $purchase=false): array {
-    supplier_limits(false,$purchase);
+    supplier_limits(tw_catalog_warming()&&!$purchase,$purchase);
     $r=taoworld_http($path,$params+['access_token'=>taoworld_access_token()]);
     return tw_catalog_data($r);
 }
@@ -73,7 +78,7 @@ function tw_catalog_search_pages(array $params,int $first,int $last,bool $displa
         }
         if($pending){
             $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT tw_catalog_batch_budget');
-            try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
+            try{foreach($pending as $_)supplier_limits(tw_catalog_warming());$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');}
             catch(Throwable $e){
                 $db->exec('ROLLBACK TO SAVEPOINT tw_catalog_batch_budget');$db->exec('RELEASE SAVEPOINT tw_catalog_batch_budget');
                 // Over quota: display pages that still have a day-old snapshot show it instead.
@@ -162,7 +167,7 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null): arr
     $image=supplier_image((string)($p['main_image_url']??$p['pic_urls'][0]??''));
     $r=['id'=>$id,'provider'=>'taobao','catalog_provider'=>'taoworld','provider_label'=>'Taobao','name'=>supplier_text($title,300),'original_name'=>supplier_text($p['title']??'',500),'image'=>$image,'url'=>'/v/'.$id,'min_qty'=>1,'step'=>1,'sellable'=>true,'variants'=>[],'sold_count'=>null,'sales_30_days'=>null,'cny'=>null,'mnt'=>null,'approx_cny'=>$price,'approx_mnt'=>$price===null?null:(int)ceil($price*$rate),'price_status'=>'unverified','card_discount'=>null];
     $r['shop_rating']=tw_catalog_seller_info($p)['shop_rating']??null;
-    $expires=($fetched??time())+($detail?TW_CATALOG_DETAIL_REFRESH:TW_CATALOG_SEARCH_TTL);
+    $expires=($fetched??time())+($detail?TW_CATALOG_DETAIL_REFRESH:TW_CATALOG_OFFER_DISPLAY);
     $r['offers']=tw_catalog_offers($p,$detail,$expires);
     if(!$detail)return $r;
     $meta=supplier_snapshot_read(tw_catalog_dir().'/item-'.substr($id,3).'.json')??[];
@@ -242,7 +247,10 @@ function tw_catalog_cards(array $rows,?int $fetched=null): array {
 }
 function tw_catalog_deals(array $params): array {
     $page=filter_var($params['page']??1,FILTER_VALIDATE_INT);
-    if($page===false)fail('Хуудасны дугаар буруу.');
+    if($page===false||$page<1||$page>100)fail('Хуудасны дугаар буруу.');
+    // Prefer the deals index built from every recent search; fall back to the homepage sample.
+    require_once __DIR__.'/taoworld-deals.php';
+    if($indexed=tw_deals_from_index($page))return $indexed;
     $query=['q'=>'__all__','page'=>$page,'limit'=>50];
     try {
         $result=tw_catalog_search($query);
@@ -260,6 +268,17 @@ function tw_catalog_deals(array $params): array {
 }
 function tw_catalog_departments(): array {
     return ['home storage'=>'收纳盒','electronics'=>'数码配件','bag'=>'包','men shoes'=>'男鞋','jewelry accessories'=>'饰品','beauty'=>'美妆','lamp'=>'灯具','men clothing'=>'男装','women clothing'=>'女装','kids clothing'=>'童装','women shoes'=>'女鞋','kitchen utensils'=>'厨房用品','home appliances'=>'家电','furniture'=>'家具','home decoration'=>'家居装饰','baby products'=>'母婴用品','toys'=>'玩具','sports equipment'=>'运动用品','camping equipment'=>'露营装备','fishing tackle'=>'渔具','car accessories'=>'汽车用品','tools'=>'工具','building materials'=>'建筑材料','garden supplies'=>'园艺用品','pet supplies'=>'宠物用品','office supplies'=>'办公用品','personal care'=>'个人护理'];
+}
+// Homepage mix: the 27 departments plus popular Taobao categories (85 keywords, all checked against
+// the product policy), so scrolling covers far more of the catalog than the original departments.
+function tw_catalog_home_keywords(): array {
+    return array_values(array_unique(array_merge(array_values(tw_catalog_departments()),['手机壳','数据线','蓝牙耳机','充电宝','智能手表','键盘鼠标','手机支架','连衣裙','卫衣','牛仔裤','羽绒服','衬衫','T恤','外套','运动鞋','休闲鞋','帆布鞋','双肩包','行李箱','钱包','帽子','围巾','袜子','睡衣','太阳镜','发饰','护肤品','洗面奶','床上用品','毛巾','收纳袋','保温杯','餐具','清洁用品','装饰画','抱枕','地毯','窗帘','积木','文具','笔记本','书包','瑜伽垫','健身器材','自行车配件','户外背包','宠物玩具','汽车座垫','五金配件','电动工具','厨房收纳','浴室用品','儿童鞋','女包','男包','手表','耳环','项链'])));
+}
+// The starting department rotates every Ulaanbaatar day, so the first screens differ day to day while
+// each department's cached pages are shared by every rotation.
+function tw_catalog_home_order(?int $now=null): array {
+    $k=tw_catalog_home_keywords();$offset=intdiv(($now??time())+8*3600,86400)*6%count($k);
+    return array_merge(array_slice($k,$offset),array_slice($k,0,$offset));
 }
 // Recommendations use the viewed product's leaf category, never the mixed home feed.
 function tw_catalog_recommend_query(array $product): string {

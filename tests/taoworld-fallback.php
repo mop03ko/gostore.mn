@@ -21,7 +21,7 @@ denied(fn()=>supplier_detail('tb-700000000000',false,'',true),502);$error=false;
 $d=supplier_detail('tb-700000000000',true);check($d['stale']===false,'A successful refresh clears the stale flag');
 
 // Homepage mix: one failing or locked department does not fail the page.
-$home=['q'=>'__all__','page'=>1,'limit'=>50];$keywords=array_values(tw_catalog_departments());
+$home=['q'=>'__all__','page'=>1,'limit'=>50];$keywords=tw_catalog_home_order();
 $r=supplier_search($home,true);check(count($r['products'])>0&&!$r['stale'],'Home feed builds normally');
 foreach(array_slice($keywords,0,6) as $k)$age($searchFile($k),7200);
 $error=true;$r=supplier_search($home,true);$error=false;

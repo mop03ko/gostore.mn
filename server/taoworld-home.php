@@ -5,7 +5,7 @@ declare(strict_types=1);
 // A stable page schedule keeps reloads predictable; native snapshots are shared
 // with category searches. Fetch only six departments, three requests at a time.
 function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $display): array {
-    $departments=array_values(tw_catalog_departments());$count=count($departments);
+    $departments=tw_catalog_home_order();$count=count($departments);
     $queries=[];$snapshots=[];$deep=$display&&$page>TW_CATALOG_HOME_DEEP_PAGE;$ttl=$deep?TW_CATALOG_HOME_DEEP_MAX_AGE:($display?TW_CATALOG_SEARCH_MAX_AGE:TW_CATALOG_SEARCH_TTL);
     for($i=0;$i<6;$i++){
         $position=($page-1)*6+$i;
@@ -33,7 +33,7 @@ function tw_catalog_home(int $page,int $limit,string $sort,array $filters,bool $
             if(!$pending)continue;
             try{
                 $token=taoworld_access_token();$db=db();$db->exec('SAVEPOINT home_feed_budget');
-                try{foreach($pending as $_)supplier_limits(false);$db->exec('RELEASE SAVEPOINT home_feed_budget');}
+                try{foreach($pending as $_)supplier_limits(tw_catalog_warming());$db->exec('RELEASE SAVEPOINT home_feed_budget');}
                 catch(Throwable $e){$db->exec('ROLLBACK TO SAVEPOINT home_feed_budget');$db->exec('RELEASE SAVEPOINT home_feed_budget');throw $e;}
                 $responses=taoworld_http_search_batch(array_map(fn($p)=>$p['query']+['access_token'=>$token],array_values($pending)));
             }catch(ApiError $e){$failure??=$e;continue;}

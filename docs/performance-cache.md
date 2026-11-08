@@ -156,3 +156,27 @@ last fetch). The budget ran out at 23:16 Ulaanbaatar on Nov 6.
   revalidation before that; pages 1–3 keep the hourly display allowance and 30-minute revalidation.
 - Per-IP caps on uncached supplier reads were raised from 30/min and 120/h to **60/min and 300/h**
   because Mongolian carriers share IP addresses (CGNAT); the shared daily budget remains the cost limit.
+
+## More products and deals — 2026-11-08
+
+Fresh homepage lists carry offers on 70–85% of items, but deals vanished whenever lists were older than
+30 minutes (for example after the daily budget ran out), and both the homepage and the deals page drew
+on 27 fixed departments.
+
+- **Offer window**: discounts, coupons and promotions on list cards stay visible for six hours after the
+  list was fetched (`TW_CATALOG_OFFER_DISPLAY`); product pages keep the 30-minute detail refresh and
+  checkout still re-reads the price within 120 seconds, so payment never uses an expired offer.
+- **Deals index** (`server/taoworld-deals.php`): every sellable discounted card from any search snapshot
+  of the last six hours (homepage departments, categories, keyword, brand, store and recommendation
+  searches), newest copy per product, biggest cut first, up to 600 items, 50 per page. `supplier-deals`
+  serves it while it is under an hour old, drops offers that expired since the build, and otherwise falls
+  back to the homepage sample. It never calls TaoWorld.
+- **Homepage rotation**: 85 policy-checked keywords (the 27 departments plus popular Taobao categories);
+  the starting department moves every Ulaanbaatar day, while each department's cached pages are shared.
+- **Catalog cron** (`server/catalog-worker.php`, every 15 minutes): rebuilds the deals index; once a day
+  from 06:00 Ulaanbaatar it pre-fetches the whole rotation (pages 1–3 when older than 30 minutes, deeper
+  pages when older than six hours) using the background half of the daily budget, stopping when that
+  share is spent. Status: `<data_dir>/catalog-worker-status.json`; the daily report shows the index size
+  and the morning pre-fetch, and warns if the worker has not run for an hour.
+
+Cron line (cPanel): `*/15 * * * * /opt/cpanel/ea-php83/root/usr/bin/php /home/gostorem/public_html/server/catalog-worker.php >/dev/null 2>&1`

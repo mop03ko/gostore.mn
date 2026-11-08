@@ -31,6 +31,8 @@ function daily_report_build(?int $now=null): array {
     $budget=null;if(function_exists('supplier_budget_status')){try{$budget=supplier_budget_status();}catch(Throwable){}}
     if($budget&&$budget['used']>=$budget['browse_limit'])$warnings[]='TaoWorld өдрийн API лимит дууссан ('.$budget['used'].'/'.$budget['limit'].').';
     $push=['devices'=>daily_report_count('SELECT COUNT(*) FROM customer_push_devices WHERE expires>?',[$now]),'message_pending'=>daily_report_count("SELECT COUNT(*) FROM customer_message_push WHERE status IN ('pending','sent')")];
+    $catalog=json_decode((string)@file_get_contents(config()['data_dir'].'/catalog-worker-status.json'),true);
+    if(is_array($catalog)&&strtotime((string)($catalog['time']??''))<$now-3600)$warnings[]='Каталогийн worker (хямдралын индекс) 1 цагаас дээш ажиллаагүй.';
     $errors=daily_report_errors($since);if($errors['total']>=20)$warnings[]='Сүүлийн 24 цагт '.$errors['total'].' PHP алдаа бүртгэгдсэн.';
     $free=@disk_free_space(config()['data_dir']);if($free!==false&&$free<500*1024*1024)$warnings[]='Серверийн дискний сул зай бага: '.round($free/1048576).' MB.';
     $date=gmdate('Y-m-d',$now+8*3600);$lines=['gostore.mn өдрийн тайлан — '.$date.' (Улаанбаатар)',''];
@@ -38,6 +40,7 @@ function daily_report_build(?int $now=null): array {
     $lines[]='Нөөц: '.(!empty($backup['ok'])?'амжилттай, '.($backup['name']??'').', '.round(($backup['bytes']??0)/1024).' KB':'амжилтгүй').($latest?' · серверт '.$latest['count'].' хуулбар':'').(!empty($backup['drive']['id'])?' · Google Drive-д хуулсан':'');
     $lines[]='Сүүлийн 24 цаг: '.($orders??'?').' шинэ захиалга, '.($customers??'?').' шинэ хэрэглэгч.';
     if($budget)$lines[]='TaoWorld API (UTC '.$budget['date'].'): '.$budget['used'].'/'.$budget['limit'].' ашигласан, үзэлтийн хязгаар '.$budget['browse_limit'].'.';
+    if(is_array($catalog))$lines[]='Хямдралын индекс: '.(int)($catalog['deals']['items']??0).' бараа'.(isset($catalog['warm']['pages'])?' · өглөөний татаж авалт '.$catalog['warm']['pages'].'/'.$catalog['warm']['of'].' хуудас, '.$catalog['warm']['api_calls'].' API дуудлага'.($catalog['warm']['stopped']==='budget'?' (лимит хүрэлцээгүй)':''):'').'.';
     $lines[]='Утасны push: '.($push['devices']??0).' идэвхтэй төхөөрөмж, '.($push['message_pending']??0).' мэдэгдэл дараалалд.';
     if($free!==false)$lines[]='Дискний сул зай: '.round($free/1073741824,1).' GB.';
     $lines[]='PHP алдаа (24 цаг): '.($errors['readable']?$errors['total']:'лог уншигдсангүй');

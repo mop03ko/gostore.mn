@@ -28,7 +28,7 @@ function taoworld_http(string $path,array $params): array {
             return ['code'=>'0','data'=>['data'=>$rows]];
         }
         if($homeFixture){
-            $department=array_search($params['keyword'],array_values(tw_catalog_departments()),true);
+            $department=array_search($params['keyword'],tw_catalog_home_keywords(),true);
             foreach($rows as $i=>&$row){$row['item_id']=(string)(720000000000+((int)$params['page_no']-1)*100000+($i===0?0:$department*100+$i));$row['mi_id']='home-'.$row['item_id'];$row['multi_language_info']['title']='Department '.$department.' item '.$i;}unset($row);
         }
         if(isset($params['shop_id'])){
@@ -147,7 +147,7 @@ denied(fn()=>tw_catalog_deals(['page'=>'bad']),400);
 // Category-scoped recommendations and scroll windows are covered in taoworld-recommend.php.
 // An upstream outage may use display snapshots, but cannot resurrect expired discounts.
 $offerSnapshots=[];
-foreach(array_slice(array_values(tw_catalog_departments()),0,6) as $keyword){
+foreach(array_slice(tw_catalog_home_order(),0,6) as $keyword){
     $query=['keyword'=>$keyword,'language'=>'en','page_no'=>'1','page_size'=>'20'];
     $file=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/search',$query).'.json';
     $snapshot=supplier_snapshot_read($file);$offerSnapshots[$file]=$snapshot;
@@ -155,8 +155,12 @@ foreach(array_slice(array_values(tw_catalog_departments()),0,6) as $keyword){
     foreach($snapshot['data']['data'] as &$row)$row['coupon_price']='1';unset($row);
     supplier_snapshot_write($file,$snapshot);
 }
+// A 31-minute-old list keeps its offers (six-hour display window); older than six hours they are hidden.
 $error=true;$fallback=tw_catalog_deals(['page'=>1]);$error=false;
-check($fallback['stale']&&$fallback['products']===[],'Expired offers must remain hidden during fallback');
+check($fallback['stale']&&count($fallback['products'])>0,'Offers within six hours stay visible during fallback');
+foreach(array_keys($offerSnapshots) as $file){$snapshot=supplier_snapshot_read($file);$snapshot['time']=time()-TW_CATALOG_OFFER_DISPLAY-1;supplier_snapshot_write($file,$snapshot);}
+$error=true;$fallback=tw_catalog_deals(['page'=>1]);$error=false;
+check($fallback['stale']&&$fallback['products']===[],'Offers older than six hours remain hidden during fallback');
 foreach($offerSnapshots as $file=>$snapshot)supplier_snapshot_write($file,$snapshot);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
@@ -171,6 +175,9 @@ foreach(['fishing tackle'=>'渔具','fishing rod'=>'鱼竿','fishing reel'=>'渔
 }
 $before=count($calls);supplier_search(['q'=>'Загасчлал','page'=>1]);check(count($calls)===$before,'Mongolian fishing alias reuses category cache');
 check(isset(tw_catalog_departments()['fishing tackle']),'Fishing missing from mixed departments');
+$homeKeys=tw_catalog_home_keywords();check(count($homeKeys)>=80&&count(array_unique($homeKeys))===count($homeKeys)&&!array_filter($homeKeys,'product_policy_text_blocked'),'Homepage keywords: 80+ unique, policy-clean');
+$day=86400;$a=tw_catalog_home_order(1794000000);$b=tw_catalog_home_order(1794000000+$day);$sa=$a;$sb=$b;sort($sa);sort($sb);
+check($a[0]!==$b[0]&&$sa===$sb&&tw_catalog_home_order(1794000000+3600)===$a,'Homepage order rotates daily over the same keywords');
 unset($_SERVER['REMOTE_ADDR']);
 // Discounts must compare the exact available SKU, never a coupon or another variant.
 $saleRaw=['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Storage box','price'=>10000,'promotion_price'=>8000,'coupon_price'=>7000,'sku_list'=>[
