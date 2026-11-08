@@ -20,8 +20,11 @@
 :root[data-theme="dark"] :is(input,select,textarea){color:var(--theme-text)}
 :root[data-theme="dark"] :is(input,textarea)::placeholder{color:var(--theme-muted);opacity:1}
 :root[data-theme="dark"] :is(input,select,textarea):disabled{opacity:.6}
-:root[data-theme="dark"] :is(.header .brand,.brand-logo,.storefront-logo-tile){background:#fff;border-radius:8px}
-:root[data-theme="dark"] .header .brand img{padding:4px}
+:root[data-theme="dark"] :is(.brand-logo,.storefront-logo-tile){background:#fff;border-radius:8px}
+/* Dark mode shows the white wordmark (same file as the app) instead of a white box behind the colour logo. */
+.header .brand .brand-dark{display:none}
+:root[data-theme="dark"] .header .brand img{display:none}
+:root[data-theme="dark"] .header .brand .brand-dark{display:inline}
 /* Keep dark lettering on orange actions; do not invert photos or brand artwork. */
 :root[data-theme="dark"] :is(.yellow,.skip-link,.count,.icon-tile,.account-avatar,.collection-stamp,.pd-source,.search-form button[type="submit"],.cargo-progress .current>span,.account-menu button b,.mobile-notifications [data-notification-count]:not(:empty),.mobile-nav #mobile-cart-count){color:#171717}
 :root[data-theme="dark"] :where(button,a,input,select,textarea):focus-visible{outline-color:#ffae85}

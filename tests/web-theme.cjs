@@ -26,6 +26,8 @@ assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
     assert.equal(await page.evaluate(() => localStorage.getItem('gostore-theme')), 'dark');
     assert.equal(await page.locator('body').evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(17, 17, 20)');
     assert.equal(await page.locator('.header').evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(29, 31, 37)');
+    const logo = () => page.locator('.header .brand img').evaluateAll(list => list.filter(i => getComputedStyle(i).display !== 'none').map(i => [new URL(i.src).pathname, i.complete && i.naturalWidth > 0, getComputedStyle(i.parentElement).backgroundColor]));
+    assert.deepEqual(await logo(), [['/assets/logo-white.svg', true, 'rgb(29, 31, 37)']], 'Dark mode: white wordmark, no white box');
     await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ animations: 'disabled', path: 'output/web-theme/home-desktop.png' });
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -43,7 +45,7 @@ assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ animations: 'disabled', path: 'output/web-theme/home-mobile.png' });
-    for (const [path, name] of [['/v/tb-700111111111', 'product'], ['/cart', 'cart'], ['/account', 'account'], ['/help', 'help']]) {
+    for (const [path, name] of [['/p/chair', 'product'], ['/cart', 'cart'], ['/account', 'account'], ['/help', 'help']]) {
       await page.goto(base + path);
       await button.waitFor();
       await expectTheme('dark');
@@ -55,6 +57,8 @@ assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
     await button.focus();
     await page.keyboard.press('Enter');
     await expectTheme('light');
+    await page.goto(base);
+    assert.deepEqual((await logo()).map(([src, loaded]) => [src, loaded]), [['/assets/logo.svg', true]], 'Light mode: colour wordmark');
     await page.reload();
     await expectTheme('light');
     const other = await context.newPage();
