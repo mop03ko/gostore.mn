@@ -42,6 +42,46 @@ async function loadToken() {
       : (await SecureStore.getItemAsync(key)) || "";
   loaded = true;
 }
+type Reply = {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  json(): Promise<unknown>;
+};
+// Expo installs expo/fetch as the global fetch, and expo/fetch rejects React Native file parts
+// ({ uri, name, type }) before sending: photo uploads (image search, review photos) failed as
+// "network" errors without reaching the server. React Native's XMLHttpRequest, which Expo leaves
+// in place, streams those parts, so multipart requests go through it.
+function sendMultipart(
+  url: string,
+  headers: Record<string, string>,
+  body: FormData,
+  signal: AbortSignal,
+): Promise<Reply> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const abort = () => xhr.abort();
+    xhr.open("POST", url);
+    for (const [name, value] of Object.entries(headers))
+      xhr.setRequestHeader(name, value);
+    xhr.onload = () => {
+      signal.removeEventListener("abort", abort);
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        headers: { get: (name) => xhr.getResponseHeader(name) },
+        json: async () => JSON.parse(xhr.responseText),
+      });
+    };
+    xhr.onerror = xhr.onabort = xhr.ontimeout = () => {
+      signal.removeEventListener("abort", abort);
+      reject(new TypeError("Network request failed"));
+    };
+    if (signal.aborted) return abort();
+    signal.addEventListener("abort", abort);
+    xhr.send(body);
+  });
+}
 async function request<T>(
   action: string,
   body?: object | FormData,
@@ -65,27 +105,26 @@ async function request<T>(
   if (signal?.aborted) cancel();
   try {
     const form = body instanceof FormData;
-    // expo/fetch rejects React Native file parts ({ uri, name, type }) before sending, so photo
-    // uploads (image search, review photos) failed as "network" errors without reaching the server.
-    // Multipart requests use React Native's built-in fetch, which streams those files.
-    const send = (form ? globalThis.fetch : fetch) as typeof fetch;
-    const response = await send(url, {
-      method: body ? "POST" : "GET",
-      credentials: "omit",
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        ...(!publicRead && token ? { "X-GOStore-Mobile-Token": token } : {}),
-        ...(body ? { "X-CSRF-Token": csrf } : {}),
-        ...(body && !form ? { "Content-Type": "application/json" } : {}),
-      },
-      body: body ? (form ? body : JSON.stringify(body)) : undefined,
-    });
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...(!publicRead && token ? { "X-GOStore-Mobile-Token": token } : {}),
+      ...(body ? { "X-CSRF-Token": csrf } : {}),
+      ...(body && !form ? { "Content-Type": "application/json" } : {}),
+    };
+    const response: Reply = form
+      ? await sendMultipart(url, headers, body, controller.signal)
+      : await fetch(url, {
+          method: body ? "POST" : "GET",
+          credentials: "omit",
+          signal: controller.signal,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
     if (!publicRead) {
       const next = response.headers.get("X-GOStore-Mobile-Token");
       if (next) await saveToken(next);
     }
-    const data = await response.json();
+    const data = (await response.json()) as { csrf?: unknown; error?: string };
     if (!publicRead && typeof data.csrf === "string") csrf = data.csrf;
     if (!response.ok) {
       if (
