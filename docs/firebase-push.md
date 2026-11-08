@@ -73,3 +73,7 @@ Android builds with the FCM configuration: production AAB versionCode 8 (`ed71b3
 and preview APK versionCode 9 (`5cd94932-9a8c-4d03-a2ee-f28c2ba2e15b`), both finished 2026-11-07. The server's
 private `customer-push-platforms` was changed from `ios` to `ios,android` the same day (previous value backed
 up under `/gostore-backups/android-push-*`). Android handset delivery has not yet been verified.
+
+Handset delivery: on 2026-11-08 the owner confirmed that customer notifications were received on a phone
+after the Android FCM build and the iOS activation (the access log shows a successful
+`customer-push-register` from the iOS app the same day).
