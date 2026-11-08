@@ -28,7 +28,7 @@ try {
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     // Uptime probe: no session; database reachable and the age of the newest daily backup (hours).
-    if($action==='health'&&$method==='GET'){db()->query('SELECT 1')->fetchColumn();$b=glob(config()['data_dir'].'/backups/daily/gostore-*.sqlite.gz')?:[];$age=$b?round((time()-max(array_map('filemtime',$b)))/3600,1):null;header('Cache-Control: no-store');json_out(['ok'=>true,'time'=>gmdate('c'),'backup_age_hours'=>$age]);}
+    if($action==='health'&&$method==='GET'){db()->query('SELECT 1')->fetchColumn();$b=glob(config()['data_dir'].'/backups/daily/gostore-*.sqlite.gz')?:[];$age=$b?round((time()-max(array_map('filemtime',$b)))/3600,1):null;header('Cache-Control: no-store');ini_set('serialize_precision','-1');json_out(['ok'=>true,'time'=>gmdate('c'),'backup_age_hours'=>$age]);}
     if($action==='warehouse-push-delivery'&&$method==='GET')json_out(warehouse_push_delivery());
     if($action==='warehouse-push-revoke'&&$method==='POST')json_out(warehouse_push_revoke_token());
     if($action==='warehouse-fcm-rotate'&&$method==='POST')json_out(warehouse_fcm_rotate(body()));
