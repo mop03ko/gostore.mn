@@ -1,6 +1,6 @@
 'use strict';
 // «Миний бүртгэл» page (/account/<section>): orders by stage, ordered products, saved items,
-// address book, notifications and personal details. Login and registration stay in the modal.
+// address book, notifications and personal details. Sign-in and registration are their own pages (account.js).
 (()=>{
   const match=location.pathname.match(/^\/account(?:\/([a-z]+))?\/?$/);
   const sections={orders:'Миний захиалгууд',products:'Миний бүтээгдэхүүнүүд',saved:'Хадгалсан бараа',addresses:'Хаягууд',notifications:'Мэдэгдэл',profile:'Хувийн мэдээлэл'};

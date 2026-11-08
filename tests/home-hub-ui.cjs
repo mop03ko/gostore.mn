@@ -23,7 +23,7 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  assert.ok((await page.locator('#hub-flyout h3').first().innerText()).includes('Электроник'));
  await page.keyboard.press('Escape');await page.locator('#hub-flyout').waitFor({state:'hidden'});
  await page.locator('#hub-hot [data-hub-query="headphones"]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='headphones');
- await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-pin-setup-form[data-purpose=register]').waitFor();await page.locator('#close-modal').click();
+ await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-pin-setup-form[data-purpose=register]').waitFor();assert.equal(new URL(page.url()).pathname,'/register','Registration is a page');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));
  for(const width of [1024,1280])assert.ok(await page.setViewportSize({width,height:900}).then(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)),'Hub fits '+width);
  await page.setViewportSize({width:1024,height:900});assert.equal(await page.locator('.hub-user').isVisible(),false,'Narrow desktops drop the customer panel');
  // Phones: category grid and five tabs instead of the side list.
@@ -59,7 +59,7 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  await page.locator('[data-cart-all]').first().check();assert.equal(await page.locator('.store-cart-picked').innerText(),'Сонгосон: 3 / 3 бараа','A mixed box selects everything');await page.locator('[data-cart-all]').first().uncheck();assert.equal(await page.locator('.store-cart-summary .store-cart-checkout').isDisabled(),true,'Nothing selected cannot be ordered');
  await page.locator('[data-cart-all]').first().check();
  // Guests ordering a subset are asked to sign in first.
- await page.locator('[data-cart-pick="2"]').uncheck();await page.locator('.store-cart-summary [data-cart-checkout-picked]').click();await page.locator('#modal .account-form, #modal #customer-login-form').first().waitFor();await page.locator('#close-modal').click();
+ await page.locator('[data-cart-pick="2"]').uncheck();await page.locator('.store-cart-summary [data-cart-checkout-picked]').click();await page.locator('#auth-view #customer-pin-login-form').waitFor();assert.equal(new URL(page.url()).pathname,'/login');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));
  // Phones: the total and order button stay pinned above the tab bar.
  await page.setViewportSize({width:390,height:844});
  const bar=await page.locator('.store-cart-bar').boundingBox(),nav=await page.locator('.mobile-nav').boundingBox();

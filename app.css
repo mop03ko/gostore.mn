@@ -489,6 +489,15 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 /* Account modal: secondary sign-in options under the form */
 .account-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-top:14px}
 .account-form input[readonly]{background:var(--theme-muted-surface,#f4f5f8)}
+
+/* Sign-in, registration, PIN reset and phone-linking pages (/login, /register…): drawn over the page. */
+#auth-view{display:none}
+.auth-view-open #main>:not(#auth-view){display:none!important}
+html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 64px}
+.auth-card{max-width:480px;margin:8px auto 0;background:var(--theme-surface,#fff);border:1px solid var(--theme-border,var(--line));border-radius:var(--radius);padding:30px 28px}
+.auth-card h1{font-size:28px;line-height:1.2;margin:0 0 8px}.auth-card h1:focus{outline:0}
+.auth-card .account-tabs{margin-top:4px}
+@media(max-width:760px){html.auth-view-open #main>#auth-view{padding-block:12px 40px}.auth-card{border:0;border-radius:0;padding:4px 0 0;margin-top:0;background:transparent}.auth-card h1{font-size:24px}}
 /* ==== catalog-navigation.css ==== */
 /* A single scrollable category row, shared across desktop and touch screens. */
 .catalog-category-nav{position:relative;min-width:0;margin:20px 0 12px;background:var(--theme-surface,#fff)}
@@ -833,3 +842,16 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 .phone-verification-dialog [data-text]{user-select:all}
 .phone-verification-dialog [data-cancel]{margin-top:12px}
 html[data-theme="dark"] .phone-verification-dialog{background:#192135;color:#f5f6fa}
+/* ==== promo-popup.css ==== */
+/* Promotional popup on the home page (promo-popup.js). */
+.promo-popup{width:min(420px,calc(100% - 32px));max-width:calc(100% - 32px);max-height:min(88dvh,760px);margin:auto;padding:0;border:0;border-radius:20px;overflow:auto;background:var(--theme-surface,#fff);color:var(--theme-text,var(--navy));box-shadow:0 25px 100px #0c15343b}
+.promo-popup::backdrop{background:#0f1d3b8c;backdrop-filter:blur(3px)}
+.promo-popup-close{position:absolute;top:10px;right:10px;z-index:1;width:44px;height:44px;border-radius:50%;background:#0f1d3bb3;color:#fff;font-size:26px;line-height:1;display:grid;place-items:center}
+.promo-popup-close:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.promo-popup-media{display:block}
+.promo-popup-media img{display:block;width:100%;height:auto;max-height:62dvh;object-fit:cover;background:var(--cloud)}
+.promo-popup-copy{display:grid;gap:10px;padding:20px 22px 22px}
+.promo-popup-close+.promo-popup-copy{padding-top:60px}
+.promo-popup-copy h2{margin:0;font-size:22px;line-height:1.25}
+.promo-popup-copy p{margin:0;color:var(--theme-muted,var(--muted));font-size:15px;line-height:1.55;white-space:pre-line}
+.promo-popup-copy .button{justify-self:stretch;text-align:center;margin-top:4px}

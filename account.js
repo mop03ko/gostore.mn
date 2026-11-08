@@ -4,7 +4,7 @@ customerAccount.setUser=user=>{
   customerAccount.user=user;
   document.documentElement.classList.toggle('customer-signed-in',!!user);
   window.syncMobileNav?.();
-  if(!user&&document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form,#modal .account-summary'))accountForm();
+  if(!user&&(document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form')||authMode==='link'))accountForm();
   document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?(String(user.name||'').trim().split(/\s+/)[0].slice(0,14)||'Профайл'):'Нэвтрэх');
 };
 customerAccount.require=()=>{if(customerAccount.user)return true;customerAccount.open();return false;};
@@ -23,49 +23,91 @@ const accountError='<p class="form-error" data-account-error role="alert"></p>';
 function pinSetupForm(purpose,phone=''){
   return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаарыг verify.mn-д дамжуулж баталгаажуулна. Та 144773 дугаарт SMS илгээнэ. Операторын SMS төлбөр үйлчилж болно.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
 }
-function accountForm(mode='login'){
+// Sign-in, registration, PIN reset, e-mail sign-in and phone linking are pages (/login, /register,
+// /login/reset, /login/email, /login/link) drawn in place over the current page, so the page underneath
+// keeps its state and an interrupted checkout resumes after sign-in. Back returns to where it started.
+const authPaths={login:'/login',register:'/register',reset:'/login/reset',email:'/login/email',link:'/login/link'};
+const authModeFor=path=>Object.keys(authPaths).find(m=>authPaths[m]===path.replace(/(.)\/$/,'$1'))||null;
+let authOpen=false,authMode=null,authPushed=false,authReturn=null,authTitle=document.title,checkoutResume=null;
+function authView(mode,title,intro,html){
+  if(document.querySelector('#modal').open){closeModal();document.querySelector('#modal-body')?.replaceChildren();}
+  let root=document.querySelector('#auth-view');
+  if(!root){root=document.createElement('section');root.id='auth-view';root.className='container auth-view';root.setAttribute('aria-labelledby','auth-view-title');document.querySelector('#main').prepend(root);}
+  const path=authPaths[mode];
+  if(!authOpen){
+    authOpen=true;authTitle=document.title;
+    if(location.pathname===path){}else if(authModeFor(location.pathname))history.replaceState({authView:mode},'',path);
+    else{authReturn=location.pathname+location.search+location.hash;history.pushState({authView:mode},'',path);authPushed=true;}
+  }else if(location.pathname!==path)history.replaceState({authView:mode},'',path);
+  authMode=mode;document.documentElement.classList.add('auth-view-open');
+  root.innerHTML=`<nav class="pd-breadcrumb" aria-label="Байршил"><a href="/">Нүүр</a><span>/</span><span>${esc(title)}</span></nav><div class="auth-card"><h1 id="auth-view-title" tabindex="-1">${esc(title)}</h1><p class="modal-intro">${esc(intro)}</p>${html}</div>`;
+  document.title=title+' · gostore.mn';scrollTo(0,0);root.querySelector('h1').focus({preventScroll:true});window.syncMobileNav?.();
+}
+// Hides the page. back: also step back over the history entry the page added (when it added one).
+function closeAuthView(back=true){
+  if(!authOpen)return;
+  authOpen=false;authMode=null;checkoutResume=null;document.documentElement.classList.remove('auth-view-open');
+  document.querySelector('#auth-view')?.replaceChildren();document.title=authTitle;
+  const pushed=authPushed;authPushed=false;if(back&&pushed)history.back();window.syncMobileNav?.();
+}
+// After signing in: back to the page it was opened from, or (opened directly) to ?next= or the account.
+function finishAuthView(){
+  if(authPushed){closeAuthView();return;}
+  const next=authReturn;closeAuthView(false);location.assign(next||'/account');
+}
+function accountForm(mode='login',intro=''){
   const register=mode==='register',links=(...items)=>`<div class="account-links">${items.map(([m,label])=>`<button type="button" class="text-button" data-account-mode="${m}">${label}</button>`).join('')}</div>`;
   const body=mode==='email'?`<form id="customer-login-form" class="account-form">${accountField('Имэйл хаяг','email','','type="email" autocomplete="username" maxlength="200" required')}${passwordField('Нууц үг','password','current-password')}<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол. Нэвтэрсний дараа профайлаасаа утас, PIN холбоорой.</p>${accountError}<button class="button blue" type="submit">Нэвтрэх</button></form>${links(['login','Утас + PIN-ээр нэвтрэх'])}`
     :mode==='register'||mode==='reset'?pinSetupForm(mode)+(mode==='reset'?links(['login','Утас + PIN-ээр нэвтрэх']):'')
     :`<form id="customer-pin-login-form" class="account-form">${phoneField()}${pinField('4 оронтой PIN','pin','current-password')}<p class="account-hint">Нэвтэрсэн хэвээр үлдэнэ. Нийтийн компьютер дээр ажилласны дараа бүртгэлээс гарна уу.</p>${accountError}<button class="button blue" type="submit">PIN-ээр нэвтрэх</button></form>${links(['reset','PIN мартсан'],['email','Өмнөх имэйлээр нэвтрэх'])}`;
-  openModal(register?'GOStore-д бүртгүүлэх':mode==='reset'?'PIN сэргээх':'Тавтай морил',`<p class="modal-intro">Захиалгаа нэг дороос хянаж, хүргэлтийн мэдээллээ хадгалаарай.</p><div class="account-tabs"><button class="button ${register?'outline':'blue'}" data-account-mode="login" aria-pressed="${!register}">Нэвтрэх</button><button class="button ${register?'blue':'outline'}" data-account-mode="register" aria-pressed="${register}">Бүртгүүлэх</button></div>${body}`);
+  const tabs=mode==='reset'||mode==='email'?'':`<div class="account-tabs"><button class="button ${register?'outline':'blue'}" data-account-mode="login" aria-pressed="${!register}">Нэвтрэх</button><button class="button ${register?'blue':'outline'}" data-account-mode="register" aria-pressed="${register}">Бүртгүүлэх</button></div>`;
+  const view=['register','reset','email'].includes(mode)?mode:'login';
+  authView(view,register?'GOStore-д бүртгүүлэх':mode==='reset'?'PIN сэргээх':mode==='email'?'Имэйлээр нэвтрэх':'Нэвтрэх',intro||'Захиалгаа нэг дороос хянаж, хүргэлтийн мэдээллээ хадгалаарай.',tabs+body);
 }
-let checkoutResume=null;
 customerAccount.forCheckout=async resume=>{
   checkoutResume=resume;
   try{await customerAccount.refresh();}catch(e){checkoutResume=null;toast(e.message);return;}
   if(customerAccount.user){const next=checkoutResume;checkoutResume=null;await next?.();return;}
-  accountForm();
-  const intro=document.querySelector('#modal .modal-intro');
-  if(intro)intro.textContent='Захиалгаа үргэлжлүүлэхийн тулд нэвтэрнэ үү. Таны сонголт хадгалагдана; нэвтэрсний дараа захиалгын мэдээлэл рүү буцна.';
+  const pending=checkoutResume;accountForm('login','Захиалгаа үргэлжлүүлэхийн тулд нэвтэрнэ үү. Таны сонголт хадгалагдана; нэвтэрсний дараа захиалгын мэдээлэл рүү буцна.');checkoutResume=pending;
 };
-document.querySelector('#modal').addEventListener('close',()=>{checkoutResume=null;});
+// Signed-in customers manage their details on the account page (/account/profile); only adding a phone
+// and PIN to an older e-mail account is its own page, because it needs SMS verification first.
 function profileForm(mode='profile'){
   const user=customerAccount.user;if(!user)return accountForm();
-  const tab=(m,label)=>`<button class="button ${mode===m?'blue':'outline'}" data-account-mode="${m}">${label}</button>`;
-  const tabs=tab('profile','Профайл')+(user.email_login?tab('password','Нууц үг'):'')+(user.pin_enabled?tab('pin','PIN солих'):tab('link','Утас, PIN холбох'));
-  const content=mode==='password'&&user.email_login?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p>${accountError}<button class="button blue" type="submit">Нууц үг солих</button></form>`
-    :mode==='pin'&&user.pin_enabled?`<form id="customer-pin-change-form" class="account-form">${pinField('Одоогийн PIN','current_pin','current-password')}${pinField('Шинэ PIN','pin','new-password')}${pinField('Шинэ PIN давтах','pin_confirm','new-password')}<p class="account-hint">PIN солиход бусад төхөөрөмж дээрх нэвтрэлт хаагдана. PIN мартсан бол гараад «PIN мартсан»-аар SMS-ээр сэргээнэ.</p>${accountError}<button class="button blue" type="submit">PIN солих</button></form>`
-    :mode==='link'&&!user.pin_enabled?pinSetupForm('link',user.phone||'')
-    :`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div>${accountError}<button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`;
-  openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email||user.login_phone||user.phone||'')}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs">${tabs}</div>${content}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
+  if(mode==='link'&&!user.pin_enabled){authView('link','Утас, PIN холбох','Утсаа SMS-ээр баталгаажуулаад 4 оронтой PIN үүсгэвэл апп, вэбд утас + PIN-ээр нэвтэрнэ.',pinSetupForm('link',user.phone||''));return;}
+  closeAuthView(false);window.accountPage?accountPage.go('profile'):location.assign('/account/profile');
 }
 customerAccount.open=async(mode)=>{
-  // Signed-in customers get the full account page; the modal keeps login and registration.
-  try{await customerAccount.refresh();if(customerAccount.user&&!mode&&window.accountPage){closeModal();accountPage.go('orders');return;}customerAccount.user?profileForm(mode):accountForm(mode==='register'?'register':'login');}
-  catch(e){toast(e.message);}
+  try{await customerAccount.refresh();}catch(e){toast(e.message);return;}
+  if(!customerAccount.user){accountForm(mode==='register'?'register':'login');return;}
+  if(mode==='link'){profileForm('link');return;}
+  closeAuthView(false);window.accountPage?accountPage.go(['profile','pin','password'].includes(mode)?'profile':'orders'):location.assign('/account');
 };
+// The header search, tab bar and other controls act on the page underneath, so using them leaves the
+// sign-in page first (the account button and the theme toggle keep it open).
+function leaveAuthView(){
+  if(!authOpen)return;
+  const back=authReturn||'/';authPushed=false;closeAuthView(false);
+  if(location.pathname+location.search+location.hash!==back)history.replaceState(null,'',back);
+}
+document.addEventListener('click',e=>{if(!authOpen)return;const c=e.target.closest('a,button');if(!c||c.closest('#auth-view,dialog,#toast')||c.matches('[data-action=account],[data-theme-toggle]'))return;leaveAuthView();},true);
+document.addEventListener('submit',e=>{if(authOpen&&!e.target.closest('#auth-view,dialog'))leaveAuthView();},true);
+window.addEventListener('popstate',()=>{
+  const mode=authModeFor(location.pathname);
+  if(!mode){if(authOpen){authPushed=false;closeAuthView(false);}return;}
+  if(mode==='link'?customerAccount.user&&!customerAccount.user.pin_enabled:!customerAccount.user)mode==='link'?profileForm('link'):accountForm(mode);
+});
 document.addEventListener('click',async e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.dataset.accountMode){customerAccount.user?profileForm(button.dataset.accountMode):accountForm(button.dataset.accountMode);return;}
   if(button.hasAttribute('data-customer-logout')){
-    button.disabled=true;try{await shopApi('customer-logout',{});customerAccount.setUser(null);notifyAccountChange();accountForm();toast('Бүртгэлээс гарлаа');}catch(error){toast(error.message);}finally{button.disabled=false;}
+    button.disabled=true;try{await shopApi('customer-logout',{});customerAccount.setUser(null);notifyAccountChange();toast('Бүртгэлээс гарлаа');}catch(error){toast(error.message);}finally{button.disabled=false;}
   }
 });
 document.addEventListener('submit',async e=>{
-  const form=e.target;if(!/^customer-(login|pin-login|pin-setup|pin-change|profile|password)-form$/.test(form.id))return;
+  const form=e.target;if(!/^customer-(login|pin-login|pin-setup)-form$/.test(form.id))return;
   e.preventDefault();const button=form.querySelector('[type="submit"]'),error=form.querySelector('[data-account-error]');button.disabled=true;error.textContent='';
-  const action=form.id.replace(/-form$/,''),signIn=['customer-login','customer-pin-login','customer-pin-setup'].includes(action);
+  const action=form.id.replace(/-form$/,''),linked=action==='customer-pin-setup'&&form.dataset.purpose==='link';
   try{
     const payload=Object.fromEntries(new FormData(form));
     if(action==='customer-pin-setup'){
@@ -81,12 +123,25 @@ document.addEventListener('submit',async e=>{
       Object.assign(payload,{phone:form.dataset.phone,purpose:form.dataset.purpose,challenge:form.dataset.challenge});
     }
     if(payload.pin_confirm!==undefined&&payload.pin!==payload.pin_confirm)throw Error('PIN давталт таарахгүй байна.');
-    if(payload.password_confirm!==undefined&&payload.password!==payload.password_confirm)throw Error('Нууц үгийн давталт таарахгүй байна.');
-    const result=await shopApi(action,payload);if(result.customer){customerAccount.setUser(result.customer);if(signIn||action==='customer-pin-change')notifyAccountChange();}
-    if(signIn&&checkoutResume){const resume=checkoutResume;checkoutResume=null;await resume();toast('Захиалгаа үргэлжлүүлээрэй');return;}
-    if(action==='customer-password'){form.reset();toast('Нууц үг шинэчлэгдлээ');}
-    else if(action==='customer-pin-change'){profileForm();toast('PIN шинэчлэгдлээ');}
-    else{const linked=action==='customer-pin-setup'&&form.dataset.purpose==='link';if(signIn&&!linked&&(document.documentElement.classList.contains('product-view')||window.accountPage?.active))closeModal();else profileForm();toast(action==='customer-profile'?'Мэдээлэл хадгалагдлаа':linked?'Утас, PIN холбогдлоо':form.dataset.purpose==='register'?'Таны бүртгэл үүслээ':'Амжилттай нэвтэрлээ');}
+    const result=await shopApi(action,payload);if(result.customer){customerAccount.setUser(result.customer);notifyAccountChange();}
+    if(linked){toast('Утас, PIN холбогдлоо');closeAuthView(false);location.replace('/account/profile');return;}
+    if(checkoutResume){const resume=checkoutResume;checkoutResume=null;finishAuthView();await resume();toast('Захиалгаа үргэлжлүүлээрэй');return;}
+    toast(form.dataset.purpose==='register'?'Таны бүртгэл үүслээ':form.dataset.purpose==='reset'?'PIN шинэчлэгдлээ':'Амжилттай нэвтэрлээ');finishAuthView();
   }catch(err){error.textContent=err.message;}finally{button.disabled=false;}
 });
 customerAccount.setUser(customerAccount.user);
+// /login, /register… opened directly (typed, bookmarked or reloaded): show that page, or move on when
+// the visitor is already signed in.
+{
+  const mode=authModeFor(location.pathname);
+  if(mode){
+    const next=new URLSearchParams(location.search).get('next')||'';
+    authReturn=/^\/(?!\/)/.test(next)&&!authModeFor(next.split(/[?#]/)[0])?next:null;
+    const show=user=>{
+      if(mode!=='link'){if(user)location.replace(authReturn||'/account');else accountForm(mode);return;}
+      if(!user)accountForm('login');else if(user.pin_enabled)location.replace('/account/profile');else profileForm('link');
+    };
+    let known=!!customerAccount.user;show(customerAccount.user);
+    customerAccount.refresh().then(user=>{if(!!user!==known&&authOpen){known=!!user;show(user);}}).catch(()=>{});
+  }
+}

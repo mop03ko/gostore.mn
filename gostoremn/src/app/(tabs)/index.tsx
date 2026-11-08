@@ -16,6 +16,7 @@ import { catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
+import { PromoPopup } from "@/components/promo-popup";
 type Results = {
   products: Product[];
   more: boolean;
@@ -325,5 +326,10 @@ export default function ShopRoute() {
   const { q, image } = useLocalSearchParams<{ q?: string; image?: string }>();
   const query = typeof q === "string" ? q : "";
   const token = typeof image === "string" ? image : "";
-  return <Shop key={query + token} initialQuery={query} initialImage={token} />;
+  return (
+    <>
+      <Shop key={query + token} initialQuery={query} initialImage={token} />
+      {!query && !token ? <PromoPopup /> : null}
+    </>
+  );
 }

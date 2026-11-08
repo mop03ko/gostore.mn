@@ -56,7 +56,9 @@ try {
         }
         supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
     }
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','order-refund','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    // Promotional popup (website home page, app launch): public and session-free.
+    if($action==='promo-popup'&&$method==='GET'){require_once __DIR__.'/../server/promo-popup.php';header('Cache-Control: public, max-age=60');json_out(['popup'=>promo_popup_public()]);}
+    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','admin-promo-popup','admin-promo-popup-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','order-refund','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
@@ -73,6 +75,7 @@ try {
         if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
         admin_required();
         if($action==='admin-messages')json_out(customer_messages_admin());
+        if($action==='admin-promo-popup'){require_once __DIR__.'/../server/promo-popup.php';json_out(promo_popup_admin());}
         if($action==='admin-customers')json_out(admin_customers($_GET));
         if($action==='admin-customer')json_out(admin_customer_detail(str_field($_GET,'id',64)));
         if($action==='admin-order'){
@@ -139,6 +142,7 @@ try {
     // Preview is a POST so a customer's phone number never lands in URLs or access logs.
     if($action==='admin-message-preview'){admin_required();json_out(customer_message_preview($b));}
     if($action==='admin-message-send'){admin_required();json_out(customer_message_send($b),201);}
+    if($action==='admin-promo-popup-save'){admin_required();require_once __DIR__.'/../server/promo-popup.php';json_out(promo_popup_save($b));}
     if($action==='shipping-save'){admin_required();json_out(['shipping'=>shipping_save($b)]);}
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') {

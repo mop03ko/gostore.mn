@@ -210,11 +210,12 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
    let tab='home';
    if(location.pathname==='/cart')tab='cart';
    if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
+   if(document.documentElement.classList.contains('auth-view-open'))tab='account';
    if(menu?.open)tab='categories';
    else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
- addEventListener('hashchange',syncMobileNav);
+ addEventListener('hashchange',syncMobileNav);addEventListener('popstate',syncMobileNav);
  for(const dialog of [modal,menu].filter(Boolean))new MutationObserver(syncMobileNav).observe(dialog,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});syncMobileNav();
 })();
 

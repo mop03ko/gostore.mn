@@ -25,3 +25,14 @@ message to customers.
   customer's inbox, queued pushes and promotional choice.
 
 Tests: `tests/customer-messages.php`, `tests/customer-messages-ui.cjs`.
+
+## Promotional popup (2026-11-09)
+
+Admin → «Мэдэгдэл илгээх» → «Сурталчилгааны popup»: an image (uploaded through `image-upload`, stored as `assets/uploads/<id>.jpg`), title (80), text (300), button label (30), link and optional start/end times. One popup at a time, stored in `meta.promo_popup` (`server/promo-popup.php`).
+
+- Links are a page on this site (`/v/123456`, `/official-stores`, `/?q=цүнх`) or an `https://` address; anything else is rejected. Start/end are entered in local time and stored in UTC.
+- `GET promo-popup` (`api/index.php` and `api/mobile.php`) is public and session-free, cached for 60 seconds, and returns `null` when the popup is off, empty or outside its dates.
+- Website (`promo-popup.js`): only on the home page without a query, about a second after load, never over another dialog or the sign-in page. Escape, the × button or a backdrop click close it.
+- App (`gostoremn/src/components/promo-popup.tsx`): once per launch on the home screen; site links open the matching app screen (product, official stores, brand, cart, help, search) and other links open in the browser. JavaScript only, delivered by OTA.
+- Each device sees a popup at most once a day. Saving the same content keeps its id; changing the content shows it again.
+- `node tests/run-logistics.cjs promo-popup-ui` covers the admin form, validation, scheduling, both APIs and the storefront behaviour.

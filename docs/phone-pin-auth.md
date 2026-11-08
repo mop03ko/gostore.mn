@@ -6,7 +6,18 @@ Existing email users keep their login and orders. They sign in through “Өмн
 
 ## Web storefront (2026-11-09)
 
-The website uses the same flow as the app. The account modal opens on phone + PIN sign-in; “Бүртгүүлэх” asks for name and phone, sends the verify.mn SMS (`window.verifyPhone(phone, purpose)`), then reveals the PIN and repeat fields and calls `customer-pin-setup` with the challenge. “PIN мартсан” runs the same steps with purpose `reset`. Email/password registration is no longer offered; older email accounts sign in through “Өмнөх имэйлээр нэвтрэх” and link a phone from the profile (“Утас, PIN холбох”, purpose `link`). PIN accounts see “PIN солих” instead of the password tab, in both the modal and the account page.
+The website uses the same flow as the app, and sign-in is a page, not a popup:
+
+| Page | Purpose |
+|---|---|
+| `/login` | Phone + PIN sign-in, with links to “PIN мартсан” and “Өмнөх имэйлээр нэвтрэх” |
+| `/register` | Name and phone → verify.mn SMS (`window.verifyPhone(phone, purpose)`) → PIN and repeat → `customer-pin-setup` |
+| `/login/reset` | Forgotten PIN: the same SMS step with purpose `reset` |
+| `/login/email` | Older e-mail accounts (e-mail registration is no longer offered) |
+| `/login/link` | A signed-in e-mail account adds a phone and PIN (purpose `link`) |
+| `/account/profile` | Personal details, PIN change (password change for e-mail accounts) |
+
+`account.js` draws these pages in place over the current page and adds a history entry, so Back returns to the page underneath and a checkout interrupted by sign-in resumes afterwards. After signing in the shopper returns to that page; a page opened directly (typed, bookmarked, reloaded) goes to `?next=` (same-site paths only) or `/account`. Opening `/login` while signed in goes to `/account`. Signing out stays on the page; the account page shows its signed-out prompt. A dialog replaced by the sign-in page (for example the cargo list when another tab signs out) is emptied, not just closed. `.htaccess` and `scripts/router.php` serve `index.html` for these paths; `robots.txt` disallows them.
 
 ## Session lifetime
 
@@ -38,7 +49,7 @@ Expo Update is configured with preview/production channels and the fingerprint r
 ## Validation and release
 
 - `tests/phone-auth.php`: ownership/purpose/expiry/replay checks, peppered hashing, legacy isolation/linking, reset, revocation and guessing limits.
-- `node tests/run-logistics.cjs web-pin-ui`: web phone + PIN sign-in, wrong PIN, SMS-then-PIN registration (verify.mn stubbed), PIN change tab, email fallback, 30-day web and 90-day app idle limits.
+- `node tests/run-logistics.cjs web-pin-ui`: sign-in pages over the current page with Back, phone + PIN, wrong PIN, return after sign-in, direct `/login` `/register` `/login/reset` `/login/email`, profile on `/account/profile`, SMS-then-PIN registration (verify.mn stubbed), 30-day web and 90-day app idle limits.
 - `node tests/run-logistics.cjs phone-auth-api customers mobile account-ui`: isolated PHP/mobile integration, CSRF, forged proof rejection, protected phone changes, deletion and legacy regressions.
 - `node tests/expo-phone-auth.cjs` with a local Metro web preview: mocked registration, pending/expiry, PIN creation/reset/change, email linking, deletion, return routing and 320/390/430 widths. No provider SMS or real customer account is used.
 - `npm run typecheck` and `npm run lint` in `gostoremn`.

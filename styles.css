@@ -487,3 +487,12 @@ footer{background:#152131;color:#fff;border:0;margin-top:32px}.footer-main{gap:3
 /* Account modal: secondary sign-in options under the form */
 .account-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-top:14px}
 .account-form input[readonly]{background:var(--theme-muted-surface,#f4f5f8)}
+
+/* Sign-in, registration, PIN reset and phone-linking pages (/login, /register…): drawn over the page. */
+#auth-view{display:none}
+.auth-view-open #main>:not(#auth-view){display:none!important}
+html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 64px}
+.auth-card{max-width:480px;margin:8px auto 0;background:var(--theme-surface,#fff);border:1px solid var(--theme-border,var(--line));border-radius:var(--radius);padding:30px 28px}
+.auth-card h1{font-size:28px;line-height:1.2;margin:0 0 8px}.auth-card h1:focus{outline:0}
+.auth-card .account-tabs{margin-top:4px}
+@media(max-width:760px){html.auth-view-open #main>#auth-view{padding-block:12px 40px}.auth-card{border:0;border-radius:0;padding:4px 0 0;margin-top:0;background:transparent}.auth-card h1{font-size:24px}}

@@ -20,7 +20,7 @@
   // discovery (home-route) and, 1–11 November in Ulaanbaatar time, the 11.11 banner and section.
   (()=>{try{const d=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ulaanbaatar",month:"2-digit",day:"2-digit"}).formatToParts(new Date()),m=d.find(p=>p.type==="month").value,day=Number(d.find(p=>p.type==="day").value);const home=/^\/(?:index\.html)?$/.test(location.pathname);document.documentElement.classList.toggle("home-route",home);document.documentElement.classList.toggle("eleven-active",home&&m==="11"&&day<=11);}catch{}})();
   </script>
-  <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
+  <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("auth-view-open", /^\/(?:login(?:\/(?:reset|email|link))?|register)\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
   <meta charset="utf-8">
   <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
   <meta property="og:type" content="website">
@@ -85,8 +85,8 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="/app.css?v=3861c4332f1f">
-  <script src="/app.js?v=77cfa6e7be41" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app.css?v=7a8531bcdaf8">
+  <script src="/app.js?v=f3aae6ace9e1" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261107-cls">
   <script src="/eleven-sale.js?v=20261108-real" defer></script>

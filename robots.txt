@@ -4,6 +4,8 @@ Allow: /
 Disallow: /admin/
 Disallow: /warehouse/
 Disallow: /account
+Disallow: /login
+Disallow: /register
 Disallow: /cart
 
 Sitemap: https://gostore.mn/sitemap.xml
