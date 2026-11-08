@@ -13,7 +13,7 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
   assert.equal(await page.locator('[data-sms-link]').getAttribute('href'),'sms:144773?body=GOStore%20TEST');
   assert.equal(await page.evaluate(()=>window.verifyPhone('88112233')),false,'No concurrent UI flow');
   await page.waitForTimeout(3200);assert.equal(await page.evaluate(()=>window.result),'waiting','Pending cannot succeed');
-  await page.evaluate(()=>window.mode='VERIFIED');await page.waitForFunction(()=>window.result===true);assert.equal(await page.locator('dialog').count(),0);
+  await page.evaluate(()=>window.mode='VERIFIED');await page.waitForFunction(()=>window.result&&window.result.challenge==='c');assert.equal(await page.evaluate(()=>window.result.phone),'99112233','Resolves the server-verified phone and challenge for PIN setup');assert.equal(await page.evaluate(()=>window.calls.find(c=>c.action==='phone-verification-start').payload.purpose),'verify','Default purpose');assert.equal(await page.locator('dialog').count(),0);
   await start();await page.locator('[data-cancel]').click();assert.equal(await page.evaluate(()=>window.result),false,'Cancellation');
   await page.evaluate(()=>{window.mode='ERROR';window.ttl=4;});await start();await page.waitForFunction(()=>window.result===false,{},{timeout:7000});
   await page.evaluate(()=>{window.mode='EXPIRED';window.ttl=300;});await start();await page.waitForFunction(()=>window.result===false,{},{timeout:6000});

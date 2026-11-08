@@ -88,18 +88,44 @@ function limit_attempts(string $key, int $max, int $seconds): void {
     $s=$db->prepare('SELECT hits FROM limits WHERE key=?'); $s->execute([$key]);
     if ((int)$s->fetchColumn()>$max) fail('Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу.',429);
 }
+// Shoppers stay signed in while they keep coming back: 30 days on the website and 90 days in the app
+// (each visit extends it). Admin and warehouse sessions still end after 30 idle minutes. Logout and
+// PIN/password changes end every session at once (auth_version).
+const CUSTOMER_SESSION_TTL = 30 * 86400;
+const MOBILE_SESSION_TTL = 90 * 86400;
+const STAFF_SESSION_IDLE = 1800;
+// Long-lived sessions live in the private data directory: the host's own clean-up of the default
+// session directory removes files after its short php.ini lifetime. server/daily-worker.php prunes them.
+function session_private_dir(string $name,int $ttl): void {
+    $dir=config()['data_dir'].'/'.$name;
+    if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Нэвтрэх үйлчилгээ түр боломжгүй.',503);
+    session_save_path($dir);ini_set('session.gc_maxlifetime',(string)$ttl);
+}
 function session_boot(string $realm = 'admin'): void {
     if (session_status()===PHP_SESSION_ACTIVE) return;
     if(defined('GOSTORE_MOBILE_API')){
         if($realm!=='customer')fail('Mobile action unavailable',403);
         mobile_session_boot();return;
     }
+    $customer=$realm==='customer';$secure=!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off';
     session_name(match($realm){'customer'=>'gostore_customer','warehouse'=>'gostore_warehouse',default=>'gostore_session'});
     ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
-    session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);
+    if($customer)session_private_dir('customer-sessions',CUSTOMER_SESSION_TTL);
+    session_set_cookie_params(['lifetime'=>$customer?CUSTOMER_SESSION_TTL:0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Lax']);
     session_start();
-    if (isset($_SESSION['last']) && time()-$_SESSION['last']>1800) { $_SESSION=[]; session_regenerate_id(true); }
+    if (isset($_SESSION['last']) && time()-$_SESSION['last']>($customer?CUSTOMER_SESSION_TTL:STAFF_SESSION_IDLE)) { $_SESSION=[]; session_regenerate_id(true); }
     $_SESSION['last']=time(); $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+    // PHP sends the cookie only for new session IDs; renew its expiry once a day while the shopper visits.
+    if($customer&&($_SESSION['cookie_at']??0)<time()-86400&&!headers_sent()){
+        setcookie(session_name(),session_id(),['expires'=>time()+CUSTOMER_SESSION_TTL,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Lax']);$_SESSION['cookie_at']=time();
+    }
+}
+// Removes session files idle for longer than their lifetime (called by the daily worker).
+function session_files_prune(?int $now=null): int {
+    $now??=time();$removed=0;
+    foreach(['customer-sessions'=>CUSTOMER_SESSION_TTL,'mobile-sessions'=>MOBILE_SESSION_TTL] as $name=>$ttl)
+        foreach(glob(config()['data_dir'].'/'.$name.'/sess_*')?:[] as $file)if(@filemtime($file)<$now-$ttl&&@unlink($file))$removed++;
+    return $removed;
 }
 function admin_password_hash(): string {
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['admin_password_hash']);

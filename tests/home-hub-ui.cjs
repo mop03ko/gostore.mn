@@ -23,7 +23,7 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  assert.ok((await page.locator('#hub-flyout h3').first().innerText()).includes('Электроник'));
  await page.keyboard.press('Escape');await page.locator('#hub-flyout').waitFor({state:'hidden'});
  await page.locator('#hub-hot [data-hub-query="headphones"]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='headphones');
- await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-register-form').waitFor();await page.locator('#close-modal').click();
+ await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-pin-setup-form[data-purpose=register]').waitFor();await page.locator('#close-modal').click();
  for(const width of [1024,1280])assert.ok(await page.setViewportSize({width,height:900}).then(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)),'Hub fits '+width);
  await page.setViewportSize({width:1024,height:900});assert.equal(await page.locator('.hub-user').isVisible(),false,'Narrow desktops drop the customer panel');
  // Phones: category grid and five tabs instead of the side list.

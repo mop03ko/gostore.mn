@@ -12,7 +12,8 @@ $lock=fopen(config()['data_dir'].'/daily-worker.lock','c');
 if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){fwrite(STDERR,"Daily worker already running.\n");exit(1);}
 try{
     $backup=backup_run();
+    $sessions=session_files_prune();
     $report=daily_report_build();$sent=in_array('--no-mail',$argv,true)?false:daily_report_send($report);
-    echo json_encode(['backup_ok'=>$backup['ok'],'drive'=>$backup['drive']['ok']??null,'mail_sent'=>$sent,'warnings'=>count($report['warnings'])],JSON_UNESCAPED_UNICODE).PHP_EOL;
+    echo json_encode(['backup_ok'=>$backup['ok'],'drive'=>$backup['drive']['ok']??null,'mail_sent'=>$sent,'sessions_pruned'=>$sessions,'warnings'=>count($report['warnings'])],JSON_UNESCAPED_UNICODE).PHP_EOL;
     exit($backup['ok']?0:1);
 }finally{flock($lock,LOCK_UN);fclose($lock);}

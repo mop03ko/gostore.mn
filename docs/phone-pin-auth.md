@@ -4,6 +4,20 @@ New mobile accounts use: phone and name → send an MO SMS to 144773 → server 
 
 Existing email users keep their login and orders. They sign in through “Өмнөх имэйлээр нэвтрэх”, then choose “Утас, PIN холбох” in their profile. Matching an old, unverified profile phone never grants access to that account. Native account deletion accepts the PIN for linked accounts; old email/password deletion remains supported.
 
+## Web storefront (2026-11-09)
+
+The website uses the same flow as the app. The account modal opens on phone + PIN sign-in; “Бүртгүүлэх” asks for name and phone, sends the verify.mn SMS (`window.verifyPhone(phone, purpose)`), then reveals the PIN and repeat fields and calls `customer-pin-setup` with the challenge. “PIN мартсан” runs the same steps with purpose `reset`. Email/password registration is no longer offered; older email accounts sign in through “Өмнөх имэйлээр нэвтрэх” and link a phone from the profile (“Утас, PIN холбох”, purpose `link`). PIN accounts see “PIN солих” instead of the password tab, in both the modal and the account page.
+
+## Session lifetime
+
+| Realm | Lifetime | Where |
+|---|---|---|
+| Web shopper (`gostore_customer` cookie) | 30 days after the last visit; the cookie is renewed at most once a day | `data_dir/customer-sessions` |
+| App shopper (`X-GOStore-Mobile-Token`) | 90 days after the last request | `data_dir/mobile-sessions` |
+| Admin / warehouse staff | 30 idle minutes, browser-session cookie | PHP default |
+
+Shopper sessions live in private directories so cPanel's default session cleanup (24 minutes) cannot remove them early; the daily worker prunes expired `sess_*` files (`sessions_pruned` in its output). Logout, PIN change, PIN reset and password change still revoke every session through `auth_version`. Moving web sessions into the new directory signs current web shoppers out once when it is deployed; app sessions are unaffected.
+
 ## Server
 
 - `customer-pin-setup` requires a single-use, session-bound verify.mn challenge for the exact phone and purpose (`register`, `reset`, `link`), with an unexpired 5-minute deadline. Generic phone verification cannot authorize account takeover or PIN reset.
@@ -24,6 +38,7 @@ Expo Update is configured with preview/production channels and the fingerprint r
 ## Validation and release
 
 - `tests/phone-auth.php`: ownership/purpose/expiry/replay checks, peppered hashing, legacy isolation/linking, reset, revocation and guessing limits.
+- `node tests/run-logistics.cjs web-pin-ui`: web phone + PIN sign-in, wrong PIN, SMS-then-PIN registration (verify.mn stubbed), PIN change tab, email fallback, 30-day web and 90-day app idle limits.
 - `node tests/run-logistics.cjs phone-auth-api customers mobile account-ui`: isolated PHP/mobile integration, CSRF, forged proof rejection, protected phone changes, deletion and legacy regressions.
 - `node tests/expo-phone-auth.cjs` with a local Metro web preview: mocked registration, pending/expiry, PIN creation/reset/change, email linking, deletion, return routing and 320/390/430 widths. No provider SMS or real customer account is used.
 - `npm run typecheck` and `npm run lint` in `gostoremn`.

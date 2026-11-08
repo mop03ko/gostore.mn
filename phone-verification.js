@@ -1,8 +1,9 @@
 'use strict';
 (() => {
   let active=null;
-  /** Resolves true only after our backend independently observes VERIFIED. */
-  window.verifyPhone=function verifyPhone(phone){
+  /** Resolves {challenge, phone} only after our backend independently observes VERIFIED, else false.
+   *  purpose: verify (default), register, reset or link (the latter three let the session set a PIN). */
+  window.verifyPhone=function verifyPhone(phone,purpose='verify'){
     if(active)return Promise.resolve(false);
     let finish;
     const promise=new Promise(resolve=>{finish=resolve;});
@@ -12,7 +13,7 @@
     dialog.setAttribute('aria-labelledby','phone-verification-title');
     dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><div data-sms hidden><p>Илгээх дугаар: <strong>144773</strong></p><p>SMS текст: <strong data-text></strong></p><a class="button blue" data-sms-link>SMS нээх</a><p>Энэ дугаартай SIM-ээс SMS-ээ өөрөө илгээнэ үү. Операторын SMS төлбөр үйлчилж болно.</p><p>Баталгаажуулахын тулд утасны дугаар verify.mn үйлчилгээнд дамжина.</p></div><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
     document.body.append(dialog);dialog.showModal();
-    let done=false,timer,clock,deadline=Date.now()+300000,challenge;
+    let done=false,timer,clock,deadline=Date.now()+300000,challenge,verifiedPhone='';
     const status=dialog.querySelector('[data-status]');
     const end=value=>{if(done)return;done=true;clearTimeout(timer);clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
     const cancel=()=>end(false);
@@ -30,7 +31,7 @@
         const r=await shopApi('phone-verification-status',{challenge});
         if(done)return;
         if(Date.now()>=deadline||r.sessionStatus==='EXPIRED'){end(false);return;}
-        if(r.sessionStatus==='VERIFIED'){end(true);return;}
+        if(r.sessionStatus==='VERIFIED'){end({challenge,phone:verifiedPhone});return;}
         if(r.sessionStatus!=='PENDING'){end(false);return;}
         status.textContent='Таны SMS-ийг хүлээж байна…';
       }catch{if(done)return;status.textContent='Холболтыг дахин шалгаж байна…';}
@@ -41,10 +42,10 @@
         const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
         if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
         if(done)return;
-        const r=await shopApi('phone-verification-start',{phone});
+        const r=await shopApi('phone-verification-start',{phone,purpose});
         if(done)return;
         if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||!/^sms:144773\?body=/.test(r.smsUri))throw Error('Баталгаажуулалт эхэлсэнгүй.');
-        challenge=r.challenge;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
+        challenge=r.challenge;verifiedPhone=r.phone;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
         dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
         dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
         dialog.querySelector('[data-text]').textContent=r.text;

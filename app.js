@@ -489,8 +489,9 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
 'use strict';
 (() => {
   let active=null;
-  /** Resolves true only after our backend independently observes VERIFIED. */
-  window.verifyPhone=function verifyPhone(phone){
+  /** Resolves {challenge, phone} only after our backend independently observes VERIFIED, else false.
+   *  purpose: verify (default), register, reset or link (the latter three let the session set a PIN). */
+  window.verifyPhone=function verifyPhone(phone,purpose='verify'){
     if(active)return Promise.resolve(false);
     let finish;
     const promise=new Promise(resolve=>{finish=resolve;});
@@ -500,7 +501,7 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
     dialog.setAttribute('aria-labelledby','phone-verification-title');
     dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><div data-sms hidden><p>Илгээх дугаар: <strong>144773</strong></p><p>SMS текст: <strong data-text></strong></p><a class="button blue" data-sms-link>SMS нээх</a><p>Энэ дугаартай SIM-ээс SMS-ээ өөрөө илгээнэ үү. Операторын SMS төлбөр үйлчилж болно.</p><p>Баталгаажуулахын тулд утасны дугаар verify.mn үйлчилгээнд дамжина.</p></div><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
     document.body.append(dialog);dialog.showModal();
-    let done=false,timer,clock,deadline=Date.now()+300000,challenge;
+    let done=false,timer,clock,deadline=Date.now()+300000,challenge,verifiedPhone='';
     const status=dialog.querySelector('[data-status]');
     const end=value=>{if(done)return;done=true;clearTimeout(timer);clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
     const cancel=()=>end(false);
@@ -518,7 +519,7 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
         const r=await shopApi('phone-verification-status',{challenge});
         if(done)return;
         if(Date.now()>=deadline||r.sessionStatus==='EXPIRED'){end(false);return;}
-        if(r.sessionStatus==='VERIFIED'){end(true);return;}
+        if(r.sessionStatus==='VERIFIED'){end({challenge,phone:verifiedPhone});return;}
         if(r.sessionStatus!=='PENDING'){end(false);return;}
         status.textContent='Таны SMS-ийг хүлээж байна…';
       }catch{if(done)return;status.textContent='Холболтыг дахин шалгаж байна…';}
@@ -529,10 +530,10 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
         const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
         if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
         if(done)return;
-        const r=await shopApi('phone-verification-start',{phone});
+        const r=await shopApi('phone-verification-start',{phone,purpose});
         if(done)return;
         if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||!/^sms:144773\?body=/.test(r.smsUri))throw Error('Баталгаажуулалт эхэлсэнгүй.');
-        challenge=r.challenge;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
+        challenge=r.challenge;verifiedPhone=r.phone;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
         dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
         dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
         dialog.querySelector('[data-text]').textContent=r.text;
@@ -572,9 +573,22 @@ window.addEventListener('storage',e=>{if(e.key==='gostore-account-changed-v1')cu
 customerAccount.refresh=async()=>{const result=await shopApi('customer-me');customerAccount.setUser(result.customer);return result.customer;};
 const accountField=(label,name,value='',extra='')=>`<label class="field">${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
 const passwordField=(label,name,autocomplete)=>accountField(label,name,'',`type="password" autocomplete="${autocomplete}" minlength="${name==='current_password'?1:10}" maxlength="72" required`);
+// Sign-in works as in the app: phone + 4-digit PIN. New accounts and forgotten PINs verify the phone by
+// SMS (verify.mn) and then set a PIN; older e-mail accounts can still sign in with e-mail and password.
+const pinField=(label,name,autocomplete,required=true)=>accountField(label,name,'',`type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="${autocomplete}"${required?' required':''}`);
+const phoneField=(value='')=>accountField('Утасны дугаар','phone',value,'type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required');
+const accountError='<p class="form-error" data-account-error role="alert"></p>';
+// Registration (register), forgotten PIN (reset) and adding a phone to an e-mail account (link): the
+// phone is verified by SMS first, then the PIN fields appear.
+function pinSetupForm(purpose,phone=''){
+  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаарыг verify.mn-д дамжуулж баталгаажуулна. Та 144773 дугаарт SMS илгээнэ. Операторын SMS төлбөр үйлчилж болно.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
+}
 function accountForm(mode='login'){
-  const register=mode==='register';
-  openModal(register?'GOStore-д бүртгүүлэх':'Тавтай морил',`<p class="modal-intro">Захиалгаа нэг дороос хянаж, хүргэлтийн мэдээллээ хадгалаарай.</p><div class="account-tabs"><button class="button ${register?'outline':'blue'}" data-account-mode="login" aria-pressed="${!register}">Нэвтрэх</button><button class="button ${register?'blue':'outline'}" data-account-mode="register" aria-pressed="${register}">Бүртгүүлэх</button></div><form id="customer-${mode}-form" class="account-form">${register?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${accountField('Имэйл хаяг','email','','type="email" autocomplete="username" maxlength="200" required')}${register?accountField('Утасны дугаар (заавал биш)','phone','','type="tel" autocomplete="tel" maxlength="25"'):''}${passwordField('Нууц үг','password',register?'new-password':'current-password')}${register?passwordField('Нууц үг давтах','password_confirm','new-password'):''}<p class="account-hint">${register?'10-аас доошгүй тэмдэгттэй нууц үг сонгоорой.':'Нэвтрэхэд тусламж хэрэгтэй бол <a href="mailto:shop@gostore.mn">shop@gostore.mn</a>-д хандана уу.'}</p><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">${register?'Бүртгэл үүсгэх':'Нэвтрэх'}</button></form>`);
+  const register=mode==='register',links=(...items)=>`<div class="account-links">${items.map(([m,label])=>`<button type="button" class="text-button" data-account-mode="${m}">${label}</button>`).join('')}</div>`;
+  const body=mode==='email'?`<form id="customer-login-form" class="account-form">${accountField('Имэйл хаяг','email','','type="email" autocomplete="username" maxlength="200" required')}${passwordField('Нууц үг','password','current-password')}<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол. Нэвтэрсний дараа профайлаасаа утас, PIN холбоорой.</p>${accountError}<button class="button blue" type="submit">Нэвтрэх</button></form>${links(['login','Утас + PIN-ээр нэвтрэх'])}`
+    :mode==='register'||mode==='reset'?pinSetupForm(mode)+(mode==='reset'?links(['login','Утас + PIN-ээр нэвтрэх']):'')
+    :`<form id="customer-pin-login-form" class="account-form">${phoneField()}${pinField('4 оронтой PIN','pin','current-password')}<p class="account-hint">Нэвтэрсэн хэвээр үлдэнэ. Нийтийн компьютер дээр ажилласны дараа бүртгэлээс гарна уу.</p>${accountError}<button class="button blue" type="submit">PIN-ээр нэвтрэх</button></form>${links(['reset','PIN мартсан'],['email','Өмнөх имэйлээр нэвтрэх'])}`;
+  openModal(register?'GOStore-д бүртгүүлэх':mode==='reset'?'PIN сэргээх':'Тавтай морил',`<p class="modal-intro">Захиалгаа нэг дороос хянаж, хүргэлтийн мэдээллээ хадгалаарай.</p><div class="account-tabs"><button class="button ${register?'outline':'blue'}" data-account-mode="login" aria-pressed="${!register}">Нэвтрэх</button><button class="button ${register?'blue':'outline'}" data-account-mode="register" aria-pressed="${register}">Бүртгүүлэх</button></div>${body}`);
 }
 let checkoutResume=null;
 customerAccount.forCheckout=async resume=>{
@@ -588,7 +602,13 @@ customerAccount.forCheckout=async resume=>{
 document.querySelector('#modal').addEventListener('close',()=>{checkoutResume=null;});
 function profileForm(mode='profile'){
   const user=customerAccount.user;if(!user)return accountForm();
-  openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email)}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs"><button class="button ${mode==='profile'?'blue':'outline'}" data-account-mode="profile">Профайл</button><button class="button ${mode==='password'?'blue':'outline'}" data-account-mode="password">Нууц үг</button></div>${mode==='password'?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button blue" type="submit">Нууц үг солих</button></form>`:`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
+  const tab=(m,label)=>`<button class="button ${mode===m?'blue':'outline'}" data-account-mode="${m}">${label}</button>`;
+  const tabs=tab('profile','Профайл')+(user.email_login?tab('password','Нууц үг'):'')+(user.pin_enabled?tab('pin','PIN солих'):tab('link','Утас, PIN холбох'));
+  const content=mode==='password'&&user.email_login?`<form id="customer-password-form" class="account-form">${passwordField('Одоогийн нууц үг','current_password','current-password')}${passwordField('Шинэ нууц үг','password','new-password')}${passwordField('Шинэ нууц үг давтах','password_confirm','new-password')}<p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p>${accountError}<button class="button blue" type="submit">Нууц үг солих</button></form>`
+    :mode==='pin'&&user.pin_enabled?`<form id="customer-pin-change-form" class="account-form">${pinField('Одоогийн PIN','current_pin','current-password')}${pinField('Шинэ PIN','pin','new-password')}${pinField('Шинэ PIN давтах','pin_confirm','new-password')}<p class="account-hint">PIN солиход бусад төхөөрөмж дээрх нэвтрэлт хаагдана. PIN мартсан бол гараад «PIN мартсан»-аар SMS-ээр сэргээнэ.</p>${accountError}<button class="button blue" type="submit">PIN солих</button></form>`
+    :mode==='link'&&!user.pin_enabled?pinSetupForm('link',user.phone||'')
+    :`<form id="customer-profile-form" class="account-form"><div class="form-grid">${accountField('Таны нэр','name',user.name,'autocomplete="name" maxlength="100" required')}${accountField('Утасны дугаар','phone',user.phone,'type="tel" autocomplete="tel" maxlength="25"')}<label class="field full">Хүргэлтийн хаяг<textarea name="address" autocomplete="street-address" maxlength="500" placeholder="Хот, дүүрэг, хороо, байр, тоот">${esc(user.address)}</textarea></label></div>${accountError}<button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>`;
+  openModal('Миний бүртгэл',`<div class="account-summary"><span class="account-avatar" aria-hidden="true">${esc(Array.from(user.name)[0]||'G')}</span><div><h3>${esc(user.name)}</h3><p>${esc(user.email||user.login_phone||user.phone||'')}</p></div></div><div class="form-actions account-shortcuts"><button class="button blue" data-action="browse">Бараа захиалах</button><button class="button outline" data-action="orders">Миний ачаа</button></div><div class="account-tabs">${tabs}</div>${content}<div class="account-footer"><button class="text-button" data-customer-logout>Бүртгэлээс гарах</button></div>`);
 }
 customerAccount.open=async(mode)=>{
   // Signed-in customers get the full account page; the modal keeps login and registration.
@@ -603,16 +623,30 @@ document.addEventListener('click',async e=>{
   }
 });
 document.addEventListener('submit',async e=>{
-  const form=e.target;if(!/^customer-(login|register|profile|password)-form$/.test(form.id))return;
+  const form=e.target;if(!/^customer-(login|pin-login|pin-setup|pin-change|profile|password)-form$/.test(form.id))return;
   e.preventDefault();const button=form.querySelector('[type="submit"]'),error=form.querySelector('[data-account-error]');button.disabled=true;error.textContent='';
-  const action=form.id.replace(/-form$/,'');
+  const action=form.id.replace(/-form$/,''),signIn=['customer-login','customer-pin-login','customer-pin-setup'].includes(action);
   try{
     const payload=Object.fromEntries(new FormData(form));
+    if(action==='customer-pin-setup'){
+      if(!form.dataset.challenge){
+        // Step 1: the shopper sends the verification SMS; the PIN fields appear once our server sees it.
+        const verified=await window.verifyPhone(payload.phone,form.dataset.purpose);
+        if(!verified||!verified.challenge)throw Error('Утас баталгаажсангүй. Дахин оролдоно уу.');
+        form.dataset.challenge=verified.challenge;form.dataset.phone=verified.phone;form.elements.phone.readOnly=true;
+        form.querySelector('[data-pin-step]').hidden=false;form.elements.pin.required=form.elements.pin_confirm.required=true;
+        form.querySelector('[data-pin-hint]').textContent=verified.phone+' дугаар баталгаажлаа. Нэвтрэхдээ ашиглах 4 оронтой PIN-ээ оруулна уу.';
+        button.textContent='PIN хадгалж нэвтрэх';form.elements.pin.focus();return;
+      }
+      Object.assign(payload,{phone:form.dataset.phone,purpose:form.dataset.purpose,challenge:form.dataset.challenge});
+    }
+    if(payload.pin_confirm!==undefined&&payload.pin!==payload.pin_confirm)throw Error('PIN давталт таарахгүй байна.');
     if(payload.password_confirm!==undefined&&payload.password!==payload.password_confirm)throw Error('Нууц үгийн давталт таарахгүй байна.');
-    const result=await shopApi(action,payload);if(result.customer){customerAccount.setUser(result.customer);if(['customer-login','customer-register'].includes(action))notifyAccountChange();}
-    if(['customer-login','customer-register'].includes(action)&&checkoutResume){const resume=checkoutResume;checkoutResume=null;await resume();toast('Захиалгаа үргэлжлүүлээрэй');return;}
+    const result=await shopApi(action,payload);if(result.customer){customerAccount.setUser(result.customer);if(signIn||action==='customer-pin-change')notifyAccountChange();}
+    if(signIn&&checkoutResume){const resume=checkoutResume;checkoutResume=null;await resume();toast('Захиалгаа үргэлжлүүлээрэй');return;}
     if(action==='customer-password'){form.reset();toast('Нууц үг шинэчлэгдлээ');}
-    else{if(['customer-login','customer-register'].includes(action)&&(document.documentElement.classList.contains('product-view')||window.accountPage?.active))closeModal();else profileForm();toast(action==='customer-profile'?'Мэдээлэл хадгалагдлаа':action==='customer-register'?'Таны бүртгэл үүслээ':'Амжилттай нэвтэрлээ');}
+    else if(action==='customer-pin-change'){profileForm();toast('PIN шинэчлэгдлээ');}
+    else{const linked=action==='customer-pin-setup'&&form.dataset.purpose==='link';if(signIn&&!linked&&(document.documentElement.classList.contains('product-view')||window.accountPage?.active))closeModal();else profileForm();toast(action==='customer-profile'?'Мэдээлэл хадгалагдлаа':linked?'Утас, PIN холбогдлоо':form.dataset.purpose==='register'?'Таны бүртгэл үүслээ':'Амжилттай нэвтэрлээ');}
   }catch(err){error.textContent=err.message;}finally{button.disabled=false;}
 });
 customerAccount.setUser(customerAccount.user);
@@ -1400,7 +1434,7 @@ window.productCompare=(()=>{
         box.innerHTML=`<h2>${sections.notifications}</h2>`+(pref?`<label class="account-promo-push"><input type="checkbox" data-promo-push ${pref.promo_push?'checked':''}><span>Хямдрал, урамшууллын мэдэгдлийг GOStore аппаар утсандаа авах</span></label>`:'')+(r.notifications.length||msgs.length?`<ol class="account-notices">${msgs.map(m=>`<li class="${m.read_at?'':'unread'}"><div class="account-message"><strong>${esc(m.title)}</strong><span>${esc(m.body)}</span><small>${m.kind==='promo'?'Урамшуулал':'GOStore мэдээлэл'} · ${new Date(m.created).toLocaleString('mn-MN')}</small>${/^\/(?!\/)/.test(m.link||'')?`<a href="${esc(m.link)}">Дэлгэрэнгүй →</a>`:''}</div></li>`).join('')}${r.notifications.map(n=>`<li class="${n.read_at?'':'unread'}"><button type="button" data-server-order="${esc(n.order_id)}"><strong>${esc(n.order_id)}</strong><span>${esc(n.message)}</span><small>${new Date(n.created).toLocaleString('mn-MN')}</small></button></li>`).join('')}</ol>`:empty('Мэдэгдэл алга','Захиалгын явц өөрчлөгдөхөд энд мэдэгдэнэ.'));
         if((r.unread&&r.notifications.length)||(r.messages_unread&&msgs.length))shopApi('customer-notifications-read',{through_id:r.notifications.length?Math.max(...r.notifications.map(n=>Number(n.id))):0,messages_through_id:msgs.length?Math.max(...msgs.map(m=>Number(m.id))):0}).then(()=>window.refreshCargoNotifications?.()).catch(()=>{});return;}
       const u=customerAccount.user;
-      box.innerHTML=`<h2>${sections.profile}</h2><form id="account-profile-form" class="account-form account-card"><div class="form-grid"><label class="field">Таны нэр<input name="name" value="${esc(u.name)}" autocomplete="name" maxlength="100" required></label><label class="field">Утасны дугаар<input name="phone" value="${esc(u.phone)}" type="tel" autocomplete="tel" maxlength="25"></label><label class="field full">Имэйл<input value="${esc(u.email)}" disabled></label></div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form><h3 class="account-subtitle">Нууц үг солих</h3><form id="account-password-form" class="account-form account-card"><div class="form-grid"><label class="field full">Одоогийн нууц үг<input name="current_password" type="password" autocomplete="current-password" maxlength="72" required></label><label class="field">Шинэ нууц үг<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label><label class="field">Шинэ нууц үг давтах<input name="password_confirm" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label></div><p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">Нууц үг солих</button></form>`;
+      box.innerHTML=`<h2>${sections.profile}</h2><form id="account-profile-form" class="account-form account-card"><div class="form-grid"><label class="field">Таны нэр<input name="name" value="${esc(u.name)}" autocomplete="name" maxlength="100" required></label><label class="field">Утасны дугаар<input name="phone" value="${esc(u.phone)}" type="tel" autocomplete="tel" maxlength="25"></label>${u.email_login===false?`<label class="field full">Нэвтрэх утас<input value="${esc(u.login_phone||'')}" disabled></label>`:`<label class="field full">Имэйл<input value="${esc(u.email)}" disabled></label>`}</div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>${u.pin_enabled?`<h3 class="account-subtitle">PIN солих</h3><form id="account-pin-form" class="account-form account-card"><div class="form-grid">${['current_pin:Одоогийн PIN:current-password','pin:Шинэ PIN:new-password','pin_confirm:Шинэ PIN давтах:new-password'].map(x=>{const [n,l,a]=x.split(':');return `<label class="field">${l}<input name="${n}" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="${a}" required></label>`;}).join('')}</div><p class="account-hint">PIN солиход бусад төхөөрөмж дээрх нэвтрэлт хаагдана.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">PIN солих</button></form>`:`<h3 class="account-subtitle">Утас, PIN-ээр нэвтрэх</h3><p class="account-hint">Утсаа SMS-ээр баталгаажуулж PIN үүсгэвэл апп, вэбд утас + PIN-ээр нэвтэрнэ.</p><button class="button outline" type="button" data-account-link-pin>Утас, PIN холбох</button>`}${u.email_login===false?'':`<h3 class="account-subtitle">Нууц үг солих</h3><form id="account-password-form" class="account-form account-card"><div class="form-grid"><label class="field full">Одоогийн нууц үг<input name="current_password" type="password" autocomplete="current-password" maxlength="72" required></label><label class="field">Шинэ нууц үг<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label><label class="field">Шинэ нууц үг давтах<input name="password_confirm" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label></div><p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">Нууц үг солих</button></form>`}`;
     }catch(e){if(section!==wanted)return;box.innerHTML=`<h2>${esc(sections[section])}</h2><p class="form-error" role="alert">${esc(e.message)}</p><button class="button outline" data-account-section="${section}">Дахин оролдох</button>`;}
   }
   function renderOrders(){
@@ -1432,6 +1466,7 @@ window.productCompare=(()=>{
     const b=e.target.closest('button');if(!b)return;
     if(b.dataset.accountSection){show(b.dataset.accountSection);return;}
     if(b.hasAttribute('data-account-register')){accountForm('register');return;}
+    if(b.hasAttribute('data-account-link-pin')){profileForm('link');return;}
     if(b.dataset.accountFilter){filter=b.dataset.accountFilter;renderOrders();return;}
     const list=()=>JSON.parse(content().dataset.addresses||'[]');
     if(b.hasAttribute('data-address-new')){editing='';renderAddresses(list());content().querySelector('#account-address-form [name=label]').focus();return;}
@@ -1444,11 +1479,12 @@ window.productCompare=(()=>{
   });
   root.addEventListener('input',e=>{if(e.target.id==='account-order-search'){query=e.target.value.trim();const pos=e.target.selectionStart;renderOrders();const input=root.querySelector('#account-order-search');input.focus();input.setSelectionRange(pos,pos);}});
   root.addEventListener('submit',async e=>{
-    const f=e.target;if(!['account-profile-form','account-password-form','account-address-form'].includes(f.id))return;
+    const f=e.target;if(!['account-profile-form','account-password-form','account-pin-form','account-address-form'].includes(f.id))return;
     e.preventDefault();const button=f.querySelector('[type=submit]'),error=f.querySelector('[data-account-error]');button.disabled=true;if(error)error.textContent='';
     try{
       const b=Object.fromEntries(new FormData(f));
       if(f.id==='account-profile-form'){customerAccount.setUser((await shopApi('customer-profile',{name:b.name,phone:b.phone})).customer);layout();render();toast('Мэдээлэл хадгалагдлаа');}
+      else if(f.id==='account-pin-form'){if(b.pin!==b.pin_confirm)throw Error('PIN давталт таарахгүй байна.');customerAccount.setUser((await shopApi('customer-pin-change',b)).customer);f.reset();toast('PIN шинэчлэгдлээ');}
       else if(f.id==='account-password-form'){if(b.password!==b.password_confirm)throw Error('Нууц үгийн давталт таарахгүй байна.');await shopApi('customer-password',b);f.reset();toast('Нууц үг шинэчлэгдлээ');}
       else{const saved=await shopApi('customer-address-save',{id:f.dataset.id||'',label:b.label,recipient:b.recipient,phone:b.phone,address:b.address,is_default:f.elements.is_default.checked});editing=null;renderAddresses(saved.addresses);await customerAccount.refresh();toast('Хаяг хадгалагдлаа');}
     }catch(err){if(error)error.textContent=err.message;else toast(err.message);}
