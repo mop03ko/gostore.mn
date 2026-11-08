@@ -37,10 +37,11 @@ function inbound_details_public(array $o): ?array {
     }
     return ['children'=>$children,'query_error'=>!empty($cache['query_error']),'query_attempted_at'=>$cache['query_attempted_at']??null,'cache_seconds'=>600];
 }
-function inbound_details_refresh(string $id,string $location): array {
+// $location is null for the TaoWorld worker's background refresh (warehouse-flow.php).
+function inbound_details_refresh(string $id,?string $location): array {
     return tw_order_lock($id,static function()use($id,$location){
         $o=order_row($id)['order'];
-        if(warehouse_role($location)!=='erenhot'||!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);
+        if($location!==null&&(warehouse_role($location)!=='erenhot'||!warehouse_order_visible($o,$location)))fail('Захиалга олдсонгүй.',404);
         tw_assert_pinned($o);
         if(empty($o['purchase']['submitted_at']))fail('Taobao захиалгын дугаар алга.',409);
         $cache=$o['purchase']['domestic_tracking']??[];$now=time();$started=microtime(true);
@@ -67,7 +68,7 @@ function inbound_details_refresh(string $id,string $location): array {
             $cache['children'][$cid]=$detail;
         }
         return tw_update($id,static function(&$fresh)use($cache,$location){
-            if(!warehouse_order_visible($fresh,$location))fail('Захиалга олдсонгүй.',404);
+            if($location!==null&&!warehouse_order_visible($fresh,$location))fail('Захиалга олдсонгүй.',404);
             tw_assert_pinned($fresh);$fresh['purchase']['domestic_tracking']=$cache;
             $numbers=[];foreach($cache['children']??[] as $detail)foreach($detail['parcels']??[] as $parcel)$numbers[]=['no'=>$parcel['mail_no'],'company'=>$parcel['partners'][0]['company']??''];
             inbound_merge($fresh,$numbers,'taoworld');

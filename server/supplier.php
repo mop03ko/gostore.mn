@@ -451,7 +451,7 @@ function supplier_order(array $b): array {
     if(!$variant||$variant['cny']===null)fail('Барааны хувилбар эсвэл үнэ тодорхойгүй байна.',409);
     $qty=int_field($b,'qty',1,9999);if($qty<$p['min_qty']||($qty-$p['min_qty'])%$p['step']!==0||($variant['stock']!==null&&$qty>$variant['stock']))fail('Багцын тоо эсвэл үлдэгдлийг шалгана уу.');
     // Supplier variants and quantity discounts require an operator's final quote.
-    return ['id'=>$p['id'],'provider'=>$p['provider'],'catalog_provider'=>$p['catalog_provider']??'otcommerce','sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'vendor_id'=>$p['vendor_id']??'','fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
+    return ['id'=>$p['id'],'provider'=>$p['provider'],'catalog_provider'=>$p['catalog_provider']??'otcommerce','sku'=>$sku,'name'=>$p['name'],'variant'=>$variant['label'],'qty'=>$qty,'unit_cny'=>$variant['cny'],'goods_cny'=>round($variant['cny']*$qty,2),'url'=>$p['url'],'image'=>$p['image'],'vendor_id'=>$p['vendor_id']??'','original_name'=>(string)($p['original_name']??''),'original_variant'=>(string)($variant['original_label']??''),'fetched'=>$d['fetched'],'rate'=>shipping_settings()['cny_rate']];
 }
 
 require_once __DIR__.'/supplier-snapshot.php';

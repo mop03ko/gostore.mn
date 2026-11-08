@@ -176,6 +176,8 @@ check(tw_catalog_product($saleRaw,true,time()-TW_CATALOG_DETAIL_REFRESH-1)['card
 check(tw_catalog_discount(['price'=>10000,'promotion_price'=>12000],time()+60)===null,'Higher promotion price is not a discount');
 $searchSale=tw_catalog_product(['item_id'=>'799999999992','mi_id'=>'coupon-fixture','title'=>'Box','price'=>'100','coupon_price'=>'80'],false,time());
 check($searchSale['card_discount']===null&&$searchSale['approx_cny']===100.0&&array_keys($searchSale['offers'])===['expires','promotions'],'Search coupon prices are dropped, and search prices are CNY');
+$labelled=tw_catalog_product(['item_id'=>'799999999993','mi_id'=>'label-fixture','title'=>'收纳盒','multi_language_info'=>['title'=>'Storage box','sku_properties'=>[['sku_id'=>'31','properties'=>[['prop_name'=>'Color','value_name'=>'Black']]]]],'sku_list'=>[['sku_id'=>'31','quantity'=>1,'price'=>100,'promotion_price'=>100,'properties'=>[['prop_name'=>'颜色','value_name'=>'黑色']]]]],true,time());
+check($labelled['variants'][0]['label']==='Color: Black'&&$labelled['variants'][0]['original_label']==='颜色: 黑色'&&$labelled['original_name']==='收纳盒','Chinese title and options kept for the Erenhot warehouse');
 $detailFile=tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$sale['id'],'language'=>'en']).'.json';
 supplier_snapshot_write($detailFile,['time'=>time(),'data'=>$saleRaw]);$before=count($calls);
 $cards=tw_catalog_cards([['item_id'=>'799999999991','mi_id'=>'discount-fixture','title'=>'Box','price'=>'100']]);

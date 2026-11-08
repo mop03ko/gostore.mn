@@ -171,8 +171,10 @@ function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null,?int 
     foreach($p['sku_list']??[] as $v){
         $sku=(string)($v['sku_id']??'');if(!preg_match('/^\d{1,30}$/D',$sku))continue;
         $labels=[];foreach($translated[$sku]??$v['properties']??[] as $a)$labels[]=supplier_text(($a['prop_name']??'').': '.($a['value_name']??$a['value_desc']??''),300);
+        // The supplier's own (Chinese) option names, for matching parcels in the Erenhot warehouse.
+        $original=[];foreach($v['properties']??[] as $a)$original[]=supplier_text(($a['prop_name']??'').': '.($a['value_name']??$a['value_desc']??''),300);
         $stock=supplier_count($v['quantity']??null);
-        $r['variants'][]=['id'=>$sku,'label'=>implode(' / ',$labels)?:'Стандарт','image'=>supplier_image((string)($v['pic_url']??'')),'cny'=>$stock===null?null:tw_catalog_price($v,true),'stock'=>$stock,'card_discount'=>$stock!==null&&$stock>0?tw_catalog_discount($v,$expires):null];
+        $r['variants'][]=['id'=>$sku,'label'=>implode(' / ',$labels)?:'Стандарт','original_label'=>implode(' / ',$original),'image'=>supplier_image((string)($v['pic_url']??'')),'cny'=>$stock===null?null:tw_catalog_price($v,true),'stock'=>$stock,'card_discount'=>$stock!==null&&$stock>0?tw_catalog_discount($v,$expires):null];
     }
     $prices=[];foreach($r['variants'] as $v)if(($v['stock']??0)>0&&$v['cny']!==null)$prices[]=$v['cny'];
     $r['cny']=$prices?min($prices):null;$r['mnt']=$r['cny']===null?null:(int)ceil($r['cny']*$rate);$r['sellable']=(bool)$prices;$r['price_status']=$prices?'available':'unavailable';

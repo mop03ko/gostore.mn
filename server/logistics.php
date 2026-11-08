@@ -4,7 +4,7 @@ require_once __DIR__.'/warehouse-cargo.php';
 require_once __DIR__.'/customer-push.php';
 
 function logistics_state(array $o): array {
-    return array_replace(['version'=>0,'photos'=>[],'issues'=>[],'shelf'=>''], $o['logistics']??[]);
+    return array_replace(['version'=>0,'photos'=>[],'issues'=>[],'shelf'=>'','parcels'=>[]], $o['logistics']??[]);
 }
 function logistics_has_receipt_photo(array $o,string $location): bool {
     foreach(logistics_state($o)['photos'] as $p)if(($p['location']??'')===$location&&preg_match('/^[a-f0-9]{32}$/D',$p['id']??'')&&is_file(config()['data_dir'].'/warehouse-photos/'.$p['id'].'.jpg'))return true;
@@ -78,16 +78,9 @@ function logistics_post(string $action,array $b,string $location): never {
             if(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot')fail('Тээврийн дүнг Эрээнд хүлээн авсны дараа батална.',409);
             if($action==='warehouse-cargo-calculate'){
                 if(($b['cargo_method']??'auto')!=='auto')fail('Жин болон эзлэхүүнийг оруулж автоматаар тооцоолно уу.',400);
-                $weight=decimal_field($b,'weight_kg',0.001,10000);$dimensions=[];
-                if(($b['volume_input']??'dimensions')==='dimensions'){
-                    foreach(['length_cm','width_cm','height_cm'] as $k)$dimensions[$k]=decimal_field($b,$k,0.1,1000);
-                    $volume=round(array_product($dimensions)/1000000,9);
-                }elseif($b['volume_input']==='direct')$volume=decimal_field($b,'volume_m3',0.000000001,1000);
-                else fail('Тээврийн хэмжилт буруу.',400);
-                $pieces=int_field($b,'pieces',1,1000000);$expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
-                if($pieces!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
-                $l['transport']=warehouse_cargo_calculate($weight,$volume,warehouse_cargo_rates($o),$pieces,$dimensions)+['location'=>$location];
-                $l['measurement']=['weight_kg'=>$weight,'volume_m3'=>$volume,'pieces'=>$pieces,'at'=>gmdate('c')]+$dimensions;
+                [$measurement,$transport]=logistics_measure_input($b,$o,$location);
+                if($measurement['pieces']!==warehouse_expected_pieces($o))fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
+                $l['transport']=$transport;$l['measurement']=$measurement;
             }else{
                 if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
                 if(($b['checked']??false)!==true)fail('Тээврийн дүнг шалгаснаа батална уу.',400);

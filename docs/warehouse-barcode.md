@@ -2,7 +2,7 @@
 
 The Erenhot warehouse scanner reads GS order labels, GB batch QR codes, and carrier tracking barcodes. Code 128, Code 39, ITF, Codabar, EAN/UPC and QR are decoded locally with pinned ZXing JS 0.23.0. Camera frames and selected photos are not uploaded. GS/GB continue using the existing order/batch detail routes.
 
-Carrier numbers use GET warehouse-tracking with an exact, case-insensitive match against stored inbound.numbers[].no. Leading zeroes are preserved. The authenticated Erenhot manager can only see orders assigned to their warehouse. Multiple orders on one parcel are displayed for selection; missing numbers never fall back to a partial search or automatically attach a parcel. URLs are rejected. Scanning does not receive, dispatch or change an order.
+Carrier numbers use GET warehouse-tracking with an exact, case-insensitive match against stored inbound.numbers[].no. Leading zeroes are preserved. The authenticated Erenhot manager can only see orders assigned to their warehouse. Multiple orders on one parcel are displayed for selection; missing numbers never fall back to a partial search or automatically attach a parcel. URLs are rejected. Since 2026-11-08 a carrier number that matches exactly one order also records that parcel as arrived (see [erenhot-workflow.md](erenhot-workflow.md)); scanning never receives, dispatches or batches an order.
 
 TaoWorld purchase polling and domestic logistics refresh populate these numbers. If the supplier has not returned a tracking number yet, the barcode cannot identify the order until it is synced or an operator verifies and adds the number using the existing manual inbound form.
 

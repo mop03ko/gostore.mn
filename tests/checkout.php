@@ -23,6 +23,7 @@ $s=shipping_settings();$s['cny_rate']=500;$s['service_percent']=5;$s['service_fe
 db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s)]);
 
 $cart=[['id'=>'tb-111111111','sku'=>'red','qty'=>2],['id'=>'tb-222222222','sku'=>'one','qty'=>1],['id'=>'tb-333333333','sku'=>'one','qty'=>1]];
+$line=checkout_items(['items'=>[$cart[0]]])[0];check(is_string($line['original_name']??null)&&is_string($line['original_variant']??null)&&$line['image']==='https://img.alicdn.com/111111111.jpg','Order lines keep the supplier photo, title and options for the warehouse');
 $q=checkout_quote(checkout_items(['items'=>$cart]));
 // Goods 133¥ → 66,500₮; two sellers → 20¥ domestic; 5% service + 2,000₮ fixed; cargo later.
 check($q['inputs']==['goods_cny'=>133.0,'domestic_cny'=>20.0,'vendors'=>2],'Goods or seller count changed');

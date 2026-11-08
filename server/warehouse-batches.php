@@ -24,7 +24,7 @@ function warehouse_batch_visible(array $batch,string $location): bool {
     return warehouse_role($location)==='erenhot'?($batch['source']??'erenhot')===$location:(($batch['destination']??'ulaanbaatar')===$location&&in_array($batch['status'],['dispatched','received','sorted'],true));
 }
 function warehouse_batch_public(array $batch,string $location,bool $detail=false): array {
-    $result=array_intersect_key($batch,array_flip(['id','status','version','created','note','ready_at','dispatched_at','received_at']));
+    $result=array_intersect_key($batch,array_flip(['id','status','version','created','note','ready_at','dispatched_at','received_at']));$result['auto']=!empty($batch['auto']);
     $result['source']=$batch['source']??'erenhot';$result['destination']=$batch['destination']??'ulaanbaatar';
     $result['source_name']=warehouse_profile($result['source'])['name'];$result['destination_name']=warehouse_profile($result['destination'])['name'];
     $members=warehouse_batch_members($batch['id']);$result['order_count']=count($members);
@@ -70,7 +70,7 @@ function warehouse_batch_add(array $batch,array $ids): void {
     }
 }
 function warehouse_batch_post(string $action,array $b,string $location): never {
-    $allowed=warehouse_role($location)==='erenhot'?['warehouse-batch-create','warehouse-batch-add','warehouse-batch-remove','warehouse-batch-ready','warehouse-batch-reopen','warehouse-batch-dispatch','warehouse-batch-cancel','warehouse-batch-scan']:['warehouse-batch-receive','warehouse-batch-scan'];
+    $allowed=warehouse_role($location)==='erenhot'?['warehouse-batch-create','warehouse-batch-add','warehouse-batch-remove','warehouse-batch-ready','warehouse-batch-reopen','warehouse-batch-dispatch','warehouse-batch-ship','warehouse-batch-cancel','warehouse-batch-scan']:['warehouse-batch-receive','warehouse-batch-scan'];
     if(!in_array($action,$allowed,true))fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $db=db();$db->exec('BEGIN IMMEDIATE');$created=false;
     try{
@@ -92,8 +92,9 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
             $batch=warehouse_batch_row(str_field($b,'id',50));
             if(!warehouse_batch_visible($batch,$location))fail('Багц олдсонгүй.',404);
             if(int_field($b,'expected_version',1,PHP_INT_MAX)!==$batch['version'])fail('Багц өөрчлөгдсөн байна. Шинэчилж дахин оролдоно уу.',409);
-            $expected=warehouse_role($location)==='ulaanbaatar'?'dispatched':(in_array($action,['warehouse-batch-dispatch','warehouse-batch-reopen'],true)?'ready':'draft');
-            if($batch['status']!==$expected)fail('Багцын төлөв энэ үйлдлийг зөвшөөрөхгүй.',409);
+            // warehouse-batch-ship finishes packing and dispatches in one step, from draft or ready.
+            $expected=warehouse_role($location)==='ulaanbaatar'?['dispatched']:($action==='warehouse-batch-ship'?['draft','ready']:(in_array($action,['warehouse-batch-dispatch','warehouse-batch-reopen'],true)?['ready']:['draft']));
+            if(!in_array($batch['status'],$expected,true))fail('Багцын төлөв энэ үйлдлийг зөвшөөрөхгүй.',409);
             $members=warehouse_batch_members($batch['id']);
             if($action==='warehouse-batch-scan'){
                 $id=str_field($b,'order_id',50);if(!in_array($id,array_column($members,'id'),true))fail('Захиалга энэ багцад байхгүй.',409);
@@ -113,20 +114,20 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                 }
                 $batch['status']='draft';$batch['checks']['erenhot']=[];unset($batch['ready_at']);
             }else{
-                if($action==='warehouse-batch-dispatch'&&($b['checked']??false)!==true)fail('Багц агуулахаас бодитоор гарсныг батална уу.');
+                if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true)&&($b['checked']??false)!==true)fail('Багц агуулахаас бодитоор гарсныг батална уу.');
                 if(!$members)fail('Хоосон багцыг илгээх боломжгүй.',409);
                 if(array_diff(array_column($members,'id'),$batch['checks'][$location]??[]))fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
                 foreach($members as $o){
                     if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
                     if(warehouse_role($location)==='erenhot')warehouse_cargo_required($o);
-                    $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready',default=>'erenhot_dispatched'};
+                    $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready','warehouse-batch-ship'=>$batch['status']==='draft'?'erenhot':'erenhot_ready',default=>'erenhot_dispatched'};
                     if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
                     if($action==='warehouse-batch-receive')logistics_receipt_photo_required($o,$location);
-                    warehouse_change_order($o,match($action){'warehouse-batch-ready'=>'erenhot_ready','warehouse-batch-dispatch'=>'erenhot_dispatched',default=>'ulaanbaatar_unsorted'});
+                    warehouse_change_order($o,match($action){'warehouse-batch-ready'=>'erenhot_ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'erenhot_dispatched',default=>'ulaanbaatar_unsorted'});
                 }
-                $batch['status']=match($action){'warehouse-batch-ready'=>'ready','warehouse-batch-dispatch'=>'dispatched',default=>'received'};$batch[$batch['status'].'_at']=gmdate('c');
+                $batch['status']=match($action){'warehouse-batch-ready'=>'ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'dispatched',default=>'received'};$batch[$batch['status'].'_at']=gmdate('c');
             }
-            warehouse_batch_save($batch,substr($action,16));
+            warehouse_batch_save($batch,$action==='warehouse-batch-ship'?'dispatch':substr($action,16));
         }
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}

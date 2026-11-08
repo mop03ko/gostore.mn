@@ -58,3 +58,19 @@ html[lang="zh-CN"] body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-s
 #order-list-panel{scroll-margin-top:16px}.warehouse-stats .stat{position:relative;padding-right:48px}.warehouse-stats .stat::after{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:26px;color:#132344}.warehouse-stats .stat:focus-visible,.order-code-link:focus-visible{outline:3px solid #f66d17;outline-offset:3px}.order-code-link{display:inline-block;padding:6px 0;min-height:44px;border:0;background:transparent;color:#132344;text-align:left;overflow-wrap:anywhere;cursor:pointer}.order-code-link:hover{text-decoration:underline}#list-title:focus{outline:none}#records[aria-busy=true]{min-height:80px}
 
 #warehouse-entry{padding:16px;background:#f3f5fa;border-radius:12px;margin:14px 0;overflow-wrap:anywhere}#warehouse-entry strong{display:block;font-size:20px;color:#132344}#warehouse-entry p{margin:8px 0;font-size:14px;line-height:1.6}#warehouse-entry a{display:block;margin-top:10px}#warehouse-entry-switch{padding:12px;border:1px solid #cdd5e5;border-radius:10px;text-align:center;cursor:pointer}
+
+/* Erenhot one-step receipt, parcel check-in and arrival alerts (2026-11-08). */
+.warehouse-stats:has(#alerts-stat:not([hidden])){grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.alert-stat.has-alerts{border-color:#c2410c;background:#fff4ed}.alert-stat.has-alerts strong{color:#b42318}
+.tag.warehouse-alert-tag{display:inline-block;margin:8px 6px 0 0;background:#fee4e2;color:#912018;white-space:normal}
+.warehouse-alert{margin:12px 0}.warehouse-alert strong{display:block;color:#912018}.warehouse-alert p{margin:6px 0 0;overflow-wrap:anywhere}
+.parcel-progress{font-weight:700;color:#132344!important}
+.parcel-check{margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:12px}.parcel-check ul{list-style:none;padding:0;margin:10px 0}
+.parcel-check li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.parcel-check li:first-child{border-top:0}
+.parcel-check li>span:first-child{flex:1 1 180px}.parcel-check li.arrived>span:nth-child(2){color:#17634e;font-weight:700}.parcel-check small{color:var(--muted)}
+.warehouse-items li.has-photo{display:flex;gap:12px;align-items:flex-start}.warehouse-items li>img{width:64px;height:64px;flex:0 0 64px;object-fit:cover;border-radius:8px;background:#fff}
+.warehouse-items li>div{min-width:0}.warehouse-items small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
+.receive-form{border:2px solid #132344;border-radius:14px;padding:16px;margin:16px 0}.receive-form h3{margin-top:0}
+.receive-form output{display:block;margin:8px 0 12px;padding:10px 12px;border-radius:10px;background:#f3f6fc;font-weight:700;overflow-wrap:anywhere}
+.receive-form .form-grid{gap:0 12px}.receive-form .warehouse-photo-preview{max-width:100%;max-height:220px;border-radius:10px;margin:4px 0 12px}
+.receive-form [data-cargo-dimensions]{grid-template-columns:repeat(3,minmax(0,1fr))}.receive-form [data-cargo-dimensions] input{min-width:0}
