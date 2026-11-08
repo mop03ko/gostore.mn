@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-// Erenhot shortcuts (2026-11-08): parcel-by-parcel arrival, one-step receipt with freight approval,
-// automatic packing into an open batch, one-step shipping (warehouse-batches.php) and late-parcel alerts.
+// Erenhot shortcuts (2026-11-08/09): parcel-by-parcel arrival, one-step receipt with freight approval,
+// scan-to-dispatch packing (GB batch created when packing is confirmed) and late-parcel alerts.
 // This file only defines functions; the TaoWorld CLI worker loads it without logistics.php.
 
 // A known courier parcel not scanned in this many days after its number appeared is flagged.
@@ -120,29 +120,88 @@ function warehouse_receive(array $b,string $location): array {
         $l['measurement']=$measurement;$l['transport']=$transport;
         if(!array_filter($l['issues'],fn($i)=>$i['state']==='open')){$l['transport']['confirmed_at']=$now;$l['transport']['confirmed_location']=$location;}
         $o['logistics']=$l;logistics_touch($o,'receive');
-        warehouse_batch_auto($o['id'],$location);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     return order_row($o['id'])['order'];
 }
-// An approved order joins the newest automatic draft batch for its Ulaanbaatar warehouse, or starts one.
-// Batches created by hand are never filled automatically.
-function warehouse_batch_auto(string $id,string $location): ?array {
-    $o=order_row($id)['order'];
-    if(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot'||isset($o['batch_id'])||empty($o['logistics']['transport']['confirmed_at'])||logistics_open_issues($o))return null;
-    $destination=warehouse_order_location($o,'ulaanbaatar');$batch=null;
-    foreach(db()->query('SELECT data FROM shipment_batches ORDER BY created DESC,id DESC')->fetchAll() as $row){
-        $b=json_decode($row['data'],true);
-        if(!empty($b['auto'])&&$b['status']==='draft'&&($b['source']??'erenhot')===$location&&($b['destination']??'ulaanbaatar')===$destination&&count(warehouse_batch_members($b['id']))<200){$batch=$b;break;}
+// Scan-to-dispatch (manager feedback 2026-11-09): at dispatch the manager scans courier waybills (or GS
+// labels); the GB batch is created only when packing is confirmed. Reasons are codes the screen translates.
+function warehouse_outbound_reason(array $o): string {
+    if(in_array($o['status'],['erenhot_ready','erenhot_dispatched','zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)||isset($o['batch_id']))return 'packed';
+    if($o['status']!=='erenhot')return in_array($o['status'],['confirmed','shipping'],true)?'not_received':'unavailable';
+    if(logistics_open_issues($o))return 'issue';
+    if(empty($o['logistics']['transport']['confirmed_at']))return 'freight';
+    return '';
+}
+// This warehouse's orders by GS code and by courier waybill (one parcel may hold several orders); built once per request.
+function warehouse_outbound_index(string $location): array {
+    $index=['orders'=>[],'numbers'=>[]];
+    foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC')->fetchAll() as $row){
+        $o=json_decode($row['data'],true);
+        if(!is_array($o)||!warehouse_order_operable($o,$location))continue;
+        $index['orders'][$o['id']]=$o;
+        foreach(array_column(warehouse_parcels($o)['list'],'no') as $no)$index['numbers'][$no][]=$o['id'];
     }
-    if(!$batch){
-        $exists=db()->prepare('SELECT 1 FROM shipment_batches WHERE id=?');
+    return $index;
+}
+function warehouse_outbound_resolve(string $code,array $index): array {
+    $code=strtoupper(trim($code));
+    if(!preg_match('/^[A-Z0-9-]{6,50}$/D',$code))fail('Tracking дугаар буруу.');
+    if(isset($index['orders'][$code]))return [['order'=>$index['orders'][$code],'number'=>null]];
+    return array_map(fn($id)=>['order'=>$index['orders'][$id],'number'=>$code],$index['numbers'][$code]??[]);
+}
+function warehouse_outbound_card(array $o,?string $number): array {
+    return ['id'=>$o['id'],'customer'=>(string)($o['customer']??''),'title'=>(string)($o['title']??''),'status'=>$o['status'],'pieces'=>warehouse_expected_pieces($o),
+        'parcels'=>array_column(warehouse_parcels($o)['list'],'no'),'number'=>$number,'destination'=>warehouse_order_location($o,'ulaanbaatar'),
+        'destination_name'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name'],'reason'=>warehouse_outbound_reason($o)];
+}
+function warehouse_outbound_lookup(string $code,string $location): array {
+    if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
+    $found=warehouse_outbound_resolve($code,warehouse_outbound_index($location));
+    if(!$found)fail('Захиалга олдсонгүй.',404);
+    return ['code'=>strtoupper(trim($code)),'orders'=>array_map(fn($f)=>warehouse_outbound_card($f['order'],$f['number']),$found)];
+}
+// Confirm packing: every scanned order must be ready, share one Ulaanbaatar warehouse and have all its known
+// waybills scanned (or its GS label). Creates the GB batch already checked and packed, ready to dispatch.
+function warehouse_outbound_pack(array $b,string $location): array {
+    if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
+    $token=str_field($b,'token',64);if(!preg_match('/^[a-f0-9]{64}$/D',$token))fail('Хүсэлтийн түлхүүр буруу.');
+    $codes=$b['codes']??null;if(!is_array($codes)||!array_is_list($codes)||!$codes||count($codes)>600)fail('Скан хийсэн кодын жагсаалт буруу.');
+    foreach($codes as $c)if(!is_string($c))fail('Скан хийсэн кодын жагсаалт буруу.');
+    $codes=array_values(array_unique(array_map(fn($c)=>strtoupper(trim($c)),$codes)));
+    // The manager's list decides which orders go: a waybill shared by two orders packs only the listed one.
+    $ids=warehouse_batch_ids($b);if(!$ids)fail('Скан хийсэн кодын жагсаалт буруу.');
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        warehouse_required();
+        $s=$db->prepare('SELECT data FROM shipment_batches WHERE request_key=?');$s->execute([hash('sha256',$token)]);$existing=$s->fetchColumn();$s->closeCursor();
+        if($existing){$batch=json_decode($existing,true);$db->exec('COMMIT');return $batch;}
+        $orders=[];$scanned=[];$whole=[];$index=warehouse_outbound_index($location);
+        foreach($codes as $code){
+            $found=warehouse_outbound_resolve($code,$index);if(!$found)fail('Захиалга олдсонгүй.',404);
+            foreach($found as $f){$id=$f['order']['id'];$orders[$id]=$f['order'];if($f['number']===null)$whole[$id]=true;else $scanned[$id][]=$f['number'];}
+        }
+        foreach($ids as $id)if(!isset($orders[$id]))fail('Скан хийсэн кодын жагсаалт буруу.');
+        $orders=array_intersect_key($orders,array_flip($ids));
+        $destination=null;
+        foreach($orders as $id=>$o){
+            if(warehouse_outbound_reason($o)!=='')fail('Зарим захиалга илгээхэд бэлэн биш байна.',409);
+            if(!isset($whole[$id])&&array_diff(array_column(warehouse_parcels($o)['list'],'no'),$scanned[$id]??[]))fail('Зарим захиалгын илгээмж бүрэн уншигдаагүй.',409);
+            $to=warehouse_order_location($o,'ulaanbaatar');if($destination!==null&&$to!==$destination)fail('Нэг багцын захиалгууд ижил хүлээн авах агуулахтай байна.',409);$destination=$to;
+        }
+        $exists=$db->prepare('SELECT 1 FROM shipment_batches WHERE id=?');
         for($attempt=0;$attempt<20;$attempt++){$bid='GB-'.strtoupper(bin2hex(random_bytes(3)));$exists->execute([$bid]);$taken=$exists->fetchColumn();$exists->closeCursor();if(!$taken)break;}
         if($taken)fail('Багцын код үүсгэж чадсангүй.',503);
-        $batch=['id'=>$bid,'source'=>$location,'destination'=>$destination,'status'=>'draft','version'=>1,'created'=>gmdate('c'),'note'=>'','auto'=>true,'fingerprint'=>bin2hex(random_bytes(32)),'history'=>[warehouse_event('created')]];
-        db()->prepare('INSERT INTO shipment_batches VALUES (?,?,?,?)')->execute([$bid,hash('sha256',random_bytes(32)),json_encode($batch,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$batch['created']]);
-    }
-    warehouse_batch_add($batch,[$id]);warehouse_batch_save($batch,'auto_add');
+        $ids=array_keys($orders);sort($ids);$now=gmdate('c');
+        $batch=['id'=>$bid,'source'=>$location,'destination'=>$destination,'status'=>'ready','version'=>1,'created'=>$now,'ready_at'=>$now,'note'=>'','scanned_out'=>true,
+            'fingerprint'=>hash('sha256',json_encode([$ids,$location,$destination],JSON_THROW_ON_ERROR)),'checks'=>[$location=>$ids],'history'=>[warehouse_event('created'),warehouse_event('ready')]];
+        $db->prepare('INSERT INTO shipment_batches VALUES (?,?,?,?)')->execute([$bid,hash('sha256',$token),json_encode($batch,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$now]);
+        foreach($ids as $id){
+            $db->prepare('INSERT INTO shipment_batch_orders VALUES (?,?)')->execute([$id,$bid]);
+            $o=order_row($id)['order'];$o['batch_id']=$bid;warehouse_change_order($o,'erenhot_ready');
+        }
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     return $batch;
 }
 // TaoWorld worker: refresh domestic courier tracking for one shipped, not yet arrived order per run, so

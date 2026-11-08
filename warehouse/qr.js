@@ -16,9 +16,17 @@ function stopBatchScanner(){
   const video=$('#qr-video');video.pause();video.srcObject=null;
 }
 function qrError(key){$('#qr-error').textContent=t(key);}
+let qrLastOutbound={code:'',at:0};
 async function acceptBatchQr(value){
   const id=String(value||'').trim().toUpperCase();
   if(!/^(?:G[BS]-[A-Z0-9-]{1,45}|[A-Z0-9-]{6,40})$/.test(id)||(!/^G[BS]-/.test(id)&&cityRole()!=='erenhot')){qrError('qrInvalid');return false;}
+  // Scan-to-dispatch keeps the camera open: each waybill joins the list and the next one can follow.
+  if(window.warehouseOutboundActive?.()){
+    if(id===qrLastOutbound.code&&Date.now()-qrLastOutbound.at<3000)return false;
+    qrLastOutbound={code:id,at:Date.now()};qrError('');
+    try{$('#qr-status').textContent=await warehouseOutboundAdd(id);}catch(e){$('#qr-status').textContent=id+': '+e.message;}
+    qrLastOutbound.at=Date.now();return false;
+  }
   stopBatchScanner();$('#qr-scanner').close();
   $('#scan-code').value=id;try{await openWarehouseCode(id);}catch(e){toast(e.message);}
   return true;
@@ -69,7 +77,7 @@ async function startBatchCamera(){
   }catch(e){if(request!==batchScanSequence)return;stopBatchScanner();qrError(e.name==='NotAllowedError'?'qrCameraDenied':'qrCameraUnavailable');}
 }
 $('#qr-open').addEventListener('click',()=>{
-  $('#qr-file').value='';qrError('');$('#qr-scanner').showModal();startBatchCamera();
+  $('#qr-file').value='';qrError('');$('#qr-status').textContent='';$('#qr-scanner').showModal();startBatchCamera();
 });
 $('#qr-restart').addEventListener('click',startBatchCamera);
 $('#qr-close').addEventListener('click',()=>$('#qr-scanner').close());

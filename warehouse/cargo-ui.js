@@ -22,8 +22,8 @@ function warehouseReceiveHtml(o){
  const direct=m&&m.volume_m3&&!m.length_cm;
  return `<form data-receive-form data-id="${esc(o.id)}" data-version="${l.version||0}" data-expected="${esc(o.status)}" data-expected-pieces="${expected}" data-missing="${p.missing.length}" data-has-photo="${hasPhoto?'1':''}" class="warehouse-confirm receive-form">
 <h3>${again?lt('Хэмжилт засах, тээвэр батлах','重新测量并确认运费'):lt('Хүлээн авах · нэг алхам','收货登记 · 一步完成')}</h3>
-<p class="muted">${again?lt('Шинэ хэмжилтээр тээврийн үнийг дахин батлаад багцад нэмнэ.','按新的测量重新确认运费，并自动加入包裹。'):lt('Зураг, жин, хэмжээ оруулаад нэг товчоор хүлээн авч тээврийн үнийг батална. Бэлэн болсон захиалга автоматаар багцад орно.','拍照并填写重量和尺寸，一键完成收货和运费确认，订单将自动加入待发包裹。')}</p>
-<div class="form-grid"><label>${hasPhoto?lt('Нэмэлт зураг · заавал биш','补充照片 · 可选'):lt('Хүлээн авах зураг · камер','收货照片 · 拍照')}<input type="file" name="camera_image" accept="image/jpeg,image/png,image/webp" capture="environment"></label><label>${lt('Эсвэл бэлэн зураг','或选择已有照片')}<input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label></div>
+<p class="muted">${again?lt('Шинэ хэмжилтээр тээврийн үнийг дахин батална.','按新的测量重新确认运费。'):lt('Зураг, жин, хэмжээ оруулаад нэг товчоор хүлээн авч тээврийн үнийг батална. Илгээхдээ «Скан хийж илгээх»-ээр tracking уншуулна.','拍照并填写重量和尺寸，一键完成收货和运费确认。出库时用“扫码出库”扫描运单即可。')}</p>
+<label>${hasPhoto?lt('Нэмэлт зураг · заавал биш','补充照片 · 可选'):lt('Хүлээн авах зураг · камер эсвэл зургийн сан','收货照片 · 拍照或从相册选择')}<input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label>
 ${hasPhoto?`<p class="muted">${lt('Энэ агуулахын зураг бүртгэгдсэн.','已保存本仓库收货照片。')}</p>`:''}<img class="warehouse-photo-preview" alt="${lt('Сонгосон зураг','照片预览')}" hidden>
 ${field(lt('Нийт жин · kg','总重量 · kg'),'weight_kg',m?.weight_kg,0.001,'any','10000')}
 <label>${lt('Эзлэхүүн оруулах хэлбэр','体积录入方式')}<select name="volume_input"><option value="dimensions">${lt('Урт × өргөн × өндөр','长 × 宽 × 高')}</option><option value="direct" ${direct?'selected':''}>${lt('м³ шууд оруулах','直接输入 m³')}</option></select></label>
@@ -51,20 +51,20 @@ document.addEventListener('submit',async e=>{
  const f=e.target;if(!f.matches('[data-receive-form]'))return;e.preventDefault();
  const button=f.querySelector('button.primary');button.disabled=true;f.querySelector('.error').textContent='';
  try{
-  const file=f.elements.camera_image.files[0]||f.elements.image.files[0];
+  const file=f.elements.image.files[0];
   if(!file&&!f.dataset.hasPhoto)throw Error(lt('Хүлээн авах зургаа авна уу.','请先拍摄收货照片。'));
   if(file){
    const fd=new FormData();fd.set('id',f.dataset.id);fd.set('expected_version',f.dataset.version);fd.set('image',await receiptPhotoFile(file));
    const r=await fetch('../api/index.php?action=warehouse-photo-upload&lang='+locale,{method:'POST',headers:{'X-CSRF-Token':csrf},body:fd}),d=await r.json();
    if(!r.ok)throw Error(d.error||t('error'));
    // The photo is saved even if the receipt below fails, so a retry does not ask for it again.
-   f.dataset.version=String(d.order.logistics.version);f.dataset.hasPhoto='1';f.elements.camera_image.value='';f.elements.image.value='';
+   f.dataset.version=String(d.order.logistics.version);f.dataset.hasPhoto='1';f.elements.image.value='';
   }
   const v=k=>Number(f.elements[k].value),direct=f.elements.volume_input.value==='direct';
   const body={id:f.dataset.id,expected_status:f.dataset.expected,expected_version:Number(f.dataset.version),weight_kg:v('weight_kg'),volume_input:direct?'direct':'dimensions',pieces:v('pieces'),checked:f.elements.checked.checked,partial:!f.querySelector('[data-partial-row]').hidden&&f.elements.partial.checked,...(direct?{volume_m3:v('volume_m3')}:{length_cm:v('length_cm'),width_cm:v('width_cm'),height_cm:v('height_cm')})};
   const d=await api('warehouse-receive',body);
   showOrder(d.order);
-  toast(d.order.batch_id?lt('Хүлээн авлаа · багц ','已收货 · 已加入包裹 ')+d.order.batch_id:t('saved'));
+  toast(d.order.logistics?.transport?.confirmed_at?lt('Хүлээн авч, тээвэр батлагдлаа','已收货，运费已确认'):t('saved'));
   await refresh();
  }catch(error){f.querySelector('.error').textContent=error.message;toast(error.message);}finally{button.disabled=false;}
 });
@@ -75,4 +75,4 @@ async function warehouseParcelArrive(id,number){
  showOrder(d.order);refresh().catch(()=>{});return d.order;
 }
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-parcel-arrive]');if(!b)return;b.disabled=true;try{await warehouseParcelArrive(b.dataset.id,b.dataset.parcelArrive);}catch(error){toast(error.message);}finally{b.disabled=false;}});
-document.addEventListener('change',e=>{const input=e.target,f=input.closest('[data-receive-form]');if(!f||input.type!=='file')return;const file=input.files[0];if(!file)return;f.elements[input.name==='image'?'camera_image':'image'].value='';const preview=f.querySelector('.warehouse-photo-preview'),url=URL.createObjectURL(file);preview.onload=preview.onerror=()=>URL.revokeObjectURL(url);preview.src=url;preview.hidden=false;});
+document.addEventListener('change',e=>{const input=e.target,f=input.closest('[data-receive-form]');if(!f||input.type!=='file')return;const file=input.files[0];if(!file)return;const preview=f.querySelector('.warehouse-photo-preview'),url=URL.createObjectURL(file);preview.onload=preview.onerror=()=>URL.revokeObjectURL(url);preview.src=url;preview.hidden=false;});

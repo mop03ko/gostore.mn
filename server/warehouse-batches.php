@@ -24,7 +24,7 @@ function warehouse_batch_visible(array $batch,string $location): bool {
     return warehouse_role($location)==='erenhot'?($batch['source']??'erenhot')===$location:(($batch['destination']??'ulaanbaatar')===$location&&in_array($batch['status'],['dispatched','received','sorted'],true));
 }
 function warehouse_batch_public(array $batch,string $location,bool $detail=false): array {
-    $result=array_intersect_key($batch,array_flip(['id','status','version','created','note','ready_at','dispatched_at','received_at']));$result['auto']=!empty($batch['auto']);
+    $result=array_intersect_key($batch,array_flip(['id','status','version','created','note','ready_at','dispatched_at','received_at']));
     $result['source']=$batch['source']??'erenhot';$result['destination']=$batch['destination']??'ulaanbaatar';
     $result['source_name']=warehouse_profile($result['source'])['name'];$result['destination_name']=warehouse_profile($result['destination'])['name'];
     $members=warehouse_batch_members($batch['id']);$result['order_count']=count($members);
@@ -97,7 +97,12 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
             if(!in_array($batch['status'],$expected,true))fail('Багцын төлөв энэ үйлдлийг зөвшөөрөхгүй.',409);
             $members=warehouse_batch_members($batch['id']);
             if($action==='warehouse-batch-scan'){
-                $id=str_field($b,'order_id',50);if(!in_array($id,array_column($members,'id'),true))fail('Захиалга энэ багцад байхгүй.',409);
+                $id=strtoupper(str_field($b,'order_id',50));
+                if(!in_array($id,array_column($members,'id'),true)){
+                    // A courier waybill on the parcel identifies its order as well as the GS label does.
+                    $owners=array_values(array_filter($members,fn($o)=>in_array($id,array_map(fn($n)=>strtoupper((string)($n['no']??'')),$o['inbound']['numbers']??[]),true)));
+                    if(count($owners)!==1)fail('Захиалга энэ багцад байхгүй.',409);$id=$owners[0]['id'];
+                }
                 $batch['checks'][$location]=array_values(array_unique(array_merge($batch['checks'][$location]??[],[$id])));
             }elseif($action==='warehouse-batch-add'){
                 $ids=warehouse_batch_ids($b);if(!$ids)fail('Захиалгын код оруулна уу.');warehouse_batch_add($batch,$ids);

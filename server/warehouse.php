@@ -178,6 +178,7 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-push-config')json_out(['public_key'=>warehouse_push_keys()['public'],'native_configured'=>warehouse_fcm_configured()]);
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
     if($action==='warehouse-tracking')json_out(warehouse_tracking_matches(str_field($_GET,'number',40),$location));
+    if($action==='warehouse-outbound-lookup')json_out(warehouse_outbound_lookup(str_field($_GET,'code',50),$location));
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}
     if($action==='warehouse-exceptions'){$s=db()->prepare('SELECT * FROM warehouse_exceptions WHERE location=? ORDER BY id DESC LIMIT 200');$s->execute([$location]);$rows=$s->fetchAll();foreach($rows as &$row)$row['photos']=logistics_exception_photos((string)$row['id']);unset($row);json_out(['issues'=>$rows]);}
     if($action==='warehouse-exception-photo'){$id=str_field($_GET,'id',50);logistics_exception($id,$location);logistics_photo_read(['logistics'=>['photos'=>logistics_exception_photos($id)]],str_field($_GET,'photo',32));}
@@ -237,6 +238,7 @@ function warehouse_post(string $action,array $b): never {
         warehouse_notice_schema(db());$through=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE warehouse_notifications SET read_at=? WHERE location=? AND id<=? AND read_at IS NULL')->execute([gmdate('c'),$location,$through]);json_out(['ok'=>true]);
     }
     if($action==='warehouse-receive')json_out(['order'=>warehouse_order_public(warehouse_receive($b,$location),$location)]);
+    if($action==='warehouse-outbound-pack')json_out(['batch'=>warehouse_batch_public(warehouse_outbound_pack($b,$location),$location,true)]);
     if($action==='warehouse-parcel-arrive')json_out(['order'=>warehouse_order_public(warehouse_parcel_arrive($b,$location),$location)]);
     if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm','warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);
@@ -290,6 +292,10 @@ function warehouse_error_zh(string $message): string {
         'Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.'=>'商品数量不符，请登记异常后核对。',
         'Багцын захиалга бүрийг скан хийж тулгана уу.'=>'请先扫描核对包裹内全部订单。',
         'Багцын код үүсгэж чадсангүй.'=>'无法生成包裹编号，请重试。',
+        'Скан хийсэн кодын жагсаалт буруу.'=>'扫描记录无效，请清空后重新扫描。',
+        'Зарим захиалга илгээхэд бэлэн биш байна.'=>'部分订单尚不能出库（未收货、运费未确认、有异常或已装包），请移除后再确认。',
+        'Зарим захиалгын илгээмж бүрэн уншигдаагүй.'=>'部分订单的包裹未扫描齐全，请补扫后再确认打包。',
+        'Хүсэлтийн түлхүүр буруу.'=>'请求无效，请刷新页面后重试。',
         'Энэ төлөвт агуулахын зураг нэмэх боломжгүй.'=>'当前订单状态无法上传本仓库照片。',
         'Нэг агуулахад 12 хүртэл зураг хадгална.'=>'每个仓库最多上传12张照片。',
         'Имэйл эсвэл нууц үг буруу байна.'=>'邮箱或密码错误。',

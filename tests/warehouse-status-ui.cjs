@@ -12,9 +12,11 @@ const base=process.env.TEST_BASE;assert.equal(new URL(base).hostname,'127.0.0.1'
  const box=await page.locator('#order-list-panel').boundingBox();assert.ok(box.y>=0&&box.y<60,'Filtered list must be in view after status tap');
  await page.locator('#records .order-code-link').click();await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),id);
  assert.equal(await page.locator('[data-receive-form]').count(),1,'An order received without freight shows the one-step form');await page.locator('#close-editor').click();
- // A manual batch is still available from the header; it fills in the GB code and QR itself.
- await page.locator('#create-batch').click();await page.locator('[data-operation=batch-create] [name=codes]').fill(id);assert.match(await page.locator('#editor-body').innerText(),/自动生成 GB-/);
- const created=page.waitForResponse(r=>r.url().includes('action=warehouse-batch-create'));await page.locator('[data-operation=batch-create] button').click();assert.equal((await created).status(),201);await page.locator('.batch-qr-label').waitFor();const code=await page.locator('#editor-title').innerText();assert.match(code,/^GB-[A-F0-9]{6}$/);assert.match(await page.locator('.batch-qr-label').innerText(),new RegExp(code));
+ // The header button opens the scan-out; an order whose freight is not approved is refused with the reason.
+ await page.locator('#create-batch').click();await page.waitForFunction(()=>document.querySelector('#editor-title').textContent==='扫码出库');await page.locator('[data-outbound-scan] [name=code]').fill(id);await page.locator('[data-outbound-scan] button').click();
+ await page.waitForFunction(()=>/运费未确认/.test(document.querySelector('#editor-body .error')?.textContent||''));assert.equal(await page.locator('.outbound-list li').count(),0);assert.equal(await page.locator('[data-outbound-pack]').isDisabled(),true);
+ // An earlier (manual) draft batch still opens from the batches tab by its GB code.
+ const code=(await api('warehouse-batch-create',{token:'a'.repeat(64),order_ids:[id],note:''})).batch.id;assert.match(code,/^GB-[A-F0-9]{6}$/);
  await page.locator('#close-editor').click();await page.locator('#batches-tab').click();await page.locator('#records .order-code-link[data-batch]').waitFor();await page.locator('#records .order-code-link[data-batch]').click();await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),code);await page.locator('#close-editor').click();
  // Status navigation resets a prior tab and query, supports keyboard activation.
  await page.locator('#search').fill('no-match');await page.locator('#search-form button').click();await page.locator('#records .empty').waitFor();await page.locator('[data-status=waiting]').focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.querySelector('#records').getAttribute('aria-busy')==='false');
@@ -23,5 +25,5 @@ const base=process.env.TEST_BASE;assert.equal(new URL(base).hostname,'127.0.0.1'
  await page.locator('#alerts-stat').click();await page.locator('#records .empty').waitFor();assert.equal(await page.locator('#status-filter').inputValue(),'alerts');assert.equal(await page.locator('#alerts-count').innerText(),'0');
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
  fs.mkdirSync('output/warehouse-status',{recursive:true});await page.setViewportSize({width:390,height:844});await page.locator('#received-stat').click();await page.locator('#records .order-card').waitFor();await page.screenshot({path:'output/warehouse-status/filtered-orders.png'});
- assert.deepEqual(errors,[]);console.log('PASS warehouse status UI: mobile list navigation, active filters, code-to-details, automatic GB/QR creation, tab/query reset, empty states, keyboard and responsive layout.');
+ assert.deepEqual(errors,[]);console.log('PASS warehouse status UI: mobile list navigation, active filters, code-to-details, scan-out refusal reason, batch list, tab/query reset, empty states, keyboard and responsive layout.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
