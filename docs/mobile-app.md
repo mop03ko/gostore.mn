@@ -83,3 +83,14 @@ build `ed71b300-2ea4-4f8c-aaab-aff4467871b2` (1.0.1, versionCode 8, FCM push) to
 draft (submission `040b9551-7865-4212-a7c6-c4d563dc0409`); the Play API shows the internal track with draft
 8 and completed 4. Releasing the draft, closed testing and production promotion are done in Play Console.
 A dedicated least-privilege Play service account would be safer than the Firebase admin account.
+
+## Photo uploads (image search, review photos) — 2026-11-08
+
+App photo uploads failed with "Сүлжээ тасарсан эсвэл хугацаа хэтэрлээ" and never reached the server (no
+`mobile.php?action=supplier-image-upload` requests in the access log). Expo SDK 58 installs `expo/fetch` as
+the global `fetch` (`expo/src/winter/runtime.native.ts`), and `expo/fetch` rejects React Native file parts
+(`{ uri, name, type }`) with "Unsupported FormDataPart implementation". A first fix that switched to
+`globalThis.fetch` therefore had no effect. `src/lib/api.ts` now sends multipart requests with React
+Native's `XMLHttpRequest`, which Expo leaves in place and whose `FormData.getParts()` streams `uri` parts;
+JSON requests keep `expo/fetch`. Published as OTA from `1804a99` (production iOS/Android, preview
+Android); the owner confirmed image search works on the iPhone app.
