@@ -36,3 +36,9 @@ Admin → «Мэдэгдэл илгээх» → «Сурталчилгааны p
 - App (`gostoremn/src/components/promo-popup.tsx`): once per launch on the home screen; site links open the matching app screen (product, official stores, brand, cart, help, search) and other links open in the browser. JavaScript only, delivered by OTA.
 - Each device sees a popup at most once a day. Saving the same content keeps its id; changing the content shows it again.
 - `node tests/run-logistics.cjs promo-popup-ui` covers the admin form, validation, scheduling, both APIs and the storefront behaviour.
+
+### Production rollout — 2026-11-09
+
+Deployed a872908 after explicit approval, together with the web sign-in pages: `server/promo-popup.php`, `api/index.php`, `api/mobile.php`, `admin/admin.{js,css}`, `admin/index.html`, `robots.txt`, `.htaccess`, `app.js`, `app.css`, `index.html`. The warehouse commit 2f9086c was not deployed, so `api/index.php` and `admin/admin.js` went out as the previously deployed files plus this change only. Live checks: `/login`, `/register`, `/login/reset`, `/login/email` serve the pages (sign-in opens as a page, Back returns, no errors at 390/1440 px); `promo-popup` answers `null` without a session cookie on both APIs; the admin endpoint answers 401 without a session. Backup: `/gostore-backups/pages-promo-20261109-8ee18cfb3c`.
+
+App OTA (production channel): iOS group `3b711274-25a0-4370-9b9a-a7497dcf6135` (runtime `52bd47e7…`), Android group `33f838ec-876c-46f2-9503-9b329d6c8611` (runtime `7bb34ca7…`). The popup stays hidden until an admin turns it on.
