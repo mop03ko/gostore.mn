@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Erenhot one-step receipt and scan-to-dispatch — 2026-11-09
+
+- Erenhot warehouse: parcel check-in by courier waybill, one-step receipt with freight approval, arrival alerts, supplier photos and Chinese titles (`99e7018`), and the manager's scan-to-dispatch: scan waybills (scanner gun or phone camera), "确认打包" issues the GB batch, then "确认已出库" (`ce0b54c`); see docs/erenhot-workflow.md. Full `tests/run-all.cjs` passed on `ce0b54c`.
+- Live files matched `99e7018~1` exactly. Deployed `server/warehouse-flow.php` (new), `server/warehouse.php`, `server/logistics.php`, `server/inbound-details.php`, `server/supplier.php`, `server/taoworld-catalog.php`, `server/checkout.php`, `server/warehouse-batches.php`, `scripts/taoworld-worker.php`, `warehouse/i18n.js`, `cargo-ui.js`, `logistics-ui.js`, `outbound-ui.js` (new), `qr.js`, `warehouse.js`, `warehouse.css`, `index.html` from `ce0b54c` over FTPS with baseline/backup/hash verification (new module first, page last). Backup: `/gostore-backups/scanout-20261109-2fcdfadd8e`. No database changes; no app release needed.
+- Live checks: `/warehouse/` and `/warehouse/erenhot` 200 with `outbound-ui.js?v=20261109-scanout`, the "扫码出库" button and the camera status line; new JS 200; `warehouse-session` 200; `warehouse-outbound-lookup` without a session 401 with the Chinese sign-in message; `session`, homepage, `supplier-deals` and `supplier-search` 200.
+
 ## Real price cuts only, no coupons — 2026-11-08
 
 - Deals tab and 11.11 list only real price cuts from product details saved within 24 hours; coupon prices are no longer sent or shown (see docs/performance-cache.md). Full `tests/run-all.cjs` passed on `f38c3cd`.
