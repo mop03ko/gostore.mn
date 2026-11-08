@@ -50,7 +50,7 @@
     section.classList.add('eleven-loaded');
     const seen = new Set();
     const all = rows.filter(product => valid(product) && !seen.has(product.id) && seen.add(product.id));
-    const items = collection ? all : all.slice(0, 8);
+    const items = collection ? all : all.slice(0, 12);
     target.setAttribute('aria-busy', 'false');
     target.innerHTML = items.length ? '<div class="eleven-sale-grid">' + items.map(product => '<a class="eleven-sale-card" href="/v/' + encodeURIComponent(product.id) + '">' + supplierDiscountBadge(product, product.mnt || product.approx_mnt) + (product.image ? '<img src="' + esc(product.image) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '<div class="eleven-sale-placeholder" aria-hidden="true">GOStore</div>') + '<div class="eleven-sale-card-body"><h3>' + esc(product.name) + '</h3><strong>' + (product.mnt ? '' : '≈ ') + money(product.mnt || product.approx_mnt) + '</strong>' + supplierPromotionHtml(product, product.mnt || product.approx_mnt) + '<small class="eleven-sale-details">Үнэ, нөхцөл харах →</small></div></a>').join('') + '</div>' : '<p class="eleven-sale-empty">Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй. <a href="/#supplier-catalog">Бүх барааг үзэх →</a></p>';
     status.textContent = collection && items.length ? items.length + ' бараа харагдаж байна' : '';
