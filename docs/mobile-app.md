@@ -72,3 +72,14 @@ Before public release, test on real Android/iPhone devices: camera/gallery permi
 Release through TestFlight and Google Play internal testing first. Configure the correct App Store Connect app ID and Google service account securely in EAS; never commit service-account JSON. Review privacy/data-safety declarations and backend retention before store submission. Notifications are currently in-app, not push; carts are device-local, not synchronized with the web cart.
 
 Store description draft: **GOStore — бараа сонгох, захиалах, хүргэлтээ хянах.** Browse products, search by image, select variants, review delivery calculations, pay using QPay and follow orders from Erenhot to Ulaanbaatar. Support: `https://gostore.mn/help`.
+
+## Google Play submission — 2026-11-08
+
+The Play Console app `mn.gostore.app` already had versionCode 4 completed on the internal and closed
+(alpha) tracks; production was empty. The owner enabled the Google Play Android Developer API in
+`gostore-27172` and invited `firebase-adminsdk-fbsvc@gostore-27172.iam.gserviceaccount.com`; the
+EAS-stored key (also the FCM V1 key) is now the Android submissions key. `eas submit` sent production
+build `ed71b300-2ea4-4f8c-aaab-aff4467871b2` (1.0.1, versionCode 8, FCM push) to the internal track as a
+draft (submission `040b9551-7865-4212-a7c6-c4d563dc0409`); the Play API shows the internal track with draft
+8 and completed 4. Releasing the draft, closed testing and production promotion are done in Play Console.
+A dedicated least-privilege Play service account would be safer than the Firebase admin account.
