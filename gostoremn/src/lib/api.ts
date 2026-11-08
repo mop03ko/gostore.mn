@@ -65,7 +65,11 @@ async function request<T>(
   if (signal?.aborted) cancel();
   try {
     const form = body instanceof FormData;
-    const response = await fetch(url, {
+    // expo/fetch rejects React Native file parts ({ uri, name, type }) before sending, so photo
+    // uploads (image search, review photos) failed as "network" errors without reaching the server.
+    // Multipart requests use React Native's built-in fetch, which streams those files.
+    const send = (form ? globalThis.fetch : fetch) as typeof fetch;
+    const response = await send(url, {
       method: body ? "POST" : "GET",
       credentials: "omit",
       signal: controller.signal,
