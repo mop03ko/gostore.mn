@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Erenhot batch cards open only; 备货中 — 2026-11-10
+
+- Owner requests: the GB batch record cards drop their 打印 / 导出Excel buttons and open the batch when tapped (`d8152ab`; the batch page keeps its label and list printouts; the signed Excel export and its route are removed), and the packed stage is called 备货中 instead of 已出库 (`ffb15d2`: tab, batch status 备货中 · 待发货, order status, scan-out reason). Warehouse tests passed.
+- Deployed `server/warehouse.php`, `server/warehouse-batches.php`, `warehouse/i18n.js`, `outbound-ui.js`, `warehouse.js`, `warehouse.css`, `index.html` from `ffb15d2` over FTPS with baseline/backup/hash verification; live matched `099d1a8` (route removed before the function). Backup: `/gostore-backups/prep-20261110-19fbeea746`. No database changes; the unused `data/warehouse-export.key` can stay.
+- Live checks: `/warehouse/erenhot` 200 with `?v=20261110-prep` scripts serving 备货中 and the button-free card; `warehouse-batch-export` no longer answers without a session (401); homepage 200.
+
 ## Erenhot GB batch records, print and Excel — 2026-11-09
 
 - Owner request: GB batches shown like the manager's CK outbound records (`099d1a8`, docs/erenhot-workflow.md): one card per batch in 已出库 / 已发货 / 运输包裹 (code and time, receiving warehouse, orders and pieces, status), «打印» (100×150 label from the list) and «导出Excel» (UTF-8 CSV manifest via a signed one-hour link that the Android app opens in the phone's browser; no app update). The two tabs count batches. Warehouse tests (12) passed.
