@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Erenhot stage tabs — 2026-11-09
+
+- Erenhot manager request: one tab per stage instead of the stage cards (`1afce64`, docs/erenhot-workflow.md): 到货提醒, 待签收, 已签收 (in Erenhot, not packed), 已出库 (packed with a GB number), 已发货 (left Erenhot), 已收货 (in Ulaanbaatar), 全部, with counts and a row that stays at the top. The departure button reads 确认发货. Warehouse tests (11) passed.
+- Deployed `server/warehouse.php`, `warehouse/i18n.js`, `outbound-ui.js`, `warehouse.js`, `warehouse.css`, `index.html` from `1afce64` over FTPS with baseline/backup/hash verification; live matched `1afce64~1`. Backup: `/gostore-backups/tabs-20261109-6cf1718b07`. No database changes.
+- Live checks: `/warehouse/erenhot` 200 with the tab row (signed/shipped/delivered) and `?v=20261109-tabs` assets; new JS/CSS 200 with 已签收 and 确认发货; `warehouse-orders&status=signed` without a session 401; homepage 200.
+
 ## Admin tools: reports, TaoWorld usage and after-sales, site controls, staff roles and audit — 2026-11-09
 
 - **What changed** (`739c1db`, [docs/admin-tools.md](docs/admin-tools.md)):
