@@ -13,7 +13,8 @@ window.AdminExtra=(()=>{
   const num=v=>new Intl.NumberFormat('en-US').format(v||0);
   const cny=v=>v==null?'—':new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v)+' ¥';
   const when=v=>v?new Date(v).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}):'—';
-  const loading='<p class="muted xpad" role="status">Ачаалж байна…</p>';
+  // Grey placeholder rows hold the space while data loads, so nothing jumps when it arrives.
+  const loading='<div class="skeleton-rows xpad" role="status" aria-label="Ачаалж байна"><span></span><span></span><span></span></div>';
   const failed=e=>`<p class="error xpad" role="alert">${esc(e.message)}</p>`;
   let reportRange={from:shift(ubToday(),-29),to:ubToday()},searchDays=30,auditState={page:1,q:''},billRange={from:ubToday().slice(0,8)+'01',to:ubToday()},siteData=null;
 
@@ -151,9 +152,9 @@ window.AdminExtra=(()=>{
   async function afterSale(b){
     const box=b.closest('[data-aftersale]'),id=box.dataset.aftersale,out=box.querySelector('.aftersale-out'),act=b.dataset.as;
     if(act==='logistics'){out.innerHTML=loading;const r=await api('taoworld-logistics',{id});out.innerHTML=(r.children||[]).map(c=>`<h4>Дэд захиалга ${esc(c.id)} · ${esc(CHILD[c.status]||c.status)}</h4>${(c.parcels||[]).length?c.parcels.map(p=>`<p><strong>${esc(p.mail_no)}</strong> · ${esc(p.logistics_desc||p.logistics_status||'')}${(p.partners||[]).map(x=>' · '+esc(x.company)).join('')}</p><ol class="timeline">${(p.traces||[]).map(t=>`<li><strong>${esc(t.standerd_desc||t.status_desc||t.action)}</strong><br><small class="muted">${esc(t.time)} · ${esc([t.province,t.city,t.facility_name].filter(Boolean).join(' '))}</small></li>`).join('')||'<li class="muted">Явцын мэдээлэл алга</li>'}</ol>`).join(''):`<p class="muted">${c.numbers?.length?'Илгээмж: '+c.numbers.map(n=>esc(n.no)).join(', ')+'. Явцыг удахгүй уншина.':'Илгээмжийн дугаар хараахан алга.'}</p>`}`).join('')||'<p class="muted">Мэдээлэл алга.</p>';return;}
-    if(act==='cancel'){const reason=prompt('Цуцлах шалтгаан (TaoWorld-д илгээнэ):','Хэрэглэгч захиалгаа цуцалсан');if(!reason)return;await api('taoworld-cancel',{id,reason:reason.slice(0,100)});toast('Цуцлах хүсэлт илгээлээ. Төлөвийг TaoWorld-оос шалгана.');return reopen(id);}
+    if(act==='cancel'){const reason=await uiConfirm({title:'TaoWorld захиалгыг цуцлах уу?',text:id+' · Автомат төлбөр зогсож, цуцлах хүсэлт TaoWorld-д очно. Илгээгдсэн барааг цуцлахгүй, буцаалт хүснэ.',confirmLabel:'Цуцлах',danger:true,input:{label:'Шалтгаан (TaoWorld-д илгээнэ)',value:'Хэрэглэгч захиалгаа цуцалсан',max:100}});if(!reason)return;await api('taoworld-cancel',{id,reason:reason.slice(0,100)});toast('Цуцлах хүсэлт илгээлээ. Төлөвийг TaoWorld-оос шалгана.');return reopen(id);}
     if(act==='refund-refresh'){await api('taoworld-refund-refresh',{id});toast('Буцаалтын төлөв шинэчлэгдлээ');return reopen(id);}
-    if(act==='refund-cancel'){if(!confirm('Энэ буцаалтын хүсэлтийг цуцлах уу?'))return;await api('taoworld-refund-cancel',{id,refund_id:b.dataset.refund});toast('Буцаалт цуцлагдлаа');return reopen(id);}
+    if(act==='refund-cancel'){if(!await uiConfirm({title:'Буцаалтын хүсэлтийг цуцлах уу?',text:'Худалдагчаас мөнгө буцаах хүсэлт хаагдана.',confirmLabel:'Буцаалт цуцлах',danger:true}))return;await api('taoworld-refund-cancel',{id,refund_id:b.dataset.refund});toast('Буцаалт цуцлагдлаа');return reopen(id);}
     if(act==='refund-start'){
       out.innerHTML=`<form class="refund-form" data-child="${esc(b.dataset.child)}"><h4>Буцаалт хүсэх · ${esc(b.dataset.child)}</h4><div class="form-grid"><label>Төрөл<select name="refund_type"><option value="1">Зөвхөн мөнгө буцаах</option><option value="2">Бараа буцааж, мөнгө авах</option></select></label><label>Барааны төлөв<select name="goods_status">${[[1,'Илгээгээгүй'],[2,'Илгээсэн'],[3,'Бараа ирээгүй'],[4,'Бараа хүлээн авсан']].map(([v,t])=>`<option value="${v}" ${String(v)===b.dataset.paid?'selected':''}>${t}</option>`).join('')}</select></label></div><div class="refund-template"></div><button type="button" class="quiet" data-as="refund-render">Нөхцөл ачаалах</button><p class="error" role="alert"></p></form>`;return;}
     if(act==='refund-render'){
@@ -161,7 +162,7 @@ window.AdminExtra=(()=>{
       f.querySelector('.refund-template').innerHTML=`<div class="form-grid"><label>Шалтгаан<select name="reason_id" required>${t.reasons.map(x=>`<option value="${x.id}">${esc(x.text)}</option>`).join('')}</select></label><label>Буцаах дүн (¥, ${cny(t.fee.min/100)} – ${cny(t.fee.max/100)})<input name="refund_fee" type="number" step="0.01" min="${t.fee.min/100}" max="${t.fee.max/100}" value="${(t.fee.default||t.fee.max)/100}" ${t.fee.editable?'':'readonly'} required></label><label class="full">Тайлбар (худалдагчид)<input name="description" maxlength="200"></label></div>${t.fee.tips?`<p class="muted">${esc(t.fee.tips)}</p>`:''}<button type="button" class="primary" data-as="refund-submit">Худалдагчид илгээх</button>`;
       b.remove();return;}
     if(act==='refund-submit'){
-      const f=b.closest('form'),fd=new FormData(f);if(!confirm('Буцаалтын хүсэлтийг Taobao-ийн худалдагчид илгээх үү?'))return;
+      const f=b.closest('form'),fd=new FormData(f);if(!await uiConfirm({title:'Буцаалтын хүсэлт илгээх үү?',text:'Хүсэлт Taobao-ийн худалдагчид шууд очно. Шийдвэрийг «Буцаалтын төлөв шалгах» товчоор харна.',confirmLabel:'Худалдагчид илгээх'}))return;
       await api('taoworld-refund-submit',{id,child:f.dataset.child,refund_type:Number(fd.get('refund_type')),goods_status:Number(fd.get('goods_status')),reason_id:Number(fd.get('reason_id')),refund_fee:Math.round(Number(fd.get('refund_fee'))*100),description:String(fd.get('description')||'')});
       toast('Буцаалтын хүсэлт илгээгдлээ');return reopen(id);}
     if(act==='messages'){out.innerHTML=loading;const r=await api('taoworld-refund-messages',{id,refund_id:b.dataset.refund});out.innerHTML=messagesHtml(r,b.dataset.refund);return;}
@@ -229,7 +230,7 @@ window.AdminExtra=(()=>{
       else if(b.hasAttribute('data-store-test')){const tr=b.closest('tr'),out=tr.querySelector('.store-test');out.textContent='Шалгаж байна…';const r=await api('catalog-store-test',{id:tr.querySelector('[name=id]').value.trim(),name:tr.querySelector('[name=name]').value.trim()});
         out.textContent=r.rows?`${r.rows} бараа ирсэн, нэр таарсан ${r.matching}.${r.shop_names.length?' Нэр: '+r.shop_names.join(', '):''}`:'TaoWorld-оос бараа ирсэнгүй (хоосон).';}
       else if(b.hasAttribute('data-store-save')){const stores=[...document.querySelectorAll('[data-store-row]')].map(tr=>Object.fromEntries([...tr.querySelectorAll('input,select')].map(i=>[i.name,i.value.trim()])));await api('catalog-stores-save',{stores});toast('Дэлгүүрийн жагсаалт хадгалагдлаа');loadSite();}
-      else if(b.hasAttribute('data-store-reset')){if(!confirm('Үндсэн 12 дэлгүүрийн жагсаалт руу буцаах уу?'))return;await api('catalog-stores-save',{reset:true});toast('Үндсэн жагсаалт сэргээгдлээ');loadSite();}
+      else if(b.hasAttribute('data-store-reset')){if(!await uiConfirm({title:'Үндсэн жагсаалт руу буцаах уу?',text:'Таны засварласан дэлгүүрийн жагсаалт устаж, үндсэн 12 дэлгүүр сэргэнэ.',confirmLabel:'Буцаах',danger:true}))return;await api('catalog-stores-save',{reset:true});toast('Үндсэн жагсаалт сэргээгдлээ');loadSite();}
     }catch(x){const box=b.closest('[data-aftersale]')?.querySelector('.aftersale-out');if(b.hasAttribute('data-store-save')){$('#stores-error').textContent=x.message;}else if(box){box.insertAdjacentHTML('afterbegin',`<p class="error" role="alert">${esc(x.message)}</p>`);}else toast(x.message);}
     finally{b.disabled=false;}
   },true);

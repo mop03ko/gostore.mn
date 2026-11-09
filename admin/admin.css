@@ -149,3 +149,117 @@ details.data-table summary{cursor:pointer;padding:10px 23px 14px;color:var(--mut
 .status-chips{display:flex;flex-wrap:wrap;gap:10px 18px;padding:16px 23px 18px}.status-chips .tag{margin:0}.xbottom{padding-bottom:16px}
 /* The menu grew: the sidebar scrolls on short screens instead of cutting off its last links. */
 @media(min-width:761px){aside{overflow-y:auto;overscroll-behavior:contain}aside nav button{padding:10px 12px}}
+
+/* UX layer (admin-ux.js): status colours, grouped menu, search, order views, drawer, phone tab bar. */
+.tag.status-tag{font-weight:700}
+.tag.st-new{color:#a53b0b;background:#fff0e8}.tag.st-wait{color:#7a5200;background:#fff5d6}.tag.st-paid,.tag.st-ready{color:#176548;background:#e7f5ee}
+.tag.st-move{color:#1f4fb2;background:#e9effc}.tag.st-done{color:#4f586a;background:#eef0f4}.tag.st-off{color:#7b8495;background:#f0f2f6;text-decoration:line-through;text-decoration-thickness:1px}
+.nav-group{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9aa3b3;padding:14px 12px 4px}
+nav button b.nav-badge{background:#f16522}nav button b[hidden]{display:none}
+.cmdk-trigger{margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-width:240px;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:#f6f7fa;color:var(--muted);font-size:14px}
+.cmdk-trigger kbd{margin-left:auto;font-size:11px;font-weight:700;line-height:1;border:1px solid var(--line);border-radius:5px;padding:3px 6px;background:#fff;color:var(--muted)}
+.cmdk-trigger:hover,.cmdk-trigger:focus-visible{border-color:var(--blue);color:var(--ink)}
+/* Order views */
+.orders-tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:14px;scrollbar-width:thin}
+.otab{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:10px 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font-weight:700;font-size:14px}
+.otab b{font-size:11px;line-height:1;background:#eef0f4;color:#4c5870;border-radius:999px;padding:4px 7px}
+.otab.on{color:var(--ink);border-bottom-color:#f16522}.otab.on b{background:#f16522;color:#fff}
+.otab:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.orders-toolbar{flex-wrap:wrap}.orders-toolbar input{flex:1 1 240px}.orders-toolbar select{flex:0 1 auto;width:auto;min-width:0}
+.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--blue);color:#fff;border-radius:12px;padding:10px 12px 10px 16px;margin-bottom:14px}
+.bulk-bar select{width:auto;flex:0 1 260px}.bulk-bar .primary{width:auto;margin:0;background:#f16522}.bulk-bar .quiet{margin:0;background:transparent;color:#fff;border-color:#3a4b70}
+.orders-heading{display:flex;align-items:center;gap:12px}
+.order-pick,.order-pick-all{width:18px;height:18px;flex:none;accent-color:#f16522;margin:0}
+.orders-table tbody tr[data-row-order]{cursor:pointer}.orders-table tbody tr[data-row-order]:hover{background:#fafbfe}
+.orders-table tbody tr.is-picked{background:#fff8f3}
+.orders-table td{padding-block:10px}
+.order-age{display:block;font-size:12px;color:var(--muted);margin-top:4px}.order-age.late{color:#a53b0b;font-weight:700}
+.orders-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.orders-pager .quiet{margin:0 0 0 8px}
+/* Dashboard */
+.ux-kpis .stat small.up{color:#176548;font-weight:700}.ux-kpis .stat small.down{color:#a53b0b;font-weight:700}.ux-kpis .stat small.flat{color:var(--muted)}
+.ux-kpis .stat strong{font-size:26px;font-variant-numeric:tabular-nums}
+.ux-dash{grid-template-columns:1.1fr 1fr}
+.tasks{display:grid}
+.task-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:14px;align-items:center;width:100%;text-align:left;padding:12px 23px;border:0;border-top:1px solid var(--line);background:#fff;color:var(--ink)}
+.task-row:first-child{border-top:0}.task-row:hover,.task-row:focus-visible{background:#fafbfe;outline:none}
+.task-row strong{display:block}.task-row small{display:block;color:var(--muted);font-size:13px}
+.task-row[data-zero]{opacity:.62}
+.task-n{font-size:19px;text-align:center;border-radius:9px;padding:8px 0}
+.task-n.or{background:#fff0e8;color:#a53b0b}.task-n.a{background:#fff5d6;color:#7a5200}.task-n.bl{background:#e9effc;color:#1f4fb2}.task-n.g{background:#e7f5ee;color:#176548}
+/* Order drawer */
+#editor{margin:0 0 0 auto;width:min(780px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;border-radius:16px 0 0 16px}
+@media (prefers-reduced-motion:no-preference){#editor[open]{animation:drawer-in .18s ease-out}}
+@keyframes drawer-in{from{transform:translateX(28px);opacity:.6}to{transform:none;opacity:1}}
+#editor .dialog-header{flex-wrap:wrap;gap:10px}
+#editor-summary{flex-basis:100%;display:grid;gap:10px}
+.sum-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:14px}
+.sum-line .tag{margin:0}.sum-line .order-age{display:inline;margin:0}
+.sum-amount{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.sum-actions{display:flex;flex-wrap:wrap;gap:8px}.sum-actions .quiet,.sum-actions .primary{margin:0;width:auto;min-height:38px;padding:8px 14px}
+.sum-links{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.sum-links button{border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:#fff;font-size:13px;white-space:nowrap;color:var(--ink)}
+.sum-links button:hover,.sum-links button:focus-visible{border-color:#f16522;outline:none}
+#editor-body [id],#editor-body section,#editor-body .details,#editor-body .order-tracking{scroll-margin-top:190px}
+/* In-app confirmation and Ctrl+K */
+.ui-confirm{width:min(460px,calc(100% - 32px))}.ui-confirm form{padding:22px;display:grid;gap:12px}
+.ui-confirm h2{margin:0;font-size:19px}.ui-confirm p{margin:0;color:var(--muted);line-height:1.6}.ui-confirm label{margin:0}
+.ui-confirm .form-actions{margin:4px 0 0}.ui-confirm .primary,.ui-confirm .quiet{width:auto;margin:0}
+.danger-fill{background:#a82b38!important;border-color:#a82b38!important}
+.cmdk{width:min(640px,calc(100% - 24px));margin:12vh auto auto;max-height:70vh;display:none;flex-direction:column;overflow:hidden}.cmdk[open]{display:flex}
+.cmdk-field{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);font-size:18px;color:var(--muted)}
+.cmdk-field input{border:0;padding:6px 0;font-size:17px;outline:none;background:transparent}
+#cmdk-results{overflow-y:auto;padding:6px}
+.cmdk-group{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9aa3b3;padding:10px 10px 4px}
+.cmdk-item{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:10px;border:0;border-radius:8px;background:none;color:var(--ink);font-size:14px}
+.cmdk-item small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+.cmdk-item.on,.cmdk-item:hover{background:#fff0e8}
+.cmdk-empty{padding:18px 12px;color:var(--muted);margin:0}.cmdk-hint{margin:0;padding:8px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.skeleton-rows{display:grid;gap:10px;padding-block:18px}.skeleton-rows span{height:14px;border-radius:7px;background:#eef1f6}
+.skeleton-rows span:nth-child(2){width:82%}.skeleton-rows span:nth-child(3){width:64%}
+@media (prefers-reduced-motion:no-preference){.skeleton-rows span{background:linear-gradient(90deg,#eef1f6 25%,#e2e7ef 50%,#eef1f6 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite}}
+@keyframes shimmer{to{background-position:-200% 0}}
+/* Phone: one tab bar at the bottom replaces the scrolling menu; the page picker stays in the header. */
+.tabbar{display:none}
+@media(max-width:1100px){.cmdk-trigger{min-width:0}.cmdk-trigger kbd{display:none}.ux-dash{grid-template-columns:1fr}}
+@media(max-width:760px){
+ aside nav,.nav-group{display:none}
+ .cmdk-trigger{display:none}
+ .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--line);padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px))}
+ .tabbar button{position:relative;display:grid;justify-items:center;gap:2px;min-height:52px;border:0;background:none;color:var(--muted);font-size:12px;font-weight:700;border-radius:10px}
+ .tabbar button span{font-size:19px;line-height:1}
+ .tabbar button.active{color:#f16522;background:#fff4ed}
+ .tabbar b{position:absolute;top:2px;left:56%;background:#f16522;color:#fff;font-size:10px;line-height:1;border-radius:999px;padding:3px 6px}.tabbar b[hidden]{display:none}
+ .main{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+ dialog#editor{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0;border-radius:0}
+ .ux-kpis .stat strong{font-size:22px}
+ .task-row{padding:12px 17px}
+ .orders-toolbar select{flex:1 1 45%}
+ .bulk-bar select{flex:1 1 100%}
+}
+
+/* UX layer, second pass: compact rows, one-line filters, drawer buttons, a shorter phone header. */
+.toolbar.orders-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.toolbar.orders-toolbar input{flex:1 1 260px;max-width:none;min-height:42px}
+.toolbar.orders-toolbar select{flex:0 0 auto;width:auto;max-width:220px;min-height:42px}
+.toolbar.orders-toolbar .quiet{margin:0;min-height:42px}
+.orders-table .order-heading{display:flex;align-items:center;justify-content:flex-start;gap:10px}
+.orders-table .order-heading .order-date{margin-left:auto}
+.orders-table td{padding-block:8px}
+.orders-table .order-age{display:inline;margin:0 0 0 8px}
+#editor-summary button{width:auto;height:auto;min-height:36px;border-radius:9px;font-size:14px;line-height:1.2;padding:8px 14px}
+#editor-summary .primary{background:var(--blue);color:#fff}
+#editor-summary .quiet{background:#fff;border:1px solid var(--line);color:var(--ink)}
+#editor-summary .sum-links button{min-height:30px;border-radius:999px;font-size:13px;padding:5px 12px;background:#fff;border:1px solid var(--line);color:var(--ink)}
+@media(max-width:760px){
+ .toolbar.orders-toolbar input{flex:1 1 100%}
+ .toolbar.orders-toolbar select{flex:1 1 calc(50% - 5px);max-width:none}
+ .toolbar.orders-toolbar .quiet{flex:1 1 100%}
+ aside{padding:12px 16px}
+ .logo img{width:132px;margin:0}
+ header .eyebrow{display:none}
+ header h1{font-size:22px;line-height:28px}
+ .orders-table .order-age{display:block;margin:4px 0 0}
+}
+/* Desktop rows: tag and waiting time on one line, smaller row button (phones keep 44 px targets). */
+@media(min-width:1101px){.orders-table .order-track-trigger{display:inline-flex;min-height:30px;vertical-align:middle}.orders-table .order-age{display:inline-block;margin:0 0 0 6px;vertical-align:middle}.orders-table .order-action .quiet{min-height:34px;padding:6px 10px}}

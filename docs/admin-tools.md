@@ -2,7 +2,30 @@
 
 Added 2026-11-09. Four new admin pages (Тайлан, TaoWorld лимит, Сайтын тохиргоо, Админ ба аудит), staff accounts with roles, an audit log, two-step sign-in, TaoWorld after-sales in the order view and dashboard alerts.
 
-Server: `server/admin-users.php`, `server/admin-reports.php`, `server/taoworld-aftersale.php`, `server/catalog-controls.php`. Browser: `admin/admin-extra.js`, which loads before `admin/admin.js` and hooks into its `render()` and `editOrder()`.
+Server: `server/admin-users.php`, `server/admin-reports.php`, `server/taoworld-aftersale.php`, `server/catalog-controls.php`. Browser: `admin/admin-extra.js`, which loads before `admin/admin.js` and hooks into its `render()` and `editOrder()`, and `admin/admin-ux.js` (below), which loads after it.
+
+## Layout and navigation (admin-ux.js)
+
+`admin/admin-ux.js` replaces several `admin.js` render functions (`tag`, `orderTable`, `ordersList`, `overview`) and wraps `modal`, `editOrder` and `render`. The plan it follows, with before/after screens, is the «GOStore админы шинэчлэл» artifact.
+
+- **Menu.** Grouped into Борлуулалт, Каталог ба маркетинг, Шинжилгээ, Тохиргоо. Orders show the new count; Хятад захиалга shows TaoWorld orders to review.
+- **Search (Ctrl + K, or «Хайх» in the header).** Finds pages, orders (number, name, phone digits), products, customers (operator and above, from `admin-customers`), and opens a Taobao item number or link on the store.
+- **Dashboard.** Four figures: today's orders against yesterday, today's paid revenue against the 7-day average, unpaid orders, and TaoWorld API use. Below them:
+  - «Хийх ажил»: new orders, TaoWorld review, unpaid, ready in Ulaanbaatar. Each opens the matching order tab.
+  - A 7-day revenue chart and the latest orders.
+- **Orders.**
+  - Tabs with counts: Бүгд, Шинэ, Үнийн санал, Төлбөр хүлээж, Баталгаажсан, Эрээн/замд, Улаанбаатарт, Дууссан, Цуцалсан, and TaoWorld шалгах when there are any. Counts follow the other filters.
+  - Filters for exact status, payment and period; three sort orders; 25 orders per page.
+  - Each row shows how long the order has waited (bold after 24 hours for new orders). Clicking a row opens it.
+  - Several orders can change status at once through the bulk bar, after an in-app confirmation. Each change goes through `order-update` and is audited; orders the server refuses (warehouse batches, invoices) are listed in the message.
+- **Order drawer.** The editor opens from the right (full width on phones). A sticky summary holds the status, amount, payment, age, phone copy, «Ачааны явц» and «Хадгалах», plus links to each section of the order. Missing quantities and variants show «—».
+- **Status colours** by meaning: new orange, waiting amber, paid and ready green, moving blue, done and cancelled grey.
+- **Confirmations.** `window.uiConfirm()` is an in-app dialog, used for TaoWorld cancel (with a reason), refund cancel, refund submit, store-list reset and bulk changes. Older OT and TaoWorld purchase confirmations keep the browser dialog.
+- **Loading.** Grey placeholder rows instead of «Ачаалж байна…».
+- **Phones.**
+  - A bottom tab bar (Самбар, Захиалга, Хайх, Тайлан, Цэс) replaces the scrolling side menu.
+  - The page picker stays in the header; «Цэс» opens it.
+- **Tests.** `node tests/run-logistics.cjs admin-ux-ui` covers dashboard tasks, tabs and counts, paging, filters and the reset, the drawer, bulk change with cancel and confirm, Ctrl + K, the phone tab bar and the full-width drawer.
 
 ## Accounts, roles and audit
 
