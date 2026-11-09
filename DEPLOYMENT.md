@@ -1,12 +1,24 @@
 # cPanel суулгалт
 
+## Help page: 0.5 kg rounding note — 2026-11-10
+
+- **What changed** (`7e5795a`): `/help#delivery` said «Жинг кг руу дээш бүхэлчлэхгүй», which contradicts the 0.5 kg steps. It now reads «Жижиг илгээмжийн жинг 0.5 кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.» The step comes from the live tariff.
+- **Tests.**
+  - The full suite ran: 126 passed. The four tests that still expected version 2 tariff amounts now expect version 3 and pass. In `commerce-ui`, 1.001 kg costs 3,000 ₮. In `supplier`, a 0.501 kg quote costs 8,600 ₮, of which cargo is 2,000 ₮. In `warehouse-branches` and `logistics-ui`, the goods are 95,500 ₮, so the fixture still settles at 100,000 ₮.
+  - `store-pages-ui` checks the new note.
+  - `layout-shift-ui` failed on two runs, at 0.025 on `/search` at 390 px and at 0.046 on `/c/tech` at 320 px. These are the same storefront pages it has been flaky on before; `store-pages.js` returns early off `/cart` and `/help`.
+- **Deployed** `app.js` and `index.html` (`app.js?v=b2fe0bb563bd`) over FTPS with baseline, backup and hash verification.
+  - Baselines: `7e5795a^`; every live file matched.
+  - Backup: `/gostore-backups/help-rounding-20261110-249446387a`.
+- **Live checks.** Live hashes match the local files. At 1440 and 390 px `/help#delivery` shows the new note and not the old one. Estimates are unchanged: 0.5 kg = 1,000 ₮, 0.501 kg = 2,000 ₮, 1.2 kg = 3,000 ₮. No overflow and no browser errors.
+
 ## Small cargo Erenhot → Ulaanbaatar: 1,000 ₮ for each started 0.5 kg — 2026-11-10
 
 - **What changed** (`f897dfb`, [docs/warehouse-cargo-approval.md](docs/warehouse-cargo-approval.md)): tariff version 3.
   - Small parcels (< 70 kg, ≤ 1 m³) cost 1,000 ₮ for each started 0.5 kg; examples: 0.5 kg = 1,000 ₮, 0.501 kg = 2,000 ₮, 1.2 kg = 3,000 ₮.
   - Large cargo is unchanged.
   - Quotes saved with version 2 keep their price in the browser and on the server.
-- **Tests.** `cargo-tariff`, `shipping`, `commerce-estimate`, `warehouse-cargo`, `warehouse-cargo-ui`, `warehouse-batches`, `store-pages-ui` and the commerce/logistics UI suites pass.
+- **Tests.** `cargo-tariff`, `shipping`, `commerce-estimate`, `warehouse-cargo`, `warehouse-cargo-ui`, `warehouse-batches` and `store-pages-ui` passed before the deploy. The full suite was not rerun then: `commerce-ui`, `supplier`, `warehouse-branches` and `logistics-ui` still expected version 2 amounts and were updated in `7e5795a` (see the next entry).
 - **Deployed** `cargo-tariff.js`, `app.js`, `server/cargo-tariff.php`, `admin/index.html`, `warehouse/index.html` (`cargo-tariff.js?v=20261110-steps`) and `index.html` (`app.js?v=4287e2d60453`) over FTPS with baseline, backup and hash verification.
   - Baselines: `f897dfb^`; every live file matched.
   - Backup: `/gostore-backups/cargo-steps-20261110-8367037392`. No database changes; saved quotes and approved freight amounts are not migrated.
