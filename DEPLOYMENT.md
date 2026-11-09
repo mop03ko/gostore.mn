@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Warehouse month filter, search suggestions and bulk packing — 2026-11-10
+
+- Owner requests (docs/erenhot-workflow.md): lists by the month a code was created, split by day, with batch cards showing the GB code's creation time (`77f9553`); suggestions after four characters in the search and scan boxes (e.g. a waybill's last four digits; Ulaanbaatar also matches phone endings, Erenhot never sees phones) and «批量选择» bulk selection of ready orders in the scan-out window (`bcd340b`). Warehouse tests passed, including the new `warehouse-bulk-ui`.
+- Deployed `server/warehouse-flow.php`, `server/warehouse.php`, `server/warehouse-batches.php`, `warehouse/i18n.js`, `outbound-ui.js`, `search-suggest.js` (new), `warehouse.js`, `warehouse.css`, `index.html` from `bcd340b` over FTPS with baseline/backup/hash verification; live matched `ffb15d2` (the month helper in warehouse.php before warehouse-batches.php uses it). Backup: `/gostore-backups/bulk-20261110-f8c5ea756d`. No database changes.
+- Live checks: `/warehouse/erenhot` 200 with the month picker and the new scripts; `search-suggest.js`, `outbound-ui.js` (批量选择) and styles 200; `warehouse-suggest`, `warehouse-outbound-ready` and `warehouse-orders&month=` without a session 401; homepage 200.
+
 ## Admin UX: grouped menu, Ctrl+K search, task dashboard, order tabs and drawer — 2026-11-10
 
 - **What changed** (`290d7a0`, [docs/admin-tools.md](docs/admin-tools.md) «Layout and navigation»; plan with before/after screens in the «GOStore админы шинэчлэл» artifact):
