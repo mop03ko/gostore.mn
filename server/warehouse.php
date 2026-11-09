@@ -159,6 +159,29 @@ function warehouse_overview_add(array &$overview,array $order): void {
     foreach($groups as $group){$overview[$group]['orders']++;$overview[$group]['quantity']+=$quantity;}
 }
 // Exact incoming carrier-number matching; branch visibility remains authoritative.
+// Search suggestions (owner request 2026-11-10): four or more characters, e.g. a waybill's last four digits, list
+// matching orders and batches at once; codes ending with the text come first. Ulaanbaatar also matches the
+// customer's phone ending (Erenhot never sees phone numbers).
+function warehouse_suggest(string $q,string $location): array {
+    $q=strtoupper((string)preg_replace('/\s+/','',$q));
+    if(!preg_match('/^[A-Z0-9-]{4,40}$/D',$q))return ['items'=>[]];
+    $ub=warehouse_role($location)==='ulaanbaatar';$items=[];
+    $add=function(array $item,string $value)use($q,&$items){$items[]=$item+['match'=>$value,'rank'=>str_ends_with($value,$q)?0:1];};
+    foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
+        $o=json_decode($r['data'],true);if(!is_array($o)||!warehouse_order_visible($o,$location))continue;
+        $values=[['order',$o['id']]];foreach($o['inbound']['numbers']??[] as $n)$values[]=['waybill',strtoupper((string)($n['no']??''))];
+        if($ub)foreach([$o['phone']??'',$o['fulfillment']['contact_phone']??''] as $p)$values[]=['phone',(string)preg_replace('/\D/','',(string)$p)];
+        foreach($values as [$field,$value])if($value!==''&&str_contains($value,$q)){$add(['type'=>'order','id'=>$o['id'],'customer'=>(string)($o['customer']??''),'status'=>$o['status'],'field'=>$field],$value);break;}
+        if(count($items)>=60)break;
+    }
+    foreach(db()->query('SELECT data FROM shipment_batches ORDER BY created DESC,id DESC') as $r){
+        $b=json_decode($r['data'],true);if(!is_array($b)||!warehouse_batch_visible($b,$location)||!str_contains($b['id'],$q))continue;
+        $add(['type'=>'batch','id'=>$b['id'],'status'=>$b['status'],'field'=>'batch','orders'=>count(warehouse_batch_members($b['id']))],$b['id']);
+        if(count($items)>=80)break;
+    }
+    usort($items,fn($a,$b)=>$a['rank']<=>$b['rank']);
+    return ['items'=>array_map(fn($i)=>array_diff_key($i,['rank'=>1]),array_slice($items,0,8))];
+}
 function warehouse_tracking_matches(string $number,string $location): array {
     if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $number=strtoupper(trim($number));
@@ -184,6 +207,8 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-photo'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);logistics_photo_read($o,str_field($_GET,'photo',32));}
     if($action==='warehouse-tracking')json_out(warehouse_tracking_matches(str_field($_GET,'number',40),$location));
     if($action==='warehouse-outbound-lookup')json_out(warehouse_outbound_lookup(str_field($_GET,'code',50),$location));
+    if($action==='warehouse-suggest')json_out(warehouse_suggest(str_field($_GET,'q',60,false),$location));
+    if($action==='warehouse-outbound-ready')json_out(warehouse_outbound_ready($location));
     if($action==='warehouse-handover-lookup')json_out(warehouse_handover_lookup(str_field($_GET,'q',50),$location));
     if($action==='warehouse-delivery-list')json_out(warehouse_delivery_list($location));
     if($action==='warehouse-order'){$o=order_row(str_field($_GET,'id',50))['order'];if(!warehouse_order_visible($o,$location))fail('Захиалга олдсонгүй.',404);json_out(['order'=>warehouse_order_public($o,$location)]);}

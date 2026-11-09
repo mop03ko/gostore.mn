@@ -155,6 +155,12 @@ function warehouse_outbound_card(array $o,?string $number): array {
         'parcels'=>array_column(warehouse_parcels($o)['list'],'no'),'number'=>$number,'destination'=>warehouse_order_location($o,'ulaanbaatar'),
         'destination_name'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name'],'reason'=>warehouse_outbound_reason($o)];
 }
+// Bulk selection in the scan-out window (owner request 2026-11-10): every order here that can be packed now.
+function warehouse_outbound_ready(string $location): array {
+    if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
+    $cards=[];foreach(warehouse_outbound_index($location)['orders'] as $o)if(warehouse_outbound_reason($o)==='')$cards[]=warehouse_outbound_card($o,null);
+    return ['orders'=>array_slice($cards,0,200)];
+}
 function warehouse_outbound_lookup(string $code,string $location): array {
     if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $found=warehouse_outbound_resolve($code,warehouse_outbound_index($location));

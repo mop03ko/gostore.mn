@@ -15,7 +15,7 @@ function outboundHtml(){
  const items=outbound.items,pieces=items.reduce((n,i)=>n+i.pieces,0),incomplete=items.filter(i=>outboundMissing(i).length);
  return `<p class="note">${lt('Илгээмжийн tracking баркодыг (эсвэл GS шошгыг) уншуулна. Дууссаны дараа «Багцлах» дарахад GB дугаар үүснэ.','用扫码枪或手机扫描快递运单号（或订单 GS 标签）。扫完后点击“确认打包”，系统生成 GB 包裹单号。')}</p>
 <form data-outbound-scan class="outbound-scan"><label>${lt('Tracking / GS код','运单号 / GS 编号')}<input name="code" autocomplete="off" autocapitalize="characters" maxlength="50" required placeholder="SF1234567890"></label><button class="primary">${lt('Нэмэх','添加')}</button></form>
-<button type="button" class="quiet" data-outbound-camera>${lt('Утсаар уншуулах','手机扫码')}</button>
+<div class="outbound-tools"><button type="button" class="quiet" data-outbound-camera>${lt('Утсаар уншуулах','手机扫码')}</button><button type="button" class="quiet" data-outbound-bulk aria-expanded="${!!outboundBulk}">${lt('Олноор сонгох','批量选择')}</button></div>${outboundBulk?outboundBulkHtml():''}
 <p class="outbound-summary" role="status"><strong>${items.length}</strong> ${t('orderCount')} · <strong>${pieces}</strong> ${t('pieces')}${items[0]?` · ${lt('Хүлээн авах','收货仓库')}: ${esc(items[0].destination_name)}`:''}</p>
 ${items.length?`<ul class="outbound-list">${items.map(i=>{const missing=outboundMissing(i);return `<li class="${missing.length?'incomplete':''}"><div><strong>${esc(i.id)}</strong> · ${esc(i.customer)} · ${i.pieces} ${t('pieces')}<small>${i.whole?lt('GS шошгоор','按 GS 标签'):`${lt('Илгээмж','包裹')} ${i.parcels.length-missing.length}/${i.parcels.length}`}${missing.length?' · '+lt('Дутуу','还差')+': '+esc(missing.join(', ')):''}</small>${i.problem?`<small class="outbound-problem">${esc(i.problem)}</small>`:''}</div><button type="button" class="quiet" data-outbound-remove="${esc(i.id)}">${t('remove')}</button></li>`;}).join('')}</ul>`:`<p class="empty">${lt('Одоогоор уншуулсан илгээмж алга.','尚未扫描包裹。')}</p>`}
 ${incomplete.length?`<p class="inbound-warning" role="alert">${lt('Зарим захиалгын илгээмж дутуу уншигдсан. Бүгдийг уншуулах эсвэл захиалгыг хасна уу.','部分订单的包裹未扫齐，请补扫或移除该订单。')}</p>`:''}
@@ -26,7 +26,41 @@ function outboundRender(){
  // Ready for the scanner gun; phones (coarse pointer) keep the keyboard closed until the box is tapped.
  if(!$('#qr-scanner').open&&matchMedia('(pointer:fine)').matches)document.querySelector('[data-outbound-scan] input')?.focus();
 }
-function outboundOpen(){outbound=outboundLoad();outboundRender();}
+function outboundOpen(){outbound=outboundLoad();outboundBulk=null;outboundRender();}
+// Bulk selection (owner request 2026-11-10): tick the orders that are ready to pack instead of scanning each one.
+// They join the list like a scanned GS label; packing still checks everything on the server.
+let outboundBulk=null;
+const outboundBulkRows=()=>{const listed=new Set(outbound.items.map(i=>i.id));return (outboundBulk.rows||[]).filter(r=>!listed.has(r.id));};
+function outboundBulkHtml(){
+ if(!outboundBulk.rows)return `<p class="note" role="status">${t('loading')}</p>`;
+ const rows=outboundBulkRows();if(!rows.length)return `<p class="empty">${lt('Багцлахад бэлэн өөр захиалга алга.','没有其他可装包的订单。')}</p>`;
+ const n=rows.filter(r=>outboundBulk.selected.has(r.id)).length;
+ return `<div class="outbound-bulk"><label class="check"><input type="checkbox" data-bulk-all ${n===rows.length?'checked':''}><span>${lt('Бүгдийг сонгох','全选')} (${rows.length})</span></label><ul>${rows.map(r=>`<li><label class="check"><input type="checkbox" data-bulk-id="${esc(r.id)}" ${outboundBulk.selected.has(r.id)?'checked':''}><span><b>${esc(r.id)}</b> · ${esc(r.customer)} · ${r.pieces} ${t('pieces')}<small>${esc(warehouseText[locale][r.destination]||r.destination_name)}${r.parcels.length?' · '+lt('Tracking','运单')+' '+esc(r.parcels.join(', ')):''}</small></span></label></li>`).join('')}</ul><button type="button" class="primary" data-bulk-add ${n?'':'disabled'}>${lt('Сонгосныг нэмэх','添加所选')} (${n})</button></div>`;
+}
+function outboundBulkButton(){const b=document.querySelector('[data-bulk-add]');if(!b)return;const rows=outboundBulkRows(),n=rows.filter(r=>outboundBulk.selected.has(r.id)).length;b.disabled=!n;b.textContent=`${lt('Сонгосныг нэмэх','添加所选')} (${n})`;const all=document.querySelector('[data-bulk-all]');if(all)all.checked=n===rows.length;}
+document.addEventListener('change',e=>{
+ if(!outboundBulk)return;const box=e.target;
+ if(box.dataset.bulkId){if(box.checked)outboundBulk.selected.add(box.dataset.bulkId);else outboundBulk.selected.delete(box.dataset.bulkId);outboundBulkButton();}
+ if(box.hasAttribute('data-bulk-all')){for(const r of outboundBulkRows())if(box.checked)outboundBulk.selected.add(r.id);else outboundBulk.selected.delete(r.id);document.querySelectorAll('[data-bulk-id]').forEach(c=>{c.checked=box.checked;});outboundBulkButton();}
+});
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('[data-outbound-bulk],[data-bulk-add]');if(!b||!outbound)return;
+ if(b.hasAttribute('data-outbound-bulk')){
+  if(outboundBulk){outboundBulk=null;outboundRender();return;}
+  outboundBulk={rows:null,selected:new Set()};outboundRender();
+  try{const d=await api('warehouse-outbound-ready');if(outboundBulk){outboundBulk.rows=d.orders;outboundRender();}}catch(error){outboundBulk=null;outboundRender();toast(error.message);}
+  return;
+ }
+ // One GB batch goes to one Ulaanbaatar warehouse: other destinations stay unticked and are named.
+ const chosen=outboundBulkRows().filter(r=>outboundBulk.selected.has(r.id)),skipped=[];let destination=outbound.items[0]?.destination||chosen[0]?.destination;
+ for(const r of chosen){
+  if(r.destination!==destination){skipped.push(r.id);continue;}
+  outbound.items.push({id:r.id,customer:r.customer,pieces:r.pieces,parcels:r.parcels,scanned:[],whole:true,destination:r.destination,destination_name:r.destination_name,codes:[r.id],problem:''});
+ }
+ const added=chosen.length-skipped.length;outboundBulk=null;outboundSave();outboundRender();
+ const message=lt('Нэмсэн','已添加')+' '+added+' '+t('orderCount')+(skipped.length?' · '+lt('Өөр хүлээн авах агуулахтай тул нэмээгүй','收货仓库不同，未添加')+': '+skipped.join(', '):'');
+ if(skipped.length)document.querySelector('#editor-body .error').textContent=message;toast(message);
+});
 window.warehouseOutboundActive=()=>$('#editor').open&&$('#editor').dataset.outbound==='1';
 window.warehouseScanTargets=window.warehouseScanTargets||[];
 window.warehouseScanTargets.push(()=>warehouseOutboundActive()?warehouseOutboundAdd:null);

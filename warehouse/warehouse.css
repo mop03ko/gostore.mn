@@ -106,3 +106,13 @@ html[lang="zh-CN"] body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-s
 .month-field{display:flex;align-items:flex-end;gap:8px}.month-field label{margin:0}.month-field input{min-width:170px}.month-field .quiet{min-height:44px;white-space:nowrap}
 .date-group{display:flex;align-items:center;gap:8px;margin:0;padding:14px 24px 6px;background:#f7f9fd;border-top:1px solid var(--line);color:#132344;font-size:15px}.date-group small{padding:1px 8px;border-radius:999px;background:#e6ecf6;font-size:12px;font-weight:700}
 @media(max-width:900px){.warehouse-search{grid-template-columns:1fr 1fr}}@media(max-width:600px){.warehouse-search{grid-template-columns:1fr}.month-field input{min-width:0;flex:1}.month-field label{flex:1}.date-group{padding:12px 16px 6px}}
+#search-form label,#scan-form label{position:relative}
+.suggest-list{position:absolute;z-index:40;left:0;right:0;top:100%;margin-top:4px;max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 28px #13234426}.suggest-list[hidden]{display:none}
+.suggest-list button{display:block;width:100%;min-height:44px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#fff;color:#132344;font:inherit;font-weight:700;text-align:left;cursor:pointer;overflow-wrap:anywhere}.suggest-list button:last-child{border-bottom:0}
+.suggest-list button:hover,.suggest-list button[aria-selected=true]{background:#f3f6fc}.suggest-list small{display:block;margin-top:2px;color:var(--muted,#68738a);font-size:12px;font-weight:400}
+.suggest-list mark{padding:0 1px;border-radius:3px;background:#ffe3d2;color:inherit}.suggest-empty{margin:0;padding:12px 14px;color:var(--muted,#68738a)}
+#order-list-panel{overflow:visible}
+.outbound-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.outbound-tools [data-outbound-camera]{margin:0}
+.outbound-bulk{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f7f9fd}.outbound-bulk ul{max-height:50vh;margin:8px 0;padding:0;overflow:auto;list-style:none}
+.outbound-bulk li{padding:8px 0;border-top:1px solid var(--line)}.outbound-bulk li .check{margin:0;align-items:flex-start}.outbound-bulk small{display:block;color:var(--muted,#68738a);overflow-wrap:anywhere}.outbound-bulk .primary{width:100%}
+#order-list-panel .panel-heading{flex-wrap:wrap;gap:8px}#order-list-panel .panel-heading>div{min-width:0}#warehouse-city{max-width:100%;overflow-wrap:anywhere}
