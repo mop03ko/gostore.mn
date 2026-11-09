@@ -1,5 +1,21 @@
 # cPanel суулгалт
 
+## Small cargo Erenhot → Ulaanbaatar: 1,000 ₮ for each started 0.5 kg — 2026-11-10
+
+- **What changed** (`f897dfb`, [docs/warehouse-cargo-approval.md](docs/warehouse-cargo-approval.md)): tariff version 3.
+  - Small parcels (< 70 kg, ≤ 1 m³) cost 1,000 ₮ for each started 0.5 kg; examples: 0.5 kg = 1,000 ₮, 0.501 kg = 2,000 ₮, 1.2 kg = 3,000 ₮.
+  - Large cargo is unchanged.
+  - Quotes saved with version 2 keep their price in the browser and on the server.
+- **Tests.** `cargo-tariff`, `shipping`, `commerce-estimate`, `warehouse-cargo`, `warehouse-cargo-ui`, `warehouse-batches`, `store-pages-ui` and the commerce/logistics UI suites pass.
+- **Deployed** `cargo-tariff.js`, `app.js`, `server/cargo-tariff.php`, `admin/index.html`, `warehouse/index.html` (`cargo-tariff.js?v=20261110-steps`) and `index.html` (`app.js?v=4287e2d60453`) over FTPS with baseline, backup and hash verification.
+  - Baselines: `f897dfb^`; every live file matched.
+  - Backup: `/gostore-backups/cargo-steps-20261110-8367037392`. No database changes; saved quotes and approved freight amounts are not migrated.
+- **Live checks.**
+  - The catalog API returns tariff version 3 (0.5 kg step, 1,000 ₮).
+  - `/admin/` and `/warehouse/` serve `?v=20261110-steps`; live JS/HTML hashes match the local files.
+  - `/help#delivery` shows «эхэлсэн 0.5 кг тутамд 1,000 ₮ (жишээ нь 1.2 кг = 3,000 ₮)». Its estimate gives 0.3 and 0.5 kg = 1,000 ₮, 0.501 and 1 kg = 2,000 ₮, 1.2 kg = 3,000 ₮, 2 kg = 4,000 ₮ and 69.999 kg = 140,000 ₮. At 70 kg and above 1 m³ it switches to large cargo at the live rate of 580 ₮.
+  - No overflow at 1440 and 390 px. No browser errors. No real orders or payments were created.
+
 ## Warehouse month filter, search suggestions and bulk packing — 2026-11-10
 
 - Owner requests (docs/erenhot-workflow.md): lists by the month a code was created, split by day, with batch cards showing the GB code's creation time (`77f9553`); suggestions after four characters in the search and scan boxes (e.g. a waybill's last four digits; Ulaanbaatar also matches phone endings, Erenhot never sees phones) and «批量选择» bulk selection of ready orders in the scan-out window (`bcd340b`). Warehouse tests passed, including the new `warehouse-bulk-ui`.
@@ -276,7 +292,6 @@
 - Targeted PHP, public API, catalog/cache, all-ten-brand, English-title, image-search and desktop/mobile browser checks passed. Tests exercise append retry, preserved DOM, duplicate/final stop, stale-query races, filter/saved resets, native offsets and 50-item image search. Both provider search transports returned 50 products in read-only checks.
 - Live Chrome verified 50 initial products becoming 100 unique products by scrolling, retained first-card DOM, no numbered pages, six columns at 1440px and two at 390/320px, no horizontal overflow or JavaScript errors. Desktop/mobile screenshots reviewed. No live orders or payments created.
 
-
 ## Brands first on homepage — 2026-10-19
 
 - At the owner's request, `9819d14` moves the existing brand logo row immediately below the header, before the hero and catalog. Only `index.html` was deployed; verified backup: `/gostore-backups/brands-first-20261019-3ae08eaed91d`.
@@ -336,13 +351,11 @@
 - 7 frontend файлыг нөөцлөөд байршуулсан. Үндсэн нөөц: `/gostore-backups/direct-copy-20261019-d4515dc27f6a`; ангиллын шошгоны 2 файлын засварын нөөц: `/gostore-backups/direct-copy-20261019-bceded58ddfe`.
 - Live шалгалт: нүүр 1440/390, ангиллын цэс, хадгалсан бараа, `/cart`, `/help`, `/v/tb-773839428782` 1440/390 дээр харагдах текст болон aria/meta шошгонд Taobao үлдээгүй; хэвтээ хальсан хэсэг, JavaScript алдаагүй. Локал collection-ui, product-page-ui, store-pages-ui шалгалтууд амжилттай.
 
-
 ## Дэлхийн брэндүүд — 2026-10-19
 
 - `b852777` хувилбарын 4 frontend файлыг байршуулсан: `catalog-navigation.css`, `catalog-navigation.js`, `supplier.js`, `index.html`. Брэндийн 12 карт нэрээр нь Taobao каталогт хайлт нээдэг.
 - Live файлуудыг Git хувилбартай тулгаж, нөөц ба stage хуулбарыг шалгасны дараа шинэчилсэн. Нөөц: `/gostore-backups/brands-20261019-2f7a8b3bc99f`; локал тайлан: `tmp/brands-deployment.json`.
 - Live шалгалт: 12 брэнд, Nike хайлт HTTP 200 / 12 бараа, сонгосон брэндийн төлөв ба URL, 1440/390 өргөний харагдац, хэвтээ хальсан хэсэггүй, JavaScript алдаагүй. HTTP-ээр авсан 4 файл commit-тэй ижил.
-
 
 ## Хямдаас үнэтэй эрэмбэ, логикийн засвар — 2026-10-18
 
@@ -530,7 +543,6 @@ powershell -ExecutionPolicy Bypass -File scripts/package-coming-soon.ps1
 - Хятад захиалгад овог, нэр заавал; сервер GS кодоор хүлээн авагч болон хятад хэлбэрийн хүргэлтийн шошго үүсгэн захиалгад хадгална. Админ хуулж нийлүүлэгчид өгнө; хэрэглэгч өөрийн захиалгад харна. Нийлүүлэгчид худалдан авах API автоматаар дуудагдахгүй.
 - Өмнөх DB backup: `/home/gostorem/gostore-data/backups/supplier-20261012-be9c6bed8421.sqlite`. Өмнөх тохиргооны локал нөөц: `tmp/warehouse-settings-before.json`.
 - Локал API/хөтчийн шалгалт: бүртгэл ба захиалгын эрх, линк хориг, SKU захиалга, овоггүй хүсэлт буцаах, нэр/код шошго, хаягийн snapshot, админ ба mobile харагдац амжилттай. Live файл/хаяг/хоёр утас/410/QPay төлөв шалгагдсан. Live тестийн захиалга, төлбөр үүсгээгүй.
-
 
 ## Агуулахын тулгалт, Миний ачаа — 2026-10-13
 
