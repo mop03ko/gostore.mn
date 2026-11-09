@@ -1,5 +1,23 @@
 # cPanel суулгалт
 
+## Admin UX: grouped menu, Ctrl+K search, task dashboard, order tabs and drawer — 2026-11-10
+
+- **What changed** (`290d7a0`, [docs/admin-tools.md](docs/admin-tools.md) «Layout and navigation»; plan with before/after screens in the «GOStore админы шинэчлэл» artifact):
+  - Grouped menu with counts and Ctrl+K search.
+  - Dashboard with today's figures, a task list and a 7-day chart.
+  - Order tabs with counts, filters, paging, waiting time and bulk status change.
+  - A right-hand order drawer with a sticky summary and section links.
+  - Status colours by meaning, in-app confirmations, loading placeholders, and a phone tab bar.
+  - Missing quantities show «—».
+- **Tests.**
+  - New `admin-ux-ui`. The admin UI suites (orders, management, customers, tracking, TaoWorld admin, OT operator, admin-extra, promo popup, reviews, messages) pass.
+  - `admin-management-ui` and `taoworld-storefront-ui` now use the page picker at phone width.
+  - In the full suite only `layout-shift-ui` failed once (0.021–0.048 on `/c/tech` at 320 px after 11.11, a storefront page this change does not touch); it passed on the next run.
+- **Deployed** `admin/admin-ux.js` (new), `admin/admin-extra.js`, `admin/admin.js`, `admin/admin.css`, `admin/index.html` (`?v=20261109-ux`) over FTPS with baseline, backup and hash verification.
+  - Baselines: `290d7a0^`; every live file matched.
+  - Backup: `/gostore-backups/admin-ux-20261109-120f98ec42`. No server or app changes.
+- **Live checks.** `/admin/` serves the four `?v=20261109-ux` files. `uiConfirm` and `AdminExtra` load, with the four menu groups, the search button and the tab bar. No overflow at 1440 and 390 px. No browser errors.
+
 ## Erenhot batch cards open only; 备货中 — 2026-11-10
 
 - Owner requests: the GB batch record cards drop their 打印 / 导出Excel buttons and open the batch when tapped (`d8152ab`; the batch page keeps its label and list printouts; the signed Excel export and its route are removed), and the packed stage is called 备货中 instead of 已出库 (`ffb15d2`: tab, batch status 备货中 · 待发货, order status, scan-out reason). Warehouse tests passed.
