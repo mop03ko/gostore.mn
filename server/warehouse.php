@@ -191,7 +191,7 @@ function warehouse_get(string $action): never {
     $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
-    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
+    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'signed'=>0,'shipped'=>0,'delivered'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
     $overview=array_fill_keys(['ordered','erenhot','ulaanbaatar'],['orders'=>0,'quantity'=>0]);
     $waiting=warehouse_role($location)==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
     $received=warehouse_role($location)==='ulaanbaatar'?'ulaanbaatar':'erenhot';
@@ -202,6 +202,10 @@ function warehouse_get(string $action): never {
         if(in_array($o['status'],$waiting,true))$counts['waiting']++;
         $alerted=warehouse_role($location)==='erenhot'&&warehouse_alerts($o);if($alerted)$counts['alerts']++;
         $packed=warehouse_role($location)==='erenhot'&&(($o['status']==='erenhot'&&isset($o['batch_id']))||$o['status']==='erenhot_ready');if($packed)$counts['packed']++;
+        // Erenhot's separate lists (manager request 2026-11-09): 已签收 (here, not packed), 已发货 (left Erenhot), 已收货 (in Ulaanbaatar).
+        $signed=$o['status']==='erenhot'&&!isset($o['batch_id']);$shipped=in_array($o['status'],['erenhot_dispatched','zamyn_uud'],true);
+        $delivered=in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true);
+        foreach(['signed'=>$signed,'shipped'=>$shipped,'delivered'=>$delivered] as $k=>$v)if($v)$counts[$k]++;
         $flags=warehouse_role($location)==='ulaanbaatar'?warehouse_ub_flags($o):[];foreach(['unpaid','stale'] as $flag)if(isset($flags[$flag]))$counts[$flag]++;
         if($o['status']===$received)$counts['received']++;
         if($o['status']==='erenhot_ready')$counts['ready']++;
@@ -212,6 +216,7 @@ function warehouse_get(string $action): never {
         if($status==='waiting'){if(!in_array($o['status'],$waiting,true))continue;}
         elseif($status==='alerts'){if(!$alerted)continue;}
         elseif($status==='packed'){if(!$packed)continue;}
+        elseif($status==='signed'){if(!$signed)continue;}elseif($status==='shipped'){if(!$shipped)continue;}elseif($status==='delivered'){if(!$delivered)continue;}
         elseif($status==='pending_sort'){if(!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar'],true))continue;}
         elseif(in_array($status,['unpaid','stale'],true)){if(!isset($flags[$status]))continue;}
         elseif($status!==''&&$status!=='all'&&$o['status']!==$status)continue;

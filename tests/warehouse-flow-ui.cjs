@@ -12,8 +12,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/warehouse/');await page.locator('#app').waitFor({state:'visible'});
  const post=async(name,fn)=>{const pending=page.waitForResponse(r=>r.url().includes('action='+name+'&')&&r.request().method()==='POST');await fn();const r=await pending;assert.equal(r.status(),200,await r.text());return r.json();};
  // Alerts card: late and courier-delivered parcels.
- assert.equal(await page.locator('#alerts-stat').isVisible(),true);await page.waitForFunction(()=>document.querySelector('#alerts-count').textContent==='2');assert.match(await page.locator('#alerts-stat').getAttribute('class'),/has-alerts/);
- await page.locator('#alerts-stat').click();await page.waitForFunction(()=>document.querySelectorAll('#records .order-card').length===2);const tags=(await page.locator('#records .warehouse-alert-tag').allInnerTexts()).join(' ');assert.match(tags,/超过5天未到仓/);assert.match(tags,/快递显示已签收/);
+ assert.equal(await page.locator('#status-tabs [data-status=alerts]').isVisible(),true);await page.waitForFunction(()=>document.querySelector('#status-tabs [data-count=alerts]').textContent==='2');assert.match(await page.locator('#status-tabs [data-count=alerts]').getAttribute('class'),/has/);
+ await page.locator('#status-tabs [data-status=alerts]').click();await page.waitForFunction(()=>document.querySelectorAll('#records .order-card').length===2);const tags=(await page.locator('#records .warehouse-alert-tag').allInnerTexts()).join(' ');assert.match(tags,/超过5天未到仓/);assert.match(tags,/快递显示已签收/);
  await page.screenshot({path:'tmp/warehouse-alerts-mobile.png',fullPage:true});
  // Scanning a courier waybill checks that parcel in and opens the order.
  await page.locator('#scan-code').fill('SF1000000000001');await post('warehouse-parcel-arrive',()=>page.locator('#scan-form button').click());await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),id);
@@ -54,11 +54,11 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  d=await post('warehouse-outbound-pack',()=>page.locator('[data-outbound-pack]').click());const batch=d.batch.id;assert.match(batch,/^GB-/);assert.equal(d.batch.status,'ready');
  await page.waitForFunction(b=>document.querySelector('#editor-title').textContent===b,batch);assert.equal(await page.locator('.batch-qr-label strong').innerText(),batch);
  assert.equal(await page.evaluate(()=>localStorage.getItem('gostore-outbound-erenhot')),null,'List cleared after packing');
- const dispatch=page.locator('[data-operation=batch-dispatch]');await dispatch.locator('[name=checked]').check();d=await post('warehouse-batch-dispatch',()=>dispatch.locator('button').click());assert.equal(d.batch.status,'dispatched');assert.match(await page.locator('.batch-heading .tag').first().innerText(),/已出库/);await page.locator('#close-editor').click();
+ const dispatch=page.locator('[data-operation=batch-dispatch]');await dispatch.locator('[name=checked]').check();d=await post('warehouse-batch-dispatch',()=>dispatch.locator('button').click());assert.equal(d.batch.status,'dispatched');assert.match(await page.locator('.batch-heading .tag').first().innerText(),/已发货/);await page.locator('#close-editor').click();
  // A saved list item that changed elsewhere (here: already dispatched) is named with its reason when packing fails.
  await page.evaluate(id=>localStorage.setItem('gostore-outbound-erenhot',JSON.stringify({token:'b'.repeat(64),items:[{id,customer:'x',pieces:2,parcels:[],scanned:[],whole:true,destination:'ulaanbaatar',destination_name:'UB',codes:[id]}]})),id);
  await page.locator('#create-batch').click();const failed=page.waitForResponse(r=>r.url().includes('action=warehouse-outbound-pack&'));await page.locator('[data-outbound-pack]').click();assert.equal((await failed).status(),409);
- await page.waitForFunction(()=>/已装包或已出库/.test(document.querySelector('.outbound-problem')?.textContent||''));assert.match(await page.locator('#editor-body .error').innerText(),/尚不能出库/);
+ await page.waitForFunction(()=>/已出库或已发货/.test(document.querySelector('.outbound-problem')?.textContent||''));assert.match(await page.locator('#editor-body .error').innerText(),/尚不能出库/);
  await page.locator('[data-outbound-clear]').click();assert.equal(await page.locator('.outbound-list li').count(),0);await page.locator('#close-editor').click();
  // Item photo and the supplier's Chinese title/options.
  await page.locator('#scan-code').fill('GS-TEST-043');await page.locator('#scan-form button').click();await page.locator('.warehouse-items img').waitFor();

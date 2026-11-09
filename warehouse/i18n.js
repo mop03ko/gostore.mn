@@ -38,3 +38,7 @@ Object.assign(warehouseText.mn,{readyTitle:'Багцалсан, илгээгээ
 // Ulaanbaatar one-step flow (2026-11-09): counter handover, courier runs, waiting cards; batch receipt without per-order photos.
 Object.assign(warehouseText.mn,{handover:'Хүлээлгэн өгөх',deliveryRun:'Хүргэлтэд гаргах',unpaidTitle:'Төлбөр хүлээж буй',unpaidHint:'Тооцоо гарсан, үлдэгдэл төлөөгүй',staleTitle:'3+ хоног авалгүй',staleHint:'Ангилснаас хойш авах/хүргэх хүлээгдэж байна',receiveBatchHint:'Захиалга бүрийн шошго эсвэл tracking-ийг уншуулж тулгаад багцыг нэг дор хүлээн авна. Зургийг ангилах үед авна.'});
 Object.assign(warehouseText.zh,{handover:'交付',deliveryRun:'派送',unpaidTitle:'待付款',unpaidHint:'已出账单，尾款未付',staleTitle:'3天以上未取',staleHint:'分拣后等待取货/派送',receiveBatchHint:'逐一扫描订单标签或运单号核对后，一次确认整包到货。照片在分拣时拍摄。'});
+// Erenhot lists (manager request 2026-11-09): 待签收 → 已签收 → 已出库 (GB packed) → 已发货 (left Erenhot) → 已收货 (Ulaanbaatar).
+Object.assign(warehouseText.zh,{waiting:'待签收',waitingHint:'运往二连途中',received:'已签收',readyTitle:'已出库',readySummary:'已生成 GB 单号，待发货',third:'已发货',thirdHint:'已离开二连，运往乌兰巴托',tabSigned:'已签收',tabShipped:'已发货',tabDelivered:'已收货',tabAll:'全部',statusTabs:'订单状态',confirmDispatch:'确认发货',confirmShip:'确认发货'});
+Object.assign(warehouseText.zh.batchStatuses,{ready:'已出库 · 待发货',dispatched:'已发货 · 运往扎门乌德'});
+Object.assign(warehouseText.mn,{tabSigned:'Эрээнд ирсэн',tabShipped:'Эрээнээс гарсан',tabDelivered:'УБ-д ирсэн',tabAll:'Бүгд',statusTabs:'Захиалгын төлөв'});
