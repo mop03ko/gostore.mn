@@ -1,5 +1,29 @@
 # cPanel суулгалт
 
+## Admin tools: reports, TaoWorld usage and after-sales, site controls, staff roles and audit — 2026-11-09
+
+- **What changed** (`739c1db`, [docs/admin-tools.md](docs/admin-tools.md)):
+  - Staff accounts with roles (owner, operator, viewer), an audit log, two-step sign-in, and sign-in limits that count failures only.
+  - Reports with gross margin, CSV exports and search insights.
+  - TaoWorld daily usage by kind, the CNY 10,000 threshold and trial, and supplier bill reconciliation.
+  - Order after-sales: cancel, refund and return requests, delivery timeline.
+  - Site controls: hidden items and shops, home keywords, official store list, 11.11 period.
+  - Dashboard alerts.
+- **Tests.** New suites `admin-accounts`, `admin-extra-ui`, `admin-reports`, `taoworld-aftersale`, `catalog-controls`. The full suite passed except `promo-popup-ui`, which read the uploaded image name before the page had set it. Its wait was fixed and it passed together with the admin suites.
+- **Deployed** over FTPS with baseline, backup and hash verification:
+  - New: `server/admin-users.php`, `server/admin-reports.php`, `server/catalog-controls.php`, `server/taoworld-aftersale.php`, `admin/admin-extra.js`.
+  - Changed: `server/product-policy.php`, `supplier-budget.php`, `supplier.php`, `official-stores.php`, `taoworld-catalog.php`, `taoworld-http.php`, `taoworld-purchase.php`, `bootstrap.php`, `api/index.php`, `api/mobile.php`, `admin/admin.css`, `admin/admin.js`, `admin/index.html` (`?v=20261109-admin2`), `eleven-sale.js` (`?v=20261109-campaign`), `index.html`.
+  - Baselines: `739c1db^`; every live file matched. Backup: `/gostore-backups/admin-tools-20261109-43b92da7e7`.
+  - The database tables (`admin_users`, `admin_audit`, `supplier_budget_daily`, `search_log`) are created on first use. No settings changed.
+- **App.** OTA `b48770c` (the 11.11 section reads the admin campaign setting; auto mode keeps the date rule): iOS runtime `52bd47e7…` update `01a1c0bd-1cba-76c8-ba87-f9366d4adcf2`, Android runtime `7bb34ca7…` update `01a1c0bd-1cba-7051-a920-47fbc9a1a01a`.
+- **Live checks:**
+  - `campaign` on `index.php` and `mobile.php` returns `{"mode":"auto","until":null,"active":null}`.
+  - `/server/admin-users.php` and `/server/catalog-controls.php` return 403.
+  - `admin-report`, `admin-users`, `admin-api-usage`, `catalog-controls`, `admin-alerts` and `admin-export` return 401 without a session.
+  - `/admin/` serves the new versions and `AdminExtra` loads with the four pages.
+  - Home shows the 11.11 section, and `/11-11` shows 50 deals.
+  - `/c/women`, `/products`, official stores, search and `health` return 200. No browser errors.
+
 ## Catalog pages — 2026-11-09
 
 - Categories, sub-categories, search, all products, saved items and the 11.11 collection have their own web pages (`b92f637`, docs/catalog-pages.md): `/c/<category>`, `/c/<category>/<sub-category>`, `/search?q=`, `/products`, `/saved`, `/11-11`, with a breadcrumb and title, in-place Back/Forward, and old `/?q=`, `/?category=`, `/?filter=saved`, `/?sale=11.11` links rewritten to the new addresses. New test `catalog-pages-ui`; 12 suites updated for the new addresses; GitHub CI passed on `b92f637`.
