@@ -1,5 +1,11 @@
 # cPanel суулгалт
 
+## Erenhot GB batch records, print and Excel — 2026-11-09
+
+- Owner request: GB batches shown like the manager's CK outbound records (`099d1a8`, docs/erenhot-workflow.md): one card per batch in 已出库 / 已发货 / 运输包裹 (code and time, receiving warehouse, orders and pieces, status), «打印» (100×150 label from the list) and «导出Excel» (UTF-8 CSV manifest via a signed one-hour link that the Android app opens in the phone's browser; no app update). The two tabs count batches. Warehouse tests (12) passed.
+- Deployed `server/warehouse-batches.php`, `server/warehouse.php`, `warehouse/warehouse.js`, `warehouse.css`, `index.html` from `099d1a8` over FTPS with baseline/backup/hash verification; live matched `099d1a8~1`. Backup: `/gostore-backups/records-20261109-6945acc76e`. No database changes; the export signing key (`data/warehouse-export.key`) is created on first use.
+- Live checks: `/warehouse/erenhot` 200 with the batch counts and `?v=20261109-records` assets; JS 200 with print/Excel; `warehouse-batches` without a session 401; a forged export link with a future expiry 403 «下载链接已过期…» (key created, no server error); homepage 200.
+
 ## Erenhot stage tabs — 2026-11-09
 
 - Erenhot manager request: one tab per stage instead of the stage cards (`1afce64`, docs/erenhot-workflow.md): 到货提醒, 待签收, 已签收 (in Erenhot, not packed), 已出库 (packed with a GB number), 已发货 (left Erenhot), 已收货 (in Ulaanbaatar), 全部, with counts and a row that stays at the top. The departure button reads 确认发货. Warehouse tests (11) passed.
