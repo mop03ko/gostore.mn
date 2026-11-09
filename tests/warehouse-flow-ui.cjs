@@ -64,7 +64,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // A saved list item that changed elsewhere (here: already dispatched) is named with its reason when packing fails.
  await page.evaluate(id=>localStorage.setItem('gostore-outbound-erenhot',JSON.stringify({token:'b'.repeat(64),items:[{id,customer:'x',pieces:2,parcels:[],scanned:[],whole:true,destination:'ulaanbaatar',destination_name:'UB',codes:[id]}]})),id);
  await page.locator('#create-batch').click();const failed=page.waitForResponse(r=>r.url().includes('action=warehouse-outbound-pack&'));await page.locator('[data-outbound-pack]').click();assert.equal((await failed).status(),409);
- await page.waitForFunction(()=>/已出库或已发货/.test(document.querySelector('.outbound-problem')?.textContent||''));assert.match(await page.locator('#editor-body .error').innerText(),/尚不能出库/);
+ await page.waitForFunction(()=>/备货中或已发货/.test(document.querySelector('.outbound-problem')?.textContent||''));assert.match(await page.locator('#editor-body .error').innerText(),/尚不能出库/);
  await page.locator('[data-outbound-clear]').click();assert.equal(await page.locator('.outbound-list li').count(),0);await page.locator('#close-editor').click();
  // Item photo and the supplier's Chinese title/options.
  await page.locator('#scan-code').fill('GS-TEST-043');await page.locator('#scan-form button').click();await page.locator('.warehouse-items img').waitFor();

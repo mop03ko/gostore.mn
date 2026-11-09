@@ -74,7 +74,7 @@ assert.equal((await pack({order_ids:[B],codes:[B]})).batch.id,batch.id,'Repeatin
 assert.equal((await receive(A)).status,409,'A packed order is not remeasured');
 assert.equal((await cn('warehouse-outbound-lookup&code=SF1000000000002')).orders[0].reason,'packed');
 assert.equal((await cn('warehouse-orders&status=packed')).counts.packed,3,'Packed: the scanned-out batch and the manual draft');
-// Batch records: 已出库 lists packed batches (and the manual draft).
+// Batch records: 备货中 lists packed batches (and the manual draft).
 let listed=(await cn('warehouse-batches&status=packed')).batches;assert.deepEqual(listed.map(b=>b.id).sort(),[batch.id,manual.id].sort());assert.equal((await cn('warehouse-orders')).counts.packed_batches,2);
 assert.deepEqual((await cn('warehouse-batches&status=shipped')).batches,[]);
 

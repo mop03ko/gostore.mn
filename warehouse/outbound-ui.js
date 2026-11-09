@@ -9,7 +9,7 @@ function outboundLoad(){
  return {token:token(),items:[]};
 }
 function outboundSave(){try{localStorage.setItem(outboundKey(),JSON.stringify(outbound));}catch{}}
-const outboundReasons=()=>({not_received:lt('Хүлээн аваагүй','尚未收货'),freight:lt('Тээврийн үнэ батлаагүй','运费未确认'),issue:lt('Нээлттэй зөрчилтэй','有未处理异常'),packed:lt('Аль хэдийн багцалсан','已出库或已发货'),unavailable:lt('Илгээх боломжгүй','不可出库')});
+const outboundReasons=()=>({not_received:lt('Хүлээн аваагүй','尚未收货'),freight:lt('Тээврийн үнэ батлаагүй','运费未确认'),issue:lt('Нээлттэй зөрчилтэй','有未处理异常'),packed:lt('Аль хэдийн багцалсан','备货中或已发货'),unavailable:lt('Илгээх боломжгүй','不可出库')});
 const outboundMissing=i=>i.whole?[]:i.parcels.filter(n=>!i.scanned.includes(n));
 function outboundHtml(){
  const items=outbound.items,pieces=items.reduce((n,i)=>n+i.pieces,0),incomplete=items.filter(i=>outboundMissing(i).length);

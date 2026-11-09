@@ -227,7 +227,7 @@ function warehouse_get(string $action): never {
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);
     }
-    // Erenhot's 已出库 / 已发货 tabs list GB batches, so they count batches.
+    // Erenhot's 备货中 / 已发货 tabs list GB batches, so they count batches.
     if(warehouse_role($location)==='erenhot')foreach(db()->query('SELECT data FROM shipment_batches') as $r){$b=json_decode($r['data'],true);if(!is_array($b)||!warehouse_batch_visible($b,$location))continue;if(in_array($b['status'],['draft','ready'],true))$counts['packed_batches']++;elseif($b['status']==='dispatched')$counts['shipped_batches']++;}
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_schedule_refresh'))inbound_schedule_refresh();
     json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
