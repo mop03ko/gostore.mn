@@ -23,46 +23,6 @@ function warehouse_batch_save(array &$batch,string $event): void {
 function warehouse_batch_visible(array $batch,string $location): bool {
     return warehouse_role($location)==='erenhot'?($batch['source']??'erenhot')===$location:(($batch['destination']??'ulaanbaatar')===$location&&in_array($batch['status'],['dispatched','received','sorted'],true));
 }
-// Batch records (manager request 2026-11-09, like the "CK" outbound records): each batch has a manifest
-// download. The Erenhot app opens downloads in the phone's browser, without the warehouse session, so the
-// link is signed for this batch and warehouse and expires after an hour.
-const WAREHOUSE_EXPORT_TTL=3600;
-function warehouse_export_key(): string {
-    $file=config()['data_dir'].'/warehouse-export.key';$key=is_file($file)?trim((string)file_get_contents($file)):'';
-    if(!preg_match('/^[a-f0-9]{64}$/D',$key)){
-        $h=@fopen($file,'x');if($h){fwrite($h,bin2hex(random_bytes(32)));fclose($h);@chmod($file,0600);}
-        $key=trim((string)file_get_contents($file));
-        if(!preg_match('/^[a-f0-9]{64}$/D',$key))fail('Багцын жагсаалтыг татах түр боломжгүй.',503);
-    }
-    return $key;
-}
-function warehouse_export_signature(string $id,string $location,int $expires): string {return hash_hmac('sha256',$id.'|'.$location.'|'.$expires,warehouse_export_key());}
-function warehouse_export_url(string $id,string $location,?int $now=null): string {
-    $expires=($now??time())+WAREHOUSE_EXPORT_TTL;
-    return '/api/index.php?'.http_build_query(['action'=>'warehouse-batch-export','id'=>$id,'location'=>$location,'exp'=>$expires,'sig'=>warehouse_export_signature($id,$location,$expires),'lang'=>warehouse_role($location)==='erenhot'?'zh':'mn']);
-}
-// Spreadsheet text never starts a formula.
-function warehouse_csv_cell($v): string {$v=(string)$v;return preg_match('/^[=+\-@\t\r]/',$v)?"'".$v:$v;}
-function warehouse_batch_export(array $q): never {
-    $id=str_field($q,'id',50);$location=str_field($q,'location',60);$sig=str_field($q,'sig',64);$expires=filter_var($q['exp']??null,FILTER_VALIDATE_INT);
-    if($expires===false||$expires<time()||$expires>time()+WAREHOUSE_EXPORT_TTL+60||!hash_equals(warehouse_export_signature($id,$location,$expires),$sig))fail('Татах холбоосын хугацаа дууссан. Жагсаалтаа шинэчлээд дахин дарна уу.',403);
-    $batch=warehouse_batch_row($id);if(!warehouse_batch_visible($batch,$location))fail('Багц олдсонгүй.',404);
-    $zh=warehouse_role($location)==='erenhot';
-    $statuses=$zh?['erenhot'=>'已签收','erenhot_ready'=>'已出库','erenhot_dispatched'=>'已发货','zamyn_uud'=>'已到扎门乌德','ulaanbaatar_unsorted'=>'已收货 · 待分拣','ulaanbaatar'=>'已收货','ready_pickup'=>'待自提','ready_delivery'=>'待配送','out_for_delivery'=>'配送中','completed'=>'已完成']
-        :['erenhot'=>'Эрээнд ирсэн','erenhot_ready'=>'Илгээхэд бэлэн','erenhot_dispatched'=>'Эрээнээс гарсан','zamyn_uud'=>'Замын-Үүдэд','ulaanbaatar_unsorted'=>'Ирсэн · ангилаагүй','ulaanbaatar'=>'УБ-д хүлээн авсан','ready_pickup'=>'Авахад бэлэн','ready_delivery'=>'Хүргэлтэд бэлэн','out_for_delivery'=>'Хүргэлтэд гарсан','completed'=>'Хүлээлгэн өгсөн'];
-    $out=fopen('php://temp','w+');fwrite($out,"\xEF\xBB\xBF");
-    fputcsv($out,$zh?['包裹编号','订单号','收件人','商品','规格','数量','快递单号','重量 (kg)','体积 (m³)','状态']:['Багц','Захиалга','Хүлээн авагч','Бараа','Хувилбар','Тоо','Tracking','Жин (kg)','Эзлэхүүн (m³)','Төлөв'],',','"','');
-    foreach(warehouse_batch_members($batch['id']) as $o){
-        $m=logistics_state($o)['measurement']??[];$numbers=implode(' ',array_column($o['inbound']['numbers']??[],'no'));
-        foreach(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]) as $item){
-            $name=$zh&&($item['original_name']??'')!==''?$item['original_name']:($item['name']??'');$variant=$zh&&($item['original_variant']??'')!==''?$item['original_variant']:($item['variant']??'');
-            fputcsv($out,array_map('warehouse_csv_cell',[$batch['id'],$o['id'],$o['customer']??'',$name,$variant,(int)($item['qty']??0),$numbers,$m['weight_kg']??'',$m['volume_m3']??'',$statuses[$o['status']]??$o['status']]),',','"','');
-        }
-    }
-    rewind($out);$csv=stream_get_contents($out);fclose($out);
-    header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="'.$batch['id'].'.csv"');header('Cache-Control: no-store, private');header('X-Content-Type-Options: nosniff');
-    echo $csv;exit;
-}
 function warehouse_batch_public(array $batch,string $location,bool $detail=false): array {
     $result=array_intersect_key($batch,array_flip(['id','status','version','created','note','ready_at','dispatched_at','received_at']));
     $result['source']=$batch['source']??'erenhot';$result['destination']=$batch['destination']??'ulaanbaatar';
@@ -70,7 +30,7 @@ function warehouse_batch_public(array $batch,string $location,bool $detail=false
     $members=warehouse_batch_members($batch['id']);$result['order_count']=count($members);
     $result['unsorted_count']=count(array_filter($members,fn($o)=>$o['status']==='ulaanbaatar_unsorted'));
     $result['piece_count']=array_sum(array_map(fn($o)=>array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty')),$members));
-    $result['scanned']=$batch['checks'][$location]??[];$result['export_url']=warehouse_export_url($batch['id'],$location);
+    $result['scanned']=$batch['checks'][$location]??[];
     if($detail){$result['orders']=array_map(fn($o)=>warehouse_order_public($o,$location),$members);$result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['event','at'])),$batch['history']);}
     return $result;
 }

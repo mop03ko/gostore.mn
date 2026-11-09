@@ -173,8 +173,6 @@ function warehouse_tracking_matches(string $number,string $location): array {
     return ['number'=>$number,'orders'=>$matches,'total'=>$total,'more'=>$total>50];
 }
 function warehouse_get(string $action): never {
-    // Signed manifest download; opened in the phone's browser, so it carries no session.
-    if($action==='warehouse-batch-export')warehouse_batch_export($_GET);
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
     $location=warehouse_session_location();
@@ -283,8 +281,6 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
-        'Татах холбоосын хугацаа дууссан. Жагсаалтаа шинэчлээд дахин дарна уу.'=>'下载链接已过期，请刷新列表后重新点击。',
-        'Багцын жагсаалтыг татах түр боломжгүй.'=>'暂时无法导出包裹清单。',
         'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
         'Нийт жин болон эзлэхүүнийг зөв оруулна уу.'=>'请输入正确的总重量和总体积。',
         'Жин болон эзлэхүүнийг оруулж автоматаар тооцоолно уу.'=>'请输入重量和体积，系统将自动计算运费。',
