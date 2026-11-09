@@ -173,6 +173,8 @@ function warehouse_tracking_matches(string $number,string $location): array {
     return ['number'=>$number,'orders'=>$matches,'total'=>$total,'more'=>$total>50];
 }
 function warehouse_get(string $action): never {
+    // Signed manifest download; opened in the phone's browser, so it carries no session.
+    if($action==='warehouse-batch-export')warehouse_batch_export($_GET);
     if($action==='warehouse-session')json_out(['authenticated'=>warehouse_authenticated(),'location'=>warehouse_session_location(),'warehouses'=>warehouse_choices(),'csrf'=>$_SESSION['csrf']]);
     warehouse_required();
     $location=warehouse_session_location();
@@ -191,7 +193,7 @@ function warehouse_get(string $action): never {
     $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
-    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'signed'=>0,'shipped'=>0,'delivered'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
+    $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'packed_batches'=>0,'shipped_batches'=>0,'signed'=>0,'shipped'=>0,'delivered'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
     $overview=array_fill_keys(['ordered','erenhot','ulaanbaatar'],['orders'=>0,'quantity'=>0]);
     $waiting=warehouse_role($location)==='ulaanbaatar'?['erenhot_dispatched','zamyn_uud']:['confirmed','shipping'];
     $received=warehouse_role($location)==='ulaanbaatar'?'ulaanbaatar':'erenhot';
@@ -227,6 +229,8 @@ function warehouse_get(string $action): never {
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);
     }
+    // Erenhot's 已出库 / 已发货 tabs list GB batches, so they count batches.
+    if(warehouse_role($location)==='erenhot')foreach(db()->query('SELECT data FROM shipment_batches') as $r){$b=json_decode($r['data'],true);if(!is_array($b)||!warehouse_batch_visible($b,$location))continue;if(in_array($b['status'],['draft','ready'],true))$counts['packed_batches']++;elseif($b['status']==='dispatched')$counts['shipped_batches']++;}
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_schedule_refresh'))inbound_schedule_refresh();
     json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
 }
@@ -279,6 +283,8 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Татах холбоосын хугацаа дууссан. Жагсаалтаа шинэчлээд дахин дарна уу.'=>'下载链接已过期，请刷新列表后重新点击。',
+        'Багцын жагсаалтыг татах түр боломжгүй.'=>'暂时无法导出包裹清单。',
         'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
         'Нийт жин болон эзлэхүүнийг зөв оруулна уу.'=>'请输入正确的总重量和总体积。',
         'Жин болон эзлэхүүнийг оруулж автоматаар тооцоолно уу.'=>'请输入重量和体积，系统将自动计算运费。',

@@ -55,6 +55,14 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.waitForFunction(b=>document.querySelector('#editor-title').textContent===b,batch);assert.equal(await page.locator('.batch-qr-label strong').innerText(),batch);
  assert.equal(await page.evaluate(()=>localStorage.getItem('gostore-outbound-erenhot')),null,'List cleared after packing');
  const dispatch=page.locator('[data-operation=batch-dispatch]');await dispatch.locator('[name=checked]').check();d=await post('warehouse-batch-dispatch',()=>dispatch.locator('button').click());assert.equal(d.batch.status,'dispatched');assert.match(await page.locator('.batch-heading .tag').first().innerText(),/已发货/);await page.locator('#close-editor').click();
+ // 已发货 lists GB batch records like the "CK" outbound records: code and time, warehouse, count, status, print and Excel.
+ await page.evaluate(()=>{window.print=()=>{window.printed=(window.printed||0)+1;};});
+ await page.locator('#status-tabs [data-status=shipped]').click();await page.waitForFunction(b=>[...document.querySelectorAll('#records .batch-record .order-code-link')].some(e=>e.textContent===b),batch);
+ assert.equal(await page.locator('#status-tabs [data-status=shipped]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#status-tabs [data-count=shipped_batches]').innerText(),'1');
+ const record=page.locator('#records .batch-record').filter({hasText:batch});assert.match(await record.innerText(),/收货仓库: [\s\S]*数量: 1 个订单 · 2 件[\s\S]*已发货/);
+ await record.locator('[data-print-batch-id]').click();await page.waitForFunction(()=>window.printed===1);assert.match(await page.locator('#print-area').innerText(),new RegExp(batch));
+ const href=await record.locator('a').getAttribute('href');assert.match(href,/action=warehouse-batch-export&id=GB-/);const bytes=Buffer.from(await (await fetch(base+href)).arrayBuffer()),csv=bytes.toString('utf8');assert.equal(bytes.subarray(0,3).toString('hex'),'efbbbf');assert.ok(csv.includes('包裹编号'));assert.match(csv,new RegExp(batch+','+id+','));
+ await page.screenshot({path:'tmp/warehouse-batch-records.png'});
  // A saved list item that changed elsewhere (here: already dispatched) is named with its reason when packing fails.
  await page.evaluate(id=>localStorage.setItem('gostore-outbound-erenhot',JSON.stringify({token:'b'.repeat(64),items:[{id,customer:'x',pieces:2,parcels:[],scanned:[],whole:true,destination:'ulaanbaatar',destination_name:'UB',codes:[id]}]})),id);
  await page.locator('#create-batch').click();const failed=page.waitForResponse(r=>r.url().includes('action=warehouse-outbound-pack&'));await page.locator('[data-outbound-pack]').click();assert.equal((await failed).status(),409);

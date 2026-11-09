@@ -74,6 +74,13 @@ assert.equal((await pack({order_ids:[B],codes:[B]})).batch.id,batch.id,'Repeatin
 assert.equal((await receive(A)).status,409,'A packed order is not remeasured');
 assert.equal((await cn('warehouse-outbound-lookup&code=SF1000000000002')).orders[0].reason,'packed');
 assert.equal((await cn('warehouse-orders&status=packed')).counts.packed,3,'Packed: the scanned-out batch and the manual draft');
+// Batch records: 已出库 lists packed batches (and the manual draft), with a signed manifest download that needs no session.
+let listed=(await cn('warehouse-batches&status=packed')).batches;assert.deepEqual(listed.map(b=>b.id).sort(),[batch.id,manual.id].sort());assert.equal((await cn('warehouse-orders')).counts.packed_batches,2);
+assert.deepEqual((await cn('warehouse-batches&status=shipped')).batches,[]);
+const exportUrl=listed.find(b=>b.id===batch.id).export_url;assert.match(exportUrl,/^\/api\/index\.php\?action=warehouse-batch-export&id=GB-[A-F0-9]{6}&location=erenhot&exp=\d+&sig=[a-f0-9]{64}&lang=zh$/);
+let file=await fetch(base+exportUrl);assert.equal(file.status,200);assert.match(file.headers.get('content-type'),/^text\/csv/);assert.equal(file.headers.get('content-disposition'),'attachment; filename="'+batch.id+'.csv"');
+const bytes=Buffer.from(await file.arrayBuffer()),csv=bytes.subarray(3).toString('utf8');assert.equal(bytes.subarray(0,3).toString('hex'),'efbbbf','UTF-8 BOM for Excel');assert.ok(csv.startsWith('包裹编号,订单号,收件人'),'Chinese header');assert.equal(csv.trim().split('\n').length,3,'One row per item');assert.match(csv,new RegExp(batch.id+','+A+','));assert.match(csv,new RegExp(batch.id+','+B+','));
+for(const bad of [exportUrl.replace(/sig=[a-f0-9]{4}/,'sig=0000'),exportUrl.replace(/exp=(\d+)/,(m,e)=>'exp='+(Number(e)+1)),exportUrl.replace('location=erenhot','location=ulaanbaatar')]){file=await fetch(base+bad);assert.equal(file.status,403,bad);assert.match((await file.json()).error,/下载链接已过期/);}
 
 // Dispatch the GB batch: role and the physical-departure confirmation are required.
 assert.equal((await ub('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version,checked:true})).status,403);
@@ -94,6 +101,8 @@ r=await cn('warehouse-outbound-pack',{token:crypto.randomBytes(32).toString('hex
 r=await cn('warehouse-batch-dispatch',{id:gb.id,expected_version:gb.version,checked:true});assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.batch.status,'dispatched');assert.equal(r.batch.orders[0].status,'erenhot_dispatched');
 assert.ok((await order(C)).history.some(h=>h.status==='erenhot_ready'),'Packed before it left');
 assert.equal((await ub('warehouse-batch&id='+gb.id)).status,200,'Ulaanbaatar sees the dispatched batch');
+// 已发货 lists the dispatched batches.
+assert.deepEqual((await cn('warehouse-batches&status=shipped')).batches.map(b=>b.id).sort(),[batch.id,gb.id].sort());assert.equal((await cn('warehouse-orders')).counts.shipped_batches,2);assert.equal((await cn('warehouse-orders')).counts.packed_batches,1,'Only the manual draft is left');
 assert.equal((await ub('warehouse-order&id='+A)).order.parcels,undefined,'Parcel check-in stays with Erenhot');
 
 // Arrival alerts: late parcels and courier-delivered parcels that were not scanned.

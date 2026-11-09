@@ -95,3 +95,8 @@ html[lang="zh-CN"] body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-s
 .status-tabs button[aria-pressed=true]{border-color:#132344;background:#132344;color:#fff}.status-tabs button[aria-pressed=true] b{background:#ffffff2e;color:#fff}
 .status-tabs .alert-tab b.has{background:#fde8e8;color:#912018}.status-tabs .alert-tab[aria-pressed=true] b.has{background:#fff;color:#912018}
 #order-list-panel{scroll-margin-top:72px}
+.batch-record .batch-record-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.batch-record .batch-record-head .order-code-link{color:#1d5fd1;font-size:22px;font-weight:800;letter-spacing:.3px}.batch-record time{color:var(--muted,#68738a);font-size:13px}
+.batch-record-meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin:10px 0;padding-top:10px;border-top:1px solid var(--line);color:#3c4659;overflow-wrap:anywhere}.batch-record-meta b{color:#132344}
+.batch-record-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.batch-record-actions>*{display:flex;align-items:center;justify-content:center;min-height:44px;text-decoration:none;text-align:center}
+.batch-record{display:block}.batch-record .batch-record-foot{margin-top:4px}
