@@ -102,3 +102,7 @@ html[lang="zh-CN"] body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-s
 .batch-record-open{display:block;width:100%;padding:24px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.batch-record-open>span{display:flex}
 .batch-record-foot{align-items:center;justify-content:space-between;gap:12px;margin-top:4px}.batch-record-more{color:#132344;font-weight:700;white-space:nowrap}
 @media(max-width:600px){.batch-record-open{padding:18px}}
+.warehouse-search{grid-template-columns:minmax(0,1fr) repeat(3,auto)}
+.month-field{display:flex;align-items:flex-end;gap:8px}.month-field label{margin:0}.month-field input{min-width:170px}.month-field .quiet{min-height:44px;white-space:nowrap}
+.date-group{display:flex;align-items:center;gap:8px;margin:0;padding:14px 24px 6px;background:#f7f9fd;border-top:1px solid var(--line);color:#132344;font-size:15px}.date-group small{padding:1px 8px;border-radius:999px;background:#e6ecf6;font-size:12px;font-weight:700}
+@media(max-width:900px){.warehouse-search{grid-template-columns:1fr 1fr}}@media(max-width:600px){.warehouse-search{grid-template-columns:1fr}.month-field input{min-width:0;flex:1}.month-field label{flex:1}.date-group{padding:12px 16px 6px}}

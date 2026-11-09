@@ -119,6 +119,9 @@ function warehouse_order_operable(array $o,string $location='erenhot'): bool {
         || in_array($o['status'],['zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)
         || count(array_intersect(array_column($o['history']??[],'status'),['zamyn_uud','ulaanbaatar']))>0;
 }
+// Lists can be narrowed to the month a code was created; Erenhot and Ulaanbaatar are both UTC+8.
+function warehouse_local_month(string $iso): string {$t=strtotime($iso);return $t?gmdate('Y-m',$t+8*3600):'';}
+function warehouse_month_param(): string {$m=str_field($_GET,'month',7,false);if($m!==''&&!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D',$m))fail('Сар буруу.');return $m;}
 function warehouse_order_public(array $o,string $location='erenhot',bool $details=true): array {
     $result=array_intersect_key($o,array_flip(['id','title','customer','status','created','warehouse','batch_id']));
     $result['read_only']=!warehouse_order_operable($o,$location);
@@ -188,7 +191,7 @@ function warehouse_get(string $action): never {
     if($action==='warehouse-exception-photo'){$id=str_field($_GET,'id',50);logistics_exception($id,$location);logistics_photo_read(['logistics'=>['photos'=>logistics_exception_photos($id)]],str_field($_GET,'photo',32));}
     if(str_starts_with($action,'warehouse-batch'))warehouse_batch_get($action,$location);
     if($action!=='warehouse-orders')fail('Үйлдэл олдсонгүй.',404);
-    $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
+    $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);$month=warehouse_month_param();
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
     if($offset===false)fail('Хуудасны дугаар буруу.');
     $rows=[];$matched=0;$counts=['waiting'=>0,'alerts'=>0,'packed'=>0,'packed_batches'=>0,'shipped_batches'=>0,'signed'=>0,'shipped'=>0,'delivered'=>0,'unpaid'=>0,'stale'=>0,'received'=>0,'ready'=>0,'dispatched'=>0,'completed'=>0,'unsorted'=>0,'ready_pickup'=>0,'ready_delivery'=>0,'out_for_delivery'=>0];
@@ -224,6 +227,7 @@ function warehouse_get(string $action): never {
         $phones=warehouse_role($location)==='ulaanbaatar'?' '.warehouse_phone_digits($o['phone']??'').' '.warehouse_phone_digits($o['fulfillment']['contact_phone']??''):'';
         $digits=warehouse_phone_digits($query);$byPhone=$phones!==''&&strlen($digits)>=4&&preg_match('/^[\d +()-]+$/D',$query)&&str_contains($phones,$digits);
         if($query!==''&&!$byPhone&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
+        if($month!==''&&warehouse_local_month((string)($o['created']??''))!==$month)continue;
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);
     }
@@ -281,6 +285,7 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Сар буруу.'=>'月份格式不正确。',
         'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
         'Нийт жин болон эзлэхүүнийг зөв оруулна уу.'=>'请输入正确的总重量和总体积。',
         'Жин болон эзлэхүүнийг оруулж автоматаар тооцоолно уу.'=>'请输入重量和体积，系统将自动计算运费。',

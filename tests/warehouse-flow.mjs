@@ -77,6 +77,11 @@ assert.equal((await cn('warehouse-orders&status=packed')).counts.packed,3,'Packe
 // Batch records: 备货中 lists packed batches (and the manual draft).
 let listed=(await cn('warehouse-batches&status=packed')).batches;assert.deepEqual(listed.map(b=>b.id).sort(),[batch.id,manual.id].sort());assert.equal((await cn('warehouse-orders')).counts.packed_batches,2);
 assert.deepEqual((await cn('warehouse-batches&status=shipped')).batches,[]);
+// Month filter: lists by the month the code was created (UTC+8, like Erenhot and Ulaanbaatar).
+const thisMonth=new Date(Date.now()+8*3600e3).toISOString().slice(0,7);
+assert.equal((await cn('warehouse-orders&month=2026-13')).status,400);assert.match((await cn('warehouse-orders&month=bad&lang=zh')).error,/月份格式不正确/);
+assert.equal((await cn('warehouse-orders&month=2001-01')).total,0);assert.equal((await cn('warehouse-orders&month=2026-01')).total,(await cn('warehouse-orders')).total,'Fixture orders were created in January 2026');
+assert.deepEqual((await cn('warehouse-batches&status=packed&month='+thisMonth)).batches.map(b=>b.id).sort(),[batch.id,manual.id].sort());assert.equal((await cn('warehouse-batches&month=2026-01')).total,0);
 
 // Dispatch the GB batch: role and the physical-departure confirmation are required.
 assert.equal((await ub('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version,checked:true})).status,403);

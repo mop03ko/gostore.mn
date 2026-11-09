@@ -42,3 +42,6 @@ Object.assign(warehouseText.zh,{handover:'交付',deliveryRun:'派送',unpaidTit
 Object.assign(warehouseText.zh,{waiting:'待签收',waitingHint:'运往二连途中',received:'已签收',readyTitle:'备货中',readySummary:'已生成 GB 单号，待发货',third:'已发货',thirdHint:'已离开二连，运往乌兰巴托',tabSigned:'已签收',tabShipped:'已发货',tabDelivered:'已收货',tabAll:'全部',statusTabs:'订单状态',confirmDispatch:'确认发货',confirmShip:'确认发货'});
 Object.assign(warehouseText.zh.batchStatuses,{ready:'备货中 · 待发货',dispatched:'已发货 · 运往扎门乌德'});
 Object.assign(warehouseText.mn,{tabSigned:'Эрээнд ирсэн',tabShipped:'Эрээнээс гарсан',tabDelivered:'УБ-д ирсэн',tabAll:'Бүгд',statusTabs:'Захиалгын төлөв'});
+// Month filter (2026-11-10): lists by the month the code was created.
+Object.assign(warehouseText.zh,{monthFilter:'创建月份',allMonths:'全部月份'});
+Object.assign(warehouseText.mn,{monthFilter:'Үүсгэсэн сар',allMonths:'Бүх сар'});

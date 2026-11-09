@@ -40,7 +40,7 @@ function warehouse_batch_get(string $action,string $location): never {
         json_out(['batch'=>warehouse_batch_public($batch,$location,true),'location'=>$location]);
     }
     if($action!=='warehouse-batches')fail('Үйлдэл олдсонгүй.',404);
-    $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);
+    $query=mb_strtolower(str_field($_GET,'q',100,false));$status=str_field($_GET,'status',30,false);$month=warehouse_month_param();
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);if($offset===false)fail('Хуудасны дугаар буруу.');
     $rows=[];$total=0;
     foreach(db()->query('SELECT data FROM shipment_batches ORDER BY created DESC,id DESC') as $r){
@@ -48,6 +48,7 @@ function warehouse_batch_get(string $action,string $location): never {
         $wanted=match($status){'packed'=>['draft','ready'],'shipped'=>['dispatched'],'','all'=>null,default=>[$status]};
         if($wanted!==null&&!in_array($b['status'],$wanted,true))continue;
         if($query!==''&&!str_contains(mb_strtolower($b['id'].' '.$b['note']),$query))continue;
+        if($month!==''&&warehouse_local_month((string)($b['created']??''))!==$month)continue;
         if($total++<$offset)continue;if(count($rows)<51)$rows[]=warehouse_batch_public($b,$location);
     }
     json_out(['batches'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$total,'location'=>$location]);
