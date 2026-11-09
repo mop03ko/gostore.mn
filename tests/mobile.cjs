@@ -11,6 +11,9 @@ function client(){let token='',csrf='';return {get token(){return token;},get cs
  assert.equal((await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'},{'X-CSRF-Token':'bad'})).status,403);
  r=await a.call('customer-register',{name:'Mobile Fixture',email,password,password_confirm:password,phone:'99112233'});assert.equal(r.status,201);const customer=r.data.customer;assert.notEqual(a.token,guest);const first=a.token;
  assert.equal((await fetch(base+'/api/mobile.php?action=customer-me',{headers:{'X-GOStore-Mobile-Token':guest}})).status,401);
+ // The app reads the admin's 11.11 setting; auto mode keeps the app's date rule.
+ const campaign=await fetch(base+'/api/mobile.php?action=campaign');assert.equal(campaign.status,200);assert.deepEqual((await campaign.json()).eleven,{mode:'auto',until:null,active:null});
+ assert.equal((await fetch(base+'/api/mobile.php?action=admin-report')).status,404,'Admin actions stay closed to the app');
  r=await fetch(base+'/api/mobile.php?action=customer-me',{headers:{Cookie:'gostore_mobile='+a.token}});assert.equal((await r.json()).customer,null);
  assert.equal((await a.call('customer-address-save',{label:'Home',recipient:'Fixture',phone:'99112233',address:'Test address',is_default:true})).status,200);
  await b.call('customer-me');assert.equal((await b.call('customer-addresses')).status,401);

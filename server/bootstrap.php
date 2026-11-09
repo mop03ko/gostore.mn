@@ -131,12 +131,15 @@ function admin_password_hash(): string {
     $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['admin_password_hash']);
     return $s->fetchColumn() ?: config()['admin_password_hash'];
 }
+// Staff accounts and roles live in admin-users.php; entry points without it accept only the owner.
 function admin_authenticated(): bool {
-    return !empty($_SESSION['admin']) && hash_equals(hash('sha256',admin_password_hash()),(string)($_SESSION['admin_version']??''));
+    if(function_exists('admin_current'))return admin_current()!==null;
+    return !empty($_SESSION['admin']) && ($_SESSION['admin_user']??'owner')==='owner' && hash_equals(hash('sha256',admin_password_hash()),(string)($_SESSION['admin_version']??''));
 }
 function admin_required(): void { session_boot(); if (!admin_authenticated()) fail('Админаар нэвтэрнэ үү.',401); }
 function admin_password_change(array $b): array {
     admin_required();limit_attempts('admin-password:'.($_SERVER['REMOTE_ADDR']??'cli'),8,900);
+    if(($_SESSION['admin_user']??'owner')!=='owner')fail('Таны эрх энэ үйлдэлд хүрэлцэхгүй.',403);
     $current=$b['current_password']??null;$next=$b['new_password']??null;$confirm=$b['password_confirm']??null;
     if(!is_string($current)||strlen($current)>1000||!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
     if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');

@@ -11,7 +11,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  const save=async()=>{const p=admin.waitForResponse(r=>new URL(r.url()).searchParams.get('action')==='admin-promo-popup-save');await f.locator('button.primary').click();return p;};
  // Image upload, then the rejected inputs.
  const upload=admin.waitForResponse(r=>new URL(r.url()).searchParams.get('action')==='image-upload');await f.locator('#promo-image-upload').setInputFiles('assets/backpack.jpg');assert.ok((await upload).ok());
- uploaded=await f.locator('[name=image]').inputValue();assert.match(uploaded,/^uploads\/[a-f0-9]{32}$/);assert.ok(await admin.locator('.promo-admin-image img').isVisible());
+ await admin.waitForFunction(()=>document.querySelector('#promo-form [name=image]').value!=='');uploaded=await f.locator('[name=image]').inputValue();assert.match(uploaded,/^uploads\/[a-f0-9]{32}$/);assert.ok(await admin.locator('.promo-admin-image img').isVisible());
  await f.locator('[name=enabled]').check();await f.locator('[name=title]').fill('11.11 хямдрал');await f.locator('[name=text]').fill('Бүх цүнх 20% хямд.');await f.locator('[name=button]').fill('Үзэх');
  await f.locator('[name=link]').fill('javascript:alert(1)');assert.equal((await save()).status(),400);assert.match(await f.locator('.error').innerText(),/Холбоос/);
  await f.locator('[name=link]').fill('/official-stores');await f.locator('[name=starts]').fill('2030-01-02T10:00');await f.locator('[name=ends]').fill('2030-01-01T10:00');assert.equal((await save()).status(),400);assert.match(await f.locator('.error').innerText(),/Дуусах/);

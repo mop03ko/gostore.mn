@@ -156,7 +156,7 @@ function tw_catalog_offers(array $p,int $expires): array {
 }
 // $ttl overrides how long prices, discounts and offers stay valid after $fetched (deal lists).
 function tw_catalog_product(array $p,bool $detail=false,?int $fetched=null,?int $ttl=null): array {
-    product_policy_assert(['id'=>'tb-'.($p['item_id']??''),'name'=>$p['title']??'','original_name'=>$p['multi_language_info']['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[]]);
+    product_policy_assert(['id'=>'tb-'.($p['item_id']??''),'name'=>$p['title']??'','original_name'=>$p['multi_language_info']['title']??'','description'=>$p['description']??'','category_path'=>$p['category_path']??'','variants'=>$p['sku_list']??[],'shop_name'=>is_string($p['shop_name']??null)?$p['shop_name']:'']);
     $id=tw_catalog_remember($p,$fetched);$price=tw_catalog_price($p,$detail);$rate=shipping_settings()['cny_rate'];
     $title=$p['multi_language_info']['title']??$p['title']??$id;
     $image=supplier_image((string)($p['main_image_url']??$p['pic_urls'][0]??''));
@@ -276,6 +276,8 @@ function tw_catalog_departments(): array {
 // Homepage mix: the 27 departments plus popular Taobao categories (85 keywords, all checked against
 // the product policy), so scrolling covers far more of the catalog than the original departments.
 function tw_catalog_home_keywords(): array {
+    // The admin can replace the home mix (Сайтын тохиргоо); six or more checked keywords.
+    $custom=catalog_controls_meta()['home_keywords']??[];if(is_array($custom)&&count($custom)>=6)return array_values($custom);
     return array_values(array_unique(array_merge(array_values(tw_catalog_departments()),['手机壳','数据线','蓝牙耳机','充电宝','智能手表','键盘鼠标','手机支架','连衣裙','卫衣','牛仔裤','羽绒服','衬衫','T恤','外套','运动鞋','休闲鞋','帆布鞋','双肩包','行李箱','钱包','帽子','围巾','袜子','睡衣','太阳镜','发饰','护肤品','洗面奶','床上用品','毛巾','收纳袋','保温杯','餐具','清洁用品','装饰画','抱枕','地毯','窗帘','积木','文具','笔记本','书包','瑜伽垫','健身器材','自行车配件','户外背包','宠物玩具','汽车座垫','五金配件','电动工具','厨房收纳','浴室用品','儿童鞋','女包','男包','手表','耳环','项链'])));
 }
 // The starting department rotates every Ulaanbaatar day, so the first screens differ day to day while

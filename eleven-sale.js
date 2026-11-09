@@ -1,14 +1,29 @@
 'use strict';
 (() => {
-  const active = () => {
+  const dateActive = () => {
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ulaanbaatar', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
     return parts.find(part => part.type === 'month').value === '11' && Number(parts.find(part => part.type === 'day').value) <= 11;
   };
+  // The admin can end the campaign early or extend it to a date (Сайтын тохиргоо). Until that answer
+  // arrives the date rule applies, so the section still appears without waiting for the server.
+  let override = null, until = '', rerender = null;
+  const active = () => override === null ? dateActive() : override;
   const hub = document.getElementById('home-hub');
   // The collection is /11-11 (older links: /?sale=11.11); after the campaign it sends visitors home.
   const collection = /^\/11-11\/?$/.test(location.pathname) || (/^\/(?:index\.html)?$/.test(location.pathname) && new URLSearchParams(location.search).get('sale') === '11.11');
-  if (collection && !active()) { location.replace('/'); return; }
-  if (!hub || !(collection || /^\/(?:index\.html)?$/.test(location.pathname) || document.documentElement.classList.contains('listing-view')) || !active()) return;
+  const eligible = Boolean(hub) && (collection || /^\/(?:index\.html)?$/.test(location.pathname) || document.documentElement.classList.contains('listing-view'));
+  const startedByDate = dateActive();
+  fetch('/api/index.php?action=campaign', { credentials: 'omit' }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
+    // Auto mode (active: null) keeps the date rule; only an explicit on/off from the admin overrides it.
+    const c = d?.eleven?.mode !== 'auto' && typeof d?.eleven?.active === 'boolean' ? d.eleven : null;
+    if (!c) { if (collection && !startedByDate) location.replace('/'); return; }
+    override = c.active; until = c.until || '';
+    if (c.active && !startedByDate && eligible) boot();
+    else if (!c.active && collection && !startedByDate) location.replace('/');
+    else rerender?.();
+  });
+  if (startedByDate && eligible) boot();
+  function boot() {
   if (collection && location.pathname !== '/11-11') history.replaceState(null, '', '/11-11');
   const hero = hub.querySelector('.hero-banner');
   const originalHero = hero?.innerHTML;
@@ -44,6 +59,7 @@
   function render() {
     clearTimeout(expiryTimer);
     if (!active()) {
+      document.documentElement.classList.remove('eleven-active');
       if (hero) { hero.classList.remove('eleven-hero'); hero.innerHTML = originalHero; }
       if (collection) {
         section.innerHTML = '<h1>11.11-ийн сонголт дууссан</h1><a class="eleven-sale-link" href="/">Дэлгүүр рүү очих →</a>';
@@ -60,7 +76,7 @@
     if (stale && !items.length) target.innerHTML = '<p class="eleven-sale-empty">Хямдралын шинэ мэдээлэл түр хязгаарлагдсан байна. Дараа дахин ачаална уу.</p>';
     next.hidden = !collection || !more;
     next.textContent = 'Дараагийн бараанууд';
-    const end = Date.parse(new Date().getFullYear() + '-11-12T00:00:00+08:00');
+    const end = override === true && /^\d{4}-\d{2}-\d{2}$/.test(until) ? Date.parse(until + 'T23:59:59+08:00') + 1000 : Date.parse(new Date().getFullYear() + '-11-12T00:00:00+08:00');
     const expires = items.flatMap(product => [product.card_discount?.expires, product.offers?.expires]).filter(time => time * 1000 > Date.now()).map(time => time * 1000);
     expiryTimer = setTimeout(render, Math.max(100, Math.min(end, Date.now() + 86400000, ...expires) - Date.now() + 50));
   }
@@ -94,6 +110,7 @@
     } finally { clearTimeout(timeout); busy = false; next.disabled = false; }
   }
   next.onclick = load;
+  rerender = () => { if (section.classList.contains('eleven-loaded') || !active()) render(); };
   function start() {
     try {
       const cached = JSON.parse(sessionStorage.getItem(cacheKey));
@@ -109,5 +126,6 @@
       if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); start(); }
     }, { rootMargin: '400px' });
     observer.observe(section);
+  }
   }
 })();

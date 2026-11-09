@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 // Only reviewed identities may enter the official directory. A shop name alone
 // (including 官方/旗舰店) is not sufficient evidence to add another store.
+// The admin's reviewed list (Сайтын тохиргоо) replaces the shipped file once saved.
 function official_stores_registry(): array {
-    $rows=json_decode(file_get_contents(__DIR__.'/official-stores.json'),true,512,JSON_THROW_ON_ERROR);$stores=[];
+    $custom=catalog_controls_meta()['official_stores']??null;
+    $rows=is_array($custom)&&$custom?$custom:json_decode(file_get_contents(__DIR__.'/official-stores.json'),true,512,JSON_THROW_ON_ERROR);$stores=[];
     foreach($rows as $s){if(!preg_match('/^\d{5,20}$/D',$s['id']??'')||empty($s['name'])||empty($s['verification']))throw new RuntimeException('Invalid store registry');$stores[$s['id']]=$s;}
     return $stores;
 }

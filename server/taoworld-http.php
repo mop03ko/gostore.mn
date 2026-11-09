@@ -8,7 +8,9 @@ function taoworld_signature(string $path,array $params,string $secret): string {
 }
 // Fixed provider endpoints only; business-level success is checked by the caller.
 function taoworld_http_handle(string $path,array $params,string &$raw): CurlHandle {
-    if(!in_array($path,['/auth/token/create','/auth/token/refresh','/product/get','/purchase/order/render','/purchase/order/create','/purchase/orders/query','/logistics/detail/get','/purchase/order/batch/pay','/traffic/item/search','/traffic/item/get','/traffic/item/imgsearch','/traffic/item/batchGetSourceItemLogisticPrice','/upload/image'],true))fail('TaoWorld үйлдэл идэвхгүй.',403);
+    if(!in_array($path,['/auth/token/create','/auth/token/refresh','/product/get','/purchase/order/render','/purchase/order/create','/purchase/orders/query','/logistics/detail/get','/purchase/order/batch/pay','/traffic/item/search','/traffic/item/get','/traffic/item/imgsearch','/traffic/item/batchGetSourceItemLogisticPrice','/upload/image',
+        // After-sales (server/taoworld-aftersale.php): cancel, refunds and returns, bills.
+        '/purchase/order/asyn/cancel','/order/refund/render','/order/refund/submit','/order/refund/query','/order/refund/queryList','/order/refund/cancel','/order/refund/query/message','/order/refund/submit/message','/order/refund/render/logistics','/order/refund/submit/logistics','/purchase/bills/query','/refund/bills/query'],true))fail('TaoWorld үйлдэл идэвхгүй.',403);
     if(getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1')fail('Туршилтын орчинд гадаад холболт хаалттай.',503);
     $cfg=taoworld_config();taoworld_require_config();
     $params=array_merge($params,['app_key'=>$cfg['app_key'],'timestamp'=>(string)(int)floor(microtime(true)*1000),'sign_method'=>'sha256']);

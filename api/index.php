@@ -23,6 +23,10 @@ require __DIR__.'/../server/taobao-purchase.php';
 require_once __DIR__.'/../server/taoworld-auth.php';
 require_once __DIR__.'/../server/taoworld-http.php';
 require __DIR__.'/../server/taoworld-purchase.php';
+require __DIR__.'/../server/admin-users.php';
+require __DIR__.'/../server/admin-reports.php';
+require __DIR__.'/../server/taoworld-aftersale.php';
+require __DIR__.'/../server/catalog-controls.php';
 try {
     $local=in_array($_SERVER['REMOTE_ADDR']??'',['127.0.0.1','::1'],true);
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
@@ -54,14 +58,24 @@ try {
         $flags=[];foreach(['preview','refresh'] as $flag)if(isset($_GET[$flag])){
             $value=filter_var($_GET[$flag],FILTER_VALIDATE_INT);if(!in_array($value,[0,1],true))fail('Хайлтын тохиргоо буруу.');$flags[$flag]=$value;
         }
-        supplier_public_json(supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true));
+        $found=supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true);
+        // Search insights count each finished first page once (a partial preview is completed by a follow-up request).
+        if($page===1&&empty($flags['refresh'])&&empty($found['partial'])&&isset($_GET['q'])&&is_string($_GET['q'])&&($_GET['brand']??'')===''&&($_GET['shop']??'')==='')search_log_record($_GET['q'],count($found['products']??[]));
+        supplier_public_json($found);
     }
     // Promotional popup (website home page, app launch): public and session-free.
+    // Campaign period set in the admin (Сайтын тохиргоо): public and session-free.
+    if($action==='campaign'&&$method==='GET')json_out(['eleven'=>catalog_campaign_public()]);
     if($action==='promo-popup'&&$method==='GET'){require_once __DIR__.'/../server/promo-popup.php';header('Cache-Control: public, max-age=60');json_out(['popup'=>promo_popup_public()]);}
-    $adminAction=str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','admin-promo-popup','admin-promo-popup-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','order-refund','shipping-save','shipping-calculate','warehouse-account-save'],true);
+    $adminAction=str_starts_with($action,'admin-')||str_starts_with($action,'catalog-')||str_starts_with($action,'taoworld-')||str_starts_with($action,'ot-operator-')||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-')||str_starts_with($action,'admin-message')||in_array($action,['admin-customers','admin-customer','admin-customer-save','admin-promo-popup','admin-promo-popup-save','reviews-admin','review-moderate','session','dashboard','admin-order','login','logout','image-upload','product-save','product-delete','admin-password-change','warehouse-profile-save','warehouse-create','warehouse-assign-order','order-update','order-refund','shipping-save','shipping-calculate','warehouse-account-save'],true);
     $warehouseAction=!$adminAction&&str_starts_with($action,'warehouse-');
     session_boot($adminAction?'admin':($warehouseAction?'warehouse':'customer'));
     if($warehouseAction)warehouse_device_resume();
+    // Staff roles: each admin action needs a minimal role; successful admin writes are audited.
+    if($adminAction&&admin_authenticated()){
+        admin_authorize($action,$method);
+        if($method==='POST'&&!in_array($action,['login','logout','admin-totp-setup'],true))admin_audit_on_success($action);
+    }
     // Unpaid instant checkouts are released lazily (at most every five minutes).
     if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due();
     if ($method==='GET') {
@@ -72,8 +86,16 @@ try {
         if($action==='reviews-admin')json_out(reviews_admin());
         if ($action==='catalog') json_out(['products'=>products(),'local_products_enabled'=>config()['local_products_enabled'],'qpay'=>qpay_ready(),'supplier'=>supplier_ready(),'shipping'=>shipping_public(),'customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
         if (str_starts_with($action,'customer-')) customer_get($action);
-        if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='']);
+        if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='','admin'=>admin_current_public()]);
         admin_required();
+        if($action==='admin-users')json_out(admin_users_list());
+        if($action==='admin-audit')json_out(admin_audit_list($_GET));
+        if($action==='admin-report')json_out(admin_report($_GET));
+        if($action==='admin-export')admin_export($_GET);
+        if($action==='admin-search-insights')json_out(admin_search_insights($_GET));
+        if($action==='admin-api-usage')json_out(admin_api_usage());
+        if($action==='admin-alerts')json_out(admin_alerts());
+        if($action==='catalog-controls'){tw_catalog_enabled();json_out(catalog_controls_admin());}
         if($action==='admin-messages')json_out(customer_messages_admin());
         if($action==='admin-promo-popup'){require_once __DIR__.'/../server/promo-popup.php';json_out(promo_popup_admin());}
         if($action==='admin-customers')json_out(admin_customers($_GET));
@@ -85,7 +107,7 @@ try {
         }
         if ($action==='dashboard') {
             $orders=array_map(function($r){$o=json_decode($r['data'],true);$o['billing']=settlement_summary($o);return $o;},db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
-            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier_health'=>supplier_snapshot_health(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'taobao_buyer'=>taobao_buyer_public(),'taoworld'=>tw_settings_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'csrf'=>$_SESSION['csrf']]);
+            json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier_health'=>supplier_snapshot_health(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'taobao_buyer'=>taobao_buyer_public(),'taoworld'=>tw_settings_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'admin'=>admin_current_public(),'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);
     }
@@ -117,6 +139,7 @@ try {
     if($action==='phone-verification-status')json_out(verify_mn_status($b));
     if(in_array($action,['review-delete','review-report','review-block','review-unblock-all'],true))json_out(reviews_post($action,$b));
     if($action==='review-moderate')json_out(reviews_moderate($b));
+    if(in_array($action,TW_AFTERSALE_ACTIONS,true))tw_aftersale_post($action,$b);
     if(str_starts_with($action,'taoworld-'))tw_admin_post($action,$b);
     if(str_starts_with($action,'ot-operator-'))ot_operator_post($action,$b);
     if(str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'taobao-purchase-'))taobao_admin_post($action,$b);
@@ -131,7 +154,13 @@ try {
         json_out(['order'=>public_order(order_row($r['id'])['order'])]);
     }
     if($warehouseAction)warehouse_post($action,$b);
-    if($action==='admin-password-change')json_out(admin_password_change($b));
+    if($action==='admin-password-change')json_out(($_SESSION['admin_user']??'owner')==='owner'?admin_password_change($b):admin_staff_password_change($b));
+    if(in_array($action,['admin-totp-setup','admin-totp-enable','admin-totp-disable'],true)){admin_required();json_out(admin_totp_post($action,$b));}
+    if($action==='admin-user-save'){admin_required();json_out(admin_user_save($b));}
+    if($action==='admin-quota-save'){admin_required();json_out(admin_quota_save($b));}
+    if($action==='catalog-controls-save'){admin_required();tw_catalog_enabled();json_out(catalog_controls_save($b));}
+    if($action==='catalog-stores-save'){admin_required();tw_catalog_enabled();json_out(catalog_stores_save($b));}
+    if($action==='catalog-store-test'){admin_required();if(!tw_catalog_enabled())fail('TaoWorld каталог идэвхгүй байна.',409);json_out(catalog_store_test($b));}
     if($action==='warehouse-create')json_out(['warehouse'=>warehouse_create($b)],201);
     if($action==='warehouse-assign-order')json_out(['order'=>warehouse_assign_order($b)]);
     if($action==='warehouse-profile-save')json_out(['profile'=>warehouse_profile_save($b)]);
@@ -145,15 +174,8 @@ try {
     if($action==='admin-promo-popup-save'){admin_required();require_once __DIR__.'/../server/promo-popup.php';json_out(promo_popup_save($b));}
     if($action==='shipping-save'){admin_required();json_out(['shipping'=>shipping_save($b)]);}
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
-    if ($action==='login') {
-        limit_attempts('login:'.($_SERVER['REMOTE_ADDR']??''),8,900);
-        $email=str_field($b,'email',200); $password=$b['password']??'';
-        if(!is_string($password)||$password===''||strlen($password)>1000)fail('Имэйл эсвэл нууц үг буруу байна.',401);
-        $hash=admin_password_hash();
-        if (!$hash || !hash_equals(strtolower(config()['admin_email']),strtolower($email)) || !password_verify($password,$hash)) fail('Имэйл эсвэл нууц үг буруу байна.',401);
-        session_regenerate_id(true); $_SESSION['admin']=true; $_SESSION['admin_version']=hash('sha256',$hash); $_SESSION['csrf']=bin2hex(random_bytes(32)); json_out(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
-    }
-    if ($action==='logout') { $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
+    if ($action==='login') json_out(admin_login($b));
+    if ($action==='logout') { if(admin_authenticated())admin_audit_write('logout','',''); $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
         if(($b['type']??'')==='link')fail('Линкээр захиалах үйлчилгээ зогссон. Каталогоос бараагаа сонгоно уу.',410);
         if(($b['require_account']??false)===true||($b['type']??'')==='checkout')customer_required();

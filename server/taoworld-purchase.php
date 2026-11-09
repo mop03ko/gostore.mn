@@ -177,6 +177,7 @@ function tw_query_locked(string $id): array {
 function tw_pay_locked(string $id): array {
     $o=tw_query_locked($id);tw_eligible($o);$p=$o['purchase'];
     if($p['state']!=='awaiting_payment'||isset($p['pay_submitted_at']))fail('Төлбөрийн өмнөх оролдлогыг эхлээд шалгана уу.',409);
+    if(!empty($p['cancel']))fail('Цуцлах хүсэлт илгээсэн захиалгыг төлөхгүй.',409);
     if(count($p['provider_order_ids'])>10)fail('10-аас олон нийлүүлэгчийн захиалгыг TaoWorld сайтад төлнө үү.',409);
     $token=taoworld_access_token();
     tw_update($id,static function(&$fresh){tw_eligible($fresh);tw_assert_pinned($fresh);$fresh['purchase']['state']='paying';$fresh['purchase']['pay_submitted_at']=gmdate('c');$fresh['purchase']['next_at']=time()+30;});

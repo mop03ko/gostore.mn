@@ -114,6 +114,8 @@ function supplier_limits(bool $warming,bool $purchase=false): void {
     try {supplier_budget_take($warming,$purchase);}
     catch(ApiError $e){
         if($e->getCode()!==429)throw $e;
+        // Shopper requests refused by the limit (background refreshes are not counted).
+        if(!$warming)try{supplier_budget_record('rejected');}catch(Throwable){/* Usage history is informational. */}
         fail('Сайтын шинэ мэдээлэл авах өдрийн API лимит дууссан байна. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
     }
 }

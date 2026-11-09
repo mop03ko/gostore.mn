@@ -14,9 +14,28 @@ function product_policy_text_blocked(string $text): bool {
     return preg_match(PRODUCT_POLICY_PATTERN,$text)===1;
 }
 // Inspect product text, not URL filenames, customer addresses or unrelated recommendations.
+// Admin site controls (server/catalog-controls.php): hidden items and shops, home keywords,
+// official store list and campaign dates, read once per request from meta.catalog_controls.
+function catalog_controls_meta(bool $reset=false): array {
+    static $value=null;if($reset)$value=null;
+    if($value===null){
+        try{$s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['catalog_controls']);$value=json_decode($s->fetchColumn()?:'{}',true)?:[];}
+        catch(Throwable){$value=[];}
+    }
+    return $value;
+}
+function product_policy_controls(): array {
+    $c=catalog_controls_meta();
+    return ['items'=>array_flip(array_map('strval',$c['blocked_items']??[])),'shops'=>array_flip(array_map(fn($s)=>mb_strtolower((string)$s),$c['blocked_shops']??[]))];
+}
+function product_policy_shop_blocked(string $shop): bool {
+    return $shop!==''&&isset(product_policy_controls()['shops'][mb_strtolower(trim($shop))]);
+}
 function product_policy_blocked(array $product): bool {
     $id=(string)($product['id']??$product['Id']??'');
     if(in_array(preg_replace('/^tb-/','',$id),PRODUCT_POLICY_TAOBAO_IDS,true))return true;
+    if(isset(product_policy_controls()['items'][preg_replace('/^tb-/','',$id)]))return true;
+    if(product_policy_shop_blocked((string)($product['vendor_name']??$product['shop_name']??'')))return true;
     $fields=['Title','OriginalTitle','Description','CategoryName','RootPath','Attributes','ConfiguredItems','Promotions','name','original_name','description','category','category_path','attributes','variants','variant','label','offers'];
     $visit=static function(mixed $value)use(&$visit):bool {
         if(is_string($value))return product_policy_text_blocked($value);
