@@ -10,7 +10,7 @@ import { Busy, money } from "@/components/ui";
 import { Icon } from "@/components/shop-ui";
 import categories from "@/lib/discovery.json";
 import { categoryImages } from "@/lib/category-images";
-import { elevenSaleActive, elevenSaleProducts } from "@/lib/eleven-sale";
+import { elevenCampaign, elevenSaleActive, elevenSaleProducts, type ElevenCampaign } from "@/lib/eleven-sale";
 export { categories };
 export function CategoryPhoto({ image, size = 64 }: { image: string; size?: number }) {
   const colors = usePalette();
@@ -54,12 +54,17 @@ function ElevenSale() {
   const [now, setNow] = useState(() => Date.now());
   const [data, setData] = useState<Product[] | null>(null);
   const [error, setError] = useState(false);
-  const active = elevenSaleActive(now);
+  // The admin's campaign setting (extend or end early); until it loads, or if it fails, the date rule applies.
+  const [campaign, setCampaign] = useState<ElevenCampaign | null>(null);
+  const active = elevenSaleActive(now, campaign);
   useEffect(() => {
-    // Clock checks do not request the API; resume also removes offers that expired in the background.
+    let cancelled = false;
+    const load = () => void catalog<unknown>("campaign", {}).then(r => { if (!cancelled) setCampaign(elevenCampaign(r)); }).catch(() => {});
+    load();
+    // Clock checks do not request the deals; resume also removes offers that expired in the background.
     const timer = setInterval(() => setNow(Date.now()), 30000);
-    const subscription = AppState.addEventListener("change", state => { if (state === "active") setNow(Date.now()); });
-    return () => { clearInterval(timer); subscription.remove(); };
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") { setNow(Date.now()); load(); } });
+    return () => { cancelled = true; clearInterval(timer); subscription.remove(); };
   }, []);
   useEffect(() => {
     if (!active) return;
