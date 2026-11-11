@@ -32,3 +32,14 @@ The isolated tests cover web/mobile auth, ownership, CSRF, invalid input, idempo
 ## Deployment
 
 Deploy `server/self-cargo.php` before `server/customers.php`, then `server/warehouse-ub.php` and `api/mobile.php`. Deploy the three root `self-cargo.*` files and append the standalone script to `index.html`. Back up and compare live files first; preserve unrelated working-tree changes to the storefront bundle/index. No database migration is required. The existing warehouse address/phone settings remain authoritative.
+
+## Released 2026-11-12
+
+- Implementation commit: `f35e1e4` (rebased onto the current main; pre-existing storefront work remains uncommitted).
+- Web/PHP deployed with baseline checks, backups and published hash verification. Live `index.html` was patched with only the standalone entry script, preserving its other content. Backup: `/gostore-backups/self-cargo-1794414437550`.
+- Live `/self-cargo.html`, JS and CSS return 200. Both web and mobile self-cargo APIs reject unauthenticated access with 401. No real customer/supplier order or bank payment was created for testing.
+- Isolated API, browser (360/390/1280 px) and existing Ulaanbaatar warehouse regression tests passed, as did Expo typecheck/lint and the storefront bundle consistency check after rebase.
+- Production iOS OTA: `dc73f567-2a30-4116-985d-f9d12223fa3a`, runtime `52bd47e7637e521598a2f3e4d25ae1bccdf63bbd`.
+- Production Android OTA: `88ab90d0-5e2b-4f3e-90e2-fc7b308464cd`, runtime `7bb34ca75e224d3e958e2ee55510338e0effe0ad`.
+- Android preview OTA (same bundle): `40d5a7d5-c14b-4246-b2e2-55def041e256`.
+- Native runtimes match the previously published apps. No new native build was created. Publishing was verified in EAS; receipt on a physical customer's device has not been observed.
