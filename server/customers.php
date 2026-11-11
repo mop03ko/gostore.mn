@@ -4,6 +4,7 @@ require_once __DIR__.'/product-reviews.php';
 require_once __DIR__.'/phone-auth.php';
 require_once __DIR__.'/customer-push.php';
 require_once __DIR__.'/customer-messages.php';
+require_once __DIR__.'/self-cargo.php';
 
 function current_customer(): ?array {
     if (empty($_SESSION['customer_id'])) return null;
@@ -116,6 +117,11 @@ function customer_get(string $action): never {
     if($action==='customer-push-config'){customer_required();json_out(['enabled'=>customer_push_enabled(),'platforms'=>customer_push_platforms()]);}
     if($action==='customer-me')json_out(['customer'=>customer_public(current_customer()),'csrf'=>$_SESSION['csrf']]);
     $c=customer_required();
+    if($action==='customer-self-cargo'){
+        $q=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders c ON c.order_id=o.id WHERE c.customer_id=? ORDER BY o.created DESC,o.id DESC');$q->execute([$c['id']]);$orders=[];
+        foreach($q as $row){$o=json_decode($row['data'],true);if(($o['type']??'')==='forwarding')$orders[]=public_order($o);if(count($orders)>=100)break;}
+        json_out(['orders'=>$orders,'warehouse'=>array_intersect_key(warehouse_profile('erenhot'),array_flip(['name','address','phone','contact_phone','hours']))]);
+    }
     if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);
     if($action==='customer-state')json_out(customer_state_get($c));
     if($action==='customer-products')json_out(['products'=>customer_products($c)]);
@@ -137,6 +143,8 @@ function customer_get(string $action): never {
     fail('Үйлдэл олдсонгүй.',404);
 }
 function customer_post(string $action,array $b): never {
+    if($action==='customer-self-cargo-create')json_out(['order'=>public_order(self_cargo_create(customer_required(),$b))],201);
+    if($action==='customer-self-cargo-tracking')json_out(['order'=>public_order(self_cargo_add_waybill(customer_required(),$b))]);
     $ip=$_SERVER['REMOTE_ADDR']??'';
     if($action==='customer-register'){
         limit_attempts('customer-register:'.$ip,5,3600);

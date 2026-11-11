@@ -71,6 +71,8 @@ function warehouse_ub_sort(array $b,string $location): array {
             if($method!==($o['fulfillment']['method']??'pickup'))fail('Тээврийн төлбөрийн нэхэмжлэл үүссэн тул авах хэлбэрийг өөрчлөхгүй. Админтай шийднэ үү.',409);
         }else{
             $base=$o['settlement']['breakdown']??($o['quote']['breakdown']??null);
+            // Independent purchases are already paid to the seller: GOStore bills transport only.
+            if(($o['type']??'')==='forwarding')$base=['goods_mnt'=>0,'domestic_mnt'=>0,'service_mnt'=>0];
             // Orders without a price breakdown (older manual quotes) keep the separate final-bill form.
             if(is_array($base)){
                 $parts=['goods_mnt'=>(int)($base['goods_mnt']??0),'domestic_mnt'=>(int)($base['domestic_mnt']??0),'service_mnt'=>(int)($base['service_mnt']??0)];

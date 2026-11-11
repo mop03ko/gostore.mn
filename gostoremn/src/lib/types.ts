@@ -82,6 +82,7 @@ export type Invoice = {
   urls?: { name: string; description: string; link: string }[];
 };
 export type Order = {
+  type?: string;
   id: string;
   title: string;
   status: string;

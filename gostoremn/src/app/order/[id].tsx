@@ -96,9 +96,9 @@ function OrderScreen() {
             <Row label="Төлөв" value={statusName(order.status)} />
             <Row
               label="Эхний төлбөр"
-              value={order.paid ? "Төлөгдсөн" : "Төлөгдөөгүй"}
+              value={order.type === "forwarding" ? "Барааг өөрөө худалдан авсан" : order.paid ? "Төлөгдсөн" : "Төлөгдөөгүй"}
             />
-            <Row label="Захиалгын дүн" value={money(order.amount)} />
+            {order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
             <Copy>{dateText(order.created)}</Copy>
             {!!order.payment_due && !order.paid && (
               <Copy>Төлөх хугацаа: {dateText(order.payment_due)}</Copy>
@@ -117,10 +117,10 @@ function OrderScreen() {
                 {"\n"}
                 {i.variant} · {i.qty} ш
               </Copy>
-              <Row label="Барааны дүн" value={"¥" + i.goods_cny?.toFixed(2)} />
+              {order.type !== "forwarding" && <Row label="Барааны дүн" value={"¥" + i.goods_cny?.toFixed(2)} />}
             </Card>
           ))}
-          {!order.paid && order.status !== "cancelled" && (
+          {order.type !== "forwarding" && !order.paid && order.status !== "cancelled" && (
             <>
               {order.invoice ? (
                 <InvoiceCard
@@ -179,7 +179,7 @@ function OrderScreen() {
               />
             </Card>
           )}
-          {order.paid && bill?.finalized && bill.due > 0 && (
+          {(order.paid || order.type === "forwarding") && bill?.finalized && bill.due > 0 && (
             <>
               {order.cargo?.freight_invoice ? (
                 <InvoiceCard

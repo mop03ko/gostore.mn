@@ -11,7 +11,10 @@ export function matchesOrderFilter(order: Order, filter: OrderFilter) {
   if (filter === "all") return true;
   if (filter === "completed" || filter === "cancelled") return order.status === filter;
   if (["completed", "cancelled"].includes(order.status)) return false;
-  return filter === "unpaid" ? !order.paid : order.paid;
+  const unpaid = order.type === "forwarding"
+    ? !!order.cargo?.billing?.finalized && order.cargo.billing.due > 0
+    : !order.paid;
+  return filter === "unpaid" ? unpaid : !unpaid;
 }
 export const statusName = (s: string) =>
   ({

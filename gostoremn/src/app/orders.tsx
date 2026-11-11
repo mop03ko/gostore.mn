@@ -66,8 +66,8 @@ function Orders({ initialFilter }: { initialFilter: OrderFilter }) {
         <Text numberOfLines={2} style={styles.product}>{o.title || "Таны захиалга"}</Text>
         <Text style={styles.muted}>{dateText(o.created)}</Text>
         <View style={styles.orderBottom}>
-          <View style={{ gap: 4 }}><Text style={styles.amount}>{money(o.amount)}</Text>
-            <Text style={{ fontSize: 12, color: o.paid ? colors.success : colors.muted }}>{o.paid ? "Төлбөр төлөгдсөн" : "Төлбөр төлөгдөөгүй"}</Text></View>
+          <View style={{ gap: 4, flex: 1, minWidth: 0 }}><Text style={styles.amount}>{o.type === "forwarding" ? o.cargo?.billing?.finalized ? money(o.cargo.billing.total) : "Тооцоо хүлээгдэж байна" : money(o.amount)}</Text>
+            <Text style={{ fontSize: 12, color: o.paid ? colors.success : colors.muted }}>{o.type === "forwarding" ? "Өөрөө худалдан авсан бараа" : o.paid ? "Төлбөр төлөгдсөн" : "Төлбөр төлөгдөөгүй"}</Text></View>
           <View style={styles.detail}><Text style={styles.detailText}>{!o.paid && !terminal ? "Төлбөр харах" : "Дэлгэрэнгүй"}</Text><Icon name="chevron" size={16} color={colors.accentText} /></View>
         </View>
       </Pressable>;

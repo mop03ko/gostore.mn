@@ -10,5 +10,5 @@ export async function completeSignIn(customer: Customer, refresh: () => Promise<
   await AsyncStorage.removeItem("gostore-cart-guest");await refresh();
   const review=typeof next==="string"?next.match(/^\/reviews\/([a-z0-9-]{1,60})$/):null;
   if(review){router.replace({pathname:"/reviews/[id]",params:{id:review[1]}});return;}
-  router.replace(next==="checkout"||next==="/checkout"?"/checkout":next==="/orders"?"/orders":next==="/addresses"?"/addresses":next==="/notifications"?"/notifications":"/account");
+  router.replace(next==="checkout"||next==="/checkout"?"/checkout":next==="/self-cargo"?"/self-cargo":next==="/orders"?"/orders":next==="/addresses"?"/addresses":next==="/notifications"?"/notifications":"/account");
 }

@@ -45,6 +45,7 @@ export default function Root() {
         <Stack.Screen name="addresses" options={{ title: "Миний хаягууд" }} />
         <Stack.Screen name="notifications" options={{ title: "Мэдэгдэл" }} />
         <Stack.Screen name="orders" options={{ title: "Миний захиалгууд" }} />
+        <Stack.Screen name="self-cargo" options={{ title: "Өөрөө захиалах · Эрээн карго" }} />
         <Stack.Screen
           name="delete-account"
           options={{ title: "Бүртгэл устгах" }}

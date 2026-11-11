@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {uploadReceipt} from './warehouse-photo.mjs';
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+function client(mobile=false){const jar=new Map();let csrf='',token='';return async(action,body)=>{
+ const form=body instanceof FormData;
+ const r=await fetch(base+'/api/'+(mobile?'mobile':'index')+'.php?action='+action,{method:body?'POST':'GET',headers:{...(mobile?{'X-GOStore-Mobile-Token':token}:{Cookie:[...jar].map(([k,v])=>k+'='+v).join('; ')}),...(body?{'X-CSRF-Token':csrf,...(!form?{'Content-Type':'application/json'}:{})}:{})},body:body?(form?body:JSON.stringify(body)):undefined});
+ for(const raw of r.headers.getSetCookie()){const [pair]=raw.split(';'),i=pair.indexOf('=');jar.set(pair.slice(0,i),pair.slice(i+1));}
+ token=r.headers.get('X-GOStore-Mobile-Token')||token;const d=await r.json();if(d.csrf)csrf=d.csrf;return{...d,status:r.status};
+};}
+const a=client(),b=client(true),guest=client(),admin=client(),cn=client(),ub=client();
+for(const [i,c] of [[1,a],[2,b]]){await c('customer-me');assert.equal((await c('customer-register',{name:'Карго '+i,email:'cargo'+i+'@example.test',phone:'99112233',password:'Self-cargo-secure-test',password_confirm:'Self-cargo-secure-test'})).status,201);}
+const payload={title:'Өвлийн гутал <script>alert(1)</script>',qty:2,phone:'99112233',note:'Хар / 42',request_key:crypto.randomUUID()};
+assert.equal((await guest('customer-self-cargo')).status,401);
+await guest('customer-me');assert.equal((await guest('customer-self-cargo-create',payload)).status,401);
+assert.equal((await fetch(base+'/api/index.php?action=customer-self-cargo-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).status,403);
+assert.equal((await a('customer-self-cargo-create',{...payload,qty:0})).status,400);
+assert.equal((await a('customer-self-cargo-create',{...payload,phone:''})).status,400);
+assert.equal((await a('customer-self-cargo-create',{...payload,request_key:'bad'})).status,400);
+const created=await a('customer-self-cargo-create',{...payload,amount:999,paid:true,status:'completed',warehouse_locations:{erenhot:'unknown'}});
+assert.equal(created.status,201,JSON.stringify(created));const o=created.order,id=o.id;
+assert.match(id,/^GS-[A-F0-9]{6}$/);assert.equal(o.type,'forwarding');assert.equal(o.status,'confirmed');assert.equal(o.amount,0);assert.equal(o.paid,false);assert.equal(o.purchase,undefined);
+assert.equal(o.items[0].qty,2);assert.equal(o.items[0].price,0);assert.ok(o.warehouse.label.includes(id));assert.ok(o.warehouse.address);assert.equal(o.warehouse.recipient,id+' GOStore');
+assert.equal((await a('customer-self-cargo-create',payload)).order.id,id,'Retry must not duplicate orders');
+assert.equal((await a('customer-self-cargo')).orders.length,1);assert.ok((await a('customer-orders')).orders.some(x=>x.id===id));
+assert.equal((await b('customer-self-cargo')).orders.length,0);
+assert.equal((await b('customer-self-cargo-tracking',{id,number:'YT1234567890123'})).status,404);
+assert.equal((await b('order-get',{id})).status,403);
+assert.equal((await a('customer-self-cargo-tracking',{id,number:'bad number'})).status,400);
+const tracked=await a('customer-self-cargo-tracking',{id,number:'yt1234567890123',company:'圆通'});
+assert.equal(tracked.status,200,JSON.stringify(tracked));assert.equal(tracked.order.status,'shipping');assert.equal(tracked.order.inbound.numbers[0].no,'YT1234567890123');
+assert.equal((await a('customer-self-cargo-tracking',{id,number:'YT1234567890123'})).order.inbound.numbers.length,1);
+const second=await b('customer-self-cargo-create',{...payload,request_key:crypto.randomUUID()});assert.equal(second.status,201,'Mobile creation');
+assert.equal((await b('customer-self-cargo-tracking',{id:second.order.id,number:'YT1234567890123'})).status,409,'Waybill cannot be claimed twice');
+assert.equal((await b('customer-self-cargo-tracking',{id:second.order.id,number:'YT1234567890999'})).status,200,'Mobile tracking');
+await admin('session');assert.equal((await admin('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')))).status,200);
+for(const [location,c] of [['erenhot',cn],['ulaanbaatar',ub]]){const login={location,email:location+'-cargo@example.test',password:'Warehouse-cargo-test-2026',enabled:true};assert.equal((await admin('warehouse-account-save',login)).status,200);await c('warehouse-session');assert.equal((await c('warehouse-login',login)).status,200);}
+assert.equal((await cn('warehouse-order&id='+id)).order.items[0].qty,2);
+assert.equal((await ub('warehouse-order&id='+id)).order.read_only,true,'UB can see an independently purchased order before arrival');
+for(const c of [cn,ub])assert.ok((await c('warehouse-notifications')).notifications.some(n=>n.order_id===id),'Both warehouses receive a new-order notice');
+assert.ok((await cn('warehouse-orders&q=YT1234567890123')).orders.some(x=>x.id===id),'Scan finds customer waybill');
+const arrival=await cn('warehouse-parcel-arrive',{id,number:'YT1234567890123'});assert.equal(arrival.status,200);
+await uploadReceipt(cn,id);const before=(await cn('warehouse-order&id='+id)).order;
+const receipt=await cn('warehouse-receive',{id,expected_status:before.status,expected_version:before.logistics.version,weight_kg:2,volume_input:'dimensions',length_cm:20,width_cm:20,height_cm:20,pieces:2,checked:true});
+assert.equal(receipt.status,200,JSON.stringify(receipt));assert.equal(receipt.order.status,'erenhot');assert.ok(receipt.order.logistics.transport.confirmed_at);assert.ok(receipt.order.logistics.transport.amount_mnt>0);
+assert.equal((await a('customer-self-cargo-tracking',{id,number:'YT1234567890888'})).status,409,'After receipt only staff manage parcels');
+const visible=(await a('order-get',{id})).order;assert.equal(visible.status,'erenhot');assert.ok(visible.cargo.photos.length);assert.equal(visible.cargo.measurement.weight_kg,2);assert.equal(visible.cargo.billing.finalized,false);assert.equal(visible.amount,0);
+assert.ok((await a('customer-notifications')).notifications.some(n=>n.order_id===id),'Customer receives receipt notification');
+const packed=await cn('warehouse-outbound-pack',{token:crypto.randomBytes(32).toString('hex'),order_ids:[id],codes:['YT1234567890123']});assert.equal(packed.status,200,JSON.stringify(packed));let batch=packed.batch;
+assert.equal((await a('order-get',{id})).order.status,'erenhot_ready');
+const dispatched=await cn('warehouse-batch-dispatch',{id:batch.id,expected_version:batch.version,checked:true});assert.equal(dispatched.status,200,JSON.stringify(dispatched));batch=dispatched.batch;
+assert.equal((await a('order-get',{id})).order.status,'erenhot_dispatched');
+const scanned=await ub('warehouse-batch-scan',{id:batch.id,expected_version:batch.version,order_id:id});assert.equal(scanned.status,200);batch=scanned.batch;
+assert.equal((await ub('warehouse-batch-receive',{id:batch.id,expected_version:batch.version})).status,200);
+await uploadReceipt(ub,id);const received=(await ub('warehouse-order&id='+id)).order;
+const sorted=await ub('warehouse-sort',{id,expected_status:received.status,expected_version:received.logistics.version,shelf:'A-01',method:'pickup',contact_phone:'99112233',address:'',checked:true});assert.equal(sorted.status,200,JSON.stringify(sorted));
+const final=(await a('order-get',{id})).order;assert.equal(final.status,'ready_pickup');assert.equal(final.cargo.billing.finalized,true);
+assert.equal(final.cargo.billing.due,receipt.order.logistics.transport.amount_mnt);assert.equal(final.cargo.billing.breakdown.goods_mnt,0);assert.equal(final.cargo.billing.breakdown.domestic_mnt,0);assert.equal(final.cargo.billing.breakdown.service_mnt,0);assert.equal(final.cargo.pickup_code,undefined,'Unpaid freight blocks handover code');assert.equal(final.cargo.photos.length,2);assert.equal(final.purchase,undefined);
+console.log('PASS: self-cargo auth/CSRF, web/mobile ownership, immutable goods payment, idempotency, duplicate waybills, manager visibility, parcel scan, photo/measurement/approved freight and customer tracking.');
