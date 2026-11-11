@@ -43,3 +43,12 @@ Deploy `server/self-cargo.php` before `server/customers.php`, then `server/wareh
 - Production Android OTA: `88ab90d0-5e2b-4f3e-90e2-fc7b308464cd`, runtime `7bb34ca75e224d3e958e2ee55510338e0effe0ad`.
 - Android preview OTA (same bundle): `40d5a7d5-c14b-4246-b2e2-55def041e256`.
 - Native runtimes match the previously published apps. No new native build was created. Publishing was verified in EAS; receipt on a physical customer's device has not been observed.
+
+## Public WeChat contact — 2026-11-12
+
+- User explicitly approved public display of Orgil's supplied contact QR. Implementation: `4b6b76c`.
+- Web contact panel is available before login, with full-size and download links. App account navigation opens the self-cargo screen before authentication; only shipment registration still requires login.
+- Original JPEG bytes are preserved in both web and bundled app assets. Web image stays on a white background and retains its full proportions; the native image uses `contain`, including in dark mode.
+- Deployed `assets/erenhot-wechat-orgil.jpg`, `self-cargo.css` and `self-cargo.html`. Backup: `/gostore-backups/wechat-contact-1794415742446`. Live image returns 200 and matches the original file byte-for-byte.
+- Existing self-cargo browser regression, public panel/image/download checks, mobile overflow check and Expo typecheck/lint passed. WeChat recognition on a physical phone has not been tested.
+- Published OTA groups: production iOS `503c0960-f182-42e3-96ca-81c52969b2df`, production Android `bb182098-18b0-4ce0-a45c-255072ecc1b0`, preview Android `7eca29f6-8630-4f48-9981-fabcda7f9e2c`. Native runtime hashes remain unchanged; no new build.
