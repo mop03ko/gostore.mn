@@ -54,3 +54,10 @@ For the initial feature, deploy `server/self-cargo.php` before `server/customers
 - Deployed `assets/erenhot-wechat-orgil.jpg`, `self-cargo.css` and `self-cargo.html`. Backup: `/gostore-backups/wechat-contact-1794415742446`. Live image returns 200 and matches the original file byte-for-byte.
 - Existing self-cargo browser regression, public panel/image/download checks, mobile overflow check and Expo typecheck/lint passed. WeChat recognition on a physical phone has not been tested.
 - Published OTA groups: production iOS `503c0960-f182-42e3-96ca-81c52969b2df`, production Android `bb182098-18b0-4ce0-a45c-255072ecc1b0`, preview Android `7eca29f6-8630-4f48-9981-fabcda7f9e2c`. Native runtime hashes remain unchanged; no new build.
+
+## Permanent cargo IDs — 2026-11-12
+
+- Implementation: `ef50f36`. Web layout now puts the permanent address card first, with GOStore orange/navy styling and individually labeled copy buttons. Existing forwarding registration, tracking and public WeChat contact remain available.
+- Deployed bootstrap/self-cargo/customers/warehouse PHP, warehouse JS/HTML and the three self-cargo web assets. Backup: `/gostore-backups/cargo-id-1794416713802`. All published files passed hash verification; live web/mobile endpoints still reject anonymous cargo access. No production order was created during verification.
+- Passed isolated self-cargo API/browser, customer authentication, warehouse and Ulaanbaatar workflow tests. Clipboard tests cover each field and the full label, normalizing Windows CRLF. Browser checks cover 360/390/1280px. Expo typecheck/lint passed.
+- The native customer screen uses SDK-compatible `expo-clipboard` 58.0.4 for one-tap copying, including dark mode. This changes the native runtime and requires new iOS/Android builds. No native build, TestFlight submission or OTA update was created for this change; installed apps retain their previously published UI until a compatible build is released. Physical-device clipboard behavior has not been verified.
