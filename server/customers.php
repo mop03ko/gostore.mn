@@ -18,6 +18,7 @@ function customer_required(): array { $c=current_customer();if(!$c)fail('Бүр�
 function customer_public(?array $c): ?array {
     if(!$c)return null;
     $public=array_intersect_key($c,array_flip(['id','email','name','phone','address','created']));
+    $public['cargo_id']=customer_cargo_id($c['id']);
     $record=pin_auth_record($c['id']);$public['pin_enabled']=$record!==null;$public['login_phone']=$record['phone']??'';
     $public['email_login']=!str_ends_with($c['email'],'@phone.gostore.invalid');if(!$public['email_login'])$public['email']='';
     return $public;
@@ -120,7 +121,8 @@ function customer_get(string $action): never {
     if($action==='customer-self-cargo'){
         $q=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders c ON c.order_id=o.id WHERE c.customer_id=? ORDER BY o.created DESC,o.id DESC');$q->execute([$c['id']]);$orders=[];
         foreach($q as $row){$o=json_decode($row['data'],true);if(($o['type']??'')==='forwarding')$orders[]=public_order($o);if(count($orders)>=100)break;}
-        json_out(['orders'=>$orders,'warehouse'=>array_intersect_key(warehouse_profile('erenhot'),array_flip(['name','address','phone','contact_phone','hours']))]);
+        $cargoId=customer_cargo_id($c['id']);
+        json_out(['orders'=>$orders,'cargo_id'=>$cargoId,'delivery'=>self_cargo_delivery($cargoId),'warehouse'=>array_intersect_key(warehouse_profile('erenhot'),array_flip(['name','address','phone','contact_phone','hours']))]);
     }
     if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);
     if($action==='customer-state')json_out(customer_state_get($c));

@@ -1,4 +1,5 @@
 export type Customer = {
+  cargo_id?: string;
   pin_enabled?: boolean;
   login_phone?: string;
   email_login?: boolean;

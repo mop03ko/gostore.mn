@@ -6,7 +6,8 @@ Customers buy from their chosen Chinese seller and use GOStore for forwarding to
 
 - Web: `/self-cargo.html`, linked from the home page, account page and footer.
 - Expo app: Account → Өөрөө захиалах · Эрээн карго (`/self-cargo`). The native screen requires an app/OTA release; deploying PHP does not update installed apps.
-- Authenticated customers enter the goods description, total item count, phone and optional variant/note. Registration returns a short GS code and a Chinese shipping label using the configured Erenhot warehouse address/phone. The GS code is included in the receiver name.
+- Authenticated customers receive a permanent `GO` + eight-digit cargo ID before registering shipments. Their address card uses the configured Erenhot warehouse address/phone, with their ID in the receiver name and address. Copy the ID, recipient, phone, address separately, or copy the full Chinese label.
+- Customers enter the goods description, total item count, phone and optional variant/note. Each shipment still gets its own short GS order code. New forwarding orders snapshot the permanent cargo ID and shipping label; historical GS labels are preserved.
 - Customers pay the seller and Chinese domestic shipping themselves, then add the courier waybill(s). One registration represents one whole order; up to 20 waybills can belong to it.
 - The existing order detail shows warehouse photos, measurements, status history and freight payment. Goods amount starts at zero, `paid=false`, `type=forwarding`. It is excluded from supplier auto-purchase.
 
@@ -16,7 +17,8 @@ Registration creates notifications for Erenhot and Ulaanbaatar. Both can see the
 
 ## API and safeguards
 
-- GET `customer-self-cargo`: own forwarding orders (most recent 100), public warehouse contact fields.
+- GET `customer-self-cargo`: own forwarding orders (most recent 100), public warehouse contact fields, `cargo_id` and `delivery` address card. `customer-me` also exposes the signed-in customer's cargo ID.
+- IDs are allocated lazily in `customer_cargo_ids`, uniquely constrained by customer and cargo code. Concurrent first visits retry safely. IDs survive session/profile changes and are reserved after account deletion; clients cannot choose or overwrite them. Warehouse list/search suggestions include each new order's cargo ID. Users still register each parcel and courier waybill before receipt.
 - POST `customer-self-cargo-create`: `request_key`, `title`, integer `qty`, `phone`, optional `note`, `number`, `company`.
 - POST `customer-self-cargo-tracking`: `id`, `number`, optional `company`.
 - Available through both web and token-only mobile API. Authentication and CSRF are required for writes. Idempotency is scoped to the customer, transactions serialize registration, waybills cannot be claimed across orders, and customer additions stop after warehouse receipt.
@@ -31,7 +33,7 @@ The isolated tests cover web/mobile auth, ownership, CSRF, invalid input, idempo
 
 ## Deployment
 
-Deploy `server/self-cargo.php` before `server/customers.php`, then `server/warehouse-ub.php` and `api/mobile.php`. Deploy the three root `self-cargo.*` files and append the standalone script to `index.html`. Back up and compare live files first; preserve unrelated working-tree changes to the storefront bundle/index. No database migration is required. The existing warehouse address/phone settings remain authoritative.
+For the initial feature, deploy `server/self-cargo.php` before `server/customers.php`, then `server/warehouse-ub.php` and `api/mobile.php`, the three root `self-cargo.*` files and the standalone script entry in `index.html`. For permanent IDs, deploy `server/bootstrap.php` first (additive `CREATE TABLE IF NOT EXISTS`), then self-cargo/customers/warehouse PHP and the warehouse/customer web assets. Back up and compare live files first; preserve unrelated storefront changes. The existing warehouse address/phone settings remain authoritative.
 
 ## Released 2026-11-12
 

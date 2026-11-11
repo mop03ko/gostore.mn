@@ -123,7 +123,7 @@ function warehouse_order_operable(array $o,string $location='erenhot'): bool {
 function warehouse_local_month(string $iso): string {$t=strtotime($iso);return $t?gmdate('Y-m',$t+8*3600):'';}
 function warehouse_month_param(): string {$m=str_field($_GET,'month',7,false);if($m!==''&&!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D',$m))fail('Сар буруу.');return $m;}
 function warehouse_order_public(array $o,string $location='erenhot',bool $details=true): array {
-    $result=array_intersect_key($o,array_flip(['id','title','customer','status','created','warehouse','batch_id']));
+    $result=array_intersect_key($o,array_flip(['id','title','customer','cargo_id','status','created','warehouse','batch_id']));
     $result['read_only']=!warehouse_order_operable($o,$location);
     $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
     $result['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
@@ -169,7 +169,7 @@ function warehouse_suggest(string $q,string $location): array {
     $add=function(array $item,string $value)use($q,&$items){$items[]=$item+['match'=>$value,'rank'=>str_ends_with($value,$q)?0:1];};
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
         $o=json_decode($r['data'],true);if(!is_array($o)||!warehouse_order_visible($o,$location))continue;
-        $values=[['order',$o['id']]];foreach($o['inbound']['numbers']??[] as $n)$values[]=['waybill',strtoupper((string)($n['no']??''))];
+        $values=[['order',$o['id']],['order',$o['cargo_id']??'']];foreach($o['inbound']['numbers']??[] as $n)$values[]=['waybill',strtoupper((string)($n['no']??''))];
         if($ub)foreach([$o['phone']??'',$o['fulfillment']['contact_phone']??''] as $p)$values[]=['phone',(string)preg_replace('/\D/','',(string)$p)];
         foreach($values as [$field,$value])if($value!==''&&str_contains($value,$q)){$add(['type'=>'order','id'=>$o['id'],'customer'=>(string)($o['customer']??''),'status'=>$o['status'],'field'=>$field],$value);break;}
         if(count($items)>=60)break;
@@ -251,7 +251,7 @@ function warehouse_get(string $action): never {
         // Ulaanbaatar also finds a customer by phone (digits only, so spaces and dashes do not matter).
         $phones=warehouse_role($location)==='ulaanbaatar'?' '.warehouse_phone_digits($o['phone']??'').' '.warehouse_phone_digits($o['fulfillment']['contact_phone']??''):'';
         $digits=warehouse_phone_digits($query);$byPhone=$phones!==''&&strlen($digits)>=4&&preg_match('/^[\d +()-]+$/D',$query)&&str_contains($phones,$digits);
-        if($query!==''&&!$byPhone&&!str_contains(mb_strtolower($o['id'].' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
+        if($query!==''&&!$byPhone&&!str_contains(mb_strtolower($o['id'].' '.($o['cargo_id']??'').' '.$o['title'].' '.$o['customer'].' '.($o['batch_id']??'').' '.(logistics_state($o)['shelf']).' '.implode(' ',array_column($o['inbound']['numbers']??[],'no'))),$query))continue;
         if($month!==''&&warehouse_local_month((string)($o['created']??''))!==$month)continue;
         if($matched++<$offset)continue;
         if(count($rows)<51)$rows[]=warehouse_order_public($o,$location,false);

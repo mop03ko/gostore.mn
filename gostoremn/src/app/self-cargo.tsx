@@ -1,5 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { router, useFocusEffect } from "expo-router";
+import { Text, View } from "react-native";
+import { usePalette } from "@/lib/palette";
+import { CargoAddressCard, type CargoAddress } from "@/components/cargo-address-card";
 import { randomUUID } from "expo-crypto";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -8,7 +11,7 @@ import { statusName } from "@/lib/orders";
 import { Page, Card, Title, Copy, Field, Button, Busy, ErrorBox } from "@/components/ui";
 import { WarehouseContact } from "@/components/warehouse-contact";
 
-type Cargo = Order & { warehouse: { label: string }; inbound?: { numbers: { no: string; company: string }[] } };
+type Cargo = Order & { cargo_id?: string; warehouse: { label: string }; inbound?: { numbers: { no: string; company: string }[] } };
 
 export default function CargoRoute() {
   const { customer, ready } = useStore();
@@ -18,13 +21,15 @@ export default function CargoRoute() {
 }
 
 function CargoScreen({ owner, initialPhone }: { owner: string; initialPhone: string }) {
+  const colors = usePalette();
+  const [delivery, setDelivery] = useState<CargoAddress | null>(null);
   const [orders, setOrders] = useState<Cargo[]>([]), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(""), [qty, setQty] = useState("1"), [phone, setPhone] = useState(initialPhone), [note, setNote] = useState("");
   const lock = useRef(false), requestKey = useRef("");
   const load = useCallback(async () => {
-    const result = await api<{ orders: Cargo[] }>("customer-self-cargo"); setOrders(result.orders);
+    const result = await api<{ orders: Cargo[]; delivery: CargoAddress }>("customer-self-cargo"); setOrders(result.orders); setDelivery(result.delivery);
   }, []);
-  useFocusEffect(useCallback(() => { let active = true; void api<{ orders: Cargo[] }>("customer-self-cargo").then(r => { if (active) setOrders(r.orders); }).catch(e => { if (active) setError(e.message); }); return () => { active = false; }; }, []));
+  useFocusEffect(useCallback(() => { let active = true; void api<{ orders: Cargo[]; delivery: CargoAddress }>("customer-self-cargo").then(r => { if (active) { setOrders(r.orders); setDelivery(r.delivery); } }).catch(e => { if (active) setError(e.message); }); return () => { active = false; }; }, []));
   async function create() {
     if (lock.current) return; lock.current = true; setBusy(true); setError("");
     try {
@@ -38,18 +43,24 @@ function CargoScreen({ owner, initialPhone }: { owner: string; initialPhone: str
     finally { lock.current = false; setBusy(false); }
   }
   return <Page>
+    <View style={{ padding: 24, borderRadius: 24, gap: 12, backgroundColor: colors.accentSurface }}>
+      <Text style={{ color: colors.accentText, fontWeight: "700", fontSize: 12 }}>GOSTORE КАРГО · ЭРЭЭН → УЛААНБААТАР</Text>
+      <Text style={{ color: colors.navy, fontSize: 30, fontWeight: "800", lineHeight: 36 }}>{"Та захиал,\nбид тээвэрлэе."}</Text>
+      <Copy>Хятадаас өөрөө худалдан аваад өөрийн карго ID-гаар хүлээн аваарай.</Copy>
+    </View>
+    {delivery ? <CargoAddressCard address={delivery} /> : !error && <Busy />}
+    <Card style={{ borderRadius: 24 }}><Title>Хэрхэн эхлэх вэ?</Title><Copy>1. Карго ID-тай хаягаа худалдан авах платформдоо оруулна.</Copy><Copy>2. Ачаагаа доор бүртгэж, худалдагчаас өгсөн хүргэлтийн дугаарыг нэмнэ.</Copy><Copy>3. Агуулахад ирсэн зураг, хэмжилт, явцыг хянаж тээврийн төлбөрөө төлнө.</Copy></Card>
     <WarehouseContact />
-    <Card><Title>Хятадаас өөрөө худалдан аваад тээвэрлүүлээрэй</Title><Copy>1. Ачаагаа бүртгэж GS код, агуулахын хаяг авна.</Copy><Copy>2. Худалдагчид кодтой хаягаа өгч, хүргэлтийн дугаараа энд нэмнэ.</Copy><Copy>3. Агуулахад ирэхэд зураг, хэмжилт, явцыг хянаж тээврийн төлбөрөө төлнө.</Copy></Card>
     <Card><Title>Шинэ ачаа</Title><Copy>Барааны үнэ, Хятад доторх хүргэлтийг та худалдагчид өөрөө төлнө. GOStore-д тээвэрлүүлэх ачаагаа бүртгэнэ.</Copy>
       <Field label="Барааны нэр" value={title} onChangeText={setTitle} maxLength={200} editable={!busy} />
       <Field label="Нийт барааны тоо ширхэг" value={qty} onChangeText={setQty} keyboardType="number-pad" maxLength={5} editable={!busy} />
       <Field label="Холбоо барих утас" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} editable={!busy} />
       <Field label="Тайлбар / өнгө / хэмжээ" value={note} onChangeText={setNote} maxLength={500} multiline editable={!busy} />
-      <ErrorBox message={error} /><Button title={busy ? "Бүртгэж байна…" : "Код болон агуулахын хаяг авах"} disabled={busy || !title.trim() || !phone.trim() || !/^\d+$/.test(qty) || Number(qty) < 1 || Number(qty) > 10000} onPress={() => void create()} />
+      <ErrorBox message={error} /><Button title={busy ? "Бүртгэж байна…" : "Ачаа бүртгэх"} disabled={busy || !title.trim() || !phone.trim() || !/^\d+$/.test(qty) || Number(qty) < 1 || Number(qty) > 10000} onPress={() => void create()} />
     </Card>
     <Title>Миний өөрөө захиалсан ачаа</Title>
     <Button title="Шинэчлэх" secondary disabled={busy} onPress={() => void load().then(() => setError("")).catch(e => setError(e.message))} />
-    {!orders.length && <Copy>Ачаа бүртгэсний дараа кодтой хаяг энд харагдана.</Copy>}
+    {!orders.length && <Copy>Одоогоор ачаа бүртгээгүй байна. Таны карго ID дээрх картанд бэлэн байна.</Copy>}
     {orders.map(o => <CargoCard key={o.id} order={o} owner={owner} update={next => setOrders(old => old.map(x => x.id === next.id ? next : x))} />)}
   </Page>;
 }
@@ -68,7 +79,7 @@ function CargoCard({ order: o, owner, update }: { order: Cargo; owner: string; u
     finally { lock.current = false; setBusy(false); }
   }
   return <Card><Title>{o.id} · {o.title}</Title><Copy>{o.status === "confirmed" ? "Бүртгэгдсэн · хүргэлтийн дугаар хүлээж байна" : statusName(o.status)}</Copy>
-    <Copy>Доорх хаягийг удаан дарж хуулна уу. Хүлээн авагчийн GS кодыг хэвээр үлдээнэ.</Copy><Copy>{o.warehouse.label}</Copy>
+    <Copy>{o.cargo_id ? "Карго ID: " + o.cargo_id : "Өмнө бүртгэсэн ачааны хаяг"}</Copy><Copy>Доорх хаягийг удаан дарж хуулна уу. Хаягт байгаа кодыг хэвээр үлдээнэ.</Copy><Copy>{o.warehouse.label}</Copy>
     <Copy>Хүргэлт: {o.inbound?.numbers?.map(n => n.no + " " + n.company).join(" · ") || "Дугаар хараахан нэмээгүй"}</Copy>
     {["confirmed", "shipping"].includes(o.status) && <>
       <Field label="Хятадын хүргэлтийн дугаар" value={number} onChangeText={setNumber} autoCapitalize="characters" autoCorrect={false} maxLength={40} editable={!busy} />

@@ -12,6 +12,16 @@ function client(mobile=false){const jar=new Map();let csrf='',token='';return as
 const a=client(),b=client(true),guest=client(),admin=client(),cn=client(),ub=client();
 for(const [i,c] of [[1,a],[2,b]]){await c('customer-me');assert.equal((await c('customer-register',{name:'Карго '+i,email:'cargo'+i+'@example.test',phone:'99112233',password:'Self-cargo-secure-test',password_confirm:'Self-cargo-secure-test'})).status,201);}
 const payload={title:'Өвлийн гутал <script>alert(1)</script>',qty:2,phone:'99112233',note:'Хар / 42',request_key:crypto.randomUUID()};
+const profile=await a('customer-self-cargo'),other=await b('customer-self-cargo');
+assert.match(profile.cargo_id,/^GO\d{8}$/);assert.notEqual(profile.cargo_id,other.cargo_id);
+assert.equal(profile.orders.length,0,'Address available before registering any shipment');
+assert.equal((await a('customer-me')).customer.cargo_id,profile.cargo_id);
+assert.ok(profile.delivery.address.includes(profile.cargo_id));
+assert.ok(profile.delivery.label.includes(profile.delivery.phone));
+const relogin=client();await relogin('customer-me');
+assert.equal((await relogin('customer-login',{email:'cargo1@example.test',password:'Self-cargo-secure-test'})).customer.cargo_id,profile.cargo_id,'ID survives a new session');
+const concurrent=await Promise.all(Array.from({length:5},()=>relogin('customer-self-cargo')));
+assert.ok(concurrent.every(x=>x.cargo_id===profile.cargo_id),'Repeated requests retain one ID');
 assert.equal((await guest('customer-self-cargo')).status,401);
 await guest('customer-me');assert.equal((await guest('customer-self-cargo-create',payload)).status,401);
 assert.equal((await fetch(base+'/api/index.php?action=customer-self-cargo-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})).status,403);
@@ -21,10 +31,14 @@ assert.equal((await a('customer-self-cargo-create',{...payload,request_key:'bad'
 const created=await a('customer-self-cargo-create',{...payload,amount:999,paid:true,status:'completed',warehouse_locations:{erenhot:'unknown'}});
 assert.equal(created.status,201,JSON.stringify(created));const o=created.order,id=o.id;
 assert.match(id,/^GS-[A-F0-9]{6}$/);assert.equal(o.type,'forwarding');assert.equal(o.status,'confirmed');assert.equal(o.amount,0);assert.equal(o.paid,false);assert.equal(o.purchase,undefined);
-assert.equal(o.items[0].qty,2);assert.equal(o.items[0].price,0);assert.ok(o.warehouse.label.includes(id));assert.ok(o.warehouse.address);assert.equal(o.warehouse.recipient,id+' GOStore');
+assert.equal(o.items[0].qty,2);assert.equal(o.items[0].price,0);assert.ok(o.warehouse.label.includes(profile.cargo_id));assert.ok(o.warehouse.address);assert.equal(o.warehouse.recipient,profile.cargo_id+' GOStore');
+assert.equal(o.cargo_id,profile.cargo_id);assert.equal(o.warehouse.order_code,id);
 assert.equal((await a('customer-self-cargo-create',payload)).order.id,id,'Retry must not duplicate orders');
 assert.equal((await a('customer-self-cargo')).orders.length,1);assert.ok((await a('customer-orders')).orders.some(x=>x.id===id));
 assert.equal((await b('customer-self-cargo')).orders.length,0);
+const repeat=await a('customer-self-cargo-create',{...payload,request_key:crypto.randomUUID(),cargo_id:other.cargo_id});
+assert.notEqual(repeat.order.id,id);assert.equal(repeat.order.cargo_id,profile.cargo_id,'Permanent ID cannot be replaced by client');
+assert.equal(repeat.order.warehouse.label,o.warehouse.label,'Same address across shipments');
 assert.equal((await b('customer-self-cargo-tracking',{id,number:'YT1234567890123'})).status,404);
 assert.equal((await b('order-get',{id})).status,403);
 assert.equal((await a('customer-self-cargo-tracking',{id,number:'bad number'})).status,400);
@@ -37,6 +51,8 @@ assert.equal((await b('customer-self-cargo-tracking',{id:second.order.id,number:
 await admin('session');assert.equal((await admin('login',JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')))).status,200);
 for(const [location,c] of [['erenhot',cn],['ulaanbaatar',ub]]){const login={location,email:location+'-cargo@example.test',password:'Warehouse-cargo-test-2026',enabled:true};assert.equal((await admin('warehouse-account-save',login)).status,200);await c('warehouse-session');assert.equal((await c('warehouse-login',login)).status,200);}
 assert.equal((await cn('warehouse-order&id='+id)).order.items[0].qty,2);
+assert.equal((await cn('warehouse-order&id='+id)).order.cargo_id,profile.cargo_id);
+assert.equal((await cn('warehouse-orders&q='+profile.cargo_id)).orders.length,2,'Permanent ID finds all registered shipments');
 assert.equal((await ub('warehouse-order&id='+id)).order.read_only,true,'UB can see an independently purchased order before arrival');
 for(const c of [cn,ub])assert.ok((await c('warehouse-notifications')).notifications.some(n=>n.order_id===id),'Both warehouses receive a new-order notice');
 assert.ok((await cn('warehouse-orders&q=YT1234567890123')).orders.some(x=>x.id===id),'Scan finds customer waybill');

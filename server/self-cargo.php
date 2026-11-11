@@ -2,12 +2,31 @@
 declare(strict_types=1);
 
 // Forwarding is a transport-only order. Never mark supplier goods as paid or queue a purchase.
+function customer_cargo_id(string $customer): string {
+    $db=db();$find=$db->prepare('SELECT cargo_id FROM customer_cargo_ids WHERE customer_id=?');
+    $find->execute([$customer]);if($id=$find->fetchColumn())return $id;
+    // Unique constraints arbitrate parallel first visits. Retained after account deletion; never reassigned.
+    $insert=$db->prepare('INSERT OR IGNORE INTO customer_cargo_ids (customer_id,cargo_id,created) VALUES (?,?,?)');
+    for($i=0;$i<30;$i++){
+        $insert->execute([$customer,'GO'.random_int(10000000,99999999),gmdate('c')]);
+        $find->execute([$customer]);if($id=$find->fetchColumn())return $id;
+    }
+    fail('Карго ID үүсгэж чадсангүй. Дахин оролдоно уу.',503);
+}
+function self_cargo_delivery(string $cargoId,string $location='erenhot'): array {
+    $w=warehouse_profile($location);
+    if(trim($w['address'])===''||trim($w['phone'])==='')fail('Агуулахын хаягийг тохируулж байна.',503);
+    $recipient=$cargoId.' GOStore';$address=rtrim($w['address']).' '.$cargoId.'号';
+    return ['cargo_id'=>$cargoId,'name'=>$w['name'],'recipient'=>$recipient,'address'=>$address,'phone'=>$w['phone'],'contact_phone'=>$w['contact_phone'],
+      'label'=>"收件人: $recipient\n手机号: {$w['phone']}\n地址: $address"];
+}
 function self_cargo_owned(array $customer,string $id): array {
     $q=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders c ON c.order_id=o.id WHERE o.id=? AND c.customer_id=?');$q->execute([$id,$customer['id']]);$data=$q->fetchColumn();
     if(!$data)fail('Ачаа олдсонгүй.',404);$o=json_decode($data,true);
     if(($o['type']??'')!=='forwarding')fail('Ачаа олдсонгүй.',404);return $o;
 }
 function self_cargo_address(array $o): array {
+    if(!empty($o['cargo_id']))return self_cargo_delivery($o['cargo_id'],warehouse_order_location($o,'erenhot'))+['order_code'=>$o['id']];
     $w=warehouse_profile(warehouse_order_location($o,'erenhot'));
     if(trim($w['address'])===''||trim($w['phone'])==='')fail('Агуулахын хаягийг тохируулж байна.',503);
     $recipient=$o['id'].' GOStore';
@@ -44,7 +63,7 @@ function self_cargo_create(array $c,array $b): array {
           'items'=>[['id'=>$id,'name'=>$title,'variant'=>$variant,'qty'=>$qty,'price'=>0]],'route'=>['Эрээн','Замын-Үүд','Улаанбаатар'],
           'warehouse_locations'=>['erenhot'=>'erenhot','ulaanbaatar'=>'ulaanbaatar'],'fulfillment_request'=>['method'=>'pickup'],
           'history'=>[['status'=>'confirmed','at'=>$now,'actor'=>'customer']],'inbound'=>['numbers'=>[]]];
-        $o['warehouse']=self_cargo_address($o);
+        $o['cargo_id']=customer_cargo_id($c['id']);$o['warehouse']=self_cargo_address($o);
         if(str_field($b,'number',40,false)!=='')self_cargo_waybill($o,$b);
         $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$id,hash('sha256',random_bytes(32)),$request,json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$now,$now]);
         $db->prepare('INSERT INTO customer_orders VALUES (?,?,?)')->execute([$id,$c['id'],$now]);

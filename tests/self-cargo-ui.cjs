@@ -13,11 +13,19 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Expanded contact fits mobile');
   await page.getByRole('link',{name:'QR зураг татах'}).waitFor();
   await require('./customer-ui-helper.cjs')(page,base);await page.reload();
+  await page.context().grantPermissions(['clipboard-read','clipboard-write']);
+  await page.locator('[data-field="cargo_id"]').waitFor();
+  const profile=await page.evaluate(async()=>await(await fetch('/api/index.php?action=customer-self-cargo')).json());
+  for(const field of ['cargo_id','recipient','phone','address','label']){
+   await page.locator('[data-field="'+field+'"]').click();
+   await page.waitForFunction(()=>document.getElementById('sc-copy-status').textContent==='Хууллаа ✓');
+   await page.waitForFunction(async expected=>(await navigator.clipboard.readText()).replace(/\r\n/g,'\n')===expected,profile.delivery[field]);
+  }
   await page.getByLabel('Барааны нэр',{exact:true}).fill('Гутал <script>window.BAD=true</script>');
   await page.getByLabel('Нийт барааны тоо ширхэг').fill('2');
-  await page.getByRole('button',{name:'Код болон агуулахын хаяг авах'}).click();
+  await page.getByRole('button',{name:'Ачаа бүртгэх',exact:true}).click();
   const card=page.locator('[data-order]');await card.waitFor();const id=await card.getAttribute('data-order');assert.match(id,/^GS-[A-F0-9]{6}$/);
-  assert.match(await card.locator('pre').innerText(),new RegExp(id));assert.equal(await page.evaluate(()=>window.BAD),undefined);
+  assert.match(await card.locator('pre').innerText(),new RegExp(profile.cargo_id));assert.equal(await page.evaluate(()=>window.BAD),undefined);
   await card.getByText('Хүргэлтийн дугаар нэмэх',{exact:true}).click();
   await card.getByLabel('Хятадын хүргэлтийн дугаар').fill('YT1234567890000');await card.getByLabel('Хүргэлтийн компани').fill('圆通');
   await card.getByRole('button',{name:'Дугаар хадгалах'}).click();await card.getByText('Эрээн рүү хүргэгдэж байна',{exact:true}).waitFor();
