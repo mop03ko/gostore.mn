@@ -1,0 +1,64 @@
+name: iOS TestFlight (Mac)
+run-name: iOS 1.0.2 (${{ inputs.build_number }}) on Mac
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unused Apple build number (check App Store Connect first)
+        required: true
+        type: string
+      submit:
+        description: Upload the signed build to App Store Connect / TestFlight
+        default: true
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: gostore-ios-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: xcode-27
+    timeout-minutes: 100
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      EXPO_PUBLIC_API_ORIGIN: https://gostore.mn
+      BUILD_NUMBER: ${{ inputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.12.0'
+          cache: npm
+          cache-dependency-path: gostoremn/package-lock.json
+      - name: Install and check app
+        working-directory: gostoremn
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+      - name: Build signed IPA
+        env:
+          GOSTORE_IOS_SIGNING: ${{ secrets.GOSTORE_IOS_SIGNING }}
+        run: bash scripts/ios-mac-build.sh
+      - name: Upload to TestFlight
+        if: inputs.submit
+        env:
+          GOSTORE_IOS_SIGNING: ${{ secrets.GOSTORE_IOS_SIGNING }}
+        run: python3 scripts/ios-mac-credentials.py upload
+      - name: Store signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: gostore-ios-${{ inputs.build_number }}
+          path: output/ios-mac/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove signing material
+        if: always()
+        run: python3 scripts/ios-mac-credentials.py cleanup
