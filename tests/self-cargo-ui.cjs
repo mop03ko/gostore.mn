@@ -6,6 +6,12 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/self-cargo.html');await page.getByRole('heading',{name:'Эхлээд нэвтэрнэ үү'}).waitFor();
+  await page.getByText('Эрээн агуулахтай холбогдох · Orgil / WeChat',{exact:true}).click();
+  const qr=page.getByAltText('Orgil-ийн WeChat холбоо барих QR код');await qr.waitFor();
+  await page.waitForFunction(()=>document.querySelector('.sc-contact-qr')?.naturalWidth>0);
+  assert.deepEqual(await (await page.request.get(base+'/assets/erenhot-wechat-orgil.jpg')).body(),fs.readFileSync('assets/erenhot-wechat-orgil.jpg'),'Serves the original QR without transformation');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Expanded contact fits mobile');
+  await page.getByRole('link',{name:'QR зураг татах'}).waitFor();
   await require('./customer-ui-helper.cjs')(page,base);await page.reload();
   await page.getByLabel('Барааны нэр',{exact:true}).fill('Гутал <script>window.BAD=true</script>');
   await page.getByLabel('Нийт барааны тоо ширхэг').fill('2');

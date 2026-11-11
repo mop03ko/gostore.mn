@@ -6,13 +6,14 @@ import { useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 import { statusName } from "@/lib/orders";
 import { Page, Card, Title, Copy, Field, Button, Busy, ErrorBox } from "@/components/ui";
+import { WarehouseContact } from "@/components/warehouse-contact";
 
 type Cargo = Order & { warehouse: { label: string }; inbound?: { numbers: { no: string; company: string }[] } };
 
 export default function CargoRoute() {
   const { customer, ready } = useStore();
   if (!ready) return <Page><Busy /></Page>;
-  if (!customer) return <Page><Copy>Ачаагаа өөрийн бүртгэлтэй холбоно.</Copy><Button title="Нэвтрэх / Бүртгүүлэх" onPress={() => router.push({ pathname: "/login", params: { next: "/self-cargo" } })} /></Page>;
+  if (!customer) return <Page><WarehouseContact /><Copy>Ачаагаа өөрийн бүртгэлтэй холбоно.</Copy><Button title="Нэвтрэх / Бүртгүүлэх" onPress={() => router.push({ pathname: "/login", params: { next: "/self-cargo" } })} /></Page>;
   return <CargoScreen key={customer.id} owner={customer.id} initialPhone={customer.phone} />;
 }
 
@@ -37,6 +38,7 @@ function CargoScreen({ owner, initialPhone }: { owner: string; initialPhone: str
     finally { lock.current = false; setBusy(false); }
   }
   return <Page>
+    <WarehouseContact />
     <Card><Title>Хятадаас өөрөө худалдан аваад тээвэрлүүлээрэй</Title><Copy>1. Ачаагаа бүртгэж GS код, агуулахын хаяг авна.</Copy><Copy>2. Худалдагчид кодтой хаягаа өгч, хүргэлтийн дугаараа энд нэмнэ.</Copy><Copy>3. Агуулахад ирэхэд зураг, хэмжилт, явцыг хянаж тээврийн төлбөрөө төлнө.</Copy></Card>
     <Card><Title>Шинэ ачаа</Title><Copy>Барааны үнэ, Хятад доторх хүргэлтийг та худалдагчид өөрөө төлнө. GOStore-д тээвэрлүүлэх ачаагаа бүртгэнэ.</Copy>
       <Field label="Барааны нэр" value={title} onChangeText={setTitle} maxLength={200} editable={!busy} />

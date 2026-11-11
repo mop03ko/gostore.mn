@@ -21,7 +21,7 @@ Registration creates notifications for Erenhot and Ulaanbaatar. Both can see the
 - POST `customer-self-cargo-tracking`: `id`, `number`, optional `company`.
 - Available through both web and token-only mobile API. Authentication and CSRF are required for writes. Idempotency is scoped to the customer, transactions serialize registration, waybills cannot be claimed across orders, and customer additions stop after warehouse receipt.
 - No API key, supplier purchase operation, account sharing or public access token is exposed. Address is snapshotted when the order is registered.
-- The supplied WeChat contact QR is not included pending the user's decision on its audience.
+- The owner authorized public display of Orgil's WeChat contact QR on 2026-11-12. The original, unmodified JPEG is available on the self-cargo page and bundled in the native app, with a full-size link for saving. It is visible before login too. It is a contact code, not a shipment/batch tracking code.
 
 ## Validation
 

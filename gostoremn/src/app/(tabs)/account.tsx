@@ -76,7 +76,7 @@ function Account() {
     </Card>
     <Text style={styles.section}>Захиалга ба хүргэлт</Text>
     <Card style={{ gap: 0, paddingVertical: 4 }}>
-      <MenuRow icon="truck" title="Өөрөө захиалах · Эрээн карго" subtitle="Агуулахын хаяг авах, ачаагаа бүртгэх" onPress={() => protectedRoute("/self-cargo")} />
+      <MenuRow icon="truck" title="Өөрөө захиалах · Эрээн карго" subtitle="Агуулахын хаяг авах, ачаагаа бүртгэх" onPress={() => router.push("/self-cargo")} />
       <View style={styles.divider} />
       <MenuRow icon="box" title="Миний захиалгууд" subtitle="Төлбөр, тээврийн явцаа хянах" onPress={() => protectedRoute("/orders")} />
       <View style={styles.divider} />
