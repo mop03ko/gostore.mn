@@ -93,12 +93,23 @@ function checkout_expire_order(string $id): void {
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
+// Catalog, order list and dashboard requests run the sweep on the side. When another request holds the database,
+// the sweep waits for the next request instead of failing the page (nothing is recorded, so it runs again).
+function checkout_expire_due_deferrable(): void {
+    try{checkout_expire_due();}catch(PDOException $e){error_log('GOStore checkout expiry deferred: '.substr((string)preg_replace('/\s+/',' ',$e->getMessage()),0,120));}
+}
 function checkout_expired_or_cancelled(string $id): bool {
     $o=order_row($id)['order'];return ($o['cancel_reason']??'')==='payment_timeout'&&!$o['paid'];
 }
+function checkout_expiry_last_run(): int {
+    $s=db()->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['checkout_expiry_run']);$last=(int)$s->fetchColumn();
+    // End the read here. An open cursor keeps its WAL snapshot, and writing after another request has committed then
+    // fails at once with "database is locked"; busy_timeout does not apply (tests/checkout-expiry-lock.php).
+    $s->closeCursor();return $last;
+}
 function checkout_expire_due(bool $force=false): void {
-    $db=db();$s=$db->prepare('SELECT value FROM meta WHERE key=?');$s->execute(['checkout_expiry_run']);
-    if(!$force&&(int)$s->fetchColumn()>time()-300)return;
+    $db=db();
+    if(!$force&&checkout_expiry_last_run()>time()-300)return;
     $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['checkout_expiry_run',(string)time()]);
     // History keeps a "quoted" entry forever, so status text cannot narrow the scan. The payment window is at most
     // 168 hours, so checkouts older than 14 days are already paid, cancelled or reviewed.

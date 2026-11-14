@@ -77,7 +77,7 @@ try {
         if($method==='POST'&&!in_array($action,['login','logout','admin-totp-setup'],true))admin_audit_on_success($action);
     }
     // Unpaid instant checkouts are released lazily (at most every five minutes).
-    if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due();
+    if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due_deferrable();
     if ($method==='GET') {
         if($action==='phone-verification-config')json_out(['enabled'=>verify_mn_environment()!=='','csrf'=>$_SESSION['csrf']]);
         if($warehouseAction)warehouse_get($action);
