@@ -121,7 +121,7 @@ function customer_message_settings(string $customer): array {
 }
 function customer_message_settings_save(string $customer,array $b): array {
     customer_messages_schema();if(!is_bool($b['promo_push']??null))fail('Тохиргоо буруу.',422);limit_attempts('customer-message-settings:'.$customer,30,3600);
-    db()->prepare('INSERT INTO customer_message_prefs (customer_id,promo_push,updated) VALUES (?,?,?) ON CONFLICT(customer_id) DO UPDATE SET promo_push=excluded.promo_push,updated=excluded.updated')->execute([$customer,$b['promo_push']?1:0,gmdate('c')]);
+    db()->prepare('INSERT OR REPLACE INTO customer_message_prefs (customer_id,promo_push,updated) VALUES (?,?,?)')->execute([$customer,$b['promo_push']?1:0,gmdate('c')]);
     if(!$b['promo_push'])db()->prepare("UPDATE customer_message_push SET status='skipped',last_error='opted_out' WHERE customer_id=? AND status='pending' AND message_id IN (SELECT id FROM customer_messages WHERE kind='promo')")->execute([$customer]);
     return customer_message_settings($customer);
 }

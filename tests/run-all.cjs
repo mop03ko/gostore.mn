@@ -14,6 +14,7 @@ run(node,['tests/expo-push.cjs'],'expo-push');
 run(node,['tests/expo-eleven-sale.cjs'],'expo-eleven-sale');
 run(node,['tests/expo-product-discounts.cjs'],'expo-product-discounts');
 run(node,['tests/cargo-tariff.cjs'],'cargo-tariff');
+run(node,['tests/sqlite-compat.cjs'],'sqlite-compat');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/run-logistics.cjs','mobile'],'mobile-api');
