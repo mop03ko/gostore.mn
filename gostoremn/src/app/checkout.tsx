@@ -32,6 +32,7 @@ type Submission = {
   address: string;
   notes: string;
   fulfillment: string;
+  pickup_location?: string;
   require_account: boolean;
 };
 function Checkout() {
@@ -43,12 +44,15 @@ function Checkout() {
     [phone, setPhone] = useState<string | null>(null),
     [address, setAddress] = useState<string | null>(null),
     [method, setMethod] = useState("pickup"),
+    [pickupLocation, setPickupLocation] = useState("ulaanbaatar"),
     [notes, setNotes] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [pending, setPending] = useState<Submission | null>(null),
     [loaded, setLoaded] = useState(false),
     [quotedItems, setQuotedItems] = useState("");
+  const locations = shipping?.pickup_locations ?? (shipping?.pickup ? [{ ...shipping.pickup, location: "ulaanbaatar", city: "Улаанбаатар" }] : []);
+  const pickup = locations.find((p) => p.location === pickupLocation);
   const locked = useRef(false),
     quoteAt = useRef(0),
     key = "gostore-pending-" + (customer?.id || "guest"),
@@ -122,9 +126,10 @@ function Checkout() {
               customer: (name ?? customer.name).trim(),
               family_name: family.trim(),
               phone: (phone ?? customer.phone).trim(),
-              address: (address ?? customer.address).trim(),
+              address: method === "delivery" ? (address ?? customer.address).trim() : "",
               notes,
               fulfillment: method,
+              pickup_location: method === "pickup" ? pickupLocation : "ulaanbaatar",
               require_account: true,
               items: selection(cart),
               expected_total: preview!.quote.total,
@@ -228,7 +233,7 @@ function Checkout() {
               keyboardType="phone-pad"
             />
             <Button
-              title="Улаанбаатар агуулахаас авах"
+              title="Салбараас авах"
               secondary={method !== "pickup"}
               onPress={() => setMethod("pickup")}
             />
@@ -238,11 +243,11 @@ function Checkout() {
               onPress={() => setMethod("delivery")}
             />
             {method === "pickup" ? (
-              <Copy>
-                {shipping?.pickup?.name}
-                {"\n"}
-                {shipping?.pickup?.address}
-              </Copy>
+              <>
+                <Title>Авах салбар</Title>
+                {locations.map((p) => <Button key={p.location} title={(p.location === pickupLocation ? "✓ " : "") + p.name} secondary={p.location !== pickupLocation} onPress={() => setPickupLocation(p.location)} />)}
+                {pickup ? <Copy>{[pickup.name, pickup.address, pickup.phone && "Утас: " + pickup.phone, pickup.hours].filter(Boolean).join("\n")}</Copy> : <Copy>Авах салбараа сонгоно уу.</Copy>}
+              </>
             ) : (
               <>
                 {addresses.map((a) => (
@@ -333,6 +338,7 @@ function Checkout() {
                   title={money(preview.quote.total) + " · Захиалга үүсгэх"}
                   disabled={
                     busy ||
+                    (method === "pickup" && !pickup) ||
                     !family.trim() ||
                     !(name ?? customer.name).trim() ||
                     !(phone ?? customer.phone).trim() ||

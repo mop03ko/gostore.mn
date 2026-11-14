@@ -16,6 +16,7 @@ import { catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
+import { BranchesPromo } from "@/components/branches-promo";
 import { SelfCargoEntry } from "@/components/self-cargo-entry";
 import { PromoPopup } from "@/components/promo-popup";
 type Results = {
@@ -121,7 +122,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     setPage(1);
     setImage("");
     setQuery(value.trim() || "__all__");
-    setDraft(value);
+    setDraft(value === "__all__" ? "" : value);
     setItems([]);
     setRetry((x) => x + 1);
     list.current?.scrollToOffset({ offset: 0, animated: true });
@@ -238,6 +239,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
             <SelfCargoEntry />
+            <BranchesPromo onBrowse={() => search("__all__")} />
             <HomeDiscovery onSearch={search} />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>

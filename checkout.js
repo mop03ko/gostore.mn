@@ -7,7 +7,9 @@ window.taobaoCart=(()=>{
   const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Хөтөч сагс хадгалах боломжгүй байна.');return false;}updateCounts();window.dispatchEvent(new Event('gostore-cart-changed'));return true;};
   const rate=()=>Number(window.storeServer?.shipping?.cny_rate)||0;
   const lineMnt=i=>rate()&&Number(i.cny)>0?Math.ceil(Number((i.cny*rate()*i.qty).toFixed(8))):null;
-  let quote=null,quoteItems=[],checkoutToken='',selected=null;
+  let quote=null,quoteItems=[],checkoutToken='',selected=null,pickupLocation='ulaanbaatar';
+  const pickupLocations=()=>storeServer.shipping?.pickup_locations||[{...storeServer.shipping?.pickup,location:'ulaanbaatar',city:'Улаанбаатар'}];
+  const pickupProfile=()=>pickupLocations().find(p=>p.location===pickupLocation);
   const item=(p,variant,qty)=>({id:p.id,sku:variant.id,qty,name:p.name,image:p.image,variant:variant.label,cny:variant.cny,min_qty:p.min_qty,step:p.step,stock:variant.stock??null,vendor_id:p.vendor_id??'',vendor_name:String(p.vendor_name??'').slice(0,200)});
   function add(p,variant,qty){
     if(window.productPolicyBlocked(p)||window.productPolicyBlocked(variant)){toast('Энэ бараа худалдаанд байхгүй байна.');return false;}
@@ -49,14 +51,15 @@ window.taobaoCart=(()=>{
       const priced=await shopApi('checkout-quote',{items:payload()});quote=priced.quote;quoteItems=priced.items;
     }catch(e){if(selected){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}show();const footer=$('.cart-footer');if(footer)footer.insertAdjacentHTML('beforebegin',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
     checkoutToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
-    openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Улаанбаатар агуулахаас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Хүргэлтээр авах · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${pickupHtml()}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. ${quote.payment_window_hours} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. ${quote.domestic_later?'Хятад доторх хүргэлт болон олон улсын каргог':'Олон улсын каргог'} Улаанбаатарт ирэхэд бодит дүнгээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Төлөх · ${money(quote.total)}</button></div></form>`);
+    if(!pickupProfile())pickupLocation=pickupLocations()[0]?.location||'ulaanbaatar';
+    openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Салбараас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Улаанбаатарт хүргүүлэх · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-pickup-choice>Авах салбар<select name="pickup_location" required>${pickupLocations().map(p=>`<option value="${esc(p.location)}" ${p.location===pickupLocation?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${pickupHtml(pickupProfile())}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. ${quote.payment_window_hours} цагийн дотор төлөөгүй захиалга автоматаар цуцлагдана. ${quote.domestic_later?'Хятад доторх хүргэлт болон олон улсын каргог':'Олон улсын каргог'} сонгосон салбарт ирэхэд бодит дүнгээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Төлөх · ${money(quote.total)}</button></div></form>`);
   }
   document.addEventListener('submit',async e=>{
     const f=e.target;if(f.id!=='taobao-checkout-form')return;e.preventDefault();
     const button=f.querySelector('[type="submit"]');button.disabled=true;
     try{
       if(!customerAccount.require())return;
-      const ordered=ordering(),fields=Object.fromEntries(new FormData(f));if(fields.fulfillment!=='delivery')delete fields.address;const b={...fields,type:'checkout',title:'GOStore захиалга',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
+      const ordered=ordering(),fields=Object.fromEntries(new FormData(f));if(fields.fulfillment!=='delivery')delete fields.address;else fields.pickup_location='ulaanbaatar';const b={...fields,type:'checkout',title:'GOStore захиалга',items:ordered.map(i=>({id:i.id,sku:i.sku,qty:i.qty})),expected_total:quote.total,token:checkoutToken,require_account:true};
       const r=await shopApi('order-create',b);
       checkoutToken='';write(read().filter(i=>!ordered.some(o=>o.id===i.id&&o.sku===i.sku)));
       selected=null;toast('Захиалга үүслээ · '+r.order.id);
@@ -68,11 +71,15 @@ window.taobaoCart=(()=>{
     }finally{button.disabled=false;}
   });
   document.addEventListener('change',e=>{
-    if(e.target.name!=='fulfillment'||!e.target.closest('#taobao-checkout-form'))return;
+    if(!e.target.closest('#taobao-checkout-form'))return;
+    if(e.target.name==='pickup_location'){pickupLocation=e.target.value;e.target.form.querySelector('[data-pickup-info]').innerHTML=pickupHtml(pickupProfile());return;}
+    if(e.target.name!=='fulfillment')return;
     const f=e.target.form,delivery=f.elements.fulfillment.value==='delivery',address=f.querySelector('[data-delivery-address]');
+    f.querySelector('[data-pickup-choice]').hidden=delivery;f.elements.pickup_location.disabled=delivery;
+    f.querySelector('[data-address-pick]')?.closest('label').toggleAttribute('hidden',!delivery);
     address.hidden=!delivery;f.elements.address.required=delivery;f.querySelector('[data-pickup-info]').hidden=delivery;
     // Saved addresses from the account page can be picked instead of typing again.
-    if(delivery&&!f.dataset.addressesLoaded){f.dataset.addressesLoaded='1';shopApi('customer-addresses').then(({addresses})=>{if(!addresses.length||!f.isConnected)return;const pick=document.createElement('label');pick.className='field full';pick.innerHTML=`Хадгалсан хаяг<select data-address-pick>${addresses.map(a=>`<option value="${esc(a.id)}" ${a.is_default?'selected':''}>${esc(a.label)} · ${esc(a.address.slice(0,60))}</option>`).join('')}<option value="">Шинэ хаяг бичих</option></select>`;address.before(pick);pick.querySelector('select').addEventListener('change',e=>{const a=addresses.find(x=>x.id===e.target.value);f.elements.address.value=a?a.address:'';if(a&&a.phone&&f.elements.phone&&!f.elements.phone.value)f.elements.phone.value=a.phone;});const current=addresses.find(a=>a.is_default)||addresses[0];if(!f.elements.address.value.trim())f.elements.address.value=current.address;}).catch(()=>{});}
+    if(delivery&&!f.dataset.addressesLoaded){f.dataset.addressesLoaded='1';shopApi('customer-addresses').then(({addresses})=>{if(!addresses.length||!f.isConnected)return;const pick=document.createElement('label');pick.className='field full';pick.innerHTML=`Хадгалсан хаяг<select data-address-pick>${addresses.map(a=>`<option value="${esc(a.id)}" ${a.is_default?'selected':''}>${esc(a.label)} · ${esc(a.address.slice(0,60))}</option>`).join('')}<option value="">Шинэ хаяг бичих</option></select>`;pick.hidden=f.elements.fulfillment.value!=='delivery';address.before(pick);pick.querySelector('select').addEventListener('change',e=>{const a=addresses.find(x=>x.id===e.target.value);f.elements.address.value=a?a.address:'';if(a&&a.phone&&f.elements.phone&&!f.elements.phone.value)f.elements.phone.value=a.phone;});const current=addresses.find(a=>a.is_default)||addresses[0];if(!f.elements.address.value.trim())f.elements.address.value=current.address;}).catch(()=>{});}
   });
   document.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;

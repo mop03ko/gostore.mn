@@ -57,7 +57,9 @@ export type CartLine = {
   step: number;
   stock: number | null;
 };
+export type PickupLocation = { location: string; city: string; name: string; address: string; phone: string; hours: string };
 export type Shipping = {
+  pickup_locations?: PickupLocation[];
   cny_rate: number;
   service_percent: number;
   service_fee_mnt: number;

@@ -27,7 +27,7 @@ export const statusName = (s: string) =>
     erenhot_ready: "Эрээнээс гарахад бэлэн",
     erenhot_dispatched: "Эрээнээс гарсан",
     zamyn_uud: "Замын-Үүдэд ирсэн",
-    ulaanbaatar: "Улаанбаатарт ирсэн",
+    ulaanbaatar: "Авах салбарт ирсэн",
     ulaanbaatar_unsorted: "Агуулахад ангилж байна",
     ready_pickup: "Ирж авахад бэлэн",
     ready_delivery: "Хүргэлтэд бэлэн",

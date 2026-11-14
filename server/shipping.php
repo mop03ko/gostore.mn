@@ -75,9 +75,26 @@ function shipping_calculate(array $b,?array $s=null): array {
     $total=array_sum($parts);if($total>100000000)fail('Үнийн санал зөвшөөрөх дүнгээс хэтэрсэн.');
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'cargo_method'=>'auto','weight_kg'=>$weight,'volume_m3'=>$volume],'transport'=>$transport,'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c')];
 }
+// Public collection points; operational role names remain stable for warehouse routing.
+function shipping_pickup_locations(): array {
+    $definitions=function_exists('warehouse_definitions')?warehouse_definitions():['ulaanbaatar'=>['role'=>'ulaanbaatar','city'=>'Улаанбаатар','active'=>true]];
+    $locations=[];
+    foreach($definitions as $location=>$definition){
+        if(($definition['role']??'')!=='ulaanbaatar'||!($definition['active']??false))continue;
+        $profile=warehouse_profile($location);
+        $locations[]=array_intersect_key($profile,array_flip(['name','address','phone','hours']))+['location'=>$location,'city'=>$definition['city']??''];
+    }
+    return $locations;
+}
+function checkout_pickup_location(array $b): string {
+    $location=str_field($b,'pickup_location',30,false)?:'ulaanbaatar';
+    if(!in_array($location,array_column(shipping_pickup_locations(),'location'),true))fail('Сонгосон салбар одоогоор захиалга авахгүй байна. Өөр салбар сонгоно уу.',409);
+    if(($b['fulfillment']??'pickup')==='delivery'&&$location!=='ulaanbaatar')fail('Хаягаар хүргүүлэх үйлчилгээ одоогоор зөвхөн Улаанбаатарт байна.');
+    return $location;
+}
 function shipping_public(): array {
     $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
-    $pickup=warehouse_profile('ulaanbaatar');$s['pickup']=array_intersect_key($pickup,array_flip(['name','address','phone','hours']));return $s;
+    $pickup=warehouse_profile('ulaanbaatar');$s['pickup']=array_intersect_key($pickup,array_flip(['name','address','phone','hours']));$s['pickup_locations']=shipping_pickup_locations();return $s;
 }
 function warehouse_destination(array $order,array $input): array {
     $family=str_field($input,'family_name',100);$given=str_field($input,'customer',100);

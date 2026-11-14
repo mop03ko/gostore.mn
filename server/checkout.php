@@ -42,16 +42,18 @@ function checkout_preview(array $b): array {
 }
 // Fills a new order with priced items; the shared order-create path assigns the ID and saves it.
 function checkout_order(array $b,array $o): array {
+    $pickupLocation=checkout_pickup_location($b);
     $lines=checkout_items($b,$verifiedUntil);$quote=checkout_quote($lines);
     $quote['verified_until']=min($verifiedUntil,$quote['domestic']['expires_at']??PHP_INT_MAX);
     if($quote['verified_until']<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
     if(int_field($b,'expected_total',1,100000000)!==$quote['total'])fail('Үнэ шинэчлэгдсэн байна. Шинэ дүнг шалгаад дахин баталгаажуулна уу.',409);
     $now=time();$hours=(int)$quote['rates']['payment_window_hours'];
-    // The customer chooses Ulaanbaatar warehouse pickup or delivery; delivery is billed in the final settlement.
+    // Customers choose an active collection point; home delivery remains Ulaanbaatar-only.
     $method=str_field($b,'fulfillment',10,false)?:'pickup';if(!in_array($method,['pickup','delivery'],true))fail('Хүлээн авах хэлбэр буруу.');
     if($method==='delivery'&&trim($o['delivery_address']??'')==='')fail('Хүргэлтийн хаягаа оруулна уу.');
     if($method==='pickup')$o['delivery_address']='';
     $o['fulfillment_request']=['method'=>$method];
+    $o['warehouse_locations']=['erenhot'=>'erenhot','ulaanbaatar'=>$pickupLocation];
     $o['items']=$lines;$o['quote']=$quote;$o['amount']=$quote['total'];$o['status']='quoted';
     $o['title']=mb_substr($lines[0]['name'],0,100).(count($lines)>1?' +'.(count($lines)-1).' бараа':'');
     $o['qty']=array_sum(array_column($lines,'qty'));$o['route']=['Эрээн','Замын-Үүд','Улаанбаатар'];

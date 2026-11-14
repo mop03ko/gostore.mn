@@ -222,6 +222,8 @@ try {
             if($taken)fail('Захиалгын код үүсгэж чадсангүй. Дахин оролдоно уу.',503);
             if(isset($o['route'])){$o['warehouse']=warehouse_destination($o,$b);$o['customer']=$o['warehouse']['family_name'].' '.$o['warehouse']['given_name'];}
             if($type==='checkout'){
+                // Recheck while holding the write lock: a branch may have been disabled during pricing.
+                checkout_pickup_location($b);
                 if(($o['quote']['verified_until']??0)<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
                 if(isset($o['quote']['domestic']))tw_domestic_assert_warehouse($o['quote'],$o['warehouse']);
             }

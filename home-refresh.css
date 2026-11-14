@@ -159,3 +159,18 @@ html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-m
  .home-refresh #self-cargo-entry .sc-entry-cta{width:18px;flex:none}
  .home-refresh #self-cargo-entry .sc-entry-cta::after{content:'→';font-size:20px}
 }
+
+/* Pickup branch promotion, with live addresses shared with checkout. */
+.branch-promo{display:none}
+.home-refresh .branch-promo:not([hidden]){display:grid;grid-template-columns:1fr 1.4fr;gap:32px;padding:28px 32px;margin-block:20px;border:1px solid var(--home-line);border-radius:24px;background:var(--home-card);color:var(--home-ink)}
+.branch-promo-intro>span{font-size:11px;letter-spacing:2px;font-weight:800;color:var(--theme-accent,#bb4100)}
+.branch-promo h2{font-size:clamp(23px,2.4vw,32px);line-height:1.16;margin:10px 0}
+.branch-promo p{font-size:14px;line-height:1.55;margin:6px 0 12px;color:var(--home-muted)}
+.branch-promo .button{background:#f56518;color:#1c1736;font-size:14px;min-height:44px;padding:10px 18px;border-radius:12px;text-decoration:none}
+.branch-promo-locations{display:grid;gap:12px}
+.branch-promo article{display:flex;gap:12px;padding:18px;border-radius:16px;background:var(--home-soft)}
+.branch-promo h3{font-size:18px;margin:0}.branch-promo article p{margin:6px 0}
+.branch-promo article a{display:inline-block;font-size:16px;font-weight:750;color:var(--theme-accent,#bb4100);padding:6px 0}
+.branch-promo-pin{flex:none;width:32px;height:32px;display:grid;place-items:center;color:var(--theme-accent,#bb4100)}
+.branch-promo-pin svg{width:24px;height:24px}
+@media(max-width:760px){.home-refresh .branch-promo:not([hidden]){grid-template-columns:1fr;gap:18px;padding:20px;margin-block:16px}.branch-promo h2 br{display:none}.branch-promo article{padding:14px}}

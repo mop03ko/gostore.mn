@@ -35,7 +35,7 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  assert.equal(order.type,'checkout');assert.equal(order.fulfillment_request.method,'pickup');assert.equal(order.delivery_address,'');assert.equal(order.status,'quoted');assert.equal(order.items.length,3);assert.equal(order.quote.breakdown.cargo_mnt,0);assert.ok(order.amount>0&&order.payment_due);
  await page.waitForFunction(()=>document.querySelector('#cart-count').textContent==='0');
  assert.ok((await page.locator('.cargo-card').innerText()).includes('Төлбөр хүлээж байна'));await page.locator('.cargo-card [data-server-order]').first().click();await page.locator('.cargo-detail').waitFor();assert.ok((await page.locator('.cargo-detail').innerText()).includes('Төлөх хугацаа'));assert.equal(await page.locator('.cargo-items li').count(),3);assert.ok((await page.locator('.cargo-detail').innerText()).includes('Шуудангийн код: 14252-0024'),'Order shows the pickup address');
- assert.ok((await page.locator('#modal').innerText()).includes('Улаанбаатарт ирэхэд бодит жингээр'),'Cargo is billed later');
+ assert.ok((await page.locator('#modal').innerText()).includes('Салбарт ирэхэд бодит жингээр'),'Cargo is billed later');
  assert.match(await page.locator('.order-calculation').innerText(),/¥74 × 550/);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth));
  assert.deepEqual(errors,[]);console.log('PASS checkout: product add/buy-now buttons, cart lines/quantity/remove, seller-based domestic fee, upfront total, order with cargo later, 24 h due date, cart cleared, mobile modal.');
