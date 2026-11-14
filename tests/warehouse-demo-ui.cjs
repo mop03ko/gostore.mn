@@ -12,6 +12,14 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   await page.locator('#app').waitFor({state:'visible'});
   assert.equal(await page.locator('#records .order-card').count(),6);
   assert.ok(await page.locator('#demo-banner').isVisible());
+  // The shared admin sidebar CSS must not make the demo banner sticky/full-height.
+  for(const viewport of [{width:390,height:844},{width:1032,height:1376}]){
+    await page.setViewportSize(viewport);
+    const banner=await page.locator('#demo-banner').boundingBox();
+    assert.ok(banner.height<viewport.height/2,'Demo banner must leave room for the warehouse dashboard');
+    assert.equal(await page.locator('#demo-banner').evaluate(e=>getComputedStyle(e).position),'static');
+  }
+  await page.setViewportSize({width:390,height:844});
   assert.equal(await page.locator('.warehouse-notifications').count(),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   async function scan(code){await page.locator('#scan-code').fill(code);await page.locator('#scan-form button').click();await page.locator('#editor').waitFor({state:'visible'});await page.waitForFunction(code=>document.querySelector('#editor-title').textContent===code,code);}

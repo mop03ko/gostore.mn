@@ -91,7 +91,7 @@
   };
   window.GOStoreWarehouseDemo={photoUrl:id=>photos.get(id)||''};
   document.addEventListener('DOMContentLoaded',()=>{
-    const banner=document.createElement('aside');banner.className='receipt-info';banner.id='demo-banner';banner.setAttribute('role','status');
+    const banner=document.createElement('section');banner.className='receipt-info';banner.id='demo-banner';banner.setAttribute('role','status');
     banner.innerHTML='<strong>ДЕМО / DEMO — зөвхөн жишээ өгөгдөл</strong><p>All changes and photos stay on this device until reload. No real orders or payments.</p><p>Багц / Batch: <b>GB-DEMO01</b> · Доторх захиалга / Order: <b>GS-DEMO03</b> · Авах код / Pickup code: <b>12345678</b></p><p>Scan → receive → sort (photo, shelf) → hand over. Reload to reset.</p><a href="/warehouse/ulaanbaatar/">Демо горимоос гарах / Exit demo</a>';
     document.body.prepend(banner);
   });

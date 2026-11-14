@@ -45,7 +45,7 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 15000));
     sim('io', udid, 'screenshot', path.join(out, 'ipad-login.png'));
     const flow = path.join(out, 'demo.yaml');
-    fs.writeFileSync(flow, 'appId: mn.gostore.ubwarehouse\n---\n- extendedWaitUntil:\n    visible: ".*Try demo.*"\n    timeout: 60000\n- tapOn: ".*Try demo.*"\n- extendedWaitUntil:\n    visible: ".*GS-DEMO.*"\n    timeout: 60000\n- takeScreenshot: ipad-dashboard\n');
+    fs.writeFileSync(flow, 'appId: mn.gostore.ubwarehouse\n---\n- extendedWaitUntil:\n    visible: ".*Try demo.*"\n    timeout: 60000\n- tapOn: ".*Try demo.*"\n- extendedWaitUntil:\n    visible: "Барааны тойм"\n    timeout: 90000\n- takeScreenshot: ipad-dashboard\n');
     execFileSync('maestro', ['--device', udid, 'test', '--test-output-dir', out, flow], { stdio: 'inherit', timeout: 600000 });
     sim('io', udid, 'screenshot', path.join(out, 'ipad-demo.png'));
   } finally {
