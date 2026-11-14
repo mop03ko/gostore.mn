@@ -90,6 +90,9 @@
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261109-six">
   <script src="/eleven-sale.js?v=20261109-campaign" defer></script>
+  <script>document.documentElement.classList.toggle('home-refresh', /^\/(?:index\.html)?$/.test(location.pathname) && !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search));</script>
+  <link rel="stylesheet" href="/home-refresh.css?v=20261115-1">
+  <script src="/home-refresh.js?v=20261115-1" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1d2aae82ae"></head>
 <body>
   <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1649469149899328&amp;ev=PageView&amp;noscript=1"></noscript>
@@ -115,7 +118,7 @@
     <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 0 2-3h12v3M16 13.5h2"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 2 8 3v7c0 5-8 10-8 10S4 17 4 12V5l8-3Z"/><path d="m8 11 3 3 5-5"/></symbol>
   </svg>
-  <div class="announcement"><div class="container service-strip"><span><svg class="icon"><use href="#i-grid"/></svg>Дэлхийн брэндийн бараа</span><span><svg class="icon"><use href="#i-truck"/></svg>Улаанбаатарт хүргэлт</span><span><svg class="icon"><use href="#i-box"/></svg>Захиалгаа зурагтай хянана</span><button data-action="help">Хэрхэн худалдан авах вэ? ↗</button></div></div>
+  <div class="announcement"><div class="container service-strip"><span><svg class="icon"><use href="#i-grid"/></svg>Хятадын дэлгүүрээс Монголдоо</span><span><svg class="icon"><use href="#i-truck"/></svg>Улаанбаатарт хүргэлт</span><span><svg class="icon"><use href="#i-box"/></svg>Захиалгаа зурагтай хянана</span><button data-action="help">Хэрхэн худалдан авах вэ? ↗</button></div></div>
   <header class="header">
     <div class="container header-main">
       <a href="/" class="brand" aria-label="GOStore нүүр хуудас"><img src="/assets/logo.svg?v=917f17389a" alt="Gostore.mn" width="200" height="35"><img class="brand-dark" src="/assets/logo-white.svg?v=6f6da561ad" alt="" width="200" height="35" decoding="async"></a>
@@ -135,13 +138,14 @@
   </header>
   <dialog id="category-menu" aria-labelledby="category-menu-title"><div class="category-menu-heading"><h2 id="category-menu-title">Барааны ангилал</h2><button class="icon-button" id="close-category-menu" aria-label="Ангиллын цэс хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><label class="category-search"><span class="sr-only">Ангилал хайх</span><input id="category-search" type="search" placeholder="Ангилал хайх · хувцас, гутал, гал тогоо…" autocomplete="off"></label><div class="category-menu-layout"><nav id="category-departments" aria-label="Барааны ангиллууд"></nav><section id="category-suggestions" aria-live="polite"></section></div></dialog>
   <main id="main">
+    <div id="self-cargo-entry" class="container sc-entry home-forward-entry"><a href="/self-cargo.html" class="sc-entry-link"><span class="sc-entry-icon" aria-hidden="true">↗</span><span class="sc-entry-copy"><strong>Өөрөө захиал, бид хүргэе</strong><small>Taobao · 1688 · Pinduoduo</small><span>Хаягаа ав → Захиал → Ачаагаа бүртгэ</span></span><span class="sc-entry-cta">Өөрөө захиалах →</span></a></div>
     <section class="container home-hub" id="home-hub" aria-label="Дэлгүүрийн нүүр">
       <nav class="hub-cats" id="hub-cats" aria-label="Барааны ангилал"></nav>
       <div class="hub-flyout" id="hub-flyout" hidden></div>
       <div class="hub-main">
         <nav class="hub-channels" id="hub-channels" aria-label="Түгээмэл ангилал"></nav>
         <nav class="hub-hot" id="hub-hot" aria-label="Түгээмэл хайлт"></nav>
-        <div class="hero-banner"><div class="hero-copy"><span class="eyebrow">СОНГОЛТООС ТАНЫ ГАРТ</span><h1>Хэрэгтэй бүхнээ.<br><em>Хялбархан ав.</em></h1><p>Өдөр тутмын хэрэгцээнээс шинэ сонголт хүртэл.<br> Сагслаад QPay-ээр шууд төлөөрэй.</p><div class="hero-actions"><a class="button yellow" href="/products">Бараа үзэх <svg class="icon"><use href="#i-arrow"/></svg></a><button class="text-button" data-action="help">Хэрхэн худалдан авах вэ? ↗</button></div></div><div class="hero-collection" aria-hidden="true"><span class="collection-circle"></span><img class="collection-chair" src="/assets/hero-chair.webp?v=ddfc525a2a" alt="" width="520" height="781" loading="lazy"><img class="collection-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" alt="" width="330" height="220" loading="lazy"><img class="collection-bag" src="/assets/hero-bag.webp?v=1d3094dc10" alt="" width="300" height="450" loading="lazy"><span class="collection-stamp">Сонголт<br><strong>нэг дор.</strong></span></div></div>
+        <div class="hero-banner"><div class="hero-copy"><span class="eyebrow"><span></span> ТАНЫ ӨДӨР ТУТМЫН ДЭЛГҮҮР</span><h1>Сонголт их.<br><em>Захиалах амар.</em></h1><p>Бараагаа сонго. QPay-ээр төл.<br>Явцыг нь нэг дор хяна.</p><div class="hero-actions"><a class="button yellow" href="/products">Сонголтоо нээх <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="hero-help" href="/help">Хэрхэн захиалах вэ? ↗</a></div><div class="hero-signoff"><span>Taobao · Tmall</span><span>Монгол хэл · Төгрөгөөр</span></div></div><div class="hero-collection" aria-hidden="true"><span class="collection-circle"></span><span class="hero-orbit"></span><img class="collection-chair" src="/assets/hero-chair.webp?v=ddfc525a2a" alt="" width="520" height="781" loading="lazy"><img class="collection-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" alt="" width="330" height="220" loading="lazy"><img class="collection-bag" src="/assets/hero-bag.webp?v=1d3094dc10" alt="" width="300" height="450" loading="lazy"><span class="collection-stamp">Өдөр бүрийн<br><strong>шинэ сонголт.</strong></span></div></div>
       </div>
       <aside class="hub-user" aria-label="Миний GOStore">
         <div class="hub-user-head"><span class="hub-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span><div><small>Сайн байна уу</small><strong data-account-label>Нэвтрэх</strong></div></div>
@@ -150,6 +154,11 @@
         <div class="hub-shortcuts"><button data-action="cart"><svg class="icon" aria-hidden="true"><use href="#i-bag"/></svg>Сагс<b data-hub-count="cart"></b></button><button data-action="favorites"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg>Хадгалсан<b data-hub-count="favorites"></b></button><button data-action="orders"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Ачаа хянах</button></div>
         <p class="hub-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>QPay-ээр төлнө. Каргог бараа Улаанбаатарт ирэхэд бодит жингээр тооцно.</p>
       </aside>
+    </section>
+    <section class="container home-services" aria-label="Шууд нээх">
+      <button type="button" class="home-service service-deals" data-home-discovery="deals"><span class="home-service-icon" aria-hidden="true">%</span><span><strong>Хямдралыг алдалгүй</strong><small>Баталгаажсан үнийн бууралт</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      <button type="button" class="home-service service-free" data-home-discovery="free"><span class="home-service-icon"><svg class="icon" aria-hidden="true"><use href="#i-truck"/></svg></span><span><strong>Хятад дотор 0¥ хүргэлт</strong><small>Эрээн хүртэл · Монголын тээвэр тусдаа</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      <a href="/account" class="home-service service-orders"><span class="home-service-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span><span><strong>Миний захиалга хаана явна?</strong><small>Захиалга, ачаагаа нэг дор хянах</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
     </section>
     <section id="eleven-sale" class="eleven-sale page-width" aria-labelledby="eleven-sale-title"></section>
     <section id="discovery-home" class="discovery-home page-width" aria-label="Барааны сонголтууд"></section>

@@ -1,0 +1,24 @@
+const{chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+const items=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday storage and home essentials',image:'/assets/hero-bag.webp',approx_mnt:25000+i,approx_cny:50,sellable:true}));
+(async()=>{const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{const p=await b.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ for(const host of ['www.googletagmanager.com','connect.facebook.net','www.facebook.com'])await p.route('https://'+host+'/**',r=>r.abort());
+ await p.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:items,more:false,cache_ttl:600,shipping:{}}}));
+ await p.route('**/api/index.php?action=supplier-free-shipping*',r=>r.fulfill({json:{products:items.slice(0,2),status:'available',scope:'china_to_erenhot'}}));
+ await p.route('**/api/index.php?action=supplier-deals*',r=>r.fulfill({json:{products:items.slice(0,3),more:false}}));
+ await p.route('**/api/index.php?action=campaign*',r=>r.fulfill({json:{eleven:{active:false}}}));
+ await p.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));
+ await p.goto(base+'/');await p.locator('.hub-cats a').first().waitFor();await p.locator('#self-cargo-entry').waitFor();await p.evaluate(()=>document.fonts.ready);
+ assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('home-refresh')),true);
+ for(const width of [320,390,768,1024,1440]){await p.setViewportSize({width,height:1050});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Page fits '+width);const title=p.locator('.hero-copy h1');assert.ok(await title.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Hero title fits '+width);assert.ok(await p.locator('.home-services').isVisible());}
+ await p.setViewportSize({width:1440,height:1050});await p.screenshot({path:'C:/Users/Mop03ko/Documents/ChatGPT/Private/home-new-desktop.png'});
+ await p.locator('[data-home-discovery=free]').click();await p.locator('.discovery-product').first().waitFor();assert.equal(await p.locator('[role=tab][data-discovery-tab=free]').getAttribute('aria-selected'),'true');assert.equal(await p.locator('.discovery-home .discovery-product').count(),2);assert.match(await p.locator('.discovery-note').innerText(),/Монгол хүртэлх тээвэр тусдаа/);
+ await p.locator('[data-home-discovery=deals]').click();await p.waitForFunction(()=>document.querySelectorAll('.discovery-home .discovery-product').length===3);assert.equal(await p.locator('[role=tab][data-discovery-tab=deals]').getAttribute('aria-selected'),'true');
+ await p.locator('[role=tab][data-discovery-tab=explore]').click();await p.setViewportSize({width:390,height:844});await p.evaluate(()=>scrollTo(0,0));await p.screenshot({path:'C:/Users/Mop03ko/Documents/ChatGPT/Private/home-new-mobile.png'});
+ await p.locator('[data-theme-toggle]').click();assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');await p.screenshot({path:'C:/Users/Mop03ko/Documents/ChatGPT/Private/home-new-dark.png'});
+ await p.locator('[data-theme-toggle]').click();await p.locator('#hub-channels [data-hub-category=shoes]').click();await p.waitForFunction(()=>location.pathname==='/c/shoes');assert.equal(await p.locator('html').evaluate(e=>e.classList.contains('home-refresh')),false);assert.equal(await p.locator('.home-services').isVisible(),false);
+ await p.goBack();await p.waitForFunction(()=>document.documentElement.classList.contains('home-refresh'));assert.ok(await p.locator('.home-services').isVisible());
+ await p.locator('.hero-actions a[href="/products"]').click();await p.waitForURL('**/products');assert.equal(await p.locator('.home-services').isVisible(),false);
+ await p.goto(base+'/cart');assert.equal(await p.locator('.home-services').isVisible(),false);
+ assert.deepEqual(errors,[]);console.log('PASS home redesign: responsive layout, dark mode, live-tab shortcuts, browse and Back, route isolation.');
+ }finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1});
