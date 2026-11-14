@@ -84,7 +84,8 @@ function customer_state_save(array $c,array $b): array {
         $cart=array_key_exists('cart',$b)?customer_state_cart($b['cart']):$current['cart'];
         $favorites=array_key_exists('favorites',$b)?customer_state_favorites($b['favorites']):$current['favorites'];
         $version=$current['version']+1;
-        $db->prepare('INSERT INTO customer_state (customer_id,cart,favorites,version,updated) VALUES (?,?,?,?,?) ON CONFLICT(customer_id) DO UPDATE SET cart=excluded.cart,favorites=excluded.favorites,version=excluded.version,updated=excluded.updated')
+        // Live SQLite 3.7.17 has no UPSERT; every column is written, so REPLACE gives the same row (tests/sqlite-compat.cjs).
+        $db->prepare('INSERT OR REPLACE INTO customer_state (customer_id,cart,favorites,version,updated) VALUES (?,?,?,?,?)')
             ->execute([$c['id'],json_encode($cart,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),json_encode($favorites,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$version,gmdate('c')]);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
