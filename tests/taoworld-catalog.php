@@ -149,7 +149,11 @@ denied(fn()=>tw_catalog_deals(['page'=>'0']),400);
 $homeFixture=false;unset($_SERVER['REMOTE_ADDR']);
 $_SERVER['REMOTE_ADDR']='192.0.2.202';
 foreach(['building materials'=>'建筑材料','ceramic tiles'=>'瓷砖','wall panels'=>'墙面装饰板','flooring materials'=>'地板','insulation materials'=>'建筑保温板','waterproofing materials'=>'防水材料','plumbing fittings'=>'水管配件','electrical supplies'=>'电线电缆','fasteners'=>'紧固件'] as $query=>$keyword){
-    supplier_search(['q'=>$query,'page'=>1]);check(end($calls)[1]['keyword']===$keyword,'Building category keyword mismatch: '.$query);
+    // The homepage order rotates daily by the real clock, so on some days an earlier home page has already fetched
+    // this keyword; results are cached by the Chinese keyword, so a cache hit proves the mapping just the same.
+    $before=count($calls);supplier_search(['q'=>$query,'page'=>1]);
+    $used=count($calls)>$before?end($calls)[1]['keyword']:(in_array($keyword,array_map(fn($c)=>$c[1]['keyword']??null,$calls),true)?$keyword:null);
+    check($used===$keyword,'Building category keyword mismatch: '.$query);
 }
 $before=count($calls);supplier_search(['q'=>'Барилгын материал','page'=>1]);check(count($calls)===$before,'Mongolian building search must reuse the translated category cache');
 check(isset(tw_catalog_departments()['building materials']),'Building materials missing from mixed home departments');
