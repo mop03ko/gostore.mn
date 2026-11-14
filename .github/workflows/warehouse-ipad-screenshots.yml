@@ -1,0 +1,43 @@
+name: Warehouse iPad screenshots
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/main'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.12.0'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch existing simulator app and Maestro
+        run: |
+          mkdir -p "$RUNNER_TEMP/warehouse-simulator" "$RUNNER_TEMP/maestro"
+          curl --fail --location --retry 3 'https://expo.dev/artifacts/eas/S4WtaYap3Cc21FQlqB4hfo9aTD20rZ6RJF6t7cWUQS8.tar.gz' -o "$RUNNER_TEMP/warehouse-simulator.tar.gz"
+          echo "004e06d70fd5629d83af3e16ecd745ba027675581b8224e54f9e5f94d08b5621  $RUNNER_TEMP/warehouse-simulator.tar.gz" | shasum -a 256 -c -
+          tar -xzf "$RUNNER_TEMP/warehouse-simulator.tar.gz" -C "$RUNNER_TEMP/warehouse-simulator"
+          curl --fail --location --retry 3 'https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.6.0/maestro.zip' -o "$RUNNER_TEMP/maestro.zip"
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro"
+          echo "$RUNNER_TEMP/maestro/maestro/bin" >> "$GITHUB_PATH"
+      - name: Capture native iPad demo
+        run: node scripts/warehouse-ipad-screenshots.cjs
+      - name: Store screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-ipad-screenshots
+          path: output/warehouse-ipad/
+          if-no-files-found: warn
+          retention-days: 7
