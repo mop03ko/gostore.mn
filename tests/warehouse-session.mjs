@@ -13,6 +13,13 @@ assert.equal(sql("echo db()->query('SELECT COUNT(*) FROM warehouse_login_devices
 sql("require 'server/warehouse.php';warehouse_notice_schema(db());db()->exec(\"INSERT INTO warehouse_push_devices (id,location,account_version,session_hash,endpoint,token_hash,start_id,queued_id,sent_id,expires) SELECT 'remember-push',location,account_version,session_hash,'https://fcm.googleapis.com/test','fake-hash',0,0,0,expires FROM warehouse_login_devices LIMIT 1\");");
 // Simulate a cold app restart: only persistent cookies survive.
 const restarted=client({[deviceName]:token});const restored=await restarted.call('warehouse-session');assert.equal(restored.authenticated,true);assert.equal(restored.location,'erenhot');assert.equal(restored.csrf,login.csrf);assert.equal((await restarted.call('warehouse-orders')).status,200);assert.equal(sql("echo db()->query(\"SELECT session_hash FROM warehouse_push_devices WHERE id='remember-push'\")->fetchColumn();"),crypto.createHash('sha256').update(restarted.jar.get(sessionName)).digest('hex'));
+// Active use renews the persistent login without rotating the token or CSRF.
+const now=Math.floor(Date.now()/1000);
+sql("db()->exec('UPDATE warehouse_login_devices SET touched="+(now-86401)+",expires="+(now+60)+"');");
+const renewed=await restarted.call('warehouse-session');
+assert.equal(renewed.authenticated,true);assert.equal(renewed.csrf,login.csrf);assert.equal(restarted.jar.get(deviceName),token);
+assert.ok(renewed.cookies.some(c=>c.startsWith(deviceName+'=')&&/expires=/i.test(c)),'Active use must renew the persistent device cookie');
+assert.ok(Number(sql("echo db()->query('SELECT expires FROM warehouse_login_devices LIMIT 1')->fetchColumn();"))>=now+89*86400,'Renewal must extend beyond the old near-expiry date');
 // An idle session and a PHP-GC-deleted session both restore before CSRF validation.
 const sessionFile=()=>{const id=restarted.jar.get(sessionName);assert.match(id,/^[a-zA-Z0-9,-]+$/);const file=path.resolve(process.env.GOSTORE_DATA_DIR,'sessions','sess_'+id);assert.ok(file.startsWith(path.resolve(process.env.GOSTORE_DATA_DIR)+path.sep));return file;};
 let file=sessionFile();fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/last\|i:\d+;/,'last|i:'+Math.floor(Date.now()/1000-3600)+';'));

@@ -184,7 +184,11 @@ function StaffApp() {
           domStorageEnabled
           sharedCookiesEnabled
           thirdPartyCookiesEnabled={false}
-          cacheEnabled={false}
+          // With sharedCookiesEnabled, disabling cache selects WKWebView's
+          // non-persistent data store and loses the warehouse device cookie.
+          // API responses remain no-store; persistence does not cache order data.
+          incognito={false}
+          cacheEnabled={variant === "warehouse"}
           allowsBackForwardNavigationGestures
           allowsInlineMediaPlayback
           mediaCapturePermissionGrantType="prompt"
