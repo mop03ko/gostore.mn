@@ -16,7 +16,7 @@ module.exports = function withMacSigning(config) {
         settings.DEVELOPMENT_TEAM = '8P6PVVWKUB';
         settings.CODE_SIGN_STYLE = 'Manual';
         settings.CODE_SIGN_IDENTITY = '"Apple Distribution"';
-        settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = '"Apple Distribution"';
+        settings['"CODE_SIGN_IDENTITY[sdk=iphoneos*]"'] = '"Apple Distribution"';
         settings.PROVISIONING_PROFILE_SPECIFIER = process.env.GOSTORE_PROFILE_UUID;
       }
       count++;
