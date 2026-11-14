@@ -6,7 +6,7 @@ if(preg_match('#^/brands(?:/|$)#',$path)){header('Location: /official-stores',tr
 if ($path==='/api/index.php') {require __DIR__.'/../api/index.php';return true;}
 if ($path==='/api/mobile.php') {require __DIR__.'/../api/mobile.php';return true;}
 if(in_array($path,['/api/taoworld/connect.php','/api/taoworld/callback.php'],true)){require __DIR__.'/..'.$path;return true;}
-if($path==='/admin/taoworld.js'||in_array($path,['/self-cargo.html','/self-cargo.js','/self-cargo.css'],true))return false;
+if($path==='/admin/taoworld.js'||in_array($path,['/self-cargo.html','/self-cargo.js','/self-cargo.css','/self-cargo-entry.css'],true))return false;
 if(preg_match('#^/warehouse/ulaanbaatar/?$#',$path)&&($_GET['demo']??'')==='1'){require __DIR__.'/../warehouse/review-demo.php';return true;}
 if($path==='/warehouse/review-demo.js')return false;
 if(preg_match('#^/warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$#',$path)){header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/../warehouse/index.html');return true;}

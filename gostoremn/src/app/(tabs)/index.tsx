@@ -16,6 +16,7 @@ import { catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
+import { SelfCargoEntry } from "@/components/self-cargo-entry";
 import { PromoPopup } from "@/components/promo-popup";
 type Results = {
   products: Product[];
@@ -236,6 +237,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
+            <SelfCargoEntry />
             <HomeDiscovery onSearch={search} />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>

@@ -1,0 +1,7 @@
+/* Compact forwarding entry, isolated from the storefront bundle. */
+#self-cargo-entry{margin:12px auto 16px;padding-top:0;padding-bottom:0}
+.sc-entry-link{display:flex;align-items:center;gap:14px;padding:16px 20px;border:1px solid #f3d4c1;border-radius:18px;background:#fff5ed;color:#262261;text-decoration:none}
+.sc-entry-icon{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:14px;background:#ffe2cc;color:#9c3709;font-size:28px;font-weight:700}
+.sc-entry-copy{display:grid;gap:3px;flex:1;min-width:0}.sc-entry-copy strong{font-size:18px;line-height:1.35}.sc-entry-copy small{color:#984015;font-size:12px}.sc-entry-copy>span{font-size:13px;color:#61586b}.sc-entry-cta{font-size:14px;font-weight:700;white-space:nowrap}.sc-entry-link:focus-visible{outline:3px solid #f16522;outline-offset:3px}.sc-entry-link:hover{border-color:#f16522}
+[data-theme="dark"] .sc-entry-link{background:#30241f;border-color:#68402d;color:#fff3eb}[data-theme="dark"] .sc-entry-copy small{color:#ffb484}[data-theme="dark"] .sc-entry-copy>span{color:#d2c6bf}
+@media(max-width:600px){.sc-entry-link{gap:10px;padding:13px;flex-wrap:nowrap}.sc-entry-copy strong{font-size:16px}.sc-entry-copy>span{font-size:12px}.sc-entry-cta{margin:0;width:18px;flex:none;font-size:0}.sc-entry-cta::after{content:"→";font-size:20px}.sc-entry-icon{width:44px;height:44px}}
