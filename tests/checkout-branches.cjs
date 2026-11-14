@@ -29,7 +29,7 @@ function client(){const jar=new Map();let csrf='';return async(action,body)=>{co
   const fixtures=Array.from({length:4},(_,i)=>({id:'tb-'+(810000+i),name:'Fixture product',image:'/assets/hero-bag.webp',approx_mnt:25000,sellable:true}));
   await p.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:fixtures,more:false}}));
   await p.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));
-  await p.goto(base+'/');await p.locator('#branch-promo').waitFor();assert.match(await p.locator('#branch-promo').innerText(),/Замын-Үүд[\s\S]*Сайншанд/);
+  await p.goto(base+'/');await p.locator('#branch-promo').waitFor();assert.match(await p.locator('#branch-promo').innerText(),/Улаанбаатар[\s\S]*Замын-Үүд[\s\S]*Сайншанд/);assert.equal(await p.locator('#branch-promo article').count(),3);assert.equal(await p.locator('#branch-promo h2').innerText(),'Танд ойр 3 агуулах');
   assert.equal(await p.locator('#branch-promo a[href="tel:91117189"]').count(),1);
   for(const width of [320,390,1440]){await p.setViewportSize({width,height:1000});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow at '+width);}
   await p.locator('#branch-promo').screenshot({path:'tmp/branch-promo-desktop.png'});
