@@ -16,7 +16,10 @@ async function main() {
   if (!app) throw Error('Expected warehouse simulator app missing');
   const types = JSON.parse(sim('list', 'devicetypes', '--json')).devicetypes;
   const type = types.filter(t => /iPad Pro.*13-inch/.test(t.name)).at(-1);
-  const runtime = JSON.parse(sim('list', 'runtimes', '--json')).runtimes.filter(r => r.isAvailable && /iOS/.test(r.name)).at(-1);
+  const runtimes = JSON.parse(sim('list', 'runtimes', '--json')).runtimes;
+  const runtime = runtimes.filter(r => r.isAvailable && /iOS/.test(r.name)
+    && !/iPhone\d/.test(r.identifier)
+    && (!r.supportedDeviceTypes || r.supportedDeviceTypes.some(d => d.identifier === type?.identifier))).at(-1);
   if (!type || !runtime) throw Error('13-inch iPad simulator/runtime unavailable');
   const udid = sim('create', 'GOStore warehouse screenshots', type.identifier, runtime.identifier);
   fs.writeFileSync(path.join(out, 'capture.json'), JSON.stringify({ device: type.name, runtime: runtime.name, udid, bundle: 'mn.gostore.ubwarehouse', sourceBuild: '9383c3e2-d3c8-4f27-8b43-269613009c1b', capturedAt: new Date().toISOString() }, null, 2));
