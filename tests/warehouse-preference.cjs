@@ -1,0 +1,24 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('../gostoremn/node_modules/typescript');
+function load(file,fast=false){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:()=>{throw Error('Unexpected native module load')},Date,Math,Number,JSON,Promise,Error,setTimeout:fast?(fn)=>setTimeout(fn,5):setTimeout,clearTimeout});return exports;}
+const {readWarehousePreference,pickupLocations,recommendWarehouse}=load('gostoremn/src/lib/warehouse-preference.ts');
+const locations=['Улаанбаатар','Замын-Үүд','Сайншанд'].map((city,i)=>({city,location:i?'wh-'+String(i).repeat(12):'ulaanbaatar',name:city,address:'fixture',phone:'99112233',hours:''}));
+for(const raw of [null,'{','null','1','{}','{"version":2,"location":"ulaanbaatar"}','{"version":1,"location":"erenhot"}'])assert.equal(readWarehousePreference(raw),null);
+assert.equal(readWarehousePreference('{"version":1,"location":"wh-111111111111"}'),'wh-111111111111');
+assert.equal(pickupLocations(null).length,0);assert.equal(pickupLocations({pickup:locations[0]}).length,1);assert.equal(pickupLocations({pickup_locations:[],pickup:locations[0]}).length,0,'Explicitly unavailable locations never fall back');
+const now=1800000000000,point=(latitude,longitude,accuracy=100)=>({coords:{latitude,longitude,accuracy},timestamp:now});
+for(const [lat,lon,index] of [[47.92,106.91,0],[43.718,111.906,1],[44.892,110.137,2]])assert.equal(recommendWarehouse(locations,point(lat,lon),now).location,locations[index].location);
+for(const p of [point(0,0),point(NaN,1),point(91,1),point(47.92,106.91,null),point(47.92,106.91,10001),{...point(47.92,106.91),timestamp:now-120001},{...point(47.92,106.91),mocked:true}])assert.equal(recommendWarehouse(locations,p,now),null);
+assert.equal(recommendWarehouse(locations.slice(1),point(47.92,106.91),now),null,'Disabled/missing UB never recommended');
+assert.equal(recommendWarehouse([locations[0],{...locations[0],location:'wh-444444444444'}],point(47.92,106.91),now),null,'No false exact-warehouse recommendation within one city');
+assert.equal(recommendWarehouse(locations,point(44.305,111.02),now),null,'Ambiguous midpoint left to user');
+const {locateForWarehouse}=load('gostoremn/src/lib/warehouse-location.ts',true);
+(async()=>{let asks=0,reads=0;
+const api={Accuracy:{Balanced:3},getForegroundPermissionsAsync:async()=>({granted:false,canAskAgain:true}),requestForegroundPermissionsAsync:async()=>{asks++;return{granted:false,canAskAgain:true};},hasServicesEnabledAsync:async()=>true,getCurrentPositionAsync:async()=>{reads++;return point(47.92,106.91);}};
+await assert.rejects(()=>locateForWarehouse(async()=>api),/зөвшөөрөлгүй/);assert.equal(asks,1);assert.equal(reads,0);
+await assert.rejects(()=>locateForWarehouse(async()=>({...api,getForegroundPermissionsAsync:async()=>({granted:false,canAskAgain:false})})),e=>e.settings===true);assert.equal(asks,1,'Permanent denial does not reprompt');
+const granted={...api,getForegroundPermissionsAsync:async()=>({granted:true,canAskAgain:true})};
+assert.equal((await locateForWarehouse(async()=>granted)).coords.latitude,47.92);assert.equal(asks,1,'Granted permission not re-requested');
+await assert.rejects(()=>locateForWarehouse(async()=>({...granted,hasServicesEnabledAsync:async()=>false})),/унтраалттай/);
+await assert.rejects(()=>locateForWarehouse(async()=>({...granted,getCurrentPositionAsync:()=>new Promise(()=>{})})),/хугацаа дууслаа/);
+console.log('PASS warehouse preference: persistence validation, active branches, three-city recommendations, uncertainty/stale/out-of-range fixes, ambiguity, denied/permanent permissions, GPS off and timeout.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

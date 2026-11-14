@@ -1,3 +1,4 @@
+import { useWarehousePreference } from "@/components/warehouse-preference";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -42,17 +43,19 @@ export function openPromoLink(link: string) {
 }
 
 export function PromoPopup() {
+  const { blocksPromo } = useWarehousePreference();
   const colors = usePalette();
   const [promo, setPromo] = useState<Promo | null>(null);
   const [ratio, setRatio] = useState(4 / 5);
   useEffect(() => {
-    if (checked) return;
-    checked = true;
+    if (checked || blocksPromo) return;
     let live = true;
     const timer = setTimeout(async () => {
       try {
         const { popup } = await catalog<{ popup: Promo | null }>("promo-popup", {});
-        if (!popup || !live) return;
+        if (!live) return;
+        checked = true;
+        if (!popup) return;
         const mark = popup.id + ":" + today();
         if ((await AsyncStorage.getItem(seenKey)) === mark) return;
         await AsyncStorage.setItem(seenKey, mark);
@@ -63,8 +66,8 @@ export function PromoPopup() {
       live = false;
       clearTimeout(timer);
     };
-  }, []);
-  if (!promo) return null;
+  }, [blocksPromo]);
+  if (!promo || blocksPromo) return null;
   const close = () => setPromo(null);
   const open = () => {
     const link = promo.link;

@@ -3,11 +3,13 @@ import { AnalyticsLifecycle } from "@/components/analytics-settings";
 import { usePalette } from "@/lib/palette";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { WarehousePreferenceProvider } from "@/components/warehouse-preference";
 import { StoreProvider } from "@/lib/store";
 export default function Root() {
   const colors = usePalette();
   return (
     <StoreProvider>
+      <WarehousePreferenceProvider>
       <PushLifecycle />
       <AnalyticsLifecycle />
       <StatusBar style={colors.dark ? "light" : "dark"} />
@@ -55,6 +57,7 @@ export default function Root() {
           options={{ title: "Тусламж, үйлчилгээний нөхцөл" }}
         />
       </Stack>
+      </WarehousePreferenceProvider>
     </StoreProvider>
   );
 }

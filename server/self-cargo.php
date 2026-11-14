@@ -56,12 +56,13 @@ function self_cargo_create(array $c,array $b): array {
     try{
         $q=$db->prepare('SELECT id FROM orders WHERE request_key=?');$q->execute([$request]);$id=$q->fetchColumn();
         if($id){$o=self_cargo_owned($c,$id);$db->exec('COMMIT');return $o;}
+        $pickupLocation=checkout_pickup_location(['pickup_location'=>$b['pickup_location']??'ulaanbaatar','fulfillment'=>'pickup']);
         $exists=$db->prepare('SELECT 1 FROM orders WHERE id=?');$id='';
         for($i=0;$i<20;$i++){$candidate='GS-'.strtoupper(bin2hex(random_bytes(3)));$exists->execute([$candidate]);if(!$exists->fetchColumn()){$id=$candidate;break;}}
         if(!$id)fail('Код үүсгэж чадсангүй.',503);$now=gmdate('c');
         $o=['id'=>$id,'type'=>'forwarding','title'=>$title,'customer'=>$c['name'],'phone'=>$phone,'status'=>'confirmed','created'=>$now,'amount'=>0,'paid'=>false,'demo'=>false,
           'items'=>[['id'=>$id,'name'=>$title,'variant'=>$variant,'qty'=>$qty,'price'=>0]],'route'=>['Эрээн','Замын-Үүд','Улаанбаатар'],
-          'warehouse_locations'=>['erenhot'=>'erenhot','ulaanbaatar'=>'ulaanbaatar'],'fulfillment_request'=>['method'=>'pickup'],
+          'warehouse_locations'=>['erenhot'=>'erenhot','ulaanbaatar'=>$pickupLocation],'fulfillment_request'=>['method'=>'pickup'],
           'history'=>[['status'=>'confirmed','at'=>$now,'actor'=>'customer']],'inbound'=>['numbers'=>[]]];
         $o['cargo_id']=customer_cargo_id($c['id']);$o['warehouse']=self_cargo_address($o);
         if(str_field($b,'number',40,false)!=='')self_cargo_waybill($o,$b);

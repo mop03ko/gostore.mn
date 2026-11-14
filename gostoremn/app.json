@@ -69,8 +69,35 @@
         }
       ],
       "./plugins/with-firebase-ios",
-      ["@react-native-firebase/analytics", { "ios": { "withoutAdIdSupport": true } }],
-      ["expo-build-properties", { "ios": { "useFrameworks": "dynamic" } }]
+      [
+        "@react-native-firebase/analytics",
+        {
+          "ios": {
+            "withoutAdIdSupport": true
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Танд ойр бараа авах агуулах санал болгохын тулд байршлыг нэг удаа ашиглана. Байршлаа өгөхгүйгээр агуулахаа гараар сонгож болно.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "locationFullAccuracyPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

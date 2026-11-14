@@ -1,3 +1,4 @@
+import { useWarehousePreference, WarehousePreferenceCard } from "@/components/warehouse-preference";
 import { useCallback, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
@@ -36,7 +37,9 @@ type Submission = {
   require_account: boolean;
 };
 function Checkout() {
-  const { customer, cart, cartReady, saveCart, shipping } = useStore(),
+  const { selected: pickup, loaded: pickupLoaded } = useWarehousePreference();
+  const pickupLocation = pickup?.location ?? "";
+  const { customer, cart, cartReady, saveCart } = useStore(),
     [preview, setPreview] = useState<Preview | null>(null),
     [addresses, setAddresses] = useState<Address[]>([]),
     [name, setName] = useState<string | null>(null),
@@ -44,15 +47,12 @@ function Checkout() {
     [phone, setPhone] = useState<string | null>(null),
     [address, setAddress] = useState<string | null>(null),
     [method, setMethod] = useState("pickup"),
-    [pickupLocation, setPickupLocation] = useState("ulaanbaatar"),
     [notes, setNotes] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [pending, setPending] = useState<Submission | null>(null),
     [loaded, setLoaded] = useState(false),
     [quotedItems, setQuotedItems] = useState("");
-  const locations = shipping?.pickup_locations ?? (shipping?.pickup ? [{ ...shipping.pickup, location: "ulaanbaatar", city: "Улаанбаатар" }] : []);
-  const pickup = locations.find((p) => p.location === pickupLocation);
   const locked = useRef(false),
     quoteAt = useRef(0),
     key = "gostore-pending-" + (customer?.id || "guest"),
@@ -103,6 +103,7 @@ function Checkout() {
   }
   async function submit(retry = false) {
     if (locked.current || !customer) return;
+    if (!retry && method === "pickup" && (!pickupLoaded || !pickup)) { setError("Авах агуулахаа сонгоно уу."); return; }
     if (
       !retry &&
       (!preview ||
@@ -245,7 +246,7 @@ function Checkout() {
             {method === "pickup" ? (
               <>
                 <Title>Авах салбар</Title>
-                {locations.map((p) => <Button key={p.location} title={(p.location === pickupLocation ? "✓ " : "") + p.name} secondary={p.location !== pickupLocation} onPress={() => setPickupLocation(p.location)} />)}
+                <WarehousePreferenceCard disabled={busy} />
                 {pickup ? <Copy>{[pickup.name, pickup.address, pickup.phone && "Утас: " + pickup.phone, pickup.hours].filter(Boolean).join("\n")}</Copy> : <Copy>Авах салбараа сонгоно уу.</Copy>}
               </>
             ) : (

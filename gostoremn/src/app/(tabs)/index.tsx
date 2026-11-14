@@ -16,6 +16,7 @@ import { catalog } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
+import { WarehousePreferenceCard } from "@/components/warehouse-preference";
 import { BranchesPromo } from "@/components/branches-promo";
 import { SelfCargoEntry } from "@/components/self-cargo-entry";
 import { PromoPopup } from "@/components/promo-popup";
@@ -238,6 +239,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
+            <WarehousePreferenceCard />
             <SelfCargoEntry />
             <BranchesPromo onBrowse={() => search("__all__")} />
             <HomeDiscovery onSearch={search} />

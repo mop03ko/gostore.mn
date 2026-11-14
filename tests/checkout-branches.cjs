@@ -18,6 +18,7 @@ function client(){const jar=new Map();let csrf='';return async(action,body)=>{co
   const p=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
   await require('./customer-ui-helper.cjs')(p,base);
   const request=async(action,body)=>{const s=await(await p.request.get(base+'/api/index.php?action=customer-me')).json();const r=await p.request.post(base+'/api/index.php?action='+action,{headers:{'X-CSRF-Token':s.csrf},data:body});return{status:r.status(),...await r.json()};};
+  assert.equal((await request('customer-self-cargo-create',{request_key:crypto.randomUUID(),title:'Inactive cargo fixture',qty:1,phone:'99112233',pickup_location:branches[1].location})).status,409,'Inactive forwarding destination rejected');
   const items=[{id:'tb-123456789',sku:'blue',qty:2}];const priced=await request('checkout-quote',{items});assert.equal(priced.status,200);
   const orderInput=extra=>({type:'checkout',title:'Branch fixture',family_name:'Тест',customer:'Захиалагч',phone:'99112233',items,expected_total:priced.quote.total,fulfillment:'pickup',token:crypto.randomBytes(32).toString('hex'),...extra});
   for(const location of ['does-not-exist','erenhot',branches[1].location])assert.equal((await request('order-create',orderInput({pickup_location:location}))).status,409);
@@ -45,6 +46,11 @@ function client(){const jar=new Map();let csrf='';return async(action,body)=>{co
   await f.locator('[name=family_name]').fill('Тест');await f.screenshot({path:'tmp/branch-checkout-mobile.png'});
   const saved=p.waitForResponse(r=>r.url().includes('action=order-create'));await f.locator('[type=submit]').click();const response=await saved;assert.equal(response.status(),201);const sain=(await response.json()).order;assert.equal(sain.pickup_warehouse.location,branches[1].location);assert.equal(sain.delivery_address,'');
   const dashboard=await admin('dashboard');for(const [id,location] of [[zamyn.order.id,branches[0].location],[sain.id,branches[1].location],[legacy.order.id,'ulaanbaatar'],[delivery.order.id,'ulaanbaatar']]){const stored=dashboard.orders.find(o=>o.id===id);assert.equal(stored.warehouse_locations.ulaanbaatar,location);assert.equal(stored.warehouse_locations.erenhot,'erenhot');}
-  assert.deepEqual(errors,[]);console.log('PASS branch checkout: three public pickup points, legacy/mobile catalogue, active/role validation, delivery restriction, stored routing, responsive promotion and checkout submission.');
+  const forwarding={request_key:crypto.randomUUID(),title:'Branch cargo fixture',qty:1,phone:'99112233',pickup_location:branches[1].location};
+  const cargo=await request('customer-self-cargo-create',forwarding);assert.equal(cargo.status,201,JSON.stringify(cargo));
+  const repeated=await request('customer-self-cargo-create',{...forwarding,pickup_location:branches[0].location});assert.equal(repeated.order.id,cargo.order.id);
+  const updated=await admin('dashboard');assert.equal(updated.orders.find(o=>o.id===cargo.order.id).warehouse_locations.ulaanbaatar,branches[1].location,'Forwarding destination saved and unchanged on idempotent retry');
+  for(const location of ['does-not-exist','erenhot'])assert.equal((await request('customer-self-cargo-create',{...forwarding,request_key:crypto.randomUUID(),pickup_location:location})).status,409);
+  assert.deepEqual(errors,[]);console.log('PASS branch checkout: three public pickup points, legacy/mobile catalogue, active/role validation, delivery restriction, stored routing, responsive promotion, checkout submission and forwarding routing/idempotency.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
