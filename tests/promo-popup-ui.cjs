@@ -23,7 +23,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // Storefront: shown on the home page after load, once a day; not on other pages.
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/cart');await page.waitForTimeout(2200);assert.equal(await page.locator('.promo-popup').count(),0,'Only on the home page');
- await page.goto(base+'/');const dialog=page.locator('dialog.promo-popup');await dialog.waitFor();
+ await page.goto(base+'/');await page.locator('.wp-dialog[open]').waitFor();assert.equal(await page.locator('.promo-popup[open]').count(),0,'Warehouse prompt takes precedence');await page.locator('[data-wp-close]').click();const dialog=page.locator('dialog.promo-popup');await dialog.waitFor();
  assert.equal(await dialog.locator('h2').innerText(),'11.11 хямдрал');assert.equal(await dialog.locator('img').getAttribute('src'),'/assets/'+uploaded+'.jpg');assert.ok(await dialog.locator('img').evaluate(i=>i.complete&&i.naturalWidth>0));
  assert.equal(await dialog.locator('a.button').getAttribute('href'),'/official-stores');assert.equal(await dialog.locator('a.button').innerText(),'Үзэх');
  const box=await dialog.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390,'Fits a phone');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

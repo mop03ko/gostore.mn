@@ -22,6 +22,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    await page.waitForFunction(()=>document.getElementById('sc-copy-status').textContent==='Хууллаа ✓');
    await page.waitForFunction(async expected=>(await navigator.clipboard.readText()).replace(/\r\n/g,'\n')===expected,profile.delivery[field]);
   }
+  await page.locator('#self-cargo-create [name=pickup_location]').selectOption('ulaanbaatar');
   await page.getByLabel('Барааны нэр',{exact:true}).fill('Гутал <script>window.BAD=true</script>');
   await page.getByLabel('Нийт барааны тоо ширхэг').fill('2');
   await page.getByLabel('Хятадын хүргэлтийн дугаар (байгаа бол)',{exact:true}).fill('YT1234567891111');
@@ -35,7 +36,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   await card.getByText(/Бүртгэсэн хүргэлт:.*YT1234567890000/).waitFor();
   for(const width of [360,390,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);}
   fs.mkdirSync('tmp/self-cargo-work',{recursive:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'tmp/self-cargo-work/mobile.png',fullPage:true});
-  await page.goto(base+'/');await page.getByRole('link',{name:'Өөрөө захиалах →'}).waitFor();
+  await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));await page.goto(base+'/');await page.getByRole('link',{name:'Өөрөө захиалах →'}).waitFor();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.sc-entry-link')).display==='flex');
   assert.equal(await page.locator('main > :first-child').getAttribute('id'),'self-cargo-entry');
   for(const width of [360,390,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Home entry fits '+width);}

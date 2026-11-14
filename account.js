@@ -1,7 +1,8 @@
 'use strict';
 window.customerAccount={user:window.storeServer.customer||null};
 customerAccount.setUser=user=>{
-  customerAccount.user=user;
+  const previousId=customerAccount.user?.id;customerAccount.user=user;
+  if(previousId!==user?.id)window.dispatchEvent(new Event('gostore-customer-changed'));
   document.documentElement.classList.toggle('customer-signed-in',!!user);
   window.syncMobileNav?.();
   if(!user&&(document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form')||authMode==='link'))accountForm();

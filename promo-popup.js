@@ -7,6 +7,7 @@
   const seen=()=>{try{return localStorage.getItem(key);}catch{return null;}};
   const remember=id=>{try{localStorage.setItem(key,id+':'+today);}catch{}};
   async function show(){
+    await window.warehousePreference?.startup;
     let popup=null;
     try{const r=await fetch('/api/index.php?action=promo-popup',{credentials:'omit'});if(r.ok)popup=(await r.json()).popup;}catch{return;}
     if(!popup||seen()===popup.id+':'+today)return;

@@ -17,7 +17,7 @@ export function BranchesPromo({ onBrowse }: { onBrowse: () => void }) {
   };
   return <View testID="branches-home" style={{ padding: 16, gap: 12, borderRadius: 18, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line }}>
     <Text style={{ color: c.accentText, fontSize: 11, letterSpacing: 1, fontWeight: "800" }}>GOSTORE · БАРАА АВАХ ЦЭГҮҮД</Text>
-    <Text accessibilityRole="header" style={{ color: c.navy, fontSize: 23, fontWeight: "800" }}>Танд ойр {branches.length} агуулах</Text>
+    <Text accessibilityRole="header" style={{ color: c.navy, fontSize: 23, fontWeight: "800" }}>Хүлээн авах боломжтой агуулах</Text>
     <Text style={{ color: c.muted, fontSize: 13 }}>Захиалга хийхдээ авах салбараа сонгоорой.</Text>
     {branches.map((p) => <View key={p.location} testID={"pickup-card-" + p.location} style={{ gap: 8, padding: 14, borderRadius: 14, backgroundColor: c.subtle, borderWidth: 1, borderColor: c.line }}>
       <Text accessibilityRole="header" style={{ color: c.navy, fontSize: 19, fontWeight: "800" }}>{p.city}</Text>
