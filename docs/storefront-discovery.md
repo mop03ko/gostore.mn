@@ -12,7 +12,7 @@ Run `node scripts/sync-discovery.cjs` after changing the taxonomy in `script.js`
 
 ## Domestic free-shipping channel
 
-Public GET `supplier-free-shipping` is available through both API entry points. It samples up to 20 current recommendation products and calls the existing per-item logistics reference endpoint for the configured Erenhot destination. Only an explicitly validated integer zero fee qualifies. Missing, null, non-CNY, unsuccessful, unmatched or unavailable references do not advertise free shipping. Normal catalog quota is used; this discovery lookup does not consume the checkout reserve. Results are cached for ten minutes under the connected account and destination, with a lock and the existing reference endpoint cooldown.
+Public GET `supplier-free-shipping` is available through both API entry points. It samples up to 20 products from the mixed storefront catalog and calls the existing per-item logistics reference endpoint for the configured Erenhot destination. Only an explicitly validated integer zero fee qualifies. Missing, null, non-CNY, unsuccessful, unmatched or unavailable references do not advertise free shipping. Normal catalog quota is used; this discovery lookup does not consume the checkout reserve. Results are cached for ten minutes under the connected account and destination, with a lock and the existing reference endpoint cooldown.
 
 The UI labels this **China to Erenhot domestic reference shipping**. International freight is separate. The exact SKU, quantity and combined basket still go through the existing `/purchase/order/render` check at checkout and before procurement. Discovery does not create orders, invoices or payments and does not expose private warehouse/contact/account data.
 
@@ -34,3 +34,23 @@ Production build 9 was cancelled before upload so it would not distribute the ea
 Submission completed successfully. At 05:59 Ulaanbaatar time on 2026-10-31, App Store Connect build `b81d202f-e7a6-49ae-8661-e0a08fea7254` reached `VALID` / `IN_BETA_TESTING` and was present in the internal **Team (Expo)** group. TestFlight notes were saved. Build 9's submission is `CANCELED`; the existing App Review submission remains `WAITING_FOR_REVIEW` on build 7.
 
 The follow-up web route-isolation and aligned-placeholder fixes were also deployed with verified backups: `discovery-bb38ee64a5c20393` and `discovery-6e23d45c202aa432`. Home discovery is only mounted on the home route; category browsing remains available elsewhere.
+
+
+## Free-shipping source regression fixed — 2026-11-15
+
+The public endpoint returned HTTP 409 because discovery still called item-specific
+recommendations with the obsolete placeholder `tb-100000`. Recommendations now
+require an actual viewed item. Discovery instead reads the mixed homepage search
+and quotes at most 20 real catalog items, retaining the existing account/destination
+cache and strict zero-fee filtering. No checkout, payment or frontend changes.
+
+`tests/discovery-feed.php` runs with isolated data and mocked provider responses:
+no detail/render/purchase calls; bounded logistics batches; paid items excluded;
+warm-cache reuse; expired results never reused when logistics permission fails.
+Run with the project's PHP CLI and pdo_sqlite, mbstring, curl and openssl extensions.
+The existing `tests/discovery.php` zero-fee validation tests also pass.
+
+Production backup: `/gostore-backups/discovery-feed-1794674149442`.
+After deployment the public API returned HTTP 200 / available with 14 verified
+zero-fee products; a live mobile-browser check displayed the first eight cards.
+Both web and app use this server endpoint; no native build is needed for this fix.

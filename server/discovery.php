@@ -18,7 +18,8 @@ function discovery_free_shipping(): array {
     if(!$lock)return ['products'=>[],'status'=>'busy','scope'=>'china_to_erenhot','cache_ttl'=>0];
     try{
         $cached=supplier_snapshot_read($file);if(tw_catalog_fresh($cached,600))return tw_catalog_response($cached['data'],$cached['time'],600);
-        $started=time();$products=tw_catalog_recommend('tb-100000',20)['products'];
+        // Use the mixed storefront feed; recommendations require a real viewed item.
+        $started=time();$products=array_slice(tw_catalog_search(['q'=>'__all__','page'=>1,'limit'=>50],true)['products'],0,20);
         $reference=$products?tw_domestic_reference(array_map(static fn($p)=>['id'=>$p['id']],$products),$receiver,false):['status'=>'unavailable'];
         $data=['products'=>discovery_free_products($products,$reference),'status'=>$reference['status'],'scope'=>'china_to_erenhot','checked_at'=>gmdate('c',$started),'indicative'=>true];
         supplier_snapshot_write($file,['time'=>$started,'data'=>$data]);return tw_catalog_response($data,$started,600);
