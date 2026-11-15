@@ -38,6 +38,9 @@ export function useStaffPush(variant:string, authenticated:boolean, inject:(js:s
    if(!projectId)throw Error('Push төслийн тохиргоо байхгүй.');
    const result=await Notifications.getExpoPushTokenAsync({projectId});
    if(!live.current||generation!==epoch.current)return;
+   // Persist the token before registering so opt-out still works after an app restart.
+   await SecureStore.setItemAsync(preference+'-token',result.data);
+   if(!live.current||generation!==epoch.current)return;
    await request('register',result.data);
    if(!live.current||generation!==epoch.current)return;
    token.current=result.data;await SecureStore.setItemAsync(preference,'on');
@@ -75,7 +78,7 @@ export function useStaffPush(variant:string, authenticated:boolean, inject:(js:s
  },[variant,preference,enable]);
  async function disable(){
   if(running.current)return;setBusy(true);
-  try{if(token.current)await request('unregister',token.current);await SecureStore.setItemAsync(preference,'off');token.current='';setStatus('Мэдэгдэл унтраалттай');}
+  try{const saved=token.current||await SecureStore.getItemAsync(preference+'-token');if(saved)await request('unregister',saved);await SecureStore.setItemAsync(preference,'off');await SecureStore.deleteItemAsync(preference+'-token');token.current='';setStatus('Мэдэгдэл унтраалттай');}
   catch{Alert.alert('Мэдэгдэл','Унтраах хүсэлт амжилтгүй. Дахин оролдоно уу.');}finally{setBusy(false);}
  }
  async function test(){
