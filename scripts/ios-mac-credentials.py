@@ -19,7 +19,13 @@ ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = os.environ.get('GOSTORE_IOS_APP_DIR', 'gostoremn')
 if APP_DIR not in ('gostoremn', 'staff-ios'):
     raise ValueError('Unsupported iOS project')
-BUNDLE_ID = 'mn.gostore.ubwarehouse' if APP_DIR == 'staff-ios' else 'mn.gostore.app'
+if APP_DIR == 'staff-ios':
+    STAFF_BUNDLES = {'admin': 'mn.gostore.admin', 'warehouse': 'mn.gostore.ubwarehouse'}
+    if os.environ.get('APP_VARIANT') not in STAFF_BUNDLES:
+        raise ValueError('Explicit staff app variant is required')
+    BUNDLE_ID = STAFF_BUNDLES[os.environ['APP_VARIANT']]
+else:
+    BUNDLE_ID = 'mn.gostore.app'
 TEMP = Path(os.environ.get('RUNNER_TEMP', '/tmp')).resolve() / 'gostore-ios-signing'
 KEYCHAIN = TEMP / 'build.keychain-db'
 PROFILE_DIRS = [Path.home() / 'Library/MobileDevice/Provisioning Profiles',

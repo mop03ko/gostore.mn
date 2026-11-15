@@ -1,0 +1,59 @@
+name: Staff iOS TestFlight
+run-name: Staff ${{ inputs.variant }} (${{ inputs.build_number }})
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Staff app
+        required: true
+        type: choice
+        options: [admin, warehouse]
+      build_number:
+        description: Unused Apple build number
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: gostore-ios-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: xcode-27
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      APP_VARIANT: ${{ inputs.variant }}
+      GOSTORE_IOS_APP_DIR: staff-ios
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      BUILD_VERSION: ${{ inputs.variant == 'warehouse' && '1.0.1' || '1.0.0' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.12.0'
+          cache: npm
+          cache-dependency-path: staff-ios/package-lock.json
+      - name: Install and check
+        working-directory: staff-ios
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: Build signed IPA
+        env:
+          GOSTORE_IOS_SIGNING: ${{ inputs.variant == 'warehouse' && secrets.GOSTORE_STAFF_WAREHOUSE_IOS_SIGNING || secrets.GOSTORE_STAFF_ADMIN_IOS_SIGNING }}
+        run: bash scripts/staff-ios-mac-build.sh
+      - name: Upload to TestFlight
+        env:
+          GOSTORE_IOS_SIGNING: ${{ inputs.variant == 'warehouse' && secrets.GOSTORE_STAFF_WAREHOUSE_IOS_SIGNING || secrets.GOSTORE_STAFF_ADMIN_IOS_SIGNING }}
+        run: python3 scripts/ios-mac-credentials.py upload
+      - name: Remove temporary signing material
+        if: always()
+        run: python3 scripts/ios-mac-credentials.py cleanup
