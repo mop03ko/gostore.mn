@@ -6,6 +6,7 @@ require_once __DIR__.'/customer-push.php';
 function staff_push_schema(): void {
     db()->exec('CREATE TABLE IF NOT EXISTS staff_push_events (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id TEXT NOT NULL, created INTEGER NOT NULL);
         CREATE INDEX IF NOT EXISTS staff_push_events_order ON staff_push_events(order_id,id);
+        CREATE TABLE IF NOT EXISTS staff_push_receipts (ticket TEXT PRIMARY KEY,token TEXT NOT NULL,variant TEXT NOT NULL,owner TEXT NOT NULL,version TEXT NOT NULL,from_cursor INTEGER NOT NULL,to_cursor INTEGER NOT NULL,created INTEGER NOT NULL,next_attempt INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS staff_push_devices (token TEXT PRIMARY KEY, variant TEXT NOT NULL, owner TEXT NOT NULL, version TEXT NOT NULL, session_hash TEXT NOT NULL, device_hash TEXT NOT NULL, cursor INTEGER NOT NULL, retry_cursor INTEGER NOT NULL DEFAULT 0, retry_test INTEGER NOT NULL DEFAULT 0, ticket TEXT NOT NULL DEFAULT "", ticket_at INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, test_at INTEGER NOT NULL DEFAULT 0, expires INTEGER NOT NULL, last_error TEXT NOT NULL DEFAULT "");
 ');
     // Compatibility repair for the initial JSON1/unixepoch triggers (SQLite 3.7 hosts).
@@ -80,14 +81,38 @@ function staff_push_visible(array $d,array $o): bool {
     if($d['variant']==='admin')return true;
     return warehouse_order_location($o,'ulaanbaatar')==='ulaanbaatar'&&warehouse_order_visible($o,'ulaanbaatar')&&warehouse_notice_eligible($o);
 }
+// Receipts are independent of devices: APNs acknowledgement latency must not delay new alerts.
+function staff_push_receipts(callable $http,int $limit): void {
+    db()->prepare('DELETE FROM staff_push_receipts WHERE created<?')->execute([time()-86400]);
+    $q=db()->prepare('SELECT * FROM staff_push_receipts WHERE next_attempt<=? ORDER BY next_attempt LIMIT ?');$q->bindValue(1,time(),PDO::PARAM_INT);$q->bindValue(2,$limit,PDO::PARAM_INT);$q->execute();$rows=$q->fetchAll();
+    if(!$rows)return;
+    try{[$status,$response]=$http('getReceipts',['ids'=>array_column($rows,'ticket')]);}catch(Throwable){$status=0;$response=[];}
+    foreach($rows as $r){
+        $q=db()->prepare('SELECT * FROM staff_push_devices WHERE token=? AND variant=? AND owner=? AND version=?');$q->execute([$r['token'],$r['variant'],$r['owner'],$r['version']]);$d=$q->fetch();
+        if(!$d||!staff_push_active($d)){db()->prepare('DELETE FROM staff_push_receipts WHERE ticket=?')->execute([$r['ticket']]);continue;}
+        $receipt=$response['data'][$r['ticket']]??null;
+        if($status!==200||!$receipt){
+            $n=(int)$r['attempts']+1;db()->prepare('UPDATE staff_push_receipts SET attempts=?,next_attempt=? WHERE ticket=?')->execute([$n,time()+min(3600,60*(2**min($n,6))),$r['ticket']]);continue;
+        }
+        $error=$receipt['details']['error']??(($receipt['status']??'')==='ok'?'':'receipt_error');
+        if($error==='DeviceNotRegistered')db()->prepare('DELETE FROM staff_push_devices WHERE token=?')->execute([$r['token']]);
+        elseif($error!==''){
+            // A newer accepted generic alert already covers older changes; do not replay them.
+            if((int)$d['cursor']===(int)$r['to_cursor'])db()->prepare('UPDATE staff_push_devices SET cursor=? WHERE token=?')->execute([$r['from_cursor'],$r['token']]);
+            staff_push_retry($d,$error);
+        }
+        db()->prepare('DELETE FROM staff_push_receipts WHERE ticket=?')->execute([$r['ticket']]);
+    }
+}
 function staff_push_drain(int $limit=20,?callable $http=null,int $budget=20): int {
     if(!$http&&(getenv('GOSTORE_DISABLE_PUSH')==='1'||getenv('GOSTORE_DISABLE_SUPPLIER_NETWORK')==='1'))return 0;
     staff_push_schema();$http??='customer_push_http';$lock=fopen(config()['data_dir'].'/staff-push-worker.lock','c');
     if(!$lock||!flock($lock,LOCK_EX|LOCK_NB)){if($lock)fclose($lock);return 0;}
     $sent=0;$start=microtime(true);
     try{
+        staff_push_receipts($http,min($limit,10));
         db()->prepare('DELETE FROM staff_push_devices WHERE expires<=?')->execute([time()]);
-        $q=db()->prepare('SELECT * FROM staff_push_devices WHERE (next_attempt<=? AND (ticket<>"" OR cursor<?)) OR (test_at>0 AND test_at<=?) ORDER BY next_attempt LIMIT ?');
+        $q=db()->prepare('SELECT * FROM staff_push_devices WHERE (next_attempt<=? AND cursor<?) OR (test_at>0 AND test_at<=?) ORDER BY next_attempt LIMIT ?');
         $q->bindValue(1,time(),PDO::PARAM_INT);$q->bindValue(2,staff_push_cursor(),PDO::PARAM_INT);$q->bindValue(3,time(),PDO::PARAM_INT);$q->bindValue(4,$limit,PDO::PARAM_INT);$q->execute();
         foreach($q->fetchAll() as $d){
             if(microtime(true)-$start>$budget)break;
@@ -102,26 +127,19 @@ function staff_push_drain(int $limit=20,?callable $http=null,int $budget=20): in
                     else{staff_push_retry($d,$t['details']['error']??'test_http_'.$status);db()->prepare('UPDATE staff_push_devices SET test_at=next_attempt WHERE token=?')->execute([$d['token']]);}
                     continue;
                 }
-                if($d['ticket']!==''){
-                    [$status,$r]=$http('getReceipts',['ids'=>[$d['ticket']]]);$receipt=$r['data'][$d['ticket']]??null;
-                    if($status!==200||!$receipt){
-                        if(time()-(int)$d['ticket_at']>86400)db()->prepare('UPDATE staff_push_devices SET ticket="",last_error="receipt_unavailable",next_attempt=0 WHERE token=?')->execute([$d['token']]);
-                        else staff_push_retry($d,'receipt_pending');continue;
-                    }
-                    $error=$receipt['details']['error']??'';
-                    if($error==='DeviceNotRegistered'){db()->prepare('DELETE FROM staff_push_devices WHERE token=?')->execute([$d['token']]);continue;}
-                    db()->prepare('UPDATE staff_push_devices SET ticket="",next_attempt=0,last_error=?,attempts=0 WHERE token=?')->execute([substr($error,0,80),$d['token']]);
-                    // An accepted alert is not re-sent blindly: a receipt is not a phone delivery acknowledgement.
-                    if($error!==''){db()->prepare('UPDATE staff_push_devices SET cursor=retry_cursor,test_at=CASE WHEN retry_test>0 THEN ? ELSE test_at END WHERE token=?')->execute([time(),$d['token']]);staff_push_retry($d,$error);}continue;
-                }
-                $cursor=staff_push_cursor();$test=(int)$d['test_at']>0&&(int)$d['test_at']<=time();$visible=false;
+                $cursor=staff_push_cursor();$visible=false;
                 $events=db()->prepare('SELECT DISTINCT o.data FROM staff_push_events e JOIN orders o ON o.id=e.order_id WHERE e.id>? AND e.id<=? AND e.created>?');$events->execute([$d['cursor'],$cursor,time()-86400]);
                 while($row=$events->fetch()){if(staff_push_visible($d,json_decode($row['data'],true)??[])){$visible=true;break;}}$events->closeCursor();
-                if(!$test&&!$visible){db()->prepare('UPDATE staff_push_devices SET cursor=? WHERE token=?')->execute([$cursor,$d['token']]);continue;}
-                $payload=['to'=>$d['token'],'title'=>$d['variant']==='admin'?'GOStore Admin':'GOStore УБ агуулах','body'=>$test?'Туршилтын мэдэгдэл. Дуу болон түгжээтэй дэлгэцийн тохиргоогоо шалгана уу.':'Захиалгын мэдээлэл шинэчлэгдлээ. Аппаа нээж шалгана уу.','sound'=>'default','priority'=>'high','interruptionLevel'=>'active','ttl'=>3600,'data'=>['screen'=>'orders','variant'=>$d['variant']]];
+                if(!$visible){db()->prepare('UPDATE staff_push_devices SET cursor=? WHERE token=?')->execute([$cursor,$d['token']]);continue;}
+                $payload=['to'=>$d['token'],'title'=>$d['variant']==='admin'?'GOStore Admin':'GOStore УБ агуулах','body'=>'Захиалгын мэдээлэл шинэчлэгдлээ. Аппаа нээж шалгана уу.','sound'=>'default','priority'=>'high','interruptionLevel'=>'active','ttl'=>3600,'data'=>['screen'=>'orders','variant'=>$d['variant']]];
                 [$status,$r]=$http('send',$payload);$ticket=$r['data']??[];
                 if($status===200&&($ticket['status']??'')==='ok'&&is_string($ticket['id']??null)&&strlen($ticket['id'])<=200){
-                    db()->prepare('UPDATE staff_push_devices SET retry_cursor=cursor,retry_test=test_at,cursor=?,ticket=?,ticket_at=?,next_attempt=?,test_at=CASE WHEN test_at<=? THEN 0 ELSE test_at END,attempts=0,last_error="" WHERE token=?')->execute([$cursor,$ticket['id'],time(),time()+900,time(),$d['token']]);$sent++;
+                    db()->exec('SAVEPOINT staff_push_accepted');
+                    try{
+                        db()->prepare('INSERT INTO staff_push_receipts(ticket,token,variant,owner,version,from_cursor,to_cursor,created,next_attempt) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$ticket['id'],$d['token'],$d['variant'],$d['owner'],$d['version'],$d['cursor'],$cursor,time(),time()+900]);
+                        db()->prepare('UPDATE staff_push_devices SET cursor=?,next_attempt=0,attempts=0,last_error="" WHERE token=?')->execute([$cursor,$d['token']]);
+                        db()->exec('RELEASE SAVEPOINT staff_push_accepted');$sent++;
+                    }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT staff_push_accepted');db()->exec('RELEASE SAVEPOINT staff_push_accepted');throw $e;}
                 }elseif(($ticket['details']['error']??'')==='DeviceNotRegistered')db()->prepare('DELETE FROM staff_push_devices WHERE token=?')->execute([$d['token']]);
                 else staff_push_retry($d,$ticket['details']['error']??'send_http_'.$status);
             }catch(Throwable){staff_push_retry($d,'transport_error');}
