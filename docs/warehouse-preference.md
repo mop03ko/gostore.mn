@@ -53,3 +53,23 @@ Signed-in customers see **Эрээн агуулахын хаяг харах** on
 Validation: `node tests/run-logistics.cjs warehouse-preference-ui checkout-branches self-cargo-ui promo-popup-ui`; Expo lint/typecheck for the heading change. The new web suite covers optional GPS/denial, explicit selection, persisted choices, responsive/dark rendering, authenticated address/copy/logout isolation, real isolated checkout and forwarding flows, and the final deployment snapshot. No live customer purchase/payment is used.
 
 Web release deployed and verified on 2026-11-15, backup `/gostore-backups/web-warehouse-picker-1794680527344`. The production bundle was patched only for account-change notification, checkout preference and promo ordering, preserving unrelated live code. Read-only live browser checks passed for the three branches, updated heading, selected warehouse persistence, mobile layout and anonymous rejection of the private Erenhot address endpoint. Native heading changes remain source-only until the next app distribution.
+
+## Native tester release, 2026-11-15
+
+Built the customer app from source commit `4fff9935556edb14c68fccfd17458ccf85910edf`, including the native warehouse picker, optional foreground location, remembered destination, destination-aware checkout/forwarding, and the heading **Хүлээн авах боломжтой агуулах**.
+
+- **iOS 1.0.2 (20):** [Mac workflow 43675266455](https://github.com/mop03ko/gostore.mn/actions/runs/43675266455) completed successfully. App Store Connect build/upload `ba280e3c-2424-449f-ad46-51a78e90831c` is `VALID`; both internal and external states are `IN_BETA_TESTING`. Verified membership in **Team (Expo)** and **GOStore Testers**. Updated What to Test, enabled automatic tester notifications, and completed beta review. The separate public App Store submission was not replaced.
+- **Android Google Play 1.0.2 (11):** [EAS build 5c922058-03a0-411c-ac37-7dec2b2ba09b](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/builds/5c922058-03a0-411c-ac37-7dec2b2ba09b) completed. EAS submission `75404d9b-cb99-43eb-85d7-0bdedaab9b87` uploaded the AAB. Promoted the uploaded version to `completed` on the existing `internal` and `alpha` testing tracks, validated/committed the edit, and read back both tracks to confirm versionCode 11 and Mongolian release notes. Production remains empty; this is a tester release.
+- **Android direct APK 1.0.2 (12):** [EAS build 327e8ce6-fa34-49d3-bf74-8f65c4474b93](https://expo.dev/accounts/morozkonkts-team/projects/gostoremn/builds/327e8ce6-fa34-49d3-bf74-8f65c4474b93) completed. [Signed APK](https://expo.dev/artifacts/eas/Af5Q67cxqYlG_oDTiSKFQnUQLyg9vpjdcjkQPIl9i0c.apk). Verified package `mn.gostore.app`, versionCode 12, versionName 1.0.2 and the same signing certificate as direct APK 1.0.1 (10). Existing APK testers can install it over their APK installation.
+
+Runtime fingerprints: iOS `646e611a39796fd0c8cb87ef08a4ea35cc51abba` (production channel); Android `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` (production for AAB, preview for APK). No incompatible OTA was sent to old runtimes. Synchronized the EAS iOS remote build counter from 19 to 20 after the Mac build.
+
+Validation passed: TypeScript, lint, warehouse preference unit tests and the mocked Expo browser interaction suite (startup reminder, persistence, optional location without automatic switching, small/dark layouts, deep links and checkout destination payload). Inspected the IPA's actual Info.plist: correct identity/version, only When-In-Use location permission and no background location mode. APK manifest includes coarse/fine location and no background location permission. APK signature verification passed; AAB JAR signature verified and Google Play accepted it. The temporary GitHub signing secret was deleted after the successful run, with runner cleanup successful and the secret list verified empty.
+
+Artifacts (SHA-256):
+
+- IPA, 29,075,732 bytes: `922292f2e543c62ef54e30a681f6a2358b12ca2e44be43358ef69e93299ae7c0`.
+- AAB, 90,585,800 bytes: `402dec45f13c7e3fd1169894324a0797054af490bf4893d4b8e8672043a19c2c`.
+- APK, 131,513,195 bytes: `b27dc7d630d6c442d1253eca181938263a547d7f70116186f1b35a62de53e256`.
+
+Testers install through TestFlight / their existing Play testing enrollment, or the APK link for direct APK installs. Store distribution does not prove installation on each phone. No physical device was attached for this release; testers should verify native permission denial/approximate location, cold start/resume and warehouse selection on their phones. No real order or payment was created during verification.
