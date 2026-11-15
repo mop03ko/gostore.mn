@@ -1,4 +1,4 @@
-/* Homepage-only art direction. Shared checkout and catalogue routes retain their layouts. */
+/* Homepage art direction and shared storefront navigation. Checkout controls retain their behavior. */
 .home-services{display:none}
 html.home-refresh{--home-bg:#f5f5f7;--home-ink:#24214f;--home-muted:#686a79;--home-line:#e6e6ed;--home-card:#fff;--home-soft:#efeff5}
 html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-muted:#b8b7c9;--home-line:#363541;--home-card:#20212b;--home-soft:#2a2b37}
@@ -180,3 +180,181 @@ html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-m
 .branch-promo-pin svg{width:24px;height:24px}
 .branch-promo .branch-promo-note{margin-top:16px;font-size:12px}
 @media(max-width:760px){.home-refresh .branch-promo:not([hidden]){padding:18px;margin-block:16px}.branch-promo-heading{align-items:flex-start;flex-direction:column;gap:10px}.branch-promo-locations{grid-template-columns:1fr;gap:10px}.branch-promo article{padding:16px}.branch-promo h3{font-size:20px}}
+
+/* Marketplace refresh: broad search, category navigation, one hero and supporting tiles. */
+.market-nav{display:flex;align-items:center;gap:24px;min-height:48px;color:var(--theme-text,#262261);font-size:13px;font-weight:700}
+.market-nav-categories{display:flex;align-items:center;gap:24px;min-width:0;overflow:auto;scrollbar-width:none;flex:1}
+.market-nav a{display:flex;align-items:center;min-height:44px;text-decoration:none;white-space:nowrap}
+.market-nav a:hover{color:var(--theme-accent,#b33d08)}
+.market-nav-tools{display:flex;gap:22px;border-left:1px solid var(--theme-border,#e6e6ed);padding-left:24px}
+.market-promos,.market-shelf{display:none}
+.home-refresh{scroll-padding-top:160px}
+.home-refresh #main{display:flex;flex-direction:column}
+.home-refresh #home-hub{order:-3}
+.home-refresh .market-shelf{order:-2}
+.home-refresh #branch-promo{order:2}
+@media(min-width:761px){.header:not(:has(.market-nav))::after{content:'';display:block;height:48px}}
+.home-refresh .container,.home-refresh .discovery-home{width:min(1320px,calc(100% - 64px));max-width:1320px}
+.home-refresh .announcement{background:#262261}
+.home-refresh .announcement .container{height:32px;font-size:11px}
+.home-refresh .header-main{gap:20px;min-height:84px}
+.home-refresh .header-main>.brand{width:182px}
+.home-refresh .header-main>.category-trigger{background:#fff0e6;color:#9b3607;border:1px solid #f8d4c1;border-radius:10px;padding:12px;gap:8px;font-size:12px}
+.home-refresh .header-main>.header-browse{display:none}
+.home-refresh .search-form{border-radius:12px;height:52px;background:var(--home-card)}
+.home-refresh .search-form .search-provider{color:var(--home-muted);font-size:12px}
+.home-refresh .search-form input{font-size:14px}
+.home-refresh .search-form button[type=submit]{background:#262261;color:white;border-radius:9px}
+html.home-refresh[data-theme=dark] #search-form button[type=submit]{color:white}
+.home-refresh .header .brand img{max-width:100%;width:100%}
+html.home-refresh[data-theme=dark] .header .brand .brand-dark{display:block}
+.home-refresh .header-actions{gap:12px}.home-refresh .header-action{font-size:11px}
+.home-refresh .market-nav{border-top:1px solid var(--home-line)}
+.home-refresh .home-hub{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;padding-top:28px}
+.home-refresh :is(.hub-cats,.hub-user,.hub-hot,.hub-flyout){display:none!important}
+.home-refresh .hub-main{display:block;min-width:0}
+.home-refresh .hub-channels{display:none}
+.home-refresh .hero-banner{height:454px;min-height:0;background:#262261;border-radius:22px;overflow:hidden}
+.home-refresh .hero-copy{width:62%;padding:48px 40px;display:flex;flex-direction:column;align-items:flex-start;height:100%}
+.home-refresh .hero-copy .eyebrow{font-size:10px;letter-spacing:1.6px;color:#e8e4ff}
+.home-refresh .hero-copy h1{font-size:clamp(34px,3.1vw,48px);line-height:1.15;letter-spacing:-1.4px;margin:28px 0 18px}
+.home-refresh .hero-copy h1 em{color:#ffac7e}
+.home-refresh .hero-copy p{font-size:14px;line-height:1.7;max-width:300px}
+.home-refresh .hero-actions{gap:12px;margin-top:24px;flex-wrap:wrap}
+.home-refresh .hero-actions .button{background:#fff;color:#262261;border-radius:28px;padding:13px 22px;min-height:48px;font-size:13px}
+.home-refresh .hero-help{font-size:12px}
+.home-refresh .hero-signoff{margin-top:auto;padding-top:20px;color:#cfc9ea;font-size:11px}
+.home-refresh .hero-collection{width:43%;height:100%;max-height:none}
+.home-refresh .collection-circle{background:#f16522;width:360px;height:360px;right:-130px;top:60px}
+.home-refresh .hero-orbit{width:410px;height:410px;right:-150px;top:38px}
+.home-refresh .collection-chair{width:76%;height:73%;right:-1%;bottom:4%;border:0;border-radius:130px 130px 16px 16px;transform:rotate(7deg);object-fit:cover}
+.home-refresh .collection-headphones{width:62%;height:29%;left:-22%;top:14%;border:5px solid #fff;border-radius:16px;transform:rotate(-9deg)}
+.home-refresh .collection-bag{width:50%;height:31%;left:-26%;bottom:7%;border:4px solid white;border-radius:16px;transform:rotate(-10deg)}
+.home-refresh .collection-stamp{display:none}
+.home-refresh .market-promos{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.08fr 1fr;gap:14px;min-width:0}
+.market-promo{position:relative;isolation:isolate;display:block;overflow:hidden;border-radius:20px;text-decoration:none;min-width:0}
+.market-promo-copy{display:flex;flex-direction:column;align-items:flex-start;position:relative;z-index:2;padding:23px 20px;gap:9px}
+.market-promo-copy small{font-size:9px;letter-spacing:1px;font-weight:700}
+.market-promo-copy strong{font-size:25px;line-height:1.15;letter-spacing:-.6px}
+.market-promo-copy>span{font-size:11px;line-height:1.5;max-width:145px}
+.market-arrow{position:absolute;z-index:3;top:15px;right:15px;display:grid;place-items:center;background:#262261;color:white;width:32px;height:32px;border-radius:50%;font-size:20px;transition:transform .2s}
+.market-promo:hover .market-arrow,.market-tile:hover .market-arrow{transform:rotate(45deg)}
+.market-tech{grid-column:1/-1;background:#f6a15b;color:#262261}
+.market-tech .market-promo-copy{max-width:66%;padding:27px}
+.market-tech .market-promo-copy strong{font-size:31px}
+.market-tech img{position:absolute;width:48%;height:65%;object-fit:cover;right:-8px;bottom:-10px;border:6px solid #ffd0a6;border-radius:70px 70px 0 0;transform:rotate(-12deg)}
+.market-living{background:#e2e7da;color:#283f32}
+.market-living .market-promo-copy{padding-bottom:80px}
+.market-living img{position:absolute;right:0;bottom:-52px;width:95px;height:160px;object-fit:cover;border-radius:60px 60px 0 0;transform:rotate(-15deg)}
+.market-living .market-arrow{background:#375743}
+.market-forward{background:#ede7f5;color:#262261}
+.market-forward .market-promo-copy{padding-top:24px;padding-right:30px}
+.market-forward .market-promo-copy small{font-size:8px;max-width:90px}
+.market-forward .market-promo-copy>span{max-width:130px}
+.market-forward-icon{position:absolute;bottom:-12px;right:-6px;width:86px;height:86px;opacity:.1;transform:rotate(-15deg)}
+.home-refresh .market-shelf{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin-top:16px;margin-bottom:22px}
+.market-tile{position:relative;isolation:isolate;overflow:hidden;min-width:0;min-height:184px;padding:18px;border-radius:18px;background:#eee5de;color:#272241;text-decoration:none}
+.market-tile>strong{display:block;position:relative;z-index:2;font-size:17px;line-height:1.3;max-width:calc(100% - 25px)}
+.market-tile>span:not(.market-arrow){position:relative;z-index:2;display:block;font-size:10px;margin-top:6px}
+.market-tile .market-arrow{width:27px;height:27px;right:12px;top:14px;font-size:16px;background:#ffffffc9;color:#262261}
+.market-tile img{position:absolute;right:8px;bottom:-16px;width:110px;height:110px;object-fit:contain;border-radius:50%;mix-blend-mode:multiply;transition:transform .2s}
+.market-tile:hover img{transform:translateY(-6px)}
+.market-tile-shoes{background:#e1e6f2}.market-tile-beauty{background:#f2dddd}.market-tile-bags{background:#eee1c9}.market-tile-kids{background:#e1ebe1}.market-tile-kitchen{background:#e8e3f1}
+.home-refresh #self-cargo-entry{margin-top:0;margin-bottom:12px}
+.home-refresh #self-cargo-entry .sc-entry-link{border-radius:14px;background:var(--home-card);padding:14px 20px}
+.home-refresh .wp-summary.container{padding:14px 20px;margin-block:12px;border-radius:14px}
+.home-refresh .wp-summary small{max-width:760px}
+.home-refresh .home-services{margin-top:16px;margin-bottom:24px;gap:12px}
+.home-refresh .home-service{min-height:82px;border-radius:14px;padding:16px 20px}
+.home-refresh .discovery-tabs{border:0;border-bottom:1px solid var(--home-line);border-radius:0;background:none;padding:0;gap:24px}
+.home-refresh .discovery-tabs button{border-radius:0;padding:12px 0;border-bottom:3px solid transparent;min-height:48px;font-size:14px}
+.home-refresh .discovery-tabs button[aria-selected=true]{background:none;border-bottom-color:#f16522;color:var(--home-ink)}
+.home-refresh .discovery-collections a{min-height:144px;border-radius:14px}
+.home-refresh .discovery-collections h3{font-size:19px}
+.home-refresh .discovery-category-strip{padding-block:20px}
+.home-refresh .supplier-card,.home-refresh .discovery-product{border-radius:14px;border-color:var(--home-line);box-shadow:none}
+.home-refresh .supplier-card-copy strong,.home-refresh .discovery-product strong{color:var(--theme-accent,#ad3a07)}
+.home-refresh .catalog-shipping{margin-top:24px}
+.home-refresh .branch-promo:not([hidden]){margin-top:0;margin-bottom:36px;border-radius:18px}
+@media(min-width:1181px){.home-refresh .supplier-grid,.home-refresh #supplier-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:1180px){
+ .market-nav-categories{gap:18px}.market-nav-tools{display:none}
+ .home-refresh .header-main{gap:14px}.home-refresh .header-main>.brand{width:154px}.home-refresh .header-main>.category-trigger span{display:none}
+ .home-refresh .hero-copy{padding:34px 28px}.home-refresh .hero-copy h1{font-size:35px}
+ .market-tech .market-promo-copy{padding:24px 18px}.market-tech .market-promo-copy strong{font-size:27px}
+ .market-promo-copy{padding:20px 15px}.market-promo-copy strong{font-size:21px}
+ .market-forward .market-promo-copy small{display:none}.market-forward .market-promo-copy{padding:22px 15px}
+ .market-tile{padding:15px;min-height:165px}.market-tile>strong{font-size:15px}.market-tile img{width:90px;height:90px}
+ .home-refresh .market-shelf{gap:10px}
+}
+@media(max-width:900px) and (min-width:761px){
+ .home-refresh .container,.home-refresh .discovery-home{width:calc(100% - 40px)}
+ .home-refresh .home-hub{grid-template-columns:1.5fr 1fr;gap:12px}
+ .home-refresh .hero-copy{width:78%;padding:30px 22px}.home-refresh .hero-copy h1{font-size:34px}
+ .home-refresh .hero-collection{width:32%;opacity:.5}.home-refresh .collection-headphones,.home-refresh .collection-bag{display:none}
+ .market-tech .market-promo-copy{max-width:88%}.market-tech img{opacity:.5}
+ .market-promo-copy strong{font-size:20px}.market-promo-copy>span{font-size:10px}.market-promo .market-arrow{width:25px;height:25px;right:8px;top:10px}
+ .home-refresh .market-shelf{grid-template-columns:repeat(3,minmax(0,1fr))}.market-tile{min-height:140px}
+}
+@media(max-width:760px){
+ .market-nav{display:none}
+ .home-refresh .container,.home-refresh .discovery-home{width:calc(100% - 28px)}
+ .home-refresh .announcement .container{height:28px;font-size:10px}
+ .home-refresh .header-main{gap:10px;min-height:0;padding-block:10px}
+ .home-refresh .header-main>.brand{width:clamp(112px,35vw,154px);padding:0}
+ .home-refresh .header-actions{gap:2px}.home-refresh .header-actions .header-action,.home-refresh .header-actions [data-action=account]{min-width:40px;padding:4px}
+ .home-refresh .search-form{height:46px;border-radius:10px;background:var(--home-bg)}
+ .home-refresh .search-form input{font-size:16px}.home-refresh .search-form button[type=submit]{height:38px;min-height:38px;padding:0 14px}
+ .home-refresh .home-hub{display:flex;flex-direction:column;padding-top:14px;gap:12px}
+ .home-refresh .hub-main{display:flex;flex-direction:column;gap:12px}
+ .home-refresh .hub-channels{display:flex;order:-1;overflow-x:auto;gap:18px;padding:2px 0 6px;border:0;scrollbar-width:none;min-height:84px}
+ .home-refresh .home-hub:not(:has(.market-promos))::after{content:'';display:block;min-height:154px}
+ .home-refresh .hub-channels a,.home-refresh .hub-channels button{flex:0 0 52px;min-width:52px;min-height:66px;gap:6px;font-size:10px}
+ .home-refresh .hub-channels a>span,.home-refresh .hub-channels button>span{width:40px;height:40px;border-radius:12px;font-size:23px;background:var(--home-card);border:1px solid var(--home-line)}
+ .home-refresh .hero-banner{height:300px;border-radius:18px}
+ .home-refresh .hero-copy{width:72%;padding:26px 22px}
+ .home-refresh .hero-copy .eyebrow{font-size:7px;letter-spacing:.8px}
+ .home-refresh .hero-copy h1{font-size:32px;letter-spacing:-1px;margin:20px 0 12px}
+ .home-refresh .hero-copy p{font-size:12px;line-height:1.6}
+ .home-refresh .hero-actions{margin-top:18px;gap:0}
+ .home-refresh .hero-actions .button{font-size:11px;min-height:42px;padding:10px 16px;gap:12px}
+ .home-refresh .hero-help{display:none}
+ .home-refresh .hero-signoff{font-size:8px;padding-top:16px;gap:8px}
+ .home-refresh .hero-signoff span+span{padding-left:8px}
+ .home-refresh .hero-collection{width:35%}
+ .home-refresh .collection-chair{height:65%;width:90%;right:-20%;bottom:4%;border-radius:60px 60px 0 0}
+ .home-refresh .collection-headphones{width:84%;height:26%;top:14%;left:-12%;border-width:3px;border-radius:12px}
+ .home-refresh .collection-bag{display:none}
+ .home-refresh .collection-circle{width:230px;height:230px;right:-145px;top:50px}
+ .home-refresh .hero-orbit{width:270px;height:270px;right:-165px;top:30px}
+ .home-refresh .market-promos{grid-template-columns:1fr 1fr;grid-template-rows:auto;gap:10px}
+ .market-promo{border-radius:15px;min-height:154px}.market-tech{grid-column:auto}
+ .market-tech .market-promo-copy{padding:18px 14px;max-width:100%}.market-tech .market-promo-copy strong{font-size:21px}
+ .market-tech .market-promo-copy small{display:none}.market-tech .market-promo-copy>span{font-size:10px;max-width:115px}
+ .market-tech img{width:62px;height:50px;border-width:3px;border-radius:25px 25px 0 0;right:-4px;bottom:-8px}
+ .market-living{display:none}.market-forward .market-promo-copy{padding:18px 14px}.market-forward .market-promo-copy strong{font-size:21px}
+ .market-promo .market-arrow{width:26px;height:26px;top:auto;bottom:12px;right:12px;font-size:17px}
+ .market-forward .market-promo-copy>span{font-size:10px;max-width:115px}
+ .home-refresh .market-shelf{display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;gap:10px;margin-top:12px;margin-bottom:16px;padding-bottom:4px}
+ .market-tile{flex:0 0 142px;min-height:155px;scroll-snap-align:start;padding:14px;border-radius:14px}
+ .market-tile>strong{font-size:15px;max-width:100px}.market-tile>span:not(.market-arrow){font-size:9px}.market-tile .market-arrow{display:none}
+ .market-tile img{width:90px;height:90px;bottom:-10px}
+ .home-refresh #self-cargo-entry .sc-entry-link{padding:12px;gap:10px}.home-refresh #self-cargo-entry .sc-entry-copy strong{font-size:13px}
+ .home-refresh #self-cargo-entry .sc-entry-copy{grid-template-columns:minmax(0,1fr);gap:3px}
+ .home-refresh #self-cargo-entry .sc-entry-copy small{white-space:normal}
+ .home-refresh #self-cargo-entry .sc-entry-cta{font-size:0;width:18px;flex:none}.home-refresh #self-cargo-entry .sc-entry-copy>span{font-size:10px}
+ .home-refresh .wp-summary.container{padding:14px;margin-block:12px}
+ .home-refresh .home-services{margin-block:12px 22px;padding-bottom:4px}.home-refresh .home-service{flex-basis:260px;padding:14px;min-height:78px}
+ .home-refresh .discovery-tabs{gap:22px}.home-refresh .discovery-tabs button{font-size:13px;padding-block:10px;min-height:44px}
+ .home-refresh .discovery-collections a{min-height:155px;padding:14px}.home-refresh .discovery-collections h3{font-size:17px}
+ .home-refresh .supplier-card-copy h3{font-size:13px;line-height:19px;min-height:38px}
+ .home-refresh .product-grid,.home-refresh .discovery-products{gap:10px}
+}
+@media(max-width:360px){
+ .home-refresh .home-hub:not(:has(.market-promos))::after{min-height:163px}
+ .home-refresh .hero-copy{padding:24px 17px;width:76%}
+ .home-refresh .hero-copy h1{font-size:28px}.home-refresh .hero-signoff{font-size:7px}
+ .home-refresh #self-cargo-entry .sc-entry-cta{display:none}
+ .market-tech .market-promo-copy strong,.market-forward .market-promo-copy strong{font-size:19px}
+}
+@media(prefers-reduced-motion:reduce){.market-arrow,.market-tile img{transition:none}}

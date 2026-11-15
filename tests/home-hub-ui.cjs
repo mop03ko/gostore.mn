@@ -1,33 +1,23 @@
 const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
-// Marketplace first screen (category rows + flyout, popular searches, customer panel, phone
+// Marketplace first screen (header categories, promotional tiles, phone
 // category grid, five-tab bar) and the shop-grouped cart with per-line selection.
 const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Бараа '+n,image:'',variant:'Хар',cny,min_qty:1,step:1,stock:20,vendor_id:vendor,vendor_name:shop});
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'}),errors=[],calls=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://connect.facebook.net/**',r=>r.abort());await page.route('https://www.facebook.com/**',r=>r.abort());await page.route('https://www.googletagmanager.com/**',r=>r.abort());
  await page.route('**/api/index.php?action=supplier-search*',r=>{calls.push(new URL(r.request().url()).searchParams.get('q'));return r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}});});
- await page.goto(base+'/');await page.locator('#hub-cats li').first().waitFor();
- assert.equal(await page.locator('#hub-cats [data-hub-category]').count(),26,'Every department has a row link');
- assert.equal(await page.locator('#hub-channels').isVisible(),false,'Phone grid is hidden on desktop');
- assert.equal(await page.locator('.hub-user-guest').isVisible(),true,'Guests see sign-in and registration');
- for(const el of await page.locator('#hub-cats li').all())assert.ok(await el.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'Category row fits: '+await el.innerText());
- // Hover opens the subcategory flyout; a subcategory browses the catalog without reloading.
- await page.locator('#hub-cats li').first().hover();await page.locator('#hub-flyout').waitFor();
- assert.equal(await page.locator('#hub-flyout section').count(),2);
- const before=calls.length;await page.locator('#hub-flyout [data-hub-query="dress"]').click();
- await page.waitForFunction(()=>location.pathname==='/c/women/dress');assert.equal(calls.at(-1),'dress');assert.ok(calls.length>before);
- assert.equal(await page.locator('#hub-flyout').isHidden(),true,'Choosing closes the flyout');
- // A sub-category is its own page; Back returns to the home page.
- await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
- // Keyboard: focus opens the row, Escape closes and returns focus to the row link.
- await page.evaluate(()=>scrollTo(0,0));await page.locator('#hub-cats [data-hub-category=tech]').focus();await page.locator('#hub-flyout').waitFor();
- assert.ok((await page.locator('#hub-flyout h3').first().innerText()).includes('Электроник'));
- await page.keyboard.press('Escape');await page.locator('#hub-flyout').waitFor({state:'hidden'});
- await page.locator('#hub-hot [data-hub-query="headphones"]').click();await page.waitForFunction(()=>location.pathname==='/c/tech/headphones');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
- await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-register]').click();await page.locator('#customer-pin-setup-form[data-purpose=register]').waitFor();assert.equal(new URL(page.url()).pathname,'/register','Registration is a page');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('auth-view-open'));
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await page.goto(base+'/');await page.locator('.market-promos').waitFor();
+ assert.equal(await page.locator('#hub-channels').isVisible(),false,'Phone categories stay hidden on desktop');
+ assert.equal(await page.locator('#hub-cats').isVisible(),false,'Desktop categories are in the header');
+ assert.equal(await page.locator('.market-shelf a').count(),6);
+ await page.locator('.market-shelf a[href="/c/women"]').click();await page.waitForFunction(()=>location.pathname==='/c/women');
+ assert.equal(await page.locator('.market-shelf').isVisible(),false);
+ await page.goBack();await page.locator('.market-shelf').waitFor();
+ await page.locator('.market-nav a[href="/c/tech"]').focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>location.pathname==='/c/tech');
+ await page.goBack();await page.locator('.market-promos').waitFor();
  for(const width of [1024,1280])assert.ok(await page.setViewportSize({width,height:900}).then(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)),'Hub fits '+width);
- await page.setViewportSize({width:1024,height:900});assert.equal(await page.locator('.hub-user').isVisible(),false,'Narrow desktops drop the customer panel');
  // Phones: category grid and five tabs instead of the side list.
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});await page.evaluate(()=>scrollTo(0,0));
@@ -38,7 +28,7 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  }
  await page.locator('#hub-channels [data-hub-category=shoes]').click();await page.waitForFunction(()=>location.pathname==='/c/shoes');await page.goBack();await page.waitForFunction(()=>!document.documentElement.classList.contains('listing-view'));
  await page.evaluate(()=>scrollTo(0,0));await page.locator('[data-hub-all-categories]').click();await page.locator('#category-menu').waitFor({state:'visible'});
- assert.equal(await page.locator('.mobile-nav [data-mobile-tab=categories]').getAttribute('aria-current'),'page');await page.keyboard.press('Escape');
+ await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=categories]')?.getAttribute('aria-current')==='page');await page.keyboard.press('Escape');
 
  // Cart: one card per shop; lines without a shop ID stand alone; unchecked lines are not estimated.
  await page.setViewportSize({width:1440,height:900});
@@ -71,9 +61,9 @@ const line=(n,vendor,shop,cny)=>({id:'tb-'+(700000+n),sku:'s'+n,qty:1,name:'Ба
  assert.deepEqual(errors,[]);
  // Isolate the base hub from the separately tested 11.11 script, which replaces the hero.
  // Block the deferred app bundle, while keeping inline route detection active, to compare the real first paint with the filled hub.
- for(const width of [1440,1024,390,320]){const sizes=[];for(const javaScriptEnabled of [false,true]){const ctx=await browser.newContext({viewport:{width,height:900}});const p=await ctx.newPage();await p.clock.setFixedTime(new Date('2026-11-15T12:00:00+08:00'));await p.route('**/eleven-sale.js*',r=>r.abort());await p.route('https://www.googletagmanager.com/**',r=>r.abort());await p.route('https://connect.facebook.net/**',r=>r.abort());await p.route('https://www.facebook.com/**',r=>r.abort());await p.route('**/api/index.php?action=supplier-*',r=>r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}}));if(!javaScriptEnabled)await p.route('**/app.js*',r=>r.abort());await p.goto(base+'/');if(javaScriptEnabled)await p.locator(width>760?'#hub-cats li':'#hub-channels a').first().waitFor();sizes.push(await p.evaluate(()=>['#home-hub','.hub-main .hero-banner'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [Math.round(r.y),Math.round(r.height)];})));await ctx.close();}
+ for(const width of [1440,1024,390,320]){const sizes=[];for(const javaScriptEnabled of [false,true]){const ctx=await browser.newContext({viewport:{width,height:900}});const p=await ctx.newPage();await p.clock.setFixedTime(new Date('2026-11-15T12:00:00+08:00'));await p.route('**/eleven-sale.js*',r=>r.abort());await p.route('https://www.googletagmanager.com/**',r=>r.abort());await p.route('https://connect.facebook.net/**',r=>r.abort());await p.route('https://www.facebook.com/**',r=>r.abort());await p.route('**/api/index.php?action=supplier-*',r=>r.fulfill({json:{products:[],shipping:{},fetched:new Date().toISOString(),more:false,stale:false,cache_ttl:600}}));if(!javaScriptEnabled)await p.route('**/app.js*',r=>r.abort());await p.goto(base+'/');if(javaScriptEnabled)await p.locator(width>760?'.market-promos a':'#hub-channels a').first().waitFor();sizes.push(await p.evaluate(()=>['#home-hub','.hub-main .hero-banner'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [Math.round(r.y),Math.round(r.height)];})));await ctx.close();}
   assert.deepEqual(sizes[1],sizes[0],'Hub keeps its reserved size at '+width);}
  // index.html serves every route; the first screen belongs to the home page only.
  for(const path of ['/brands/nike','/account','/cart']){await page.goto(base+path);await page.waitForLoadState('load');assert.equal(await page.locator('#home-hub').isVisible(),false,'Hub hidden on '+path);}
- console.log('PASS home hub: category rows and flyout (hover, keyboard, Escape), popular searches, guest panel, phone category grid and tabs, shop-grouped cart selection, estimate, mixed states and pinned phone bar.');
+ console.log('PASS home hub: header categories, promotional tiles, keyboard navigation, phone category strip and tabs, shop-grouped cart selection, estimate, mixed states and pinned phone bar.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
