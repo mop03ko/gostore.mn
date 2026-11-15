@@ -8,9 +8,11 @@
  const toggle=panel.querySelector('[data-notices-toggle]'),enable=panel.querySelector('[data-push-enable]'),status=panel.querySelector('[data-push-status]'),list=panel.querySelector('[data-notices-list]');
  let data=null,busy=false,activeLocation='',generation=0,registration=null,lastSeen=0;
  const testButton=panel.querySelector('[data-push-test]');testButton.onclick=()=>{if(native())location.href='gostore-warehouse://push/test';};
+ const soundButton=document.createElement('button');soundButton.type='button';soundButton.className='quiet';soundButton.dataset.pushSound='';soundButton.hidden=true;panel.querySelector('.warehouse-notifications-heading').append(soundButton);
+ soundButton.onclick=()=>{if(native()&&window.gostoreWarehouseNativeSound===true)location.href='gostore-warehouse://push/settings';};
  const native=()=>window.gostoreWarehouseNativePush===true;
  const supported=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window)&&!/GOStoreWarehouse|; wv\)/i.test(navigator.userAgent);
- function labels(){toggle.textContent=text('Мэдэгдэл','通知')+' · '+(data?.unread||0);enable.textContent=text('Push мэдэгдэл идэвхжүүлэх','开启推送通知');
+ function labels(){toggle.textContent=text('Мэдэгдэл','通知')+' · '+(data?.unread||0);enable.textContent=text('Push мэдэгдэл идэвхжүүлэх','开启推送通知');soundButton.hidden=!(native()&&window.gostoreWarehouseNativeSound===true);soundButton.textContent=text('Дууны тохиргоо','声音设置');
   status.textContent=(native()||supported())?text('Энэ төхөөрөмжид шинэ захиалгын push мэдэгдэл авахыг зөвшөөрнө үү.','允许此设备接收新订单推送通知。'):text('Энэ апп/браузер push дэмжихгүй байна. Chrome эсвэл Edge браузераар агуулахын панелд нэвтэрч идэвхжүүлнэ үү.','当前应用/浏览器不支持推送。请在 Chrome 或 Edge 浏览器打开仓库页面后启用。');enable.hidden=!(native()||supported());
  }
  async function workerMessage(type,device){registration??=await navigator.serviceWorker.register('/warehouse/push-sw.js',{scope:'/warehouse/'});await navigator.serviceWorker.ready;
@@ -44,10 +46,11 @@
   const messages={
    'test-sent':['Туршилтын мэдэгдэл илгээгдлээ. Утасны мэдэгдлээ шалгана уу.','测试推送已发送，请查看手机通知。'],
    enabled:['Push мэдэгдэл идэвхтэй.','推送已开启。'],off:['Push мэдэгдлийг энэ төхөөрөмжид идэвхжүүлнэ үү.','请在此设备开启推送通知。'],
+   silent:['Push идэвхтэй, харин дуу хаалттай байна. Дууны тохиргооноос зөвшөөрнө үү.','推送已开启，但通知声音已关闭。请点击「声音设置」开启声音。'],
    connecting:['Push холбож байна…','正在连接推送…'],permission:['Android тохиргооноос аппын мэдэгдлийг зөвшөөрнө үү.','请在 Android 设置中允许应用通知。'],
    'play-services':['Энэ төхөөрөмжид Google Play services шаардлагатай. Браузерын push ашиглаж болно.','此设备需要 Google Play 服务。也可以使用浏览器推送。'],
    login:['Менежерийн эрхээр дахин нэвтэрнэ үү.','请重新登录仓库账号。'],server:['Серверийн push тохиргоо бэлэн болоогүй.','服务器推送尚未配置。'],network:['Push холбогдсонгүй. Сүлжээгээ шалгаад дахин оролдоно уу.','推送连接失败，请检查网络后重试。']
-  };const m=messages[event.detail];if(!native()||!m)return;status.textContent=text(...m);testButton.hidden=!['enabled','test-sent'].includes(event.detail);testButton.textContent=text('Push турших','测试推送');enable.disabled=event.detail==='connecting';enable.textContent=event.detail==='enabled'?text('Дахин холбох','重新绑定'):text('Push мэдэгдэл идэвхжүүлэх','开启推送通知');
+  };const m=messages[event.detail];if(!native()||!m)return;status.textContent=text(...m);if(window.gostoreWarehouseNativeSound===true&&event.detail==='enabled')status.textContent=text('Шинэ захиалгын дуут мэдэгдэл идэвхтэй. Утасны дууны түвшин, чимээгүй горимоо шалгана уу.','新订单声音通知已开启。请确认手机通知音量，并关闭静音或勿扰模式。');testButton.hidden=!['enabled','silent','test-sent'].includes(event.detail);testButton.textContent=text('Push турших','测试推送');enable.disabled=event.detail==='connecting';enable.textContent=['enabled','silent'].includes(event.detail)?text('Дахин холбох','重新绑定'):text('Push мэдэгдэл идэвхжүүлэх','开启推送通知');
  });
  new MutationObserver(start).observe(app,{attributes:true,attributeFilter:['hidden']});setInterval(()=>{if(!document.hidden)poll();},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){start();poll();}});start();
 })();

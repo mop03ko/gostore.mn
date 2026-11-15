@@ -5,6 +5,8 @@ import android.content.*;
 import android.net.Uri;
 import android.os.Build;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.provider.Settings;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.*;
 import java.net.*;
@@ -14,17 +16,33 @@ import java.util.concurrent.*;
 
 /** Only native code handles the device credential; JavaScript never receives it. */
 final class WarehousePush {
-    static final String API="https://gostore.mn/api/index.php?action=", CHANNEL="warehouse-orders";
+    static final String API="https://gostore.mn/api/index.php?action=", CHANNEL="warehouse-orders-sound-v2", LEGACY_CHANNEL="warehouse-orders";
     static final ExecutorService IO=Executors.newSingleThreadExecutor();
     private static final Object LOCK=new Object();
     static volatile int generation=0;
     static android.content.SharedPreferences prefs(Context c){return c.getSharedPreferences("warehouse-push",Context.MODE_PRIVATE);}
     static boolean enabled(Context c){return !prefs(c).getString("token","").isEmpty();}
     static void channel(Context c){
-        NotificationChannel channel=new NotificationChannel(CHANNEL,"GOStore 仓库 / Агуулах",NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription("新订单通知 / Шинэ захиалгын мэдэгдэл");
-        c.getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        NotificationManager nm=c.getSystemService(NotificationManager.class);
+        if(nm.getNotificationChannel(CHANNEL)!=null)return; // Never reset the manager's system settings.
+        NotificationChannel old=nm.getNotificationChannel(LEGACY_CHANNEL);
+        NotificationChannel channel=new NotificationChannel(CHANNEL,"新订单声音 / Шинэ захиалгын дуу",old==null?NotificationManager.IMPORTANCE_HIGH:old.getImportance());
+        channel.setDescription("新订单提示音和振动 / Шинэ захиалгын дуут дохио, чичиргээ");
+        Uri sound=Uri.parse("android.resource://"+c.getPackageName()+"/raw/warehouse_order");
+        // Carry forward a deliberate silent/custom setting from the previous release.
+        if(old!=null&&!Settings.System.DEFAULT_NOTIFICATION_URI.equals(old.getSound()))sound=old.getSound();
+        channel.setSound(sound,new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+        channel.setVibrationPattern(new long[]{0,180,100,180});
+        channel.enableVibration(old==null||old.shouldVibrate());
+        channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        nm.createNotificationChannel(channel);
     }
+    static boolean soundEnabled(Context c){
+        NotificationChannel ch=c.getSystemService(NotificationManager.class).getNotificationChannel(CHANNEL);
+        return permission(c)&&ch!=null&&ch.getImportance()>=NotificationManager.IMPORTANCE_DEFAULT&&ch.getSound()!=null;
+    }
+    static String status(Context c){return !enabled(c)||!permission(c)?"off":soundEnabled(c)?"enabled":"silent";}
+    static Intent soundSettings(Context c){return new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,c.getPackageName()).putExtra(Settings.EXTRA_CHANNEL_ID,CHANNEL);}
     static boolean permission(Context c){
         if(Build.VERSION.SDK_INT>=33&&c.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;
         NotificationManager nm=c.getSystemService(NotificationManager.class);
@@ -87,6 +105,7 @@ final class WarehousePush {
     static void receiveTest(Context c){receive(c,token->request("warehouse-push-delivery",null,token,null,null),true);}
     static void receive(Context c,Delivery delivery){receive(c,delivery,false);}
     static void receive(Context c,Delivery delivery,boolean test){
+        channel(c);
         String token=prefs(c).getString("token","");if(token.isEmpty()||!permission(c))return;
         String location=prefs(c).getString("location","erenhot"),order="";long notice=0;
         boolean zh="zh".equals(prefs(c).getString("language","zh"));
@@ -108,7 +127,7 @@ final class WarehousePush {
             if(test){title=zh?"GOStore · 推送测试成功":"GOStore · Push туршилт амжилттай";body=zh?"此设备已收到服务器发送的测试通知。":"Серверээс илгээсэн туршилтын мэдэгдэл ирлээ.";}
             channel(c);
             Notification notification=new Notification.Builder(c,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle(title).setContentText(body)
-                .setContentIntent(pending).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setContentIntent(pending).setAutoCancel(true).setOnlyAlertOnce(false).setCategory(Notification.CATEGORY_EVENT).setVisibility(Notification.VISIBILITY_PRIVATE)
                 .setPublicVersion(new Notification.Builder(c,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle("GOStore").setContentText(zh?"仓库通知":"Агуулахын мэдэгдэл").build()).build();
             c.getSystemService(NotificationManager.class).notify(1001,notification);
             if(notice>0)prefs(c).edit().putLong("seen",notice).apply();

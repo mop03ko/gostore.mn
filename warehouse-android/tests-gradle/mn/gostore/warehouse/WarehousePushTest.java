@@ -16,7 +16,7 @@ public class WarehousePushTest {
         c=RuntimeEnvironment.getApplication();nm=c.getSystemService(NotificationManager.class);
         if(FirebaseApp.getApps(c).isEmpty())FirebaseApp.initializeApp(c,new FirebaseOptions.Builder().setApplicationId("1:123:android:test").setApiKey("test-api-key").setProjectId("test").build());
         WarehousePush.prefs(c).edit().clear().putString("token","test-secret").putString("location","erenhot").putString("language","zh").commit();
-        nm.cancelAll();WarehousePush.channel(c);
+        nm.cancelAll();
     }
     JSONObject notice() throws Exception{return new JSONObject("{\"location\":\"erenhot\",\"language\":\"zh\",\"notifications\":[{\"id\":42,\"order_id\":\"GS-TEST42\"}]}");}
     @Test public void notificationOpensScopedOrderAndDeduplicates() throws Exception {
@@ -53,5 +53,44 @@ public class WarehousePushTest {
         WarehousePush.receive(c,token->new JSONObject("{\"location\":\"erenhot\",\"language\":\"zh\",\"notifications\":[]}"),true);
         assertEquals(1,nm.getActiveNotifications().length);
         assertEquals("GOStore · 推送测试成功",nm.getActiveNotifications()[0].getNotification().extras.getString(Notification.EXTRA_TITLE));
+    }
+    @Test public void newChannelHasBundledChimeAndVibration() throws Exception {
+        WarehousePush.channel(c);
+        NotificationChannel ch=nm.getNotificationChannel(WarehousePush.CHANNEL);
+        assertEquals(NotificationManager.IMPORTANCE_HIGH,ch.getImportance());
+        assertEquals("android.resource://mn.gostore.warehouse/raw/warehouse_order",ch.getSound().toString());
+        assertEquals(android.media.AudioAttributes.USAGE_NOTIFICATION,ch.getAudioAttributes().getUsage());
+        assertTrue(ch.shouldVibrate());assertArrayEquals(new long[]{0,180,100,180},ch.getVibrationPattern());
+        try(java.io.InputStream sound=c.getResources().openRawResource(R.raw.warehouse_order)){assertTrue(sound.available()>90000);}
+        assertEquals("enabled",WarehousePush.status(c));
+    }
+    @Test public void migrationKeepsLegacyMuteAndOffersChannelSettings(){
+        NotificationChannel old=new NotificationChannel(WarehousePush.LEGACY_CHANNEL,"Old",NotificationManager.IMPORTANCE_LOW);
+        old.setSound(null,null);old.enableVibration(false);nm.createNotificationChannel(old);
+        WarehousePush.channel(c);NotificationChannel ch=nm.getNotificationChannel(WarehousePush.CHANNEL);
+        assertNull(ch.getSound());assertFalse(ch.shouldVibrate());assertEquals(NotificationManager.IMPORTANCE_LOW,ch.getImportance());
+        assertEquals("silent",WarehousePush.status(c));
+        Intent settings=WarehousePush.soundSettings(c);
+        assertEquals(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS,settings.getAction());
+        assertEquals(c.getPackageName(),settings.getStringExtra(android.provider.Settings.EXTRA_APP_PACKAGE));
+        assertEquals(WarehousePush.CHANNEL,settings.getStringExtra(android.provider.Settings.EXTRA_CHANNEL_ID));
+    }
+    @Test public void blockedLegacyChannelStaysBlocked(){
+        nm.createNotificationChannel(new NotificationChannel(WarehousePush.LEGACY_CHANNEL,"Old",NotificationManager.IMPORTANCE_NONE));
+        WarehousePush.receive(c,token->{fail("Blocked channel must not fetch");return notice();});
+        assertEquals(0,nm.getActiveNotifications().length);assertEquals("off",WarehousePush.status(c));
+    }
+    @Test public void repeatedInitializationKeepsManagersSoundChoice(){
+        NotificationChannel custom=new NotificationChannel(WarehousePush.CHANNEL,"Custom",NotificationManager.IMPORTANCE_HIGH);
+        custom.setSound(null,null);nm.createNotificationChannel(custom);WarehousePush.channel(c);
+        assertNull(nm.getNotificationChannel(WarehousePush.CHANNEL).getSound());assertEquals("silent",WarehousePush.status(c));
+    }
+    @Test public void subsequentNewOrderAlertsAgainWithoutDuplicateAlerts() throws Exception {
+        WarehousePush.receive(c,token->notice());
+        WarehousePush.receive(c,token->new JSONObject("{\"location\":\"erenhot\",\"language\":\"zh\",\"notifications\":[{\"id\":43,\"order_id\":\"GS-TEST43\"}]}"));
+        Notification n=nm.getActiveNotifications()[0].getNotification();
+        assertEquals(WarehousePush.CHANNEL,n.getChannelId());assertEquals(0,n.flags&Notification.FLAG_ONLY_ALERT_ONCE);
+        assertTrue(n.extras.getString(Notification.EXTRA_TEXT).contains("GS-TEST43"));
+        nm.cancelAll();WarehousePush.receive(c,token->notice());assertEquals(0,nm.getActiveNotifications().length);
     }
 }

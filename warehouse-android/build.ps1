@@ -34,7 +34,7 @@ try{
  Run "$jdk\bin\java.exe" @('-cp',$test,'NavigationPolicyTest')
  Run $gradle @('-p',$PSScriptRoot,'assembleRelease','testReleaseUnitTest','lintRelease','--console=plain')
  $output=Join-Path $workspace 'output\android';New-Item -ItemType Directory -Force -Path $output | Out-Null
- $apk=Join-Path $output 'GOStore-Erenhot-1.1.0.apk'
+ $apk=Join-Path $output 'GOStore-Erenhot-1.2.0.apk'
  Copy-Item -LiteralPath "$PSScriptRoot\build\outputs\apk\release\GOStoreWarehouse-release.apk" -Destination $apk -Force
  Run "$jdk\bin\java.exe" @('-jar',"$sdk\build-tools\35.0.0\lib\apksigner.jar",'verify','--verbose','--print-certs',$apk)
  Run "$sdk\build-tools\35.0.0\zipalign.exe" @('-c','-p','4',$apk)

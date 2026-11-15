@@ -129,3 +129,31 @@ SHA256: `a6379e05f846be5a9c327725324df38e9daa8aa16d32267b6a751bae7a281298`.
 Public download bytes and all seven deployed source files were verified against
 local hashes. The live credential is outside public_html with mode 0600. No native
 device was subscribed at deployment, so physical FCM receipt remains unverified.
+
+## Android sound release — 2026-11-15
+
+Warehouse Android 1.2.0 (versionCode 3) adds a bundled original 1.45-second chime,
+a native notification sound settings shortcut, and Chinese/Mongolian muted-channel
+guidance. The `warehouse-orders-sound-v2` channel uses notification audio attributes.
+Existing blocked/silent/custom channel choices are preserved; app startup does not
+reset a manager's system settings. Volume, silent mode and Do Not Disturb remain
+under Android/user control. The same native FCM delivery path handles foreground
+and background messages; notice IDs suppress duplicates while a subsequent new
+notice can alert again. Old APKs retain the existing controls without an unsupported
+sound settings button.
+
+Validation: 12 Robolectric tests passed, navigation checks passed, release lint
+reported 0 errors (12 warnings), notification UI tests passed, APK alignment and
+signature verified. Signing certificate matches 1.1.0, so install as an update.
+No Android handset was connected; real sound/FCM delivery must be checked on the
+manager's phone with **测试推送**, including foreground/background/locked-screen states.
+Google Play services and a network that reaches Firebase are still required.
+
+Download: https://gostore.mn/downloads/warehouse-1.2.0/GOStore-Erenhot-1.2.0.apk
+
+SHA256: `8dbfbce7acace884cdecb2b4a3769960ba79227b253663ff039fede90691dbab`.
+
+APK, checksum and bilingual installation guide public bytes were hash-verified.
+Only `warehouse/notifications.js` and its script version in `warehouse/index.html`
+were deployed for the web controls. Live file hashes were verified with backups at
+`/gostore-backups/warehouse-sound-20261115-dfd3b65055`.

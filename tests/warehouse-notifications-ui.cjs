@@ -27,6 +27,13 @@ function seed(id){const php=`require 'server/bootstrap.php';require 'server/ship
  assert.equal(await nativePage.locator('[data-push-enable]').isVisible(),true,'Native APK can enable push without browser PushManager');
  await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'connecting'})));assert.equal(await nativePage.locator('[data-push-enable]').isDisabled(),true);
  await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'enabled'})));assert.equal(await nativePage.locator('[data-push-test]').isVisible(),true);assert.match(await nativePage.locator('[data-push-status]').innerText(),/推送已开启/);
+ assert.equal(await nativePage.locator('[data-push-sound]').isVisible(),false,'Older APK does not expose unsupported settings');
+ await nativePage.evaluate(()=>{window.gostoreWarehouseNativeSound=true;window.dispatchEvent(new Event('warehouse-native-ready'));});
+ assert.equal(await nativePage.locator('[data-push-sound]').innerText(),'声音设置');
+ await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'silent'})));
+ assert.match(await nativePage.locator('[data-push-status]').innerText(),/通知声音已关闭/);assert.equal(await nativePage.locator('[data-push-test]').isVisible(),true);
+ await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'enabled'})));
+ assert.match(await nativePage.locator('[data-push-status]').innerText(),/新订单声音通知已开启/);
  await nativePage.evaluate(()=>window.dispatchEvent(new CustomEvent('warehouse-native-push',{detail:'play-services'})));assert.match(await nativePage.locator('[data-push-status]').innerText(),/Google Play/);assert.equal(await nativePage.locator('[data-push-test]').isVisible(),false);
  await nativePage.locator('#logout').click();await nativePage.locator('#login-screen').waitFor({state:'visible'});assert.equal(await nativePage.evaluate(()=>window.warehouseAuthState),false);
  await nativeContext.close();

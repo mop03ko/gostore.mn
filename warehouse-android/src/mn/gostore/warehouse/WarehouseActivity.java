@@ -41,6 +41,7 @@ public final class WarehouseActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        WarehousePush.channel(this);
         // Old captures are temporary; keep recent files while a chooser or WebView still uses them.
         File directory = new File(getCacheDir(),"camera"); directory.mkdirs();
         File[] files = directory.listFiles();
@@ -62,7 +63,7 @@ public final class WarehouseActivity extends Activity {
         WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setGeolocationEnabled(false);settings.setMediaPlaybackRequiresUserGesture(false);settings.setSupportMultipleWindows(false);
-        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.1.0");
+        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.2.0");
         CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         WebView.setWebContentsDebuggingEnabled(false);
         web.setWebViewClient(new WebViewClient(){
@@ -72,7 +73,8 @@ public final class WarehouseActivity extends Activity {
                 if(url.equals("gostore-warehouse://print")&&trustedPage()){printPage();return true;}
                 if(trustedPage()&&url.equals("gostore-warehouse://push/enable")){if(request.hasGesture())enablePush();return true;}
                 if(trustedPage()&&url.equals("gostore-warehouse://push/clear")){WarehousePush.clear(WarehouseActivity.this);pushStatus("off");return true;}
-                if(trustedPage()&&url.equals("gostore-warehouse://push/status")){pushStatus(WarehousePush.enabled(WarehouseActivity.this)&&WarehousePush.permission(WarehouseActivity.this)?"enabled":"off");return true;}
+                if(trustedPage()&&url.equals("gostore-warehouse://push/status")){pushStatus(WarehousePush.status(WarehouseActivity.this));return true;}
+                if(trustedPage()&&url.equals("gostore-warehouse://push/settings")){if(request.hasGesture())try{startActivity(WarehousePush.soundSettings(WarehouseActivity.this));}catch(Exception e){toast("请在手机设置中开启通知声音");}return true;}
                 if(trustedPage()&&url.equals("gostore-warehouse://push/test")){if(request.hasGesture())testPush();return true;}
                 if(NavigationPolicy.warehousePage(url)||NavigationPolicy.photoPage(url))return false;
                 if(request.hasGesture()&&url.startsWith("https://")){
@@ -91,7 +93,7 @@ public final class WarehouseActivity extends Activity {
                 if(pageFailed||!NavigationPolicy.warehousePage(url))return;
                 // No native JavaScript bridge or embedded credentials. Printing uses a guarded navigation.
                 v.evaluateJavascript("window.print=function(){location.href='gostore-warehouse://print';};if(!window.goStoreNativeLinks){window.goStoreNativeLinks=true;document.addEventListener('click',function(e){const a=e.target.closest('a');if(a)a.removeAttribute('target');},true);}",null);
-                v.evaluateJavascript("window.gostoreWarehouseNativePush=true;window.dispatchEvent(new Event('warehouse-native-ready'));",null);
+                v.evaluateJavascript("window.gostoreWarehouseNativePush=true;window.gostoreWarehouseNativeSound=true;window.dispatchEvent(new Event('warehouse-native-ready'));",null);
             }
             @Override public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame())showError();}
             @Override public void onReceivedHttpError(WebView v,WebResourceRequest r,WebResourceResponse e){if(r.isForMainFrame())showError();}
@@ -139,7 +141,7 @@ public final class WarehouseActivity extends Activity {
             if(!task.isSuccessful()){pushBusy=false;pushStatus("network");return;}
             WarehousePush.IO.execute(()->{
                 String status="enabled";
-                try{WarehousePush.bind(this,task.getResult(),cookie,gen);}catch(WarehousePush.HttpError e){status=e.status==401?"login":e.status==503?"server":"network";}catch(Exception e){status="network";}
+                try{WarehousePush.bind(this,task.getResult(),cookie,gen);status=WarehousePush.status(this);}catch(WarehousePush.HttpError e){status=e.status==401?"login":e.status==503?"server":"network";}catch(Exception e){status="network";}
                 final String result=status;runOnUiThread(()->{pushBusy=false;pushStatus(result);});
             });
         });
@@ -191,6 +193,6 @@ public final class WarehouseActivity extends Activity {
         web.evaluateJavascript("(()=>{const d=document.querySelector('dialog[open]');if(d){d.close();return true;}return false;})()",closed->{if("true".equals(closed))return;if(web.canGoBack())web.goBack();else new AlertDialog.Builder(this).setMessage("退出仓库应用？").setNegativeButton("取消",null).setPositiveButton("退出",(d,w)->finish()).show();});
     }
     @Override protected void onPause(){if(web!=null){web.evaluateJavascript("window.stopBatchScanner?.()",null);web.onPause();CookieManager.getInstance().flush();}super.onPause();}
-    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();if(WarehousePush.enabled(this))FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->WarehousePush.rotate(this,token));}
+    @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();pushStatus(WarehousePush.status(this));}if(WarehousePush.enabled(this))FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->WarehousePush.rotate(this,token));}
     @Override protected void onDestroy(){finishFile(null);if(cameraRequest!=null){cameraRequest.deny();cameraRequest=null;}if(web!=null){web.destroy();web=null;}super.onDestroy();}
 }
