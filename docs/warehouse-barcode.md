@@ -56,3 +56,17 @@ EAS rejected the iOS build because the Free plan monthly iOS quota is exhausted.
 The existing Mac runner workflow was adapted for the staff warehouse bundle,
 with separate temporary signing secret and strict bundle/version verification.
 iOS 1.0.1 (4) run: https://github.com/mop03ko/gostore.mn/actions/runs/43710711605
+
+The Mac run succeeded; Apple upload completed without errors at
+2026-11-15 11:55:19 UTC. Bundle `mn.gostore.ubwarehouse`, version `1.0.1`, build `4`
+were verified from the signed IPA. Apple build ID:
+`e61b54b3-a52e-47ab-9fee-5aadef2e2bbf`, processing state `VALID`.
+The build is assigned to the existing **Ulaanbaatar Warehouse Managers** group;
+external state is `WAITING_FOR_BETA_REVIEW` and review is `WAITING_FOR_REVIEW`.
+It is not yet available to external testers pending Apple's approval. The existing
+public App Store version/review was not replaced.
+
+Runner signing cleanup succeeded, and `GOSTORE_WAREHOUSE_IOS_SIGNING` was deleted
+from repository Actions secrets after the run. No private signing material was
+committed. Local IPA: `output/warehouse-ios-1.0.1-4/GOStoreUBWarehouse.ipa` (ignored).
+IPA SHA256: `c509b1015247c82be673f9058c90d41bd7f4770a2f09656c51cd2fc8a8b85b94`.
