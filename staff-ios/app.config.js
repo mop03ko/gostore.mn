@@ -10,14 +10,15 @@ module.exports = () => {
     name: v.name,
     slug: v.slug,
     owner: "morozkonkts-team",
-    version: "1.0.0",
+    version: variant === "warehouse" ? "1.0.1" : "1.0.0",
     orientation: "default",
     icon: v.icon,
     userInterfaceStyle: "light",
     ios: {
       bundleIdentifier: v.bundleIdentifier,
       supportsTablet: true,
-      buildNumber: "1",
+      buildNumber: process.env.BUILD_NUMBER || "1",
+      ...(process.env.GOSTORE_PROFILE_UUID ? {appleTeamId:"8P6PVVWKUB"} : {}),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
@@ -27,6 +28,7 @@ module.exports = () => {
       },
     },
     plugins: [
+      ...(process.env.GOSTORE_PROFILE_UUID ? ["../scripts/ios-mac-signing.cjs"] : []),
       [
         "expo-camera",
         {

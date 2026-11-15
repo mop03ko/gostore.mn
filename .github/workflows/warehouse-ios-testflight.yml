@@ -1,0 +1,60 @@
+name: Warehouse iOS TestFlight
+run-name: Warehouse iOS 1.0.1 (${{ inputs.build_number }})
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unused Apple build number
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: gostore-ios-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: xcode-27
+    timeout-minutes: 100
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: '1'
+      APP_VARIANT: warehouse
+      GOSTORE_IOS_APP_DIR: staff-ios
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      BUILD_VERSION: 1.0.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.12.0'
+          cache: npm
+          cache-dependency-path: staff-ios/package-lock.json
+      - name: Install and check
+        working-directory: staff-ios
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: Build signed IPA
+        env:
+          GOSTORE_IOS_SIGNING: ${{ secrets.GOSTORE_WAREHOUSE_IOS_SIGNING }}
+        run: bash scripts/warehouse-ios-mac-build.sh
+      - name: Upload to TestFlight
+        env:
+          GOSTORE_IOS_SIGNING: ${{ secrets.GOSTORE_WAREHOUSE_IOS_SIGNING }}
+        run: python3 scripts/ios-mac-credentials.py upload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-ios-${{ inputs.build_number }}
+          path: output/ios-mac/*.ipa
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove temporary signing material
+        if: always()
+        run: python3 scripts/ios-mac-credentials.py cleanup

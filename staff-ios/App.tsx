@@ -9,11 +9,13 @@ import {
   StyleSheet,
   Text,
   View,
+  Vibration,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
 import * as Print from "expo-print";
 import {
   WebView,
@@ -32,21 +34,30 @@ const startUrl =
     : "https://gostore.mn/warehouse/ulaanbaatar/";
 
 function StaffApp() {
+  const scanSound=useAudioPlayer(require('./assets/scan.wav'));
   const web = useRef<WebView<{}>>(null),
     lastUrl = useRef(startUrl),
     scanBusy = useRef(false),
-    printing = useRef(false);
+    printing = useRef(false),
+    scanFromWeb = useRef(false),
+    scanSession = useRef(0),
+    lastScan = useRef({code: "", at: 0});
   const [authenticated, setAuthenticated] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(false),
     [canBack, setCanBack] = useState(false),
     [scanner, setScanner] = useState(false),
-    [privacy, setPrivacy] = useState(false);
+    [privacy, setPrivacy] = useState(false),
+    [torch, setTorch] = useState(false),
+    [zoom, setZoom] = useState(0),
+    [qrOnly, setQrOnly] = useState(false),
+    [scanStatus, setScanStatus] = useState("Кодыг камерт харуулна уу");
   const [permission, requestPermission] = useCameraPermissions();
   useEffect(() => {
+    void setAudioModeAsync({playsInSilentMode:false,shouldPlayInBackground:false}).catch(()=>{});
     const subscription = AppState.addEventListener("change", (state) => {
       setPrivacy(state !== "active");
-      if (state === "background") setScanner(false);
+      if (state === "background") closeScanner();
     });
     return () => subscription.remove();
   }, []);
@@ -73,9 +84,16 @@ function StaffApp() {
       ],
     );
   }
-  async function openScanner() {
+  function closeScanner() {
+    scanSession.current++;scanBusy.current=false;setTorch(false);setScanner(false);
+    if(scanFromWeb.current)web.current?.injectJavaScript("document.querySelector('#qr-scanner')?.close();true;");
+    scanFromWeb.current=false;
+  }
+  async function openScanner(fromWeb = false) {
     if (!authenticated) return;
+    const request=++scanSession.current;
     const result = permission?.granted ? permission : await requestPermission();
+    if(request!==scanSession.current||AppState.currentState!=="active")return;
     if (!result.granted) {
       Alert.alert(
         "Камерын эрх шаардлагатай",
@@ -87,22 +105,30 @@ function StaffApp() {
       );
       return;
     }
-    scanBusy.current = false;
+    scanSession.current++;scanFromWeb.current=fromWeb;scanBusy.current=false;
+    lastScan.current={code:"",at:0};setTorch(false);setZoom(0);setScanStatus("Кодыг камерт харуулна уу");
     setScanner(true);
   }
+  function webScannerFallback(){
+    scanFromWeb.current=false;closeScanner();
+    web.current?.injectJavaScript("(()=>{const d=document.querySelector('#qr-scanner');if(d&&!d.open)d.showModal();if(typeof startBatchCamera==='function')startBatchCamera(true);})();true;");
+  }
   function scanned(value: string) {
-    if (scanBusy.current) return;
-    scanBusy.current = true;
+    if (scanBusy.current || !authenticated || !policy.panel(lastUrl.current,variant)) return;
     const code = policy.scan(value);
-    setScanner(false);
     if (!code) {
-      Alert.alert(
-        "GOStore код олдсонгүй",
-        "GS- захиалгын эсвэл GB- багцын кодыг уншуулна уу.",
-      );
+      setScanStatus("GS- захиалгын эсвэл GB- багцын кодыг уншуулна уу");
       return;
     }
-    if (!authenticated || !policy.panel(lastUrl.current, variant)) return;
+    if(code===lastScan.current.code&&Date.now()-lastScan.current.at<3000)return;
+    lastScan.current={code,at:Date.now()};scanBusy.current=true;Vibration.vibrate(70);
+    void scanSound.seekTo(0).then(()=>scanSound.play()).catch(()=>{});
+    setScanStatus("Уншлаа: "+code);
+    if(scanFromWeb.current){
+      web.current?.injectJavaScript("window.warehouseNativeScan?.("+JSON.stringify(code)+","+scanSession.current+");true;");
+      return;
+    }
+    closeScanner();
     web.current?.injectJavaScript(
       `(()=>{const input=document.getElementById('scan-code');if(input){input.value=${JSON.stringify(code)};document.getElementById('scan-form')?.requestSubmit();}})();true;`,
     );
@@ -113,7 +139,16 @@ function StaffApp() {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === "state" && typeof data.authenticated === "boolean") {
         setAuthenticated(data.authenticated);
+        if(!data.authenticated)closeScanner();
         return;
+      }
+      if(variant==="warehouse"&&authenticated){
+        if(data.type==="scan-open"){await openScanner(true);return;}
+        if(data.type==="scan-close"){closeScanner();return;}
+        if(data.type==="scan-result"&&scanFromWeb.current&&data.session===scanSession.current){
+          if(data.keepOpen===true){setScanStatus(String(data.status||"Уншлаа").slice(0,250));const session=scanSession.current;setTimeout(()=>{if(scanSession.current===session)scanBusy.current=false;},900);}
+          else closeScanner();return;
+        }
       }
       if (
         data.type === "print" &&
@@ -198,6 +233,7 @@ function StaffApp() {
             setCanBack(state.canGoBack);
           }}
           onLoadStart={() => {
+            closeScanner();
             setLoading(true);
             setError(false);
           }}
@@ -285,12 +321,12 @@ function StaffApp() {
       <Modal
         visible={scanner}
         animationType="slide"
-        onRequestClose={() => setScanner(false)}
+        onRequestClose={closeScanner}
       >
         <SafeAreaView style={s.scanner}>
           <View style={s.scanHeader}>
             <Text style={s.scanTitle}>Захиалга эсвэл багцын QR</Text>
-            <Pressable style={s.action} onPress={() => setScanner(false)}>
+            <Pressable style={s.action} onPress={closeScanner}>
               <Text style={s.primaryText}>Хаах</Text>
             </Pressable>
           </View>
@@ -298,12 +334,27 @@ function StaffApp() {
             <CameraView
               style={s.camera}
               facing="back"
+              autofocus="on"
+              enableTorch={torch}
+              zoom={zoom}
+              onMountError={() => {setTorch(false);setScanStatus("Камер ассангүй. Эрхээ шалгаад дахин нээнэ үү.");}}
               barcodeScannerSettings={{
-                barcodeTypes: ["qr", "code128", "code39"],
+                barcodeTypes: qrOnly ? ["qr"] : ["qr", "code128", "code39"],
               }}
               onBarcodeScanned={(r) => scanned(r.data)}
             />
           )}
+          <Text accessibilityLiveRegion="polite" style={s.scanResult}>{scanStatus}</Text>
+          <View style={s.scanControls}><Pressable style={s.scanButton} onPress={webScannerFallback}><Text style={s.primaryText}>Вэб камер / Зургаас унших</Text></Pressable></View>
+          <View style={s.scanControls}>
+            <Pressable accessibilityLabel="Камерын гэрэл" accessibilityState={{selected:torch}} style={s.scanButton} onPress={()=>setTorch(!torch)}><Text style={s.primaryText}>{torch?"Гэрэл унтраах":"Гэрэл асаах"}</Text></Pressable>
+            <Pressable style={s.scanButton} onPress={()=>setQrOnly(!qrOnly)}><Text style={s.primaryText}>{qrOnly?"Зөвхөн QR":"QR + Бар код"}</Text></Pressable>
+          </View>
+          <View style={s.scanControls}>
+            <Pressable accessibilityLabel="Багасгах" style={s.scanButton} onPress={()=>setZoom(Math.max(0,zoom-.05))}><Text style={s.primaryText}>−</Text></Pressable>
+            <Pressable accessibilityLabel="Томруулалтыг сэргээх" style={s.scanButton} onPress={()=>setZoom(0)}><Text style={s.primaryText}>Томруулалт {Math.round(zoom*100)}%</Text></Pressable>
+            <Pressable accessibilityLabel="Томруулах" style={s.scanButton} onPress={()=>setZoom(Math.min(.5,zoom+.05))}><Text style={s.primaryText}>+</Text></Pressable>
+          </View>
           <Text style={s.scanHint}>
             Код унших нь мэдээллийг нээнэ. Хүлээн авалт, илгээлтийг агуулахын
             хуудсанд батална.
@@ -403,6 +454,9 @@ const s = StyleSheet.create({
     backgroundColor: "#262263",
     borderRadius: 12,
   },
+  scanResult: {color:"#ffffff",fontSize:17,padding:14,textAlign:"center"},
+  scanControls: {flexDirection:"row",gap:8,paddingHorizontal:12,paddingBottom:8},
+  scanButton: {flex:1,minHeight:48,backgroundColor:"#ff641b",borderRadius:12,alignItems:"center",justifyContent:"center",padding:8},
   scanner: { flex: 1, backgroundColor: "#17152f" },
   scanHeader: { padding: 14, flexDirection: "row", alignItems: "center" },
   scanTitle: { flex: 1, color: "#fff", fontSize: 18, fontWeight: "700" },

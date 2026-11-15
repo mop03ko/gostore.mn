@@ -10,5 +10,6 @@ export const bridge = `(()=>{
  window.print=()=>{if(Date.now()-tap>5000)return;const area=document.getElementById('print-area');if(!area||!area.innerHTML.trim())return;
  const styles=Array.from(document.querySelectorAll('link[rel=stylesheet],style')).map(s=>s.outerHTML).join('');
  send({type:'print',html:'<!doctype html><html><head><base href="https://gostore.mn/warehouse/">'+styles+'</head><body>'+area.outerHTML+'</body></html>'});};
+ if(document.querySelector('#qr-scanner'))window.gostoreWarehouseNativeScanner='ios';
  document.documentElement.style.webkitTextSizeAdjust='100%';
 })();true;`;

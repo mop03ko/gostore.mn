@@ -11,6 +11,7 @@ const base=process.env.TEST_BASE;assert.equal(new URL(base).hostname,'127.0.0.1'
  assert.equal((await api('warehouse-tracking&number=1234567890')).total,0,'Substring cannot match a parcel');
  await api('warehouse-tracking&number=https%3A%2F%2Fexample.com',undefined,400);
  page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/warehouse/');await page.locator('#app').waitFor({state:'visible'});
+ await require('./warehouse-native-scanner-checks.cjs')(page);
  const png=fs.readFileSync('tests/fixtures/warehouse-code128.png').toString('base64');
  await page.evaluate(async({png,value})=>{const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();if(decodeWarehouseBarcode(img,img.width,img.height)!==value)throw Error('Code128 decode failed');const rotated=document.createElement('canvas');rotated.width=img.height;rotated.height=img.width;const ctx=rotated.getContext('2d');ctx.translate(img.height,0);ctx.rotate(Math.PI/2);ctx.drawImage(img,0,0);if(decodeWarehouseBarcode(rotated,rotated.width,rotated.height)!==value)throw Error('Sideways barcode failed');const code=new Image();code.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(code39(value));await code.decode();if(decodeWarehouseBarcode(code,code.width,code.height)!==value)throw Error('Code39 decode failed');},{png,value:tracking});
  await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('Denied','NotAllowedError');};});

@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict');
+module.exports=async function checkNativeScanner(page){
+ await page.evaluate(()=>{
+  window.gostoreWarehouseNativeScanner='ios';window.nativeMessages=[];
+  window.ReactNativeWebView={postMessage:raw=>window.nativeMessages.push(JSON.parse(raw))};
+  window.nativeReceived=[];window.warehouseScanTargets=[()=>async id=>{window.nativeReceived.push(id);return 'OK '+id;}];
+ });
+ await page.locator('#qr-open').click();
+ assert.equal(await page.evaluate(()=>window.nativeMessages.at(-1).type),'scan-open');
+ await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-001',7));
+ assert.deepEqual(await page.evaluate(()=>window.nativeReceived),['GS-NATIVE-001']);
+ assert.deepEqual(await page.evaluate(()=>window.nativeMessages.at(-1)),{type:'scan-result',session:7,keepOpen:true,status:'OK GS-NATIVE-001'});
+ await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-001',7));
+ assert.equal(await page.evaluate(()=>window.nativeReceived.length),1,'Repeated frames must not process a parcel twice');
+ await page.evaluate(()=>window.warehouseNativeScan('javascript:alert(1)',7));
+ assert.equal(await page.evaluate(()=>window.nativeReceived.length),1,'Executable QR content must be rejected');
+ await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-002',7));
+ assert.equal(await page.evaluate(()=>window.nativeReceived.length),2,'Next parcel is scanned without closing camera');
+ await page.locator('#qr-close').click();
+ await page.waitForFunction(()=>window.nativeMessages.at(-1).type==='scan-close');
+ await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-003',7));
+ assert.equal(await page.evaluate(()=>window.nativeReceived.length),2,'Late native callbacks must not act after close');
+ assert.equal(await page.evaluate(()=>window.nativeMessages.at(-1).keepOpen),false);
+ await page.evaluate(()=>{delete window.gostoreWarehouseNativeScanner;delete window.ReactNativeWebView;window.warehouseScanTargets=[];});
+};

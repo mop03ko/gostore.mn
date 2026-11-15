@@ -10,6 +10,21 @@ function batchQr(id,label=false){
   return qr.createSvgTag({cellSize:6,margin:24,scalable:true}).replace('<svg ','<svg '+size+'class="batch-qr-code" role="img" aria-label="'+id+'" ' );
 }
 let batchCamera=null,batchScanTimer=null,batchScanSequence=0;
+function nativeScanMessage(type,extra={}){
+  if(window.gostoreWarehouseNativeScanner==='android'){
+    location.href='gostore-warehouse://scan/'+type+(type==='result'?'?keep='+(extra.keepOpen?'1':'0')+'&session='+encodeURIComponent(extra.session||0)+'&status='+encodeURIComponent(extra.status||''):'');
+  }else if(window.gostoreWarehouseNativeScanner==='ios')window.ReactNativeWebView?.postMessage(JSON.stringify({type:'scan-'+type,...extra}));
+}
+let nativeScanBusy=false;
+window.warehouseNativeScan=async (value,session=0)=>{
+  if(nativeScanBusy)return;nativeScanBusy=true;
+  try{
+    if(!$('#qr-scanner').open||$('#app').hidden){nativeScanMessage('result',{session,keepOpen:false});return;}
+    const done=await acceptBatchQr(value);
+    nativeScanMessage('result',{session,keepOpen:!done&&$('#qr-scanner').open,status:$('#qr-error').textContent||$('#qr-status').textContent||String(value)});
+  }catch(e){nativeScanMessage('result',{session,keepOpen:$('#qr-scanner').open,status:e.message});}
+  finally{nativeScanBusy=false;}
+};
 function stopBatchScanner(){
   ++batchScanSequence;clearTimeout(batchScanTimer);batchScanTimer=null;
   if(batchCamera)batchCamera.getTracks().forEach(track=>track.stop());batchCamera=null;
@@ -63,8 +78,9 @@ function decodeWarehouseBarcode(source,width,height,maxSide=1280){
   }
   return '';
 }
-async function startBatchCamera(){
+async function startBatchCamera(forceWeb=false){
   stopBatchScanner();const request=batchScanSequence,video=$('#qr-video');qrError('');
+  if(window.gostoreWarehouseNativeScanner&&forceWeb!==true){nativeScanMessage('open');return;}
   if(!navigator.mediaDevices?.getUserMedia){qrError('qrCameraUnavailable');return;}
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
@@ -84,7 +100,7 @@ $('#qr-open').addEventListener('click',()=>{
 });
 $('#qr-restart').addEventListener('click',startBatchCamera);
 $('#qr-close').addEventListener('click',()=>$('#qr-scanner').close());
-$('#qr-scanner').addEventListener('close',stopBatchScanner);
+$('#qr-scanner').addEventListener('close',()=>{stopBatchScanner();nativeScanMessage('close');});
 $('#qr-file').addEventListener('change',async e=>{
   const file=e.target.files[0];if(!file)return;stopBatchScanner();const request=batchScanSequence;qrError('');
   let picture;

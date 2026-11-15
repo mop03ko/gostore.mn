@@ -16,6 +16,10 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+APP_DIR = os.environ.get('GOSTORE_IOS_APP_DIR', 'gostoremn')
+if APP_DIR not in ('gostoremn', 'staff-ios'):
+    raise ValueError('Unsupported iOS project')
+BUNDLE_ID = 'mn.gostore.ubwarehouse' if APP_DIR == 'staff-ios' else 'mn.gostore.app'
 TEMP = Path(os.environ.get('RUNNER_TEMP', '/tmp')).resolve() / 'gostore-ios-signing'
 KEYCHAIN = TEMP / 'build.keychain-db'
 PROFILE_DIRS = [Path.home() / 'Library/MobileDevice/Provisioning Profiles',
@@ -43,7 +47,7 @@ def prepare():
     p12.write_bytes(base64.b64decode(data['certificateP12']))
     profile_file.write_bytes(base64.b64decode(data['provisioningProfile']))
     profile = plistlib.loads(run('security', 'cms', '-D', '-i', str(profile_file), capture=True))
-    if profile['Entitlements']['application-identifier'] != '8P6PVVWKUB.mn.gostore.app':
+    if profile['Entitlements']['application-identifier'] != '8P6PVVWKUB.' + BUNDLE_ID:
         raise ValueError('Wrong app provisioning profile')
     if profile['Entitlements'].get('get-task-allow') or profile.get('ProvisionedDevices'):
         raise ValueError('An App Store distribution profile is required')
@@ -64,7 +68,7 @@ def prepare():
         str(Path.home() / 'Library/Keychains/login.keychain-db'))
     options = {'method': 'app-store-connect', 'teamID': '8P6PVVWKUB',
                'signingStyle': 'manual', 'signingCertificate': 'Apple Distribution',
-               'provisioningProfiles': {'mn.gostore.app': uuid},
+               'provisioningProfiles': {BUNDLE_ID: uuid},
                'manageAppVersionAndBuildNumber': False, 'uploadSymbols': True}
     (TEMP / 'ExportOptions.plist').write_bytes(plistlib.dumps(options))
     print('Existing App Store signing identity imported into a temporary keychain.')
@@ -80,8 +84,9 @@ def verify():
         if len(paths) != 1:
             raise ValueError('Expected one main app')
         info = plistlib.loads(archive.read(paths[0]))
-        version = json.loads((ROOT / 'gostoremn/app.json').read_text())['expo']['version']
-        expected = {'CFBundleIdentifier': 'mn.gostore.app',
+        version = (os.environ['BUILD_VERSION'] if APP_DIR == 'staff-ios' else
+                   json.loads((ROOT / 'gostoremn/app.json').read_text())['expo']['version'])
+        expected = {'CFBundleIdentifier': BUNDLE_ID,
                     'CFBundleShortVersionString': version, 'CFBundleVersion': os.environ['BUILD_NUMBER']}
         if any(info.get(k) != v for k, v in expected.items()):
             raise ValueError('IPA identity/version mismatch')

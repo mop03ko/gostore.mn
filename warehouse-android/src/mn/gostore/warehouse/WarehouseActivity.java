@@ -25,9 +25,12 @@ import com.google.android.gms.common.GoogleApiAvailabilityLight;
 import com.google.android.gms.common.ConnectionResult;
 import org.json.JSONObject;
 
-public final class WarehouseActivity extends Activity {
+public final class WarehouseActivity extends androidx.activity.ComponentActivity {
     private static final int PICK_IMAGE = 10, TAKE_PHOTO = 11, SCAN_PERMISSION = 20, PHOTO_PERMISSION = 21, PUSH_PERMISSION=22;
     private boolean pushBusy;
+    private NativeScanner nativeScanner;
+    private int scannerSession;
+    private static final int NATIVE_SCAN_PERMISSION=23;
     private WebView web;
     private ProgressBar progress;
     private LinearLayout error;
@@ -63,7 +66,7 @@ public final class WarehouseActivity extends Activity {
         WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setGeolocationEnabled(false);settings.setMediaPlaybackRequiresUserGesture(false);settings.setSupportMultipleWindows(false);
-        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.2.0");
+        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.3.0");
         CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         WebView.setWebContentsDebuggingEnabled(false);
         web.setWebViewClient(new WebViewClient(){
@@ -76,6 +79,9 @@ public final class WarehouseActivity extends Activity {
                 if(trustedPage()&&url.equals("gostore-warehouse://push/status")){pushStatus(WarehousePush.status(WarehouseActivity.this));return true;}
                 if(trustedPage()&&url.equals("gostore-warehouse://push/settings")){if(request.hasGesture())try{startActivity(WarehousePush.soundSettings(WarehouseActivity.this));}catch(Exception e){toast("请在手机设置中开启通知声音");}return true;}
                 if(trustedPage()&&url.equals("gostore-warehouse://push/test")){if(request.hasGesture())testPush();return true;}
+                if(trustedPage()&&url.equals("gostore-warehouse://scan/open")){if(request.hasGesture())openNativeScanner();return true;}
+                if(trustedPage()&&url.equals("gostore-warehouse://scan/close")){closeNativeScanner(false);return true;}
+                if(trustedPage()&&url.startsWith("gostore-warehouse://scan/result?")){if(nativeScanner!=null){Uri result=Uri.parse(url);if(!String.valueOf(scannerSession).equals(result.getQueryParameter("session")))return true;if("1".equals(result.getQueryParameter("keep")))nativeScanner.result(result.getQueryParameter("status"));else closeNativeScanner(false);}return true;}
                 if(NavigationPolicy.warehousePage(url)||NavigationPolicy.photoPage(url))return false;
                 if(request.hasGesture()&&url.startsWith("https://")){
                     try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){toast("无法打开链接");}
@@ -87,13 +93,13 @@ public final class WarehouseActivity extends Activity {
                 if(("https".equals(scheme)&&NavigationPolicy.trustedOrigin(request.getUrl().toString()))||"data".equals(scheme)||"blob".equals(scheme))return null;
                 return new WebResourceResponse("text/plain","UTF-8",403,"Blocked",null,new ByteArrayInputStream(new byte[0]));
             }
-            @Override public void onPageStarted(WebView v,String url,android.graphics.Bitmap icon){pageFailed=false;progress.setVisibility(View.VISIBLE);error.setVisibility(View.GONE);}
+            @Override public void onPageStarted(WebView v,String url,android.graphics.Bitmap icon){closeNativeScanner(false);pageFailed=false;progress.setVisibility(View.VISIBLE);error.setVisibility(View.GONE);}
             @Override public void onPageFinished(WebView v,String url){
                 progress.setVisibility(View.GONE);CookieManager.getInstance().flush();
                 if(pageFailed||!NavigationPolicy.warehousePage(url))return;
                 // No native JavaScript bridge or embedded credentials. Printing uses a guarded navigation.
                 v.evaluateJavascript("window.print=function(){location.href='gostore-warehouse://print';};if(!window.goStoreNativeLinks){window.goStoreNativeLinks=true;document.addEventListener('click',function(e){const a=e.target.closest('a');if(a)a.removeAttribute('target');},true);}",null);
-                v.evaluateJavascript("window.gostoreWarehouseNativePush=true;window.gostoreWarehouseNativeSound=true;window.dispatchEvent(new Event('warehouse-native-ready'));",null);
+                v.evaluateJavascript("window.gostoreWarehouseNativeScanner='android';window.gostoreWarehouseNativePush=true;window.gostoreWarehouseNativeSound=true;window.dispatchEvent(new Event('warehouse-native-ready'));",null);
             }
             @Override public void onReceivedError(WebView v,WebResourceRequest r,WebResourceError e){if(r.isForMainFrame())showError();}
             @Override public void onReceivedHttpError(WebView v,WebResourceRequest r,WebResourceResponse e){if(r.isForMainFrame())showError();}
@@ -125,7 +131,17 @@ public final class WarehouseActivity extends Activity {
         WarehousePush.channel(this);
         openIntent(getIntent());
     }
-    private void showError(){pageFailed=true;progress.setVisibility(View.GONE);error.setVisibility(View.VISIBLE);}
+    private void openNativeScanner(){
+        if(!trustedPage()||nativeScanner!=null)return;
+        if(checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.CAMERA},NATIVE_SCAN_PERMISSION);return;}
+        web.evaluateJavascript("!!document.querySelector('#qr-scanner[open]')&&!document.querySelector('#app')?.hidden",allowed->{if(!"true".equals(allowed)||!trustedPage()||nativeScanner!=null)return;
+            final int session=++scannerSession;nativeScanner=new NativeScanner(this,new NativeScanner.Listener(){public void fallback(){closeNativeScanner(false);if(trustedPage())web.evaluateJavascript("startBatchCamera(true);",null);}public void close(){closeNativeScanner(true);}public void code(String value){if(!trustedPage()){closeNativeScanner(false);return;}
+                web.evaluateJavascript("window.warehouseNativeScan?.("+JSONObject.quote(value)+","+session+");",null);
+            }});nativeScanner.open();
+        });
+    }
+    private void closeNativeScanner(boolean closeDialog){scannerSession++;if(nativeScanner!=null){nativeScanner.close();nativeScanner=null;}if(closeDialog&&trustedPage())web.evaluateJavascript("document.querySelector('#qr-scanner')?.close();",null);}
+    private void showError(){closeNativeScanner(true);pageFailed=true;progress.setVisibility(View.GONE);error.setVisibility(View.VISIBLE);}
     private void openHome(){if(web!=null)web.loadUrl(NavigationPolicy.HOME);}
     private void openIntent(Intent intent){String url=intent!=null&&intent.getData()!=null?intent.getData().toString():"";if(web!=null)web.loadUrl(NavigationPolicy.warehousePage(url)?url:NavigationPolicy.HOME);}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);openIntent(intent);}
@@ -177,6 +193,7 @@ public final class WarehouseActivity extends Activity {
         super.onRequestPermissionsResult(code,permissions,results);boolean allowed=results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED;
         if(code==SCAN_PERMISSION){if(allowed)grantScanner();else if(cameraRequest!=null){cameraRequest.deny();cameraRequest=null;}}
         if(code==PHOTO_PERMISSION){if(allowed)takePhoto();else{finishFile(null);toast("相机权限未开启，可以选择已有照片");}}
+        if(code==NATIVE_SCAN_PERMISSION){if(allowed)openNativeScanner();else{toast("请允许相机权限，或选择照片识别");closeNativeScanner(true);}}
         if(code==PUSH_PERMISSION){if(allowed)enablePush();else pushStatus("permission");}
     }
     private void printPage(){
@@ -189,10 +206,11 @@ public final class WarehouseActivity extends Activity {
         });
     }
     @Override public void onBackPressed(){
+        if(nativeScanner!=null){closeNativeScanner(true);return;}
         if(web==null){super.onBackPressed();return;}
         web.evaluateJavascript("(()=>{const d=document.querySelector('dialog[open]');if(d){d.close();return true;}return false;})()",closed->{if("true".equals(closed))return;if(web.canGoBack())web.goBack();else new AlertDialog.Builder(this).setMessage("退出仓库应用？").setNegativeButton("取消",null).setPositiveButton("退出",(d,w)->finish()).show();});
     }
-    @Override protected void onPause(){if(web!=null){web.evaluateJavascript("window.stopBatchScanner?.()",null);web.onPause();CookieManager.getInstance().flush();}super.onPause();}
+    @Override protected void onPause(){if(nativeScanner!=null)closeNativeScanner(true);if(web!=null){web.evaluateJavascript("window.stopBatchScanner?.()",null);web.onPause();CookieManager.getInstance().flush();}super.onPause();}
     @Override protected void onResume(){super.onResume();if(web!=null){web.onResume();pushStatus(WarehousePush.status(this));}if(WarehousePush.enabled(this))FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->WarehousePush.rotate(this,token));}
-    @Override protected void onDestroy(){finishFile(null);if(cameraRequest!=null){cameraRequest.deny();cameraRequest=null;}if(web!=null){web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onDestroy(){closeNativeScanner(false);finishFile(null);if(cameraRequest!=null){cameraRequest.deny();cameraRequest=null;}if(web!=null){web.destroy();web=null;}super.onDestroy();}
 }

@@ -1,5 +1,7 @@
 // Configure generated native targets through an Expo plugin, never hand-edit ios/.
-const { withXcodeProject } = require('../gostoremn/node_modules/expo/config-plugins');
+const appDir=process.env.GOSTORE_IOS_APP_DIR||'gostoremn';
+if(!['gostoremn','staff-ios'].includes(appDir))throw Error('Unsupported iOS project');
+const { withXcodeProject } = require(require.resolve('expo/config-plugins',{paths:[require('node:path').resolve(__dirname,'..',appDir)]}));
 
 module.exports = function withMacSigning(config) {
   if (!process.env.GOSTORE_PROFILE_UUID) throw new Error('Missing signing profile UUID');
