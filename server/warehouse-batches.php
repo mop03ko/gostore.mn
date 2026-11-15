@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function warehouse_event(string $event): array {
     $location=warehouse_session_location();
-    return ['event'=>$event,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_account($location)['email']];
+    return ['event'=>$event,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_current_account($location)['email']];
 }
 function warehouse_change_order(array &$o,string $status): void {
     $o['status']=$status;$o['history'][]=['status'=>$status]+warehouse_event($status);save_order($o);

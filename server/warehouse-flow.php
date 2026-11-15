@@ -105,7 +105,7 @@ function warehouse_receive(array $b,string $location): array {
         $expected=warehouse_expected_pieces($o);$missing=warehouse_parcels($o)['missing'];
         if(($missing||$measurement['pieces']!==$expected)&&!$partial)fail('Илгээмж эсвэл тоо ширхэг дутуу байна. Хэсэгчлэн хүлээн авахыг сонгоно уу.',409);
         $now=gmdate('c');
-        if($receiving){$o['history'][]=['status'=>'erenhot','at'=>$now,'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_account($location)['email']];$o['status']='erenhot';}
+        if($receiving){$o['history'][]=['status'=>'erenhot','at'=>$now,'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_current_account($location)['email']];$o['status']='erenhot';}
         if(!$missing)foreach(warehouse_parcels($o)['list'] as $p)$l['parcels'][$p['no']]??=['at'=>$now,'location'=>$location];
         if($missing||$measurement['pieces']!==$expected){
             // Earlier automatic shortfalls are replaced, so a repeated partial receipt keeps one open note.

@@ -70,7 +70,7 @@ function warehouse_push_authorization(string $endpoint,array $keys): string {
 }
 function warehouse_push_device_active(array $device): bool {
     $defs=warehouse_definitions();if(!isset($defs[$device['location']])||!$defs[$device['location']]['active']||$device['expires']<time())return false;
-    $a=warehouse_account($device['location']);return $a['enabled']&&hash_equals($a['version'],$device['account_version']);
+    $a=warehouse_account_by_version($device['location'],$device['account_version']);return $a['enabled']&&hash_equals($a['version'],$device['account_version']);
 }
 function warehouse_push_subscribe(array $b,string $location): array {
     warehouse_notice_schema(db());
@@ -82,7 +82,7 @@ function warehouse_push_subscribe(array $b,string $location): array {
 function warehouse_push_store_device(string $endpoint,string $location): array {
     warehouse_notice_schema(db());
     limit_attempts('warehouse-device:'.$location,30,3600);
-    $id=hash('sha256',$endpoint);$token=bin2hex(random_bytes(32));$a=warehouse_account($location);
+    $id=hash('sha256',$endpoint);$token=bin2hex(random_bytes(32));$a=warehouse_current_account($location);
     $s=db()->prepare('SELECT COALESCE(MAX(id),0) FROM warehouse_notifications WHERE location=?');$s->execute([$location]);$cursor=(int)$s->fetchColumn();
     $s=db()->prepare('SELECT COUNT(*) FROM warehouse_push_devices WHERE location=? AND id<>? AND endpoint<>? AND expires>?');$s->execute([$location,$id,$endpoint,time()]);if((int)$s->fetchColumn()>=20)fail('Төхөөрөмжийн дээд тоонд хүрлээ.',429);
     db()->prepare('DELETE FROM warehouse_push_devices WHERE endpoint=?')->execute([$endpoint]);

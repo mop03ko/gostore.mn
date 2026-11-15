@@ -4,6 +4,7 @@ require_once __DIR__.'/warehouse-notifications.php';
 require_once __DIR__.'/warehouse-session.php';
 require_once __DIR__.'/warehouse-flow.php';
 require_once __DIR__.'/warehouse-ub.php';
+require_once __DIR__.'/warehouse-managers.php';
 
 // A warehouse has an immutable operational role and an independent manager session.
 function warehouse_definitions(): array {
@@ -33,7 +34,7 @@ function warehouse_create(array $b): array {
         $id='wh-'.bin2hex(random_bytes(6));$definition=['location'=>$id,'role'=>$role,'city'=>$city,'active'=>true];
         $db->prepare('INSERT INTO meta VALUES (?,?)')->execute(['warehouse_definition_'.$id,json_encode($definition,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
         warehouse_profile_save(array_merge($b,['location'=>$id]),true);
-        warehouse_account_save(array_merge($b,['location'=>$id,'enabled'=>true]));
+        warehouse_account_save(array_merge($b,['location'=>$id,'enabled'=>true]),true);
         $db->exec('COMMIT');return warehouse_catalog()[$id];
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
@@ -78,26 +79,36 @@ function warehouse_account(string $location='erenhot'): array {
 }
 function warehouse_account_public(string $location='erenhot'): array {
     $a=warehouse_account($location);
-    return ['location'=>$location,'email'=>$a['email'],'enabled'=>$a['enabled'],'configured'=>$a['password_hash']!==''];
+    return ['location'=>$location,'email'=>$a['email'],'enabled'=>$a['enabled'],'configured'=>$a['password_hash']!=='','managers'=>warehouse_managers_public($location)];
 }
-function warehouse_account_save(array $b): array {
+function warehouse_account_save(array $b,bool $inTransaction=false): array {
     admin_required();
+    if(function_exists('admin_role_at_least')&&!admin_role_at_least('owner'))fail('Менежерийн эрхийг зөвхөн үндсэн админ удирдана.',403);
+    if(isset($b['manager_id'])&&$b['manager_id']!=='primary')return warehouse_manager_save($b);
+    if($inTransaction)return warehouse_primary_account_save($b);
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{$result=warehouse_primary_account_save($b);$db->exec('COMMIT');return $result;}
+    catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+function warehouse_primary_account_save(array $b): array {
     $location=warehouse_location($b);
     $email=strtolower(str_field($b,'email',200));
     if(!filter_var($email,FILTER_VALIDATE_EMAIL))fail('Имэйл хаягаа шалгана уу.');
+    warehouse_manager_unique_email($location,$email,'primary');
     $password=$b['password']??'';
     if(!is_string($password)||str_contains($password,"\0")||($password!==''&&(strlen($password)<12||strlen($password)>72)))fail('Нууц үг 12–72 байт урттай байна.');
     if(!is_bool($b['enabled']??null))fail('Эрхийн төлөв буруу.');
     $a=warehouse_account($location);
     if($a['password_hash']===''&&$password==='')fail('Менежерийн анхны нууц үгийг оруулна уу.');
     $a['email']=$email;$a['enabled']=$b['enabled'];$a['version']=bin2hex(random_bytes(16));
+    if(array_key_exists('name',$b))$a['name']=str_field($b,'name',100);
     if($password!=='')$a['password_hash']=password_hash($password,PASSWORD_BCRYPT,['cost'=>12]);
     $a['updated']=gmdate('c');
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute([warehouse_account_key($location),json_encode($a,JSON_THROW_ON_ERROR)]);
     return warehouse_account_public($location);
 }
 function warehouse_authenticated(): bool {
-    $a=warehouse_account(warehouse_session_location());
+    $a=warehouse_current_account(warehouse_session_location());
     return (warehouse_definitions()[warehouse_session_location()]['active']??false)&&$a['enabled']&&!empty($_SESSION['warehouse_version'])&&hash_equals($a['version'],$_SESSION['warehouse_version']);
 }
 function warehouse_required(): void {
@@ -259,13 +270,13 @@ function warehouse_get(string $action): never {
     // Erenhot's 备货中 / 已发货 tabs list GB batches, so they count batches.
     if(warehouse_role($location)==='erenhot')foreach(db()->query('SELECT data FROM shipment_batches') as $r){$b=json_decode($r['data'],true);if(!is_array($b)||!warehouse_batch_visible($b,$location))continue;if(in_array($b['status'],['draft','ready'],true))$counts['packed_batches']++;elseif($b['status']==='dispatched')$counts['shipped_batches']++;}
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_schedule_refresh'))inbound_schedule_refresh();
-    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
+    json_out(['orders'=>array_slice($rows,0,50),'more'=>count($rows)>50,'total'=>$matched,'counts'=>$counts,...(warehouse_role($location)==='ulaanbaatar'?['overview'=>$overview]:[]),'location'=>$location,'email'=>warehouse_current_account($location)['email'],'csrf'=>$_SESSION['csrf']]);
 }
 function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-login'){
         $location=warehouse_location($b);
         limit_attempts('warehouse-login:'.$location.':'.($_SERVER['REMOTE_ADDR']??''),8,900);
-        $email=strtolower(str_field($b,'email',200));$password=$b['password']??'';$a=warehouse_account($location);
+        $email=strtolower(str_field($b,'email',200));$password=$b['password']??'';$a=warehouse_account_by_email($location,$email);
         if(!is_string($password)||strlen($password)>500)fail('Имэйл эсвэл нууц үг буруу байна.',401);
         if(!warehouse_definitions()[$location]['active']||!$a['enabled']||$a['password_hash']===''||!hash_equals($a['email'],$email)||!password_verify($password,$a['password_hash']))fail('Имэйл эсвэл нууц үг буруу байна.',401);
         session_regenerate_id(true);$_SESSION['warehouse_version']=$a['version'];$_SESSION['warehouse_location']=$location;$_SESSION['csrf']=bin2hex(random_bytes(32));warehouse_device_issue();
@@ -303,7 +314,7 @@ function warehouse_post(string $action,array $b): never {
         if($o['status']!==$expected)fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
         if(warehouse_order_public($o,$location)['next_status']!==$status)fail('Энэ захиалгыг сонгосон төлөвт шилжүүлэх боломжгүй.',409);
         logistics_receipt_photo_required($o,$location);
-        $o['history'][]=['status'=>$status,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_account($location)['email']];
+        $o['history'][]=['status'=>$status,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_current_account($location)['email']];
         $o['status']=$status;save_order($o);$db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     json_out(['order'=>warehouse_order_public($o,$location)]);

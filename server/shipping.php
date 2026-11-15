@@ -61,6 +61,7 @@ function warehouse_profile_save(array $b,bool $withinTransaction=false): array {
             foreach(db()->query('SELECT data FROM orders') as $row){$o=json_decode($row['data'],true);if(warehouse_order_location($o,$d['role'])===$location&&!in_array($o['status'],['completed','cancelled'],true))fail('Дуусаагүй захиалгатай агуулахыг идэвхгүй болгохгүй.',409);}
             // Rotate sessions even if the warehouse is later reactivated.
             $a=warehouse_account($location);$a['version']=bin2hex(random_bytes(16));db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute([warehouse_account_key($location),json_encode($a,JSON_THROW_ON_ERROR)]);
+            warehouse_managers_revoke($location);
         }
         db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['warehouse_definition_'.$location,json_encode($d,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
     }

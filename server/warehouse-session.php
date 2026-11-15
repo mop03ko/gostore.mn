@@ -39,7 +39,7 @@ function warehouse_device_resume(): void {
     warehouse_device_schema();$hash=hash('sha256',$token);
     $s=db()->prepare('SELECT * FROM warehouse_login_devices WHERE token_hash=?');$s->execute([$hash]);$device=$s->fetch();$s->closeCursor();
     $definition=$device?(warehouse_definitions()[$device['location']]??null):null;
-    $account=$definition?warehouse_account($device['location']):null;
+    $account=$definition?warehouse_account_by_version($device['location'],$device['account_version']):null;
     if(!$device||$device['expires']<=time()||empty($definition['active'])||empty($account['enabled'])||!hash_equals($account['version'],$device['account_version'])){
         warehouse_device_forget();
         unset($_SESSION['warehouse_version'],$_SESSION['warehouse_location']);
