@@ -11,6 +11,7 @@ if(preg_match('#^/warehouse/(?:ub|ulaanbaatar)/?$#',$path)&&($_GET['demo']??'')=
 if($path==='/warehouse/review-demo.js')return false;
 if($path==='/admin/warehouse-managers.js')return false;
 if($path==='/admin/customer-security.js')return false;
+if($path==='/admin/reviews.css')return false;
 if(in_array($path,['/warehouse/ub-dashboard.js','/warehouse/ub-dashboard.css'],true))return false;
 if(preg_match('#^/warehouse/(ub|erlian|erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$#',$path)){header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/../warehouse/index.html');return true;}
 // Product pages go through the link-preview script, as .htaccess does in production.

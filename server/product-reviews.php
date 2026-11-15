@@ -87,8 +87,34 @@ function reviews_post(string $action,array $b): array {
 }
 function reviews_admin(): array {
     admin_required();reviews_schema();$page=review_number($_GET+['page'=>1],'page',1,10000);
-    $s=db()->query('SELECT r.*,c.name,(SELECT count(*) FROM product_review_reports t WHERE t.review=r.id) reports FROM product_reviews r JOIN customers c ON c.id=r.customer ORDER BY reports DESC,r.created DESC,r.id DESC LIMIT 21 OFFSET '.(($page-1)*20));$rows=$s->fetchAll();$more=count($rows)>20;
-    return ['reviews'=>array_map(function($r){$s=db()->prepare('SELECT reason FROM product_review_reports WHERE review=? ORDER BY created DESC LIMIT 10');$s->execute([$r['id']]);return review_public($r,null)+['title'=>$r['title'],'reports'=>(int)$r['reports'],'reasons'=>$s->fetchAll(PDO::FETCH_COLUMN)];},array_slice($rows,0,20)),'more'=>$more];
+    $view=str_field($_GET,'view',20,false)?:'reviews';
+    $status=str_field($_GET,'status',20,false);$q=str_field($_GET,'q',100,false);
+    if(!in_array($view,['reviews','products'],true)||!in_array($status,['','visible','hidden','reported'],true))fail('Шүүлтүүр буруу.');
+    $where=['1=1'];$args=[];
+    if(!empty($_GET['product'])){$where[]='r.product=?';$args[]=reviews_product($_GET);}
+    if($q!==''){
+        // Treat SQL wildcard characters as literal search text.
+        $term='%'.strtr($q,['\\'=>'\\\\','%'=>'\\%','_'=>'\\_']).'%';
+        $where[]="(r.title LIKE ? ESCAPE '\\' OR r.product LIKE ? ESCAPE '\\')";$args[]=$term;$args[]=$term;
+    }
+    if($status==='reported')$where[]='EXISTS(SELECT 1 FROM product_review_reports t WHERE t.review=r.id)';
+    elseif($status!==''){$where[]='r.status=?';$args[]=$status;}
+    $from=' FROM product_reviews r JOIN customers c ON c.id=r.customer WHERE '.implode(' AND ',$where);
+    $s=db()->prepare('SELECT COUNT(*) reviews,COUNT(DISTINCT r.product) products'.$from);$s->execute($args);$counts=$s->fetch();
+    $total=(int)$counts[$view];$pages=max(1,(int)ceil($total/20));$page=min($page,$pages);
+    $paging=' LIMIT 20 OFFSET '.(($page-1)*20);
+    if($view==='products'){
+        $s=db()->prepare("SELECT r.product,MAX(r.title) title,COUNT(*) total,ROUND(AVG(r.rating),1) average,
+            SUM(CASE WHEN r.status='visible' THEN 1 ELSE 0 END) visible,
+            SUM(CASE WHEN r.status='hidden' THEN 1 ELSE 0 END) hidden,
+            SUM(CASE WHEN EXISTS(SELECT 1 FROM product_review_reports t WHERE t.review=r.id) THEN 1 ELSE 0 END) reported,
+            MAX(r.created) latest".$from.' GROUP BY r.product ORDER BY latest DESC,r.product ASC'.$paging);
+        $s->execute($args);$rows=array_map(function($r){foreach(['total','visible','hidden','reported'] as $key)$r[$key]=(int)$r[$key];$r['average']=(float)$r['average'];return $r;},$s->fetchAll());
+    }else{
+        $s=db()->prepare('SELECT r.*,c.name,(SELECT count(*) FROM product_review_reports t WHERE t.review=r.id) reports'.$from.' ORDER BY reports DESC,r.created DESC,r.id DESC'.$paging);$s->execute($args);
+        $rows=array_map(function($r){$s=db()->prepare('SELECT reason FROM product_review_reports WHERE review=? ORDER BY created DESC LIMIT 10');$s->execute([$r['id']]);return review_public($r,null)+['title'=>$r['title'],'reports'=>(int)$r['reports'],'reasons'=>$s->fetchAll(PDO::FETCH_COLUMN)];},$s->fetchAll());
+    }
+    return [$view=>$rows,'total'=>$total,'page'=>$page,'pages'=>$pages,'more'=>$page<$pages,'counts'=>['reviews'=>(int)$counts['reviews'],'products'=>(int)$counts['products']]];
 }
 function reviews_moderate(array $b): array {
     admin_required();reviews_schema();$id=str_field($b,'id',32);$status=str_field($b,'status',10);if(!in_array($status,['visible','hidden'],true))fail('Төлөв буруу.');

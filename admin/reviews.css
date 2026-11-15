@@ -1,0 +1,39 @@
+/* Product review inbox: keeps long supplier titles inside the admin viewport. */
+#admin-reviews { min-width: 0; }
+.admin-review-tools, .admin-review-detail, .admin-review-product { padding: 24px; }
+.admin-review-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+#admin-reviews h2, #admin-reviews h3 { margin: 0 0 8px; overflow-wrap: anywhere; }
+#admin-reviews h3 { font-size: 16px; line-height: 1.5; }
+#admin-reviews a { color: #263464; overflow-wrap: anywhere; }
+.admin-review-heading > div, .admin-review-product > div { min-width: 0; }
+.admin-review-heading .tag { flex-shrink: 0; }
+.admin-review-tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 20px; }
+.admin-review-tabs [aria-pressed="true"] { background: #fff0e8; color: #ad390e; border-color: #ff621e; }
+#admin-review-filter { display: flex; gap: 12px; flex-wrap: wrap; }
+#admin-review-filter input { flex: 1 1 220px; min-width: 0; width: auto; }
+#admin-review-filter select { width: auto; flex: 0 1 200px; }
+.admin-review-product { display: grid; grid-template-columns: minmax(0,1fr) minmax(160px,220px) auto; align-items: center; gap: 24px; border-top: 1px solid #e5e9f2; }
+.admin-review-metrics { display: flex; flex-direction: column; gap: 5px; }
+.admin-review-metrics strong { color: #ad390e; }
+.admin-review-metrics small { color: #66718b; line-height: 1.5; }
+.admin-review-detail { border-top: 1px solid #e5e9f2; }
+.admin-review-comment, .admin-review-report { overflow-wrap: anywhere; white-space: pre-wrap; }
+.admin-review-report { background: #fff5ed; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+.admin-review-report ul { margin-bottom: 0; padding-left: 20px; }
+.admin-review-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.admin-review-photos img { width: 90px; height: 90px; object-fit: cover; border-radius: 10px; }
+.admin-review-pagination { flex-wrap: wrap; gap: 8px; }
+#admin-reviews[aria-busy="true"] .admin-review-results { opacity: .55; pointer-events: none; }
+#admin-reviews button:disabled { opacity: .45; cursor: default; }
+@media(max-width:1100px) {
+ .admin-review-product { grid-template-columns: minmax(0,1fr) auto; gap: 16px; }
+ .admin-review-product > div:first-child { grid-column: 1 / -1; }
+}
+@media(max-width:600px) {
+ .admin-review-tools, .admin-review-detail, .admin-review-product { padding: 16px; }
+ .admin-review-heading { flex-wrap: wrap; }
+ .admin-review-product { grid-template-columns: minmax(0,1fr); }
+ .admin-review-product > button { justify-self: start; }
+ #admin-review-filter select { flex: 1 1 100%; width: 100%; }
+ .admin-review-pagination { padding: 16px; font-size: 13px; }
+}
