@@ -3,7 +3,7 @@
 Хятад хэлтэй агуулахын панелийг Android дээр нээдэг, шууд APK файлаар суулгах тусдаа апп. Google Play эсвэл бусад дэлгүүрт нийтлэхгүй. Хэрэглэгчийн `gostoremn/` Expo апптай тусдаа package, signing key ашиглана.
 
 - Package: `mn.gostore.warehouse`
-- Version: `1.3.0` / versionCode `4`
+- Version: `1.3.1` / versionCode `5`
 - Android 8.0+ (API 26), target API 35
 - Үндсэн хуудас: `https://gostore.mn/warehouse/?location=erenhot`
 - Нэвтрэх эрх: админд үүсгэсэн одоогийн агуулахын менежерийн эрх
@@ -21,7 +21,7 @@ QR унших нь багцыг нээнэ; хүлээн авсан эсвэл �
 
 `INSTALL.txt`-ийн зааврыг APK-тай хамт менежерт өгнө. Бүтээсэн файл:
 
-`D:\Gostore.mn\output\android\GOStore-Erenhot-1.3.0.apk`
+`D:\Gostore.mn\output\android\GOStore-Erenhot-1.3.1.apk`
 
 APK-д серверийн нууц түлхүүр, менежерийн нууц үг, signing key ороогүй. Firebase-ийн нийтэд зориулсан Android client тохиргоо багтана. Серверийн session, CSRF болон эрхийн шалгалтууд хэвээр үйлчилнэ. WebView зөвхөн `gostore.mn` эх үүсвэрийн нөөц ашиглана; native push Firebase-тэй HTTPS-ээр холбогдоно. Бусад HTTPS холбоосыг хэрэглэгч дарсан үед гаднах браузерт нээнэ. TLS алдааг алгасахгүй, native JavaScript interface ашиглахгүй. Аппын өгөгдлийг Android backup-д оруулахгүй.
 
@@ -32,6 +32,10 @@ APK-д серверийн нууц түлхүүр, менежерийн нууц
 FCM зөвхөн сэрээх дохио дамжуулна; апп захиалгын кодыг GOStore-оос агуулахын эрхээр авна. Мэдэгдэл дарахад тухайн захиалга нээгдэнэ. Logout болон менежерийн эрх цуцлагдахад төхөөрөмжийн эрх хүчингүй болно. Серверийн холболт, автомат тестүүд шалгагдсан; бодит утас дээрх хүлээн авалтыг суулгасны дараа туршина.
 
 ## Дахин build хийх
+
+### 1.3.1 app icon
+
+New shared warehouse icon with Android adaptive and monochrome variants. Signed with the existing release key; versionCode 5 installs over earlier versions without uninstalling.
 
 ### 1.3.0 native QR / barcode
 
@@ -61,7 +65,7 @@ Build нь JDK 17, Android platform 35, build-tools 35.0.0, Gradle 8.11.1 аши
 | `platform/` | [Android platform 35 r02](https://dl.google.com/android/repository/platform-35_r02.zip) | SHA1 `0bb560a90a7a2cbd0dd8348224d518b638fe7949` |
 | `build-tools/` | [Android build-tools 35](https://dl.google.com/android/repository/build-tools_r35_windows.zip) | SHA1 `af059bb67cf7786f45ee0db85e2d24985df1b4b6` |
 
-Build нь URL-ийн Java тест, Robolectric push тест, Android lint, compile, alignment, signing болон signature verification ажиллуулж, `output/android/` дотор APK, SHA256, суулгах заавар гаргана. Gradle build/cache файлууд Git-д орохгүй. Icon нь одоогийн `assets/favicon.svg`-ээс хөрвүүлсэн GOStore тэмдэг.
+Build нь URL-ийн Java тест, Robolectric push тест, Android lint, compile, alignment, signing болон signature verification ажиллуулж, `output/android/` дотор APK, SHA256, суулгах заавар гаргана. Gradle build/cache файлууд Git-д орохгүй. Icon нь УБ болон Эрээний агуулахын нийтлэг ногоон цэнхэр тэмдэг; Android adaptive болон monochrome хувилбартай.
 
 Өмнөх хувилбарын `signing/warehouse-release.p12`, `signing/keystore-password.txt` файлууд шаардлагатай. Энэ хавтасны ACL тухайн Windows хэрэглэгчээр хязгаарлагдсан. **Хоёр файлыг хамгаалалттай газар нөөцөлж хадгал.** Шинэ APK-г хуучин апп дээр update байдлаар суулгахын тулд ижил key заавал хэрэгтэй. Эдгээрийг Git, APK, татах хавтас эсвэл менежер рүү явуулахгүй.
 

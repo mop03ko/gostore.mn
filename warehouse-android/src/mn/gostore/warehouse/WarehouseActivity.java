@@ -66,7 +66,7 @@ public final class WarehouseActivity extends androidx.activity.ComponentActivity
         WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setGeolocationEnabled(false);settings.setMediaPlaybackRequiresUserGesture(false);settings.setSupportMultipleWindows(false);
-        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.3.0");
+        settings.setUserAgentString(settings.getUserAgentString()+" GOStoreWarehouse/1.3.1");
         CookieManager.getInstance().setAcceptCookie(true);CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         WebView.setWebContentsDebuggingEnabled(false);
         web.setWebViewClient(new WebViewClient(){
