@@ -4,7 +4,7 @@ declare(strict_types=1);
 const ADMIN_CUSTOMERS_PAGE=50;
 
 function admin_customer_rows(?string $id=null): array {
-    $sql='SELECT c.id,c.email,c.name,c.phone,c.address,c.created,c.updated,p.phone AS login_phone,
+    $sql='SELECT c.id,c.email,c.name,c.phone,c.address,c.created,c.updated,c.auth_version,p.phone AS login_phone,
         (SELECT COUNT(*) FROM customer_orders co WHERE co.customer_id=c.id) AS orders,
         (SELECT MAX(co.created) FROM customer_orders co WHERE co.customer_id=c.id) AS last_order
         FROM customers c LEFT JOIN customer_phone_auth p ON p.customer_id=c.id';
@@ -49,6 +49,7 @@ function admin_customer_record(string $id): array {
 }
 function admin_customer_detail(string $id): array {
     $row=admin_customer_record($id);$customer=admin_customer_item($row);
+    if(admin_role_at_least('owner'))$customer['credential_version']=(int)$row['auth_version'];
     $s=db()->prepare('SELECT label,recipient,phone,address,is_default FROM customer_addresses WHERE customer_id=? ORDER BY is_default DESC,created DESC,rowid DESC');$s->execute([$id]);
     $addresses=array_map(fn($a)=>['label'=>$a['label'],'recipient'=>$a['recipient'],'phone'=>$a['phone'],'address'=>$a['address'],'is_default'=>(bool)$a['is_default']],$s->fetchAll());
     // Accounts from before the address book keep their only address on the profile row.
@@ -62,6 +63,7 @@ function admin_customer_detail(string $id): array {
     return ['customer'=>$customer,'addresses'=>$addresses,'orders'=>$orders];
 }
 function admin_customer_save(array $b): array {
+    if(($b['operation']??'')==='reset-credential')return admin_customer_reset_credential($b);
     $id=str_field($b,'id',64);$name=str_field($b,'name',100);$phone=customer_phone($b);
     if(preg_match('/[\x00-\x1F\x7F]/u',$name))fail('Нэрийг нэг мөрөнд бичнэ үү.');
     $expected=$b['expected']??null;if(!is_array($expected))fail('Хэрэглэгчийг дахин нээж засна уу.');
@@ -84,6 +86,37 @@ function admin_customer_save(array $b): array {
         if($name!==$row['name']||$email!==$row['email']||$phone!==$row['phone']){
             try{$db->prepare('UPDATE customers SET name=?,email=?,phone=?,updated=? WHERE id=?')->execute([$name,$email,$phone,gmdate('c'),$id]);}
             catch(PDOException $e){if((string)$e->getCode()==='23000')fail('Энэ имэйл өөр бүртгэлд ашиглагдаж байна.',409);throw $e;}
+        }
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    return admin_customer_detail($id);
+}
+
+function admin_customer_reset_credential(array $b): array {
+    admin_required();
+    if(!admin_role_at_least('owner'))fail('Нууц үг сэргээх эрх зөвхөн үндсэн админд байна.',403);
+    $id=str_field($b,'id',64);$kind=str_field($b,'kind',16);
+    if(!in_array($kind,['password','pin'],true))fail('Нэвтрэх аргаа сонгоно уу.');
+    $version=int_field($b,'expected_version',1,PHP_INT_MAX);
+    $expectedLogin=str_field($b,'expected_login',200);
+    $secret=$kind==='pin'?pin_auth_value(['pin'=>$b['new_password']??null]):customer_password($b,'new_password',true);
+    if(($b['password_confirm']??null)!==$secret)fail('Нууц үг / PIN давталт таарахгүй байна.');
+    limit_attempts('admin-customer-reset:'.admin_current()['id'],30,3600);
+    $hash=password_hash($kind==='pin'?pin_auth_digest($secret):$secret,PASSWORD_BCRYPT,['cost'=>12]);
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $row=admin_customer_record($id);$c=admin_customer_item($row);
+        if($c['login']==='deleted')fail('Устгагдсан бүртгэлийн нууц үгийг сэргээхгүй.',409);
+        $login=$kind==='pin'?$c['login_phone']:$c['email'];
+        if($login==='')fail('Энэ хэрэглэгчид сонгосон нэвтрэх арга байхгүй.',409);
+        if((int)$row['auth_version']!==$version||$login!==$expectedLogin)fail('Нэвтрэх мэдээлэл өөрчлөгдсөн байна. Хэрэглэгчийг дахин нээнэ үү.',409);
+        if($kind==='pin'){
+            $db->prepare('UPDATE customer_phone_auth SET pin_hash=? WHERE customer_id=?')->execute([$hash,$id]);
+            foreach(['pin-phone:','pin-day:'] as $prefix)$db->prepare('DELETE FROM limits WHERE key=?')->execute([hash('sha256',$prefix.$login)]);
+            $db->prepare('UPDATE customers SET auth_version=auth_version+1,updated=? WHERE id=?')->execute([gmdate('c'),$id]);
+        }else{
+            $db->prepare('UPDATE customers SET password_hash=?,auth_version=auth_version+1,updated=? WHERE id=?')->execute([$hash,gmdate('c'),$id]);
+            $db->prepare('DELETE FROM limits WHERE key=?')->execute([hash('sha256','customer-login-email:'.$login)]);
         }
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}

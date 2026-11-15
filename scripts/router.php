@@ -10,6 +10,7 @@ if($path==='/admin/taoworld.js'||in_array($path,['/self-cargo.html','/self-cargo
 if(preg_match('#^/warehouse/ulaanbaatar/?$#',$path)&&($_GET['demo']??'')==='1'){require __DIR__.'/../warehouse/review-demo.php';return true;}
 if($path==='/warehouse/review-demo.js')return false;
 if($path==='/admin/warehouse-managers.js')return false;
+if($path==='/admin/customer-security.js')return false;
 if(in_array($path,['/warehouse/ub-dashboard.js','/warehouse/ub-dashboard.css'],true))return false;
 if(preg_match('#^/warehouse/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$#',$path)){header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/../warehouse/index.html');return true;}
 // Product pages go through the link-preview script, as .htaccess does in production.
