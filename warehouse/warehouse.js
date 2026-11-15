@@ -2,8 +2,9 @@
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let locale='zh',city='erenhot',csrf='',records=[],tab='orders',status='all',query='',month='',offset=0,sequence=0,currentBatch=null,toastTimer;
 let warehouseDirectory=[{location:'erenhot',role:'erenhot',name:'Эрээн агуулах'},{location:'ulaanbaatar',role:'ulaanbaatar',name:'Улаанбаатар агуулах'}];
-const entryMatch=location.pathname.match(/^\/warehouse\/(erenhot|ulaanbaatar|wh-[a-f0-9]{12})\/?$/);
-const fixedWarehouse=entryMatch?.[1]||'';
+const entryMatch=location.pathname.match(/^\/warehouse\/(ub|erlian|erenhot|ulaanbaatar|wh-[a-f0-9]{12})\/?$/);
+const entryAlias=entryMatch?.[1]||'';
+const fixedWarehouse=({ub:'ulaanbaatar',erlian:'erenhot'})[entryAlias]||entryAlias;
 const requestedCity=fixedWarehouse||new URLSearchParams(location.search).get('location');
 let entrySessionMismatch=false;
 function updateWarehouseEntry(){

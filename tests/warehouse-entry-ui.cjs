@@ -16,7 +16,13 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   async function visit(path){await page.goto(base+path);await page.waitForFunction(()=>document.querySelector('#login-location').options.length===3);}
   async function login(location){await page.locator('[name=email]').fill(location+'@example.test');await page.locator('[name=password]').fill('Warehouse-ui-test-2026');await page.locator('#login-form button[type=submit]').click();await page.locator('#app').waitFor({state:'visible'});}
   await visit('/warehouse/');assert.ok(await page.locator('#login-location').isVisible());assert.equal(await page.locator('#warehouse-entry').isVisible(),false);
-  await visit('/warehouse/erenhot/?location=ulaanbaatar');assert.equal(await page.locator('#login-location').isVisible(),false);assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
+  await visit('/warehouse/erlian?location=ulaanbaatar');assert.equal(await page.locator('#login-location').isVisible(),false);assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
+  // The Erlian link cannot authenticate a Ulaanbaatar manager.
+  await page.locator('[name=email]').fill('ulaanbaatar@example.test');
+  await page.locator('[name=password]').fill('Warehouse-ui-test-2026');
+  await page.locator('#login-form button[type=submit]').click();
+  await page.waitForFunction(()=>document.querySelector('#login-error').textContent.length>0);
+  assert.equal(await page.locator('#app').isVisible(),false);
   // Manipulating the hidden selector cannot change the entry's warehouse.
   await page.evaluate(()=>document.querySelector('#login-location').value='ulaanbaatar');
   const request=page.waitForRequest(r=>r.url().includes('action=warehouse-login'));
@@ -30,7 +36,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   const changed=await context.request.post(base+'/api/index.php?action=warehouse-login',{headers:{'X-CSRF-Token':session.csrf},data:{location:'ulaanbaatar',email:'ulaanbaatar@example.test',password:'Warehouse-ui-test-2026'}});assert.ok(changed.ok());
   await page.evaluate(()=>refresh());await page.locator('#editor').waitFor({state:'hidden'});assert.equal(await page.locator('#records').innerText(),'');assert.equal(await page.evaluate(()=>window.warehouseAuthState),false);
   await page.locator('#warehouse-entry-switch').click();await page.waitForFunction(()=>!document.querySelector('#login-form button[type=submit]').disabled);await login('erenhot');
-  await visit('/warehouse/ulaanbaatar/');assert.ok(await page.locator('#login-screen').isVisible());assert.equal(await page.locator('#app').isVisible(),false);assert.ok(await page.locator('#warehouse-entry-switch').isVisible());assert.ok(await page.locator('#login-form button[type=submit]').isDisabled());
+  await visit('/warehouse/ub/');assert.ok(await page.locator('#login-screen').isVisible());assert.equal(await page.locator('#app').isVisible(),false);assert.ok(await page.locator('#warehouse-entry-switch').isVisible());assert.ok(await page.locator('#login-form button[type=submit]').isDisabled());
   await page.locator('#warehouse-entry-switch').click();await page.waitForFunction(()=>!document.querySelector('#login-form button[type=submit]').disabled);
   await login('ulaanbaatar');assert.equal(await page.locator('html').getAttribute('lang'),'mn');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'mobile dashboard fits');
@@ -41,6 +47,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   await visit('/warehouse/wh-000000000000/');assert.ok(await page.locator('#login-form button[type=submit]').isDisabled());assert.match(await page.locator('#warehouse-entry-name').innerText(),/олдсонгүй/);
   await visit('/warehouse/ulaanbaatar');assert.equal(await page.locator('html').getAttribute('lang'),'mn');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'mobile login fits');
   assert.ok(await page.locator('.login-brand img').evaluate(e=>e.complete&&e.naturalWidth>0),'deep-link assets load');
+  for(const [path,lang] of [['/warehouse/erlian/','zh-CN'],['/warehouse/erenhot/','zh-CN'],['/warehouse/ub?location=erenhot','mn'],['/warehouse/ulaanbaatar/','mn']]){
+    await visit(path);assert.equal(await page.locator('html').getAttribute('lang'),lang);
+    assert.equal(await page.locator('#login-location').isVisible(),false);
+  }
   await page.screenshot({path:'tmp/warehouse-entry-mobile.png',fullPage:true});
   assert.deepEqual(errors,[]);console.log('Warehouse entry links: fixed/general/branch/session mismatch/assets/mobile passed');
  } finally {await browser.close();}

@@ -5,10 +5,14 @@
 | URL | Entry behavior |
 | --- | --- |
 | `https://gostore.mn/warehouse/` | Choose an active warehouse before signing in. |
-| `https://gostore.mn/warehouse/erenhot/` | Fixed Erenhot warehouse; Chinese interface. |
-| `https://gostore.mn/warehouse/ulaanbaatar/` | Fixed Ulaanbaatar warehouse; Mongolian interface. |
+| `https://gostore.mn/warehouse/erlian` | Fixed Erenhot warehouse; Chinese interface. |
+| `https://gostore.mn/warehouse/ub` | Fixed Ulaanbaatar warehouse; Mongolian interface. |
 | `https://gostore.mn/warehouse/wh-<12 lowercase hex characters>/` | Fixed additional warehouse created by the administrator. |
 | `https://gostore.mn/admin/` | Existing administrator login. |
+
+Legacy `/warehouse/erenhot/` and `/warehouse/ulaanbaatar/` URLs remain supported,
+including existing native apps. The short links map to the same server warehouse
+IDs and accounts; they do not create new warehouses or grant new permissions.
 
 Admin → Агуулахууд links directly to each warehouse. Existing query links
 (`/warehouse/?location=...`) still preselect the warehouse in the general selector.
