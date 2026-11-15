@@ -12,6 +12,33 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   await page.locator('#app').waitFor({state:'visible'});
   assert.equal(await page.locator('#records .order-card').count(),6);
   assert.ok(await page.locator('#demo-banner').isVisible());
+  await page.locator('body.ub-dashboard').waitFor();
+  await page.evaluate(()=>language('erenhot'));
+  await page.waitForFunction(()=>!document.body.classList.contains('ub-dashboard'));
+  assert.ok(await page.locator('.ub-workbench').isHidden());
+  assert.equal(await page.locator('.warehouse-tabs #handover-open').count(),1);
+  await page.evaluate(()=>language('ulaanbaatar'));
+  await page.locator('body.ub-dashboard').waitFor();
+  // Primary work stays reachable on phones/tablets, and shortcuts use the real filters.
+  for(const width of [320,390,768,1032,1440]){
+    await page.setViewportSize({width,height:1000});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No dashboard overflow at '+width);
+    for(const selector of ['[data-ub-shortcut="scan"]','[data-ub-shortcut="sort"]','#handover-open','#delivery-open']){
+      assert.ok(await page.locator('.ub-workbench '+selector).isVisible(),selector);
+      const box=await page.locator(selector).boundingBox();assert.ok(box.height>=44,'Touch target '+selector);
+    }
+  }
+  await page.locator('[data-ub-shortcut="scan"]').click();
+  assert.equal(await page.locator('#scan-code').evaluate(e=>e===document.activeElement),true);
+  await page.locator('[data-ub-shortcut="sort"]').click();
+  await page.waitForFunction(()=>document.querySelector('#status-filter').value==='pending_sort');
+  await page.locator('#status-filter').selectOption('all');
+  await page.waitForFunction(()=>document.querySelectorAll('#records .order-card').length===6);
+  const fs=require('node:fs');fs.mkdirSync('output/warehouse-dashboard',{recursive:true});
+  for(const width of [390,1440]){
+    await page.setViewportSize({width,height:1000});await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:'output/warehouse-dashboard/ub-'+width+'.png',fullPage:true});
+  }
   // The shared admin sidebar CSS must not make the demo banner sticky/full-height.
   for(const viewport of [{width:390,height:844},{width:1032,height:1376}]){
     await page.setViewportSize(viewport);
@@ -45,7 +72,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   assert.equal(await page.evaluate(()=>new Promise(resolve=>{const x=new XMLHttpRequest();x.open('POST','/api/index.php?action=warehouse-shelf');x.onerror=()=>resolve(true);x.onload=()=>resolve(false);x.send('{}');})),true);
   assert.match((await failure).failure().errorText,/CSP|ERR_FAILED|BLOCKED/i);assert.deepEqual(errors,[]);
   await page.locator('#demo-banner a').click();await page.locator('#login-screen').waitFor({state:'visible'});
-  assert.ok(await page.locator('#warehouse-demo-link').isVisible());
+  await page.locator('#warehouse-demo-link').waitFor({state:'visible'});
   assert.equal(await page.evaluate(()=>!!window.GOStoreWarehouseDemo),false);
   console.log('Warehouse demo: receipt photo, batch scan/receive, sort, completion, reset and network isolation passed');
  }finally{await browser.close();}
