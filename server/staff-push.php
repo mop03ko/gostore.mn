@@ -121,7 +121,8 @@ function staff_push_drain(int $limit=20,?callable $http=null,int $budget=20): in
                 if((int)$d['test_at']>0&&(int)$d['test_at']<=time()){
                     [$status,$r]=$http('send',['to'=>$d['token'],'title'=>$d['variant']==='admin'?'GOStore Admin':'GOStore УБ агуулах','body'=>'Туршилтын мэдэгдэл. Дуу болон түгжээтэй дэлгэцийн тохиргоогоо шалгана уу.','sound'=>'default','priority'=>'high','ttl'=>600,'data'=>['screen'=>'orders','variant'=>$d['variant']]]);
                     $t=$r['data']??[];
-                    if($status===200&&($t['status']??'')==='ok'){
+                    if($status===200&&($t['status']??'')==='ok'&&is_string($t['id']??null)&&strlen($t['id'])<=200){
+                        db()->prepare('INSERT INTO staff_push_receipts(ticket,token,variant,owner,version,from_cursor,to_cursor,created,next_attempt) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$t['id'],$d['token'],$d['variant'],$d['owner'],$d['version'],$d['cursor'],$d['cursor'],time(),time()+900]);
                         db()->prepare('UPDATE staff_push_devices SET test_at=0 WHERE token=?')->execute([$d['token']]);$sent++;
                     }elseif(($t['details']['error']??'')==='DeviceNotRegistered')db()->prepare('DELETE FROM staff_push_devices WHERE token=?')->execute([$d['token']]);
                     else{staff_push_retry($d,$t['details']['error']??'test_http_'.$status);db()->prepare('UPDATE staff_push_devices SET test_at=next_attempt WHERE token=?')->execute([$d['token']]);}
