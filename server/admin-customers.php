@@ -98,7 +98,10 @@ function admin_customer_reset_credential(array $b): array {
     $id=str_field($b,'id',64);$kind=str_field($b,'kind',16);
     if(!in_array($kind,['password','pin'],true))fail('Нэвтрэх аргаа сонгоно уу.');
     $version=int_field($b,'expected_version',1,PHP_INT_MAX);
-    $expectedLogin=str_field($b,'expected_login',200);
+    $expectedLogin=str_field($b,'expected_login',200,false);
+    $enablePin=$kind==='pin'&&($b['enable_pin']??'')==='1';
+    $newPhone=$enablePin?verify_mn_phone(str_field($b,'phone',30)):'';
+    if($enablePin&&($b['confirm_phone_owner']??'')!=='1')fail('Утасны дугаар энэ хэрэглэгчийнх болохыг батална уу.');
     $secret=$kind==='pin'?pin_auth_value(['pin'=>$b['new_password']??null]):customer_password($b,'new_password',true);
     if(($b['password_confirm']??null)!==$secret)fail('Нууц үг / PIN давталт таарахгүй байна.');
     limit_attempts('admin-customer-reset:'.admin_current()['id'],30,3600);
@@ -108,8 +111,17 @@ function admin_customer_reset_credential(array $b): array {
         $row=admin_customer_record($id);$c=admin_customer_item($row);
         if($c['login']==='deleted')fail('Устгагдсан бүртгэлийн нууц үгийг сэргээхгүй.',409);
         $login=$kind==='pin'?$c['login_phone']:$c['email'];
-        if($login==='')fail('Энэ хэрэглэгчид сонгосон нэвтрэх арга байхгүй.',409);
+        if($login===''&&!$enablePin)fail('Энэ хэрэглэгчид сонгосон нэвтрэх арга байхгүй.',409);
         if((int)$row['auth_version']!==$version||$login!==$expectedLogin)fail('Нэвтрэх мэдээлэл өөрчлөгдсөн байна. Хэрэглэгчийг дахин нээнэ үү.',409);
+        if($enablePin){
+            if($login!==''||($b['expected_phone']??null)!==$c['phone'])fail('Утасны мэдээлэл өөрчлөгдсөн байна. Хэрэглэгчийг дахин нээнэ үү.',409);
+            $q=$db->prepare('SELECT customer_id FROM customer_phone_auth WHERE phone=?');$q->execute([$newPhone]);
+            if($q->fetchColumn()!==false)fail('Энэ утас өөр хэрэглэгчийн нэвтрэх дугаар байна.',409);
+            // Owner-attested enrollment, not SMS verification. Keep verified_at empty.
+            $db->prepare('INSERT INTO customer_phone_auth (phone,customer_id,pin_hash,verified_at) VALUES (?,?,?,?)')->execute([$newPhone,$id,$hash,'']);
+            $db->prepare('UPDATE customers SET phone=? WHERE id=?')->execute([$newPhone,$id]);
+            $login=$newPhone;
+        }
         if($kind==='pin'){
             $db->prepare('UPDATE customer_phone_auth SET pin_hash=? WHERE customer_id=?')->execute([$hash,$id]);
             foreach(['pin-phone:','pin-day:'] as $prefix)$db->prepare('DELETE FROM limits WHERE key=?')->execute([hash('sha256',$prefix.$login)]);

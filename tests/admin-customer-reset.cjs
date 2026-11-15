@@ -30,6 +30,21 @@ function client(mobile=false){const jar=new Map();let csrf='',token='';return as
  assert.equal((await owner('admin-customer-save',pinReset)).status,200);assert.equal((await pinClient('customer-me')).customer,null);
  assert.equal((await pinClient('customer-pin-login',{phone:'99112233',pin:'0123'})).status,401);assert.equal((await pinClient('customer-pin-login',{phone:'99112233',pin:'9876'})).status,200);
  const unavailable=await make('pin-fixture','password','Unavailable-password-2026');assert.equal((await owner('admin-customer-save',{...unavailable,expected_login:'not-real@example.test'})).status,409);
+ const enrollment={...await make(id,'pin','4567'),enable_pin:'1',phone:'+976 9988-7766',expected_phone:'',confirm_phone_owner:'1'};
+ assert.equal((await op('admin-customer-save',enrollment)).status,403);
+ assert.equal((await user('admin-customer-save',enrollment)).status,403);
+ assert.equal((await owner('admin-customer-save',enrollment,true)).status,403);
+ assert.equal((await owner('admin-customer-save',{...enrollment,confirm_phone_owner:''})).status,400);
+ assert.equal((await owner('admin-customer-save',{...enrollment,phone:'123'})).status,400);
+ assert.equal((await owner('admin-customer-save',{...enrollment,phone:'99112233'})).status,409,'Never take another customer login phone');
+ assert.equal((await owner('admin-customer-save',{...enrollment,expected_phone:'stale'})).status,409);
+ assert.equal((await owner('admin-customer-save',{...enrollment,enable_pin:''})).status,409,'Enrollment must be explicit');
+ r=await owner('admin-customer-save',enrollment);assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.customer.login,'both');assert.equal(r.customer.login_phone,'99887766');
+ assert.equal((await user('customer-me')).customer,null);
+ assert.equal((await owner('admin-customer-save',enrollment)).status,409);
+ assert.equal((await user('customer-pin-login',{phone:'99887766',pin:'4567'})).customer.id,id);
+ assert.equal((await mobile('customer-pin-login',{phone:'99887766',pin:'4567'})).customer.id,id);
+ assert.equal((await user('customer-login',{...login,password:reset.new_password})).status,200,'Email login stays available');
  const audit=await owner('admin-audit');assert.ok(audit.rows.some(a=>a.target===id&&a.detail.includes('reset-credential')));assert.ok(!JSON.stringify(audit).includes(reset.new_password));assert.ok(!JSON.stringify(audit).includes('9876'));
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try{
@@ -40,6 +55,16 @@ function client(mobile=false){const jar=new Map();let csrf='',token='';return as
    await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('#editor').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
    await f.locator('button').click();await page.waitForFunction(()=>document.querySelector('[data-customer-reset] [name=new_password]')?.value==='');
    assert.equal((await user('customer-login',{...login,password:'UI-reset-password-2026'})).status,200);
+   // Enroll a separate email-only customer through the mobile admin form.
+   const otherId=(await other('customer-me')).customer.id;
+   await page.evaluate(async target=>customerEditor(await api('admin-customer&id='+target)),otherId);
+   await page.locator('.customer-security summary').click();
+   const enrollForm=page.locator('[data-customer-reset][data-kind=pin]');
+   await enrollForm.locator('[name=phone]').fill('99887755');await enrollForm.locator('[name=confirm_phone_owner]').check();
+   await enrollForm.locator('[name=new_password]').fill('7654');await enrollForm.locator('[name=password_confirm]').fill('7654');
+   assert.ok(await page.locator('#editor').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
+   await enrollForm.locator('button').click();await page.waitForFunction(()=>!document.querySelector('[name=enable_pin]'));
+   assert.equal((await other('customer-pin-login',{phone:'99887755',pin:'7654'})).customer.id,otherId);
    assert.deepEqual(errors,[]);
  }finally{await browser.close();}
  assert.equal((await user('customer-delete',{password:'UI-reset-password-2026',confirmation:'DELETE'})).status,200);

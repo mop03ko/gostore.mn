@@ -265,3 +265,5 @@ nav button b.nav-badge{background:#f16522}nav button b[hidden]{display:none}
 }
 /* Desktop rows: tag and waiting time on one line, smaller row button (phones keep 44 px targets). */
 @media(min-width:1101px){.orders-table .order-track-trigger{display:inline-flex;min-height:30px;vertical-align:middle}.orders-table .order-age{display:inline-block;margin:0 0 0 6px;vertical-align:middle}.orders-table .order-action .quiet{min-height:34px;padding:6px 10px}}
+
+.customer-security .customer-phone-confirm{display:flex;align-items:center;gap:10px;margin:14px 0}.customer-security .customer-phone-confirm input{width:20px;height:20px;min-height:20px;flex:0 0 20px}
