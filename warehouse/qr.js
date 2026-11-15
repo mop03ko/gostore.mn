@@ -17,7 +17,7 @@ function nativeScanMessage(type,extra={}){
 }
 let nativeScanBusy=false;
 window.warehouseNativeScan=async (value,session=0)=>{
-  if(nativeScanBusy)return;nativeScanBusy=true;
+  if(nativeScanBusy){nativeScanMessage('result',{session,keepOpen:$('#qr-scanner').open,status:cityRole()==='erenhot'?'正在处理上一条，请稍候再扫描':'Өмнөх кодыг боловсруулж байна. Түр хүлээгээд дахин уншуулна уу.'});return;}nativeScanBusy=true;
   try{
     if(!$('#qr-scanner').open||$('#app').hidden){nativeScanMessage('result',{session,keepOpen:false});return;}
     const done=await acceptBatchQr(value);

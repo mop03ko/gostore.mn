@@ -39,3 +39,20 @@ navigation tests and production JS bundle export. No physical phone camera was
 connected: poor-light, glare, crumpled/small-label recognition speed and real autofocus
 must still be compared on the managers' devices. We do not claim WeChat-equivalent
 recognition based on automated tests.
+
+Android release: https://gostore.mn/downloads/warehouse-1.3.0/GOStore-Erenhot-1.3.0.apk
+
+SHA256: `9c244223c896005c64cb81f2300ccf14acee18b98ecc251339c2300109136d30`.
+The release keeps the previous signing certificate. Public APK, checksum and
+bilingual install guide bytes were verified. Android navigation tests, 14 unit
+tests and lint passed (0 errors); lint has existing/resource/style warnings.
+
+Live scanner web files were backed up and hash-verified at
+`/gostore-backups/warehouse-scanner-final-20261115-9655d14ec3`.
+The retry acknowledgment also allows a freshly reopened native scanner to resume
+when an older web lookup is still completing.
+
+EAS rejected the iOS build because the Free plan monthly iOS quota is exhausted.
+The existing Mac runner workflow was adapted for the staff warehouse bundle,
+with separate temporary signing secret and strict bundle/version verification.
+iOS 1.0.1 (4) run: https://github.com/mop03ko/gostore.mn/actions/runs/43710711605

@@ -16,6 +16,11 @@ module.exports=async function checkNativeScanner(page){
  assert.equal(await page.evaluate(()=>window.nativeReceived.length),1,'Executable QR content must be rejected');
  await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-002',7));
  assert.equal(await page.evaluate(()=>window.nativeReceived.length),2,'Next parcel is scanned without closing camera');
+ await page.evaluate(()=>{window.warehouseScanTargets=[()=>id=>new Promise(resolve=>{window.finishNativeScan=resolve;})];window.pendingNativeScan=window.warehouseNativeScan('GS-SLOW-001',7);});
+ await page.evaluate(()=>window.warehouseNativeScan('GS-NEXT-001',8));
+ assert.equal(await page.evaluate(()=>window.nativeMessages.at(-1).session),8,'A new scanner must receive a retry acknowledgement while an older lookup finishes');
+ assert.equal(await page.evaluate(()=>window.nativeMessages.at(-1).keepOpen),true);
+ await page.evaluate(async()=>{window.finishNativeScan('OK');await window.pendingNativeScan;});
  await page.locator('#qr-close').click();
  await page.waitForFunction(()=>window.nativeMessages.at(-1).type==='scan-close');
  await page.evaluate(()=>window.warehouseNativeScan('GS-NATIVE-003',7));
