@@ -17,6 +17,7 @@ module.exports = () => {
     ios: {
       bundleIdentifier: v.bundleIdentifier,
       supportsTablet: true,
+      entitlements: { "aps-environment": "production" },
       buildNumber: process.env.BUILD_NUMBER || "1",
       ...(process.env.GOSTORE_PROFILE_UUID ? {appleTeamId:"8P6PVVWKUB"} : {}),
       infoPlist: {
@@ -28,6 +29,8 @@ module.exports = () => {
       },
     },
     plugins: [
+      ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
+      "expo-secure-store",
       ...(process.env.GOSTORE_PROFILE_UUID ? ["../scripts/ios-mac-signing.cjs"] : []),
       [
         "expo-camera",

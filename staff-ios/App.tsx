@@ -22,6 +22,7 @@ import {
   WebViewMessageEvent,
   WebViewNavigation,
 } from "react-native-webview";
+import { useStaffPush } from "./lib/useStaffPush";
 import { bridge } from "./lib/bridge";
 const policy = require("./lib/navigation.cjs");
 const config = Constants.expoConfig?.extra;
@@ -52,6 +53,12 @@ function StaffApp() {
     [zoom, setZoom] = useState(0),
     [qrOnly, setQrOnly] = useState(false),
     [scanStatus, setScanStatus] = useState("Кодыг камерт харуулна уу");
+  const push=useStaffPush(variant,authenticated,js=>{
+    if(policy.panel(lastUrl.current,variant))web.current?.injectJavaScript(js);
+  },()=>{
+    if(variant==='admin')navigate('orders');
+    else web.current?.reload();
+  });
   const [permission, requestPermission] = useCameraPermissions();
   useEffect(() => {
     void setAudioModeAsync({playsInSilentMode:false,shouldPlayInBackground:false}).catch(()=>{});
@@ -137,6 +144,7 @@ function StaffApp() {
     if (!policy.panel(event.nativeEvent.url, variant)) return;
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      if(push.message(data))return;
       if (data.type === "state" && typeof data.authenticated === "boolean") {
         setAuthenticated(data.authenticated);
         if(!data.authenticated)closeScanner();
@@ -199,6 +207,9 @@ function StaffApp() {
           <Text style={s.title}>{config?.title}</Text>
           <Text style={s.subtitle}>{config?.subtitle}</Text>
         </View>
+        <Pressable accessibilityLabel={"Мэдэгдэл: "+push.status} style={s.action} onPress={push.show} disabled={push.busy}>
+          <Text style={{fontSize:13,color:'#262263',fontWeight:'700'}}>{push.busy?'…':'Мэдэгдэл'}</Text>
+        </Pressable>
         <Pressable
           accessibilityLabel="Хуудсыг шинэчлэх"
           style={s.action}

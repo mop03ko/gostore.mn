@@ -57,6 +57,8 @@ def prepare():
         raise ValueError('Wrong app provisioning profile')
     if profile['Entitlements'].get('get-task-allow') or profile.get('ProvisionedDevices'):
         raise ValueError('An App Store distribution profile is required')
+    if APP_DIR == 'staff-ios' and profile['Entitlements'].get('aps-environment') != 'production':
+        raise ValueError('Staff profile requires production APNs entitlement')
     uuid = profile['UUID']
     (TEMP / 'profile-uuid').write_text(uuid)
     for directory in PROFILE_DIRS:
@@ -90,6 +92,13 @@ def verify():
         if len(paths) != 1:
             raise ValueError('Expected one main app')
         info = plistlib.loads(archive.read(paths[0]))
+        if APP_DIR == 'staff-ios':
+            embedded = TEMP / 'verify.mobileprovision'
+            embedded.write_bytes(archive.read(paths[0].replace('Info.plist', 'embedded.mobileprovision')))
+            checked = plistlib.loads(subprocess.check_output(['security', 'cms', '-D', '-i', str(embedded)]))
+            if checked['Entitlements'].get('aps-environment') != 'production':
+                raise ValueError('Exported staff IPA missing APNs production entitlement')
+            embedded.unlink()
         version = (os.environ['BUILD_VERSION'] if APP_DIR == 'staff-ios' else
                    json.loads((ROOT / 'gostoremn/app.json').read_text())['expo']['version'])
         expected = {'CFBundleIdentifier': BUNDLE_ID,

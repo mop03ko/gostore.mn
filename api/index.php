@@ -175,7 +175,7 @@ try {
     if($action==='shipping-save'){admin_required();json_out(['shipping'=>shipping_save($b)]);}
     if (str_starts_with($action,'customer-')) customer_post($action,$b);
     if ($action==='login') json_out(admin_login($b));
-    if ($action==='logout') { if(admin_authenticated())admin_audit_write('logout','',''); $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
+    if ($action==='logout') { require_once __DIR__.'/../server/staff-push.php';staff_push_revoke_session(); if(admin_authenticated())admin_audit_write('logout','',''); $_SESSION=[]; session_destroy(); json_out(['ok'=>true]); }
     if ($action==='order-create') {
         if(($b['type']??'')==='link')fail('Линкээр захиалах үйлчилгээ зогссон. Каталогоос бараагаа сонгоно уу.',410);
         if(($b['require_account']??false)===true||($b['type']??'')==='checkout')customer_required();

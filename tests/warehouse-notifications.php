@@ -11,7 +11,9 @@ db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$o['id'],'tok
 save_order($o);check(count(warehouse_notice_list('erenhot')['notifications'])===0,'Unconfirmed order must not notify');
 $keys=warehouse_push_keys();check($keys===warehouse_push_keys(),'VAPID key persists');check(strlen(base64_decode(strtr($keys['public'],'-_','+/')))===65,'Uncompressed P-256 public key');
 foreach(['http://fcm.googleapis.com/x','https://fcm.googleapis.com.evil.test/x','https://127.0.0.1/x','https://user@fcm.googleapis.com/x','https://fcm.googleapis.com:8443/x','https://web.push.apple.com/x#fragment'] as $endpoint)denied(fn()=>warehouse_push_endpoint($endpoint),'Unsafe endpoint accepted');
+$_SESSION['warehouse_location']='erenhot';$_SESSION['warehouse_version']='v1';
 $device=warehouse_push_subscribe(['endpoint'=>'https://fcm.googleapis.com/fcm/send/test','public_key'=>$keys['public']],'erenhot');
+$_SESSION['warehouse_location']='ulaanbaatar';$_SESSION['warehouse_version']='v1';
 $ub=warehouse_push_subscribe(['endpoint'=>'https://updates.push.services.mozilla.com/wpush/v2/test','public_key'=>$keys['public']],'ulaanbaatar');
 check(!isset($device['private']),'Private key not exposed');
 $o['status']='confirmed';save_order($o);save_order($o);
