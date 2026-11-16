@@ -13,3 +13,14 @@ Run `scripts/checkout-expiry-worker.php` every minute with the production PHP CL
 Validation: `tests/qpay-flow.php`, `tests/qpay.php`, `tests/checkout.php`, `tests/checkout-freshness.php`, `tests/checkout-expiry-lock.php`, and `tests/payment-countdown.cjs`. All payment fixtures use fake transport and isolated SQLite; no real charges are created.
 
 QPay reference: https://developer.qpay.mn/mn/docs/merchant?version=2.0.0
+
+## Release — 2026-11-16
+
+Production PHP and web bundle deployed with file/database backups. The every-minute cron was verified running (`checkout_expiry_worker_last` advanced independently). The worker URL is blocked from public HTTP access. Payment flow, quote freshness, freight balance regression, SQLite compatibility, web checkout/countdown, mobile TypeScript and lint checks passed; iOS/Android bundles exported successfully.
+
+Expo updates were published to production and preview. Delivery requires a compatible installed native runtime; device receipt has not been manually confirmed:
+
+| Platform | Runtime | Production group | Preview group |
+| --- | --- | --- | --- |
+| iOS | `a8dd376b5cdfd560a1feff8949377a4204ebaa5f` | `4957b6ad-12ca-496a-82ab-1d5791ac0afd` | `b68bd038-2084-4c6b-9ce5-7613738a7432` |
+| Android | `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` | `b52d2e81-f7bf-41fb-9363-3be3a691ad2a` | `fa006c1a-06b4-486e-8be6-aca45f13e1b5` |
