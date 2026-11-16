@@ -1,5 +1,7 @@
 # verify.mn phone verification
 
+**RETIRED 2026-11-16.** This document is historical. GOStore now exclusively uses [SendSMS.mn](sendsms.md). Do not enable this provider or follow the configuration instructions below. The transport and credential loader are disabled; the old normalizer remains solely for account-module compatibility.
+
 The website profile has an optional **Утас баталгаажуулах** action. `window.verifyPhone(phone): Promise<boolean>` opens an accessible SMS dialog and resolves true only when the backend has independently read `sessionStatus === VERIFIED` from verify.mn. Cancel, expiry, invalid response, and failure return false. Pending/transient status requests retry every approximately 3 seconds until the five-minute deadline. The user must send the SMS; opening the SMS app alone is not confirmation.
 
 ## Configuration

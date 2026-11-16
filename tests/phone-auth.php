@@ -6,12 +6,13 @@ ini_set('session.use_cookies','0');session_start();$_SERVER['REMOTE_ADDR']='127.
 function check(bool $ok,string $message):void{if(!$ok)throw new RuntimeException($message);}
 function error(callable $call,int $status):void{try{$call();}catch(ApiError $e){check($e->getCode()===$status,'Wrong status: '.$e->getCode());return;}throw new RuntimeException('Expected HTTP '.$status);}
 function proof(string $phone,string $purpose):array{
- $challenge=bin2hex(random_bytes(24));$_SESSION['phone_verification']=['challenge'=>$challenge,'phone'=>$phone,'status'=>'VERIFIED','expires'=>time()+300,'purpose'=>$purpose,'customer'=>$_SESSION['customer_id']??null,'auth_version'=>$_SESSION['customer_version']??null];
+ $challenge=bin2hex(random_bytes(24));$_SESSION['phone_verification']=['provider'=>'sendsms','challenge'=>$challenge,'phone'=>$phone,'status'=>'VERIFIED','expires'=>time()+300,'purpose'=>$purpose,'customer'=>$_SESSION['customer_id']??null,'auth_version'=>$_SESSION['customer_version']??null];
  $_SESSION['phone_verified']=['phone'=>$phone,'customer'=>$_SESSION['customer_id']??null,'verified_at'=>gmdate('c')];
  return ['phone'=>$phone,'purpose'=>$purpose,'challenge'=>$challenge,'name'=>'Тест','pin'=>'0123','pin_confirm'=>'0123'];
 }
 $_SESSION=[];$b=proof('99112233','register');unset($_SESSION['phone_verified']);error(fn()=>pin_auth_setup($b),403);
 $b=proof('99112233','register');$_SESSION['phone_verification']['status']='PENDING';error(fn()=>pin_auth_setup($b),403);
+$b=proof('99112233','register');unset($_SESSION['phone_verification']['provider']);error(fn()=>pin_auth_setup($b),403);
 $b=proof('99112233','register');$_SESSION['phone_verification']['expires']=time()-1;error(fn()=>pin_auth_setup($b),403);
 $b=proof('99112233','verify');$b['purpose']='register';error(fn()=>pin_auth_setup($b),403);
 $b=proof('99112233','register');$b['phone']='88112233';error(fn()=>pin_auth_setup($b),403);

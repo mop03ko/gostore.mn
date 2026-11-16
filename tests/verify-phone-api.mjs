@@ -5,5 +5,6 @@ const cookie=config.headers.get('set-cookie').split(';')[0];
 const request=(action,body,csrf)=>fetch(base+'/api/index.php?action='+action,{method:'POST',headers:{Cookie:cookie,'Content-Type':'application/json',...(csrf?{'X-CSRF-Token':csrf}:{})},body:JSON.stringify(body)});
 assert.equal((await request('phone-verification-start',{phone:'99112233'})).status,403);
 assert.equal((await request('phone-verification-status',{challenge:'0'.repeat(48)},data.csrf)).status,404);
-assert.equal((await request('phone-verification-start',{phone:'99112233'},data.csrf)).status,503,'Isolated test cannot call provider');
+assert.equal((await request('phone-verification-start',{phone:'99112233'},data.csrf)).status,426,'Old clients must update, no provider call');
+assert.equal((await request('phone-verification-start',{phone:'99112233',delivery:'otp'},data.csrf)).status,503,'Unavailable SendSMS never falls back');
 console.log('PASS verify.mn API routing, CSRF, opaque session ownership and network isolation.');

@@ -11,12 +11,12 @@
     const dialog=document.createElement('dialog');
     dialog.className='phone-verification-dialog';
     dialog.setAttribute('aria-labelledby','phone-verification-title');
-    dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><div data-sms hidden><p>Илгээх дугаар: <strong>144773</strong></p><p>SMS текст: <strong data-text></strong></p><a class="button blue" data-sms-link>SMS нээх</a><p>Энэ дугаартай SIM-ээс SMS-ээ өөрөө илгээнэ үү. Операторын SMS төлбөр үйлчилж болно.</p><p>Баталгаажуулахын тулд утасны дугаар verify.mn үйлчилгээнд дамжина.</p></div><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
+    dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
     document.body.append(dialog);dialog.showModal();
     const otpForm=document.createElement('form');otpForm.hidden=true;otpForm.innerHTML='<label class="field">6 оронтой SMS код<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="button blue" type="submit">Код баталгаажуулах</button><p>Код 5 минут хүчинтэй. Кодоо бусдад бүү дамжуулаарай.</p>';dialog.querySelector('[data-status]').before(otpForm);
-    let done=false,timer,clock,deadline=Date.now()+300000,challenge,verifiedPhone='';
+    let done=false,clock,deadline=Date.now()+300000,challenge,verifiedPhone='';
     const status=dialog.querySelector('[data-status]');
-    const end=value=>{if(done)return;done=true;clearTimeout(timer);clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
+    const end=value=>{if(done)return;done=true;clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
     const cancel=()=>end(false);
     dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
     dialog.addEventListener('close',cancel);
@@ -26,18 +26,6 @@
       if(Date.now()>=deadline){window.toast?.('Баталгаажуулах хугацаа дууслаа. Дахин оролдоно уу.');end(false);return;}
       dialog.querySelector('[data-time]').textContent=challenge?'Үлдсэн хугацаа: '+Math.ceil((deadline-Date.now())/1000)+' сек':'';
     },250);
-    const poll=async()=>{
-      if(done)return;
-      try{
-        const r=await shopApi('phone-verification-status',{challenge});
-        if(done)return;
-        if(Date.now()>=deadline||r.sessionStatus==='EXPIRED'){end(false);return;}
-        if(r.sessionStatus==='VERIFIED'){end({challenge,phone:verifiedPhone});return;}
-        if(r.sessionStatus!=='PENDING'){end(false);return;}
-        status.textContent='Таны SMS-ийг хүлээж байна…';
-      }catch{if(done)return;status.textContent='Холболтыг дахин шалгаж байна…';}
-      if(!done)timer=setTimeout(poll,3000);
-    };
     otpForm.addEventListener('submit',async e=>{
       e.preventDefault();if(done)return;
       const button=otpForm.querySelector('button'),code=otpForm.elements.code.value;button.disabled=true;
@@ -54,22 +42,14 @@
         const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
         if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
         if(done)return;
-        const r=await shopApi('phone-verification-start',{phone,purpose,...(config.sms_otp_enabled?{delivery:'otp'}:{})});
+        const r=await shopApi('phone-verification-start',{phone,purpose,delivery:'otp'});
         if(done)return;
-        if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||(r.delivery!=='otp'&&!/^sms:144773\?body=/.test(r.smsUri)))throw Error('Баталгаажуулалт эхэлсэнгүй.');
+        if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||r.delivery!=='otp')throw Error('Баталгаажуулалт эхэлсэнгүй.');
         challenge=r.challenge;verifiedPhone=r.phone;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
         dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
         dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
-        if(r.delivery==='otp'){
-          otpForm.hidden=false;otpForm.elements.code.focus();
-          status.textContent=r.deliveryUncertain?'Илгээлтийн хариу хүлээгдэж байна. Код ирвэл оруулна уу.':'Таны утсанд ирэх кодыг оруулна уу. Утасны дугаарыг SendSMS.mn-д дамжуулна.';
-          return;
-        }
-        dialog.querySelector('[data-text]').textContent=r.text;
-        dialog.querySelector('[data-sms-link]').href=r.smsUri;
-        dialog.querySelector('[data-sms]').hidden=false;
-        status.textContent='SMS нээгээд илгээх товчийг дарна уу.';
-        timer=setTimeout(poll,3000);
+        otpForm.hidden=false;otpForm.elements.code.focus();
+        status.textContent=r.deliveryUncertain?'Илгээлтийн хариу хүлээгдэж байна. Код ирвэл оруулна уу.':'Таны утсанд ирэх кодыг оруулна уу. Утасны дугаарыг SendSMS.mn-д дамжуулна.';
       }catch(e){if(!done){window.toast?.(e.message||'Баталгаажуулалт эхэлсэнгүй.');end(false);}}
     })();
     return promise;

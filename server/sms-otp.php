@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/sendsms.php';
+function sms_verification_start(array $b): array {
+    // Old MO clients have no code-entry screen: reject before any billable SMS.
+    if(($b['delivery']??'')!=='otp')fail('Аппаа шинэчилнэ үү. Вэб ашиглаж байгаа бол хуудсаа дахин ачаалаад SMS код авна уу.',426);
+    return sms_otp_start($b);
+}
 function sms_otp_start(array $b): array {
     if(!sendsms_enabled('otp'))fail('SMS код илгээх үйлчилгээ түр боломжгүй.',503);
     $purpose=$b['purpose']??'verify';if(!in_array($purpose,['verify','register','reset','link'],true))fail('Баталгаажуулалтын төрөл буруу.');

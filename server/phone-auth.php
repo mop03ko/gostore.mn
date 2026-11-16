@@ -41,7 +41,7 @@ function pin_auth_setup(array $b): array {
     $purpose=str_field($b,'purpose',16);$challenge=str_field($b,'challenge',48);
     $signed=current_customer();
     $proof=$_SESSION['phone_verified']??null;$s=$_SESSION['phone_verification']??null;
-    if(!in_array($purpose,['register','reset','link'],true)||!$proof||!$s||$s['status']!=='VERIFIED'||$s['expires']<=time()||$s['phone']!==$phone||($s['purpose']??'verify')!==$purpose||!hash_equals($s['challenge'],$challenge)||$proof['phone']!==$phone||$proof['customer']!==($_SESSION['customer_id']??null)||($s['auth_version']??null)!==($_SESSION['customer_version']??null))fail('Энэ утсаа SMS-ээр дахин баталгаажуулна уу.',403);
+    if(!in_array($purpose,['register','reset','link'],true)||!$proof||!$s||($s['provider']??'')!=='sendsms'||$s['status']!=='VERIFIED'||$s['expires']<=time()||$s['phone']!==$phone||($s['purpose']??'verify')!==$purpose||!hash_equals($s['challenge'],$challenge)||$proof['phone']!==$phone||$proof['customer']!==($_SESSION['customer_id']??null)||($s['auth_version']??null)!==($_SESSION['customer_version']??null))fail('Энэ утсаа SMS-ээр дахин баталгаажуулна уу.',403);
     if($purpose==='link'&&!$signed)fail('Өмнөх бүртгэлээрээ нэвтэрнэ үү.',401);
     if($purpose==='register'&&$signed)fail('Нэвтэрсэн бүртгэлийнхээ утсыг холбоно уу.',409);
     $hash=password_hash(pin_auth_digest($pin),PASSWORD_BCRYPT,['cost'=>12]);$now=gmdate('c');$db=db();$db->exec('BEGIN IMMEDIATE');

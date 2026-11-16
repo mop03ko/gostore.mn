@@ -1,6 +1,6 @@
 # SendSMS.mn: verification and order notices
 
-The customer receives a six-digit SMS code for phone verification / PIN reset. The login PIN remains four digits. Current web/Expo clients request `delivery: otp`; old clients retain the verify.mn mobile-originated flow. Codes expire after five minutes and allow five guesses; only a correct code creates the session-bound proof used by PIN setup. Resetting the PIN revokes previous logins.
+The customer receives a six-digit SMS code for phone verification / PIN reset. The login PIN remains four digits. SendSMS.mn is the sole provider; there is no verify.mn fallback. Web/Expo clients request `delivery: otp`; older clients without a code-entry screen receive HTTP 426 with an update/reload instruction before any billable SMS. Codes expire after five minutes and allow five guesses; only a correct SendSMS code creates the session-bound proof used by PIN setup. Resetting the PIN revokes previous logins.
 
 Order notices are queued when payment first becomes confirmed and when the order becomes `ready_pickup`. Pickup notices use the assigned warehouse's city (including dynamically created branches). No historical notifications are backfilled. Cancellation and promotional messages are not enabled.
 
@@ -47,3 +47,7 @@ Expo updates published from `92e0c5e` (no new native build required):
 | preview | Android | 12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1 | d44f1d70-053e-444a-96ea-151a784bcac3 |
 
 Only compatible installed runtimes receive these updates. Publication does not confirm installation on individual devices or delivery of a real SMS; the latter still needs a user handset check.
+
+### Permanent provider change
+
+2026-11-16: verify.mn retired at the user's request. Its transport is disabled even if an old environment key exists. Existing account modules retain a compatibility phone-normalization helper only; it performs no provider calls. Old verify.mn proofs cannot set/reset a PIN. Existing logins and PINs remain valid. The unused native `expo-sms` package is retained for runtime compatibility but no longer imported or invoked by verification UI.
