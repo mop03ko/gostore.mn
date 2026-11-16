@@ -7,6 +7,8 @@ require __DIR__.'/../server/customers.php';
 require __DIR__.'/../server/admin-customers.php';
 require __DIR__.'/../server/verify-mn-http.php';
 require __DIR__.'/../server/verify-mn.php';
+require_once __DIR__.'/../server/sms-otp.php';
+require_once __DIR__.'/../server/sms-orders.php';
 require_once __DIR__.'/../server/product-reviews.php';
 require __DIR__.'/../server/customer-state.php';
 require __DIR__.'/../server/shipping.php';
@@ -79,7 +81,7 @@ try {
     // Unpaid instant checkouts are released lazily (at most every five minutes).
     if(in_array($action,['catalog','customer-orders','dashboard'],true))checkout_expire_due_deferrable();
     if ($method==='GET') {
-        if($action==='phone-verification-config')json_out(['enabled'=>verify_mn_environment()!=='','csrf'=>$_SESSION['csrf']]);
+        if($action==='phone-verification-config')json_out(['enabled'=>verify_mn_environment()!==''||sendsms_enabled('otp'),'sms_otp_enabled'=>sendsms_enabled('otp'),'csrf'=>$_SESSION['csrf']]);
         if($warehouseAction)warehouse_get($action);
         if($action==='product-reviews')json_out(reviews_get());
         if($action==='review-photo')review_photo();
@@ -135,8 +137,8 @@ try {
     if($action==='customer-pin-login')json_out(pin_auth_login($b));
     if($action==='customer-pin-setup')json_out(pin_auth_setup($b));
     if($action==='customer-pin-change')json_out(pin_auth_change($b));
-    if($action==='phone-verification-start')json_out(verify_mn_start($b));
-    if($action==='phone-verification-status')json_out(verify_mn_status($b));
+    if($action==='phone-verification-start')json_out(($b['delivery']??'')==='otp'&&sendsms_enabled('otp')?sms_otp_start($b):verify_mn_start($b));
+    if($action==='phone-verification-status')json_out(($_SESSION['phone_verification']['provider']??'')==='sendsms'?sms_otp_status($b):verify_mn_status($b));
     if(in_array($action,['review-delete','review-report','review-block','review-unblock-all'],true))json_out(reviews_post($action,$b));
     if($action==='review-moderate')json_out(reviews_moderate($b));
     if(in_array($action,TW_AFTERSALE_ACTIONS,true))tw_aftersale_post($action,$b);

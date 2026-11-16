@@ -10,6 +10,7 @@ const retry=fn=>{for(let i=0;;i++){try{return fn();}catch(e){if(e.code!=='EBUSY'
 const age=(dir,id,seconds)=>{const file=path.join(data,dir,'sess_'+id);let s=retry(()=>fs.readFileSync(file,'utf8'));assert.match(s,/last\|i:\d+;/);s=s.replace(/last\|i:\d+;/,'last|i:'+(Math.floor(Date.now()/1000)-seconds)+';');retry(()=>fs.writeFileSync(file,s));};
 (async()=>{seedPinCustomer();const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await context.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
  const ready=()=>page.waitForFunction(()=>window.customerAccount&&typeof shopApi==='function');
  const heading=()=>page.locator('#auth-view h1').innerText();
  const homeVisible=()=>page.locator('#home-hub').isVisible();

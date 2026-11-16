@@ -10,6 +10,8 @@ for(const file of files){const result=spawnSync(file.endsWith('.php')?php:node,f
 console.log('Syntax checked '+files.length+' PHP/JavaScript files.');
 run(node,['scripts/bundle.cjs','--check'],'bundle-current');
 run(node,['tests/verify-phone-ui.cjs'],'verify-phone-ui');
+run(node,['tests/sms-otp-ui.cjs'],'sms-otp-ui');
+for(const test of ['sendsms','sms-otp'])run(php,[...phpArgs,'tests/'+test+'.php'],test);
 run(node,['tests/warehouse-preference.cjs'],'warehouse-preference');
 run(node,['tests/run-logistics.cjs','warehouse-preference-ui'],'warehouse-preference-ui');
 run(node,['tests/expo-push.cjs'],'expo-push');

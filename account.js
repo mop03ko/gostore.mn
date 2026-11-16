@@ -15,14 +15,14 @@ customerAccount.refresh=async()=>{const result=await shopApi('customer-me');cust
 const accountField=(label,name,value='',extra='')=>`<label class="field">${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
 const passwordField=(label,name,autocomplete)=>accountField(label,name,'',`type="password" autocomplete="${autocomplete}" minlength="${name==='current_password'?1:10}" maxlength="72" required`);
 // Sign-in works as in the app: phone + 4-digit PIN. New accounts and forgotten PINs verify the phone by
-// SMS (verify.mn) and then set a PIN; older e-mail accounts can still sign in with e-mail and password.
+// SMS verification and then set a PIN; older e-mail accounts can still sign in with e-mail and password.
 const pinField=(label,name,autocomplete,required=true)=>accountField(label,name,'',`type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="${autocomplete}"${required?' required':''}`);
 const phoneField=(value='')=>accountField('Утасны дугаар','phone',value,'type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required');
 const accountError='<p class="form-error" data-account-error role="alert"></p>';
 // Registration (register), forgotten PIN (reset) and adding a phone to an e-mail account (link): the
 // phone is verified by SMS first, then the PIN fields appear.
 function pinSetupForm(purpose,phone=''){
-  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаарыг verify.mn-д дамжуулж баталгаажуулна. Та 144773 дугаарт SMS илгээнэ. Операторын SMS төлбөр үйлчилж болно.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
+  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаараа SMS-ээр баталгаажуулаад нэвтрэх 4 оронтой PIN үүсгэнэ. Баталгаажуулах код болон PIN-ээ бусдад бүү дамжуулаарай.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
 }
 // Sign-in, registration, PIN reset, e-mail sign-in and phone linking are pages (/login, /register,
 // /login/reset, /login/email, /login/link) drawn in place over the current page, so the page underneath

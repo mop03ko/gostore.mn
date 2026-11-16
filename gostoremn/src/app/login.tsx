@@ -20,7 +20,7 @@ export default function Login(){
     setBusy(true);setError("");
     try{
       if(mode!=="login"&&step==="form"){
-        const r=await api<PhoneSession>("phone-verification-start",{phone,purpose:mode});
+        const r=await api<PhoneSession>("phone-verification-start",{phone,purpose:mode,delivery:"otp"});
         if(!r.challenge||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0)throw Error("SMS баталгаажуулалт эхэлсэнгүй.");
         setSession({...r,deadline:Date.now()+Math.min(300,r.remainingSeconds)*1000});setStep("sms");return;
       }
@@ -38,7 +38,7 @@ export default function Login(){
       </>:<Copy>{session?.phone} дугаар баталгаажлаа. Нэвтрэхдээ ашиглах PIN-ээ оруулна уу.</Copy>}
       {(mode==="login"||step==="pin")&&<Field label="4 оронтой PIN" value={pin} onChangeText={v=>setPin(digits(v))} secureTextEntry keyboardType="number-pad" maxLength={4} autoComplete="off"/>}
       {step==="pin"&&<Field label="PIN давтах" value={confirm} onChangeText={v=>setConfirm(digits(v))} secureTextEntry keyboardType="number-pad" maxLength={4} autoComplete="off"/>}
-      {mode!=="login"&&step==="form"&&<Copy>Утасны дугаарыг verify.mn-д дамжуулж баталгаажуулна. Та 144773 дугаарт SMS илгээнэ. Операторын SMS төлбөр үйлчилж болно.</Copy>}
+      {mode!=="login"&&step==="form"&&<Copy>Утасны дугаараа SMS-ээр баталгаажуулаад нэвтрэх 4 оронтой PIN үүсгэнэ. Баталгаажуулах код болон PIN-ээ бусдад бүү дамжуулаарай.</Copy>}
       <Button title={busy?"Түр хүлээнэ үү…":mode==="login"?"PIN-ээр нэвтрэх":step==="pin"?"PIN хадгалж нэвтрэх":"SMS-ээр баталгаажуулах"} disabled={busy||!phone||(mode==="register"&&!name.trim())||((mode==="login"||step==="pin")&&pin.length!==4)||(step==="pin"&&pin!==confirm)} onPress={()=>void submit()}/>
       {step==="pin"&&<Button title="SMS баталгаажуулалтыг дахин эхлүүлэх" secondary disabled={busy} onPress={()=>switchMode(mode)}/>}
     </Card>}

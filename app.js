@@ -563,6 +563,7 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
     dialog.setAttribute('aria-labelledby','phone-verification-title');
     dialog.innerHTML='<h2 id="phone-verification-title">Утас баталгаажуулах</h2><p data-instruction aria-live="polite">Түр хүлээнэ үү…</p><p data-phone></p><div data-sms hidden><p>Илгээх дугаар: <strong>144773</strong></p><p>SMS текст: <strong data-text></strong></p><a class="button blue" data-sms-link>SMS нээх</a><p>Энэ дугаартай SIM-ээс SMS-ээ өөрөө илгээнэ үү. Операторын SMS төлбөр үйлчилж болно.</p><p>Баталгаажуулахын тулд утасны дугаар verify.mn үйлчилгээнд дамжина.</p></div><p data-status role="status"></p><p data-time></p><button type="button" class="button outline" data-cancel>Болих</button>';
     document.body.append(dialog);dialog.showModal();
+    const otpForm=document.createElement('form');otpForm.hidden=true;otpForm.innerHTML='<label class="field">6 оронтой SMS код<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="button blue" type="submit">Код баталгаажуулах</button><p>Код 5 минут хүчинтэй. Кодоо бусдад бүү дамжуулаарай.</p>';dialog.querySelector('[data-status]').before(otpForm);
     let done=false,timer,clock,deadline=Date.now()+300000,challenge,verifiedPhone='';
     const status=dialog.querySelector('[data-status]');
     const end=value=>{if(done)return;done=true;clearTimeout(timer);clearInterval(clock);dialog.close();dialog.remove();active=null;window.removeEventListener('pagehide',cancel);finish(value);};
@@ -587,17 +588,33 @@ window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol
       }catch{if(done)return;status.textContent='Холболтыг дахин шалгаж байна…';}
       if(!done)timer=setTimeout(poll,3000);
     };
+    otpForm.addEventListener('submit',async e=>{
+      e.preventDefault();if(done)return;
+      const button=otpForm.querySelector('button'),code=otpForm.elements.code.value;button.disabled=true;
+      try{
+        const r=await shopApi('phone-verification-status',{challenge,code});if(done)return;
+        if(r.sessionStatus==='VERIFIED'&&Date.now()<deadline){end({challenge,phone:verifiedPhone});return;}
+        if(r.sessionStatus==='EXPIRED'){window.toast?.('Кодын хугацаа дууссан. Дахин код авна уу.');end(false);return;}
+        status.textContent='Кодыг шалгаж чадсангүй. Дахин оролдоно уу.';
+      }catch(e){if(!done)status.textContent=e.message||'Кодыг шалгаж чадсангүй.';}
+      finally{if(!done)button.disabled=false;}
+    });
     (async()=>{
       try{
         const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
         if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
         if(done)return;
-        const r=await shopApi('phone-verification-start',{phone,purpose});
+        const r=await shopApi('phone-verification-start',{phone,purpose,...(config.sms_otp_enabled?{delivery:'otp'}:{})});
         if(done)return;
-        if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||!/^sms:144773\?body=/.test(r.smsUri))throw Error('Баталгаажуулалт эхэлсэнгүй.');
+        if(typeof r.challenge!=='string'||!Number.isFinite(r.remainingSeconds)||r.remainingSeconds<=0||(r.delivery!=='otp'&&!/^sms:144773\?body=/.test(r.smsUri)))throw Error('Баталгаажуулалт эхэлсэнгүй.');
         challenge=r.challenge;verifiedPhone=r.phone;deadline=Date.now()+Math.min(300,r.remainingSeconds)*1000;
         dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
         dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
+        if(r.delivery==='otp'){
+          otpForm.hidden=false;otpForm.elements.code.focus();
+          status.textContent=r.deliveryUncertain?'Илгээлтийн хариу хүлээгдэж байна. Код ирвэл оруулна уу.':'Таны утсанд ирэх кодыг оруулна уу. Утасны дугаарыг SendSMS.mn-д дамжуулна.';
+          return;
+        }
         dialog.querySelector('[data-text]').textContent=r.text;
         dialog.querySelector('[data-sms-link]').href=r.smsUri;
         dialog.querySelector('[data-sms]').hidden=false;
@@ -637,14 +654,14 @@ customerAccount.refresh=async()=>{const result=await shopApi('customer-me');cust
 const accountField=(label,name,value='',extra='')=>`<label class="field">${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
 const passwordField=(label,name,autocomplete)=>accountField(label,name,'',`type="password" autocomplete="${autocomplete}" minlength="${name==='current_password'?1:10}" maxlength="72" required`);
 // Sign-in works as in the app: phone + 4-digit PIN. New accounts and forgotten PINs verify the phone by
-// SMS (verify.mn) and then set a PIN; older e-mail accounts can still sign in with e-mail and password.
+// SMS verification and then set a PIN; older e-mail accounts can still sign in with e-mail and password.
 const pinField=(label,name,autocomplete,required=true)=>accountField(label,name,'',`type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="${autocomplete}"${required?' required':''}`);
 const phoneField=(value='')=>accountField('Утасны дугаар','phone',value,'type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required');
 const accountError='<p class="form-error" data-account-error role="alert"></p>';
 // Registration (register), forgotten PIN (reset) and adding a phone to an e-mail account (link): the
 // phone is verified by SMS first, then the PIN fields appear.
 function pinSetupForm(purpose,phone=''){
-  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаарыг verify.mn-д дамжуулж баталгаажуулна. Та 144773 дугаарт SMS илгээнэ. Операторын SMS төлбөр үйлчилж болно.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
+  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаараа SMS-ээр баталгаажуулаад нэвтрэх 4 оронтой PIN үүсгэнэ. Баталгаажуулах код болон PIN-ээ бусдад бүү дамжуулаарай.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
 }
 // Sign-in, registration, PIN reset, e-mail sign-in and phone linking are pages (/login, /register,
 // /login/reset, /login/email, /login/link) drawn in place over the current page, so the page underneath

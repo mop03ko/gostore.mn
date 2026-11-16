@@ -191,6 +191,7 @@ function save_order(array $o): void {
     if(function_exists('logistics_notify'))logistics_notify($o,$old);
     if(function_exists('warehouse_notice_record'))warehouse_notice_record($o,$old);
     staff_push_record($o,$old);
+    if(function_exists('sms_order_event'))sms_order_event($o,$old);
     db()->exec('RELEASE SAVEPOINT save_order_write');
     }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT save_order_write');db()->exec('RELEASE SAVEPOINT save_order_write');throw $e;}
 }
