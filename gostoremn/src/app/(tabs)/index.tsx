@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
 import { HomeDiscovery, DiscoveryCard } from "@/components/discovery";
 import { catalog } from "@/lib/api";
+import { productSavings } from "@/lib/product-offers";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
@@ -49,6 +50,15 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     [retry, setRetry] = useState(0);
   const generation = useRef(0),
     list = useRef<FlatList<Product>>(null);
+  const [expiryTick, setExpiryTick] = useState(0);
+  useEffect(() => {
+    if (searchMode) return;
+    const expiry = Math.min(...items.map(p => p.card_discount?.expires ?? 0).filter(at => at * 1000 > Date.now()));
+    if (!Number.isFinite(expiry)) return;
+    const timer = setTimeout(() => setExpiryTick(x => x + 1), Math.max(20, Math.min(2147483647, expiry * 1000 - Date.now() + 20)));
+    return () => clearTimeout(timer);
+  }, [items, searchMode, expiryTick]);
+  const displayedItems = searchMode ? items : items.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale);
   useEffect(() => {
     const g = ++generation.current,
       controller = new AbortController();
@@ -66,8 +76,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     void (async () => {
       try {
         let r = await catalog<Results>(
-          "supplier-search",
-          params,
+          searchMode ? "supplier-search" : "supplier-deals",
+          searchMode ? params : { page },
           controller.signal,
         );
         if (g !== generation.current) return;
@@ -88,7 +98,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         );
         setMore(r.more);
         setStale(!!r.revalidate || !!r.stale);
-        if (r.revalidate && !image) {
+        if (searchMode && r.revalidate && !image) {
           r = await catalog<Results>(
             "supplier-search",
             { ...params, refresh: 1 },
@@ -117,7 +127,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
       }
     })();
     return () => controller.abort();
-  }, [query, page, sort, image, retry]);
+  }, [query, page, sort, image, retry, searchMode]);
   const search = (value: string) => {
     setSearchMode(!!value.trim());
     setPage(1);
@@ -161,7 +171,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           <BrandLogo width={132} />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
             <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", flexShrink: 1, color: colors.muted }}>
-              {searchMode ? "Хайлтын үр дүн" : "Танд зориулсан"}
+              {searchMode ? "Хайлтын үр дүн" : "Хямдралтай бараа"}
             </Text>
             <IconButton
               name="help"
@@ -228,7 +238,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         ref={list}
         key={columns}
         numColumns={columns}
-        data={items}
+        data={displayedItems}
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
@@ -248,8 +258,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
             </View>}
-            {!searchMode && <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy, padding: 5 }}>Танд таалагдаж магадгүй</Text>}
-            <View
+            {!searchMode && <><Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy, padding: 5 }}>Хямдралтай бараа</Text><Copy>Баталгаажсан хямдрал · Хямдралын хувь ихээс эхэлнэ</Copy></>}
+            {searchMode && <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -289,7 +299,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </View>}
             {!!image && (
               <Button
                 title="Зурагт хайлтыг цэвэрлэх"
@@ -314,8 +324,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
               <Busy />
             ) : more ? (
               <Button title="Дараагийн бараанууд" onPress={nextPage} />
-            ) : !items.length && !error ? (
-              <Copy>Бараа олдсонгүй. Өөр нэрээр хайгаарай.</Copy>
+            ) : !displayedItems.length && !error ? (
+              <Copy>{searchMode ? "Бараа олдсонгүй. Өөр нэрээр хайгаарай." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy>
             ) : null}
             <Text
               style={{ fontSize: 11, textAlign: "center", color: colors.muted }}

@@ -1,0 +1,20 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ const page=await browser.newPage({viewport:{width:1280,height:850}}),errors=[],requests=[];let mode='ok';
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));page.on('pageerror',e=>errors.push(e.message));
+ const sale=id=>({id:'tb-'+id,name:'Deal '+id,image:'',mnt:7000,price_status:'available',price_expires:Date.now()/1000+600,card_discount:{was_mnt:10000,current_mnt:7000,percent:30,expires:Date.now()/1000+600}});
+ await page.route('**/api/index.php?action=supplier-deals*',r=>{const p=Number(new URL(r.request().url()).searchParams.get('page'));requests.push(['deals',p]);if(mode==='error')return r.fulfill({status:503,json:{error:'Deals unavailable'}});return r.fulfill({json:{products:mode==='empty'?[]:p===1?[sale('123456789'),{...sale('123456780'),card_discount:null},{...sale('123456781'),card_discount:{...sale('123456781').card_discount,expires:1}}]:[sale('123456789'),sale('123456790')],more:mode==='ok'&&p===1,total:2,shipping:{},partial:false}});});
+ await page.route('**/api/index.php?action=supplier-search*',r=>{const q=new URL(r.request().url()).searchParams.get('q');requests.push(['search',q]);return r.fulfill({json:{products:[{id:'tb-223456789',name:'Search result',mnt:5000,image:''}],more:false,shipping:{}}});});
+ await page.goto(base+'/');await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Deal 123456789'));
+ assert.equal(await page.locator('#catalog-title').innerText(),'Хямдралтай бараа');assert.equal(await page.locator('#supplier-search').isVisible(),false);
+ assert.equal(await page.locator('#supplier-grid .supplier-card').count(),1,'Only fresh real discounts');assert.match(await page.locator('#supplier-grid').innerText(),/−30%/);
+ await page.evaluate(()=>loadSupplier(2,true));await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Deal 123456790'));assert.equal(await page.locator('#supplier-grid .supplier-card').count(),2,'Paging deduplicates');
+ assert.ok(!requests.some(([type,q])=>type==='search'&&q==='__all__'),'Homepage never requests mixed all-products feed');
+ await page.evaluate(()=>supplierBrowse('shoes'));await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Search result'));
+ assert.equal(new URL(page.url()).pathname,'/search');assert.equal(await page.locator('#supplier-grid .supplier-card').count(),1,'Non-sale search works');
+ await page.goBack();await page.waitForFunction(()=>document.querySelector('#catalog-title')?.textContent==='Хямдралтай бараа');
+ mode='empty';await page.goto(base+'/');await page.waitForFunction(()=>document.querySelector('#supplier-status')?.textContent.includes('баталгаажсан хямдралтай бараа алга'));assert.equal(await page.locator('#supplier-grid .supplier-card').count(),0);
+ mode='error';await page.reload();await page.waitForFunction(()=>document.querySelector('#supplier-status')?.textContent.includes('Deals unavailable'));assert.equal(await page.locator('#supplier-grid .supplier-card').count(),0);assert.equal(await page.locator('[data-supplier-retry]').count(),1);
+ assert.deepEqual(errors,[]);console.log('PASS home deals: fresh discounts only, badge/price, pagination/dedup, search/back, empty/error without mixed fallback.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
