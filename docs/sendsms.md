@@ -34,3 +34,16 @@ For tests, set `GOSTORE_DISABLE_SENDSMS=1`. Automated tests use disposable data 
 ## Deployment
 
 2026-11-16: backend, web UI, privacy text and the minute worker deployed after a database/file backup (`sms-1794836135764`). Both feature flags are enabled with standard type. Credentials were loaded from the operator's ignored local file into a protected server-only configuration. No billable test messages were sent.
+
+Production checks: web/mobile configuration both expose OTP enabled; secret and worker URLs return 403; deployed web bundle contains OTP UI; worker heartbeat observed at `2026-11-16T13:36:02+00:00`. Backend, OTP/PIN regression, web verification/PIN, SQLite compatibility, Expo typecheck/lint and export checks passed.
+
+Expo updates published from `92e0c5e` (no new native build required):
+
+| Channel | Platform | Runtime | Update group |
+| --- | --- | --- | --- |
+| production | iOS | a8dd376b5cdfd560a1feff8949377a4204ebaa5f | 4f9a0a1f-be58-46b6-a4b3-c7ead0f9fb49 |
+| production | Android | 12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1 | c551339f-0467-4582-8656-be9f26a86a66 |
+| preview | iOS | a8dd376b5cdfd560a1feff8949377a4204ebaa5f | 03f7a980-1da3-44f8-9a56-a9f94de07045 |
+| preview | Android | 12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1 | d44f1d70-053e-444a-96ea-151a784bcac3 |
+
+Only compatible installed runtimes receive these updates. Publication does not confirm installation on individual devices or delivery of a real SMS; the latter still needs a user handset check.
