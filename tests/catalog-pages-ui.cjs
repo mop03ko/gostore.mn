@@ -6,6 +6,8 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const context=await browser.newContext({viewport:{width:1440,height:950},reducedMotion:'reduce'}),page=await context.newPage(),searches=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.route('https://img.alicdn.com/**',r=>r.abort());
+ await context.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await context.route('**/api/index.php?action=supplier-deals*',r=>{searches.push('__all__');return r.fulfill({json:{products:[{id:'tb-123456789',name:'Бараа __all__',image:'',mnt:5500,price_status:'available',price_expires:Date.now()/1000+600,card_discount:{current_mnt:5500,was_mnt:11000,percent:50,expires:Date.now()/1000+600}}],shipping:{cny_rate:550},more:false}});});
  await context.route('**/api/index.php?action=supplier-search*',r=>{const p=new URL(r.request().url()).searchParams;if(p.get('limit')==='50')searches.push(p.get('q'));return r.fulfill({json:{products:[{id:'tb-123456789',name:'Бараа '+p.get('q'),image:'',mnt:5500}],shipping:{cny_rate:550},more:false,stale:false,cache_ttl:600}});});
  const path=()=>{const u=new URL(page.url());return decodeURIComponent((u.pathname+u.search).replace(/\+/g," "));};
  const listing=()=>page.evaluate(()=>document.documentElement.classList.contains('listing-view'));
