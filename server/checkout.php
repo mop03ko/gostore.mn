@@ -33,7 +33,7 @@ function checkout_quote(array $lines): array {
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$shipping?false:$domestic<=0]+($shipping?['domestic'=>$shipping]:[]);
 }
 function checkout_public_quote(array $q): array {
-    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'domestic_cny'=>$q['inputs']['domestic_cny'],'cny_rate'=>$q['rates']['cny_rate'],'service_percent'=>$q['rates']['service_percent'],'service_fee_mnt'=>$q['rates']['service_fee_mnt'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>(int)$q['rates']['payment_window_hours']];
+    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'domestic_cny'=>$q['inputs']['domestic_cny'],'cny_rate'=>$q['rates']['cny_rate'],'service_percent'=>$q['rates']['service_percent'],'service_fee_mnt'=>$q['rates']['service_fee_mnt'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>0.25,'payment_window_minutes'=>15];
 }
 function checkout_preview(array $b): array {
     customer_required();limit_attempts('checkout-quote:'.($_SERVER['REMOTE_ADDR']??''),60,3600);
@@ -84,7 +84,22 @@ function checkout_expire_order(string $id): void {
     $o=order_row($id)['order'];if(!checkout_expired($o))return;
     if(($o['invoice']['state']??'')==='ready'){
         if(!qpay_ready())return;
-        try{qpay_callback($id,$o['callback_token']);}catch(Throwable $e){error_log('GOStore checkout expiry deferred');return;}
+        try{
+            $checked=qpay_callback($id,$o['callback_token']);$o=order_row($id)['order'];
+            if(!checkout_expired($o))return;
+            // Never discard a partial payment; it needs reconciliation with the customer.
+            if(($checked['paid_amount']??0)>0){
+                $db=db();$db->exec('BEGIN IMMEDIATE');
+                try{$o=order_row($id)['order'];if(checkout_expired($o)){$o['payment_review']='partial_payment';save_order($o);}$db->exec('COMMIT');}
+                catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}return;
+            }
+            if(isset($o['invoice']['payment_window_seconds'])){
+                qpay_http('/v2/invoice/'.rawurlencode($o['invoice']['id']),[],'Bearer '.qpay_token(),'DELETE');
+                // A payment can arrive between the first check and cancellation.
+                $checked=qpay_callback($id,$o['callback_token']);
+                if(($checked['paid_amount']??0)>0)return;
+            }
+        }catch(Throwable $e){error_log('GOStore checkout expiry deferred');return;}
     }elseif(isset($o['invoice']))return; // An unresolved invoice attempt needs admin review.
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
@@ -111,8 +126,8 @@ function checkout_expire_due(bool $force=false): void {
     $db=db();
     if(!$force&&checkout_expiry_last_run()>time()-300)return;
     $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['checkout_expiry_run',(string)time()]);
-    // History keeps a "quoted" entry forever, so status text cannot narrow the scan. The payment window is at most
-    // 168 hours, so checkouts older than 14 days are already paid, cancelled or reviewed.
-    $s=$db->prepare("SELECT id,data FROM orders WHERE created>=? AND data LIKE '%\"payment_due\"%' ORDER BY created");$s->execute([gmdate('c',time()-14*86400)]);
+    // Include older requests that received their first invoice recently, too.
+    $since=gmdate('c',time()-14*86400);
+    $s=$db->prepare("SELECT id,data FROM orders WHERE (created>=? OR updated>=?) AND data LIKE '%\"payment_due\"%' ORDER BY created");$s->execute([$since,$since]);
     foreach($s->fetchAll() as $row){$o=json_decode($row['data'],true);if(is_array($o)&&checkout_expired($o))checkout_expire_order($row['id']);}
 }

@@ -94,7 +94,7 @@ function checkout_pickup_location(array $b): string {
     return $location;
 }
 function shipping_public(): array {
-    $s=shipping_settings();unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
+    $s=shipping_settings();$s['payment_window_hours']=0.25;$s['payment_window_minutes']=15;unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
     $pickup=warehouse_profile('ulaanbaatar');$s['pickup']=array_intersect_key($pickup,array_flip(['name','address','phone','hours']));$s['pickup_locations']=shipping_pickup_locations();return $s;
 }
 function warehouse_destination(array $order,array $input): array {

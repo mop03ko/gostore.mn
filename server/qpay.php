@@ -4,6 +4,7 @@ declare(strict_types=1);
 function qpay_ready(): bool {
     $q=config()['qpay']; return $q['enabled'] && $q['client_id'] && $q['client_secret'] && $q['invoice_code'];
 }
+function qpay_payment_window_seconds(): int { return 15*60; }
 // QPay returns an absolute Unix timestamp, not a duration in seconds.
 function qpay_token_expiry(array $data, ?int $now = null): int {
     $value = $data['expires_in'] ?? null;
@@ -51,7 +52,10 @@ function qpay_invoice(string $id): array {
     try {
         $o=order_row($id)['order'];
         product_policy_order_assert($o);
-        if (($o['invoice']['state']??'')==='ready') { $db->exec('COMMIT'); return $o; }
+        if (($o['invoice']['state']??'')==='ready') {
+            if(!$o['paid']&&($o['status']!=='quoted'||(!empty($o['payment_due'])&&strtotime($o['payment_due'])<=time())))fail('Төлбөрийн хугацаа дууссан. Захиалгын төлөвийг шинэчилнэ үү.',409);
+            $db->exec('COMMIT'); return $o;
+        }
         if (isset($o['invoice'])) fail('Нэхэмжлэлийн өмнөх оролдлогыг админ шалгах шаардлагатай.',409);
         if($verifiedUntil<=time())fail('Үнэ шалгах хугацаа дууссан. Дахин шалгана уу.',409);
         if(($o['type']??'')==='checkout'&&array_intersect_key($o,array_flip(['items','amount','quote','status','payment_due','warehouse','warehouse_locations']))!==array_intersect_key($validated,array_flip(['items','amount','quote','status','payment_due','warehouse','warehouse_locations'])))fail('Захиалга өөрчлөгдсөн байна. Дахин шалгана уу.',409);
@@ -69,7 +73,11 @@ function qpay_invoice(string $id): array {
         ],'Bearer '.qpay_token());
         if (empty($data['invoice_id']) || empty($data['qr_image'])) fail('Нэхэмжлэлийн мэдээлэл дутуу ирлээ.',502);
         $db->exec('BEGIN IMMEDIATE');
-        try{$o=order_row($id)['order'];$o['invoice']+=['id'=>$data['invoice_id'],'qr_image'=>$data['qr_image'],'qr_text'=>$data['qr_text']??'','urls'=>$data['urls']??[]];$o['invoice']['state']='ready';save_order($o);$db->exec('COMMIT');}catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}return $o;
+        try{$o=order_row($id)['order'];$o['invoice']+=['id'=>$data['invoice_id'],'qr_image'=>$data['qr_image'],'qr_text'=>$data['qr_text']??'','urls'=>$data['urls']??[]];$o['invoice']['state']='ready';
+            // Start once, only when a usable QR is ready. Reopening never extends it.
+            $now=time();$o['invoice']['issued_at']=gmdate('c',$now);$o['invoice']['payment_window_seconds']=qpay_payment_window_seconds();
+            $o['payment_due']=gmdate('c',$now+qpay_payment_window_seconds());
+            save_order($o);$db->exec('COMMIT');}catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}return $o;
     } catch (Throwable $e) {
         $db->exec('BEGIN IMMEDIATE');try{$o=order_row($id)['order'];if(($o['invoice']['state']??'')==='creating'){$o['invoice']['state']='review';save_order($o);}$db->exec('COMMIT');}catch(Throwable $saveError){$db->exec('ROLLBACK');throw $saveError;}throw $e;
     }
@@ -89,5 +97,5 @@ function qpay_callback(string $id,string $key): array {
         if(function_exists('tw_after_payment'))tw_after_payment($id);
         if(function_exists('taobao_purchase_after_payment'))taobao_purchase_after_payment($id);
     }
-    return ['ok'=>true];
+    return ['ok'=>true,'paid_amount'=>paid_amount($result)];
 }

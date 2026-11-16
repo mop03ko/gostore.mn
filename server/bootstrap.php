@@ -195,6 +195,10 @@ function save_order(array $o): void {
     }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT save_order_write');db()->exec('RELEASE SAVEPOINT save_order_write');throw $e;}
 }
 function public_order(array $o): array {
+    // Old app versions must not receive a payable QR after the deadline either.
+    if(!$o['paid']&&isset($o['invoice'])&&($o['status']==='cancelled'||(!empty($o['payment_due'])&&strtotime($o['payment_due'])<=time()))){
+        $o['invoice']=['state'=>'expired'];
+    }
     unset($o['quote']['domestic'],$o['quote']['verified_until']);
     if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
     if(function_exists('warehouse_profile')&&(($o['fulfillment']['method']??'')==='pickup'||(($o['type']??'')==='checkout'&&!isset($o['fulfillment'])&&($o['fulfillment_request']['method']??'pickup')==='pickup')))$o['pickup_warehouse']=warehouse_profile(function_exists('warehouse_order_location')?warehouse_order_location($o,'ulaanbaatar'):'ulaanbaatar');

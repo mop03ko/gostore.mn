@@ -19,6 +19,7 @@ run(node,['tests/cargo-tariff.cjs'],'cargo-tariff');
 run(node,['tests/sqlite-compat.cjs'],'sqlite-compat');
 run(php,[...phpArgs,'tests/checkout-expiry-lock.php'],'checkout-expiry-lock');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
+run(node,['tests/payment-countdown.cjs'],'payment-countdown');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
 run(node,['tests/run-logistics.cjs','mobile'],'mobile-api');
 run(node,['tests/supplier-retry.cjs'],'supplier-retry');

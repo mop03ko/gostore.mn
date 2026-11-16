@@ -237,7 +237,7 @@ try {
     if (in_array($action,['order-get','invoice'],true)) {
         $r=order_row(str_field($b,'id',50));customer_order_access($r,$b);checkout_expire_order($r['id']);
         if($action==='invoice'&&checkout_expired_or_cancelled($r['id']))fail('Төлбөрийн хугацаа дууссан тул захиалга цуцлагдсан. Сагсаа дахин захиална уу.',409);
-        json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):$r['order'])]);
+        json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
     if($action==='admin-customer-save')json_out(admin_customer_save($b));

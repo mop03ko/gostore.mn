@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Linking } from "react-native";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -29,6 +29,7 @@ function OrderScreen() {
   const [order, setOrder] = useState<Order | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [now, setNow] = useState(Date.now);
   const locked = useRef(false),
     bankOpened = useRef(false);
   const load = useCallback(
@@ -62,6 +63,19 @@ function OrderScreen() {
       return () => listener.remove();
     }, [customer, load]),
   );
+  const deadline = order?.payment_due ? Date.parse(order.payment_due) : 0;
+  const timedPayment = !!order?.invoice && !order.paid && order.status === "quoted" && !!deadline;
+  const expired = timedPayment && now >= deadline;
+  useEffect(() => {
+    if (!timedPayment) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [timedPayment]);
+  useEffect(() => {
+    if (!expired) return;
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
+  }, [expired, load]);
   async function open(link: string) {
     const safe = bankLink(link);
     if (!safe) {
@@ -100,7 +114,7 @@ function OrderScreen() {
             />
             {order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
             <Copy>{dateText(order.created)}</Copy>
-            {!!order.payment_due && !order.paid && (
+            {!!order.payment_due && !order.paid && order.status === "quoted" && (
               <Copy>Төлөх хугацаа: {dateText(order.payment_due)}</Copy>
             )}
             <Button
@@ -110,6 +124,10 @@ function OrderScreen() {
               onPress={() => void load()}
             />
           </Card>
+          {timedPayment && <Copy>{expired
+            ? "Төлөх хугацаа дууссан. Төлбөрийн төлөвийг тулгаж байна."
+            : `Төлөх хугацаа: ${Math.floor(Math.max(0, Math.ceil((deadline-now)/1000))/60)}:${String(Math.max(0, Math.ceil((deadline-now)/1000))%60).padStart(2,"0")} · Хугацаандаа төлөөгүй захиалга автоматаар цуцлагдана.`}</Copy>}
+          {order.cancel_reason === "payment_timeout" && <Copy>Төлбөрийн хугацаа дууссан тул захиалга цуцлагдсан. Сагсаа дахин шалгаж захиална уу.</Copy>}
           {order.items?.map((i) => (
             <Card key={i.id + i.sku}>
               <Copy>
@@ -120,7 +138,7 @@ function OrderScreen() {
               {order.type !== "forwarding" && <Row label="Барааны дүн" value={"¥" + i.goods_cny?.toFixed(2)} />}
             </Card>
           ))}
-          {order.type !== "forwarding" && !order.paid && order.status !== "cancelled" && (
+          {order.type !== "forwarding" && !order.paid && order.status === "quoted" && !expired && (
             <>
               {order.invoice ? (
                 <InvoiceCard

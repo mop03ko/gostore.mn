@@ -94,6 +94,7 @@ export type Order = {
   demo: boolean;
   created: string;
   payment_due?: string;
+  cancel_reason?: string;
   items?: PricedLine[];
   invoice?: Invoice;
   history?: { status: string; at: string }[];
