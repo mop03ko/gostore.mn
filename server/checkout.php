@@ -87,6 +87,7 @@ function checkout_expire_order(string $id): void {
         try{
             $checked=qpay_callback($id,$o['callback_token']);$o=order_row($id)['order'];
             if(!checkout_expired($o))return;
+            if(($o['payment_review']??'')==='partial_payment')return;
             // Never discard a partial payment; it needs reconciliation with the customer.
             if(($checked['paid_amount']??0)>0){
                 $db=db();$db->exec('BEGIN IMMEDIATE');

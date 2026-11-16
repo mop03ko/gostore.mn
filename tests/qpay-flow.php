@@ -80,6 +80,7 @@ overdue_flow('partial');$paymentRows=[['payment_id'=>'partial','payment_status'=
 verify_flow(order_row('partial')['order']['payment_review']==='partial_payment'&&order_row('partial')['order']['status']==='quoted','Partial payment requires reconciliation');
 verify_flow(count(array_filter($calls,fn($p)=>$p==='/v2/invoice/fake-invoice'))===$before,'Do not cancel an invoice with partial payment');
 $paymentRows=[];checkout_expire_due(true);verify_flow(order_row('offline')['order']['status']==='cancelled','Background sweep must retry without a browser');
+verify_flow(order_row('partial')['order']['status']==='quoted','A recorded partial payment must survive a later empty provider response');
 
 echo "PASS: 15-minute invoice deadline, reopen, exact boundary, redacted QR, expiry retries, partial payment protection, cancellation race, background sweep.\n";
 echo "PASS: stored quote, demo blocking, token cache, single invoice, callback authorization, unpaid/partial/full payment, duplicate callback, timeout recovery guard.\n";
