@@ -1,6 +1,6 @@
 # Phone + 4-digit PIN authentication
 
-New mobile accounts use: phone and name → send an MO SMS to 144773 → server independently confirms VERIFIED → create and repeat a 4-digit PIN. Later logins use phone + PIN. Leading zeroes are preserved. Neither opening the SMS composer nor a carrier reply confirms ownership.
+New mobile accounts use: phone and name → receive a six-digit code through SendSMS.mn → server validates the code → create and repeat a four-digit PIN. Later logins use phone + PIN. Leading zeroes are preserved. An SMS being queued does not confirm phone ownership. verify.mn was permanently retired on 2026-11-16; see [SendSMS configuration](sendsms.md).
 
 Existing email users keep their login and orders. They sign in through “Өмнөх имэйлээр нэвтрэх”, then choose “Утас, PIN холбох” in their profile. Matching an old, unverified profile phone never grants access to that account. Native account deletion accepts the PIN for linked accounts; old email/password deletion remains supported.
 
@@ -11,7 +11,7 @@ The website uses the same flow as the app, and sign-in is a page, not a popup:
 | Page | Purpose |
 |---|---|
 | `/login` | Phone + PIN sign-in, with links to “PIN мартсан” and “Өмнөх имэйлээр нэвтрэх” |
-| `/register` | Name and phone → verify.mn SMS (`window.verifyPhone(phone, purpose)`) → PIN and repeat → `customer-pin-setup` |
+| `/register` | Name and phone → SendSMS code (`window.verifyPhone(phone, purpose)`) → PIN and repeat → `customer-pin-setup` |
 | `/login/reset` | Forgotten PIN: the same SMS step with purpose `reset` |
 | `/login/email` | Older e-mail accounts (e-mail registration is no longer offered) |
 | `/login/link` | A signed-in e-mail account adds a phone and PIN (purpose `link`) |
@@ -31,7 +31,7 @@ Shopper sessions live in private directories so cPanel's default session cleanup
 
 ## Server
 
-- `customer-pin-setup` requires a single-use, session-bound verify.mn challenge for the exact phone and purpose (`register`, `reset`, `link`), with an unexpired 5-minute deadline. Generic phone verification cannot authorize account takeover or PIN reset.
+- `customer-pin-setup` requires a single-use, session-bound SendSMS challenge for the exact phone and purpose (`register`, `reset`, `link`), with an unexpired 5-minute deadline. Generic phone verification and old verify.mn challenges cannot authorize account takeover or PIN reset.
 - `customer-pin-login` accepts only a normalized Mongolia phone and a string of exactly 4 digits.
 - `customer-pin-change` requires the current PIN. Reset requires a fresh SMS proof. Both increment `auth_version`, revoking older sessions.
 - A unique `customer_phone_auth` mapping binds one verified phone to one customer. The additive table is created by the existing SQLite schema initialization. Existing accounts/orders are not migrated or reassigned.
@@ -49,7 +49,7 @@ Expo Update is configured with preview/production channels and the fingerprint r
 ## Validation and release
 
 - `tests/phone-auth.php`: ownership/purpose/expiry/replay checks, peppered hashing, legacy isolation/linking, reset, revocation and guessing limits.
-- `node tests/run-logistics.cjs web-pin-ui`: sign-in pages over the current page with Back, phone + PIN, wrong PIN, return after sign-in, direct `/login` `/register` `/login/reset` `/login/email`, profile on `/account/profile`, SMS-then-PIN registration (verify.mn stubbed), 30-day web and 90-day app idle limits.
+- `node tests/run-logistics.cjs web-pin-ui`: sign-in pages over the current page with Back, phone + PIN, wrong PIN, return after sign-in, direct `/login` `/register` `/login/reset` `/login/email`, profile on `/account/profile`, SMS-then-PIN registration (verification UI stubbed), 30-day web and 90-day app idle limits.
 - `node tests/run-logistics.cjs phone-auth-api customers mobile account-ui`: isolated PHP/mobile integration, CSRF, forged proof rejection, protected phone changes, deletion and legacy regressions.
 - `node tests/expo-phone-auth.cjs` with a local Metro web preview: mocked registration, pending/expiry, PIN creation/reset/change, email linking, deletion, return routing and 320/390/430 widths. No provider SMS or real customer account is used.
 - `npm run typecheck` and `npm run lint` in `gostoremn`.

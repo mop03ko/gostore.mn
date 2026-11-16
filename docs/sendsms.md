@@ -51,3 +51,12 @@ Only compatible installed runtimes receive these updates. Publication does not c
 ### Permanent provider change
 
 2026-11-16: verify.mn retired at the user's request. Its transport is disabled even if an old environment key exists. Existing account modules retain a compatibility phone-normalization helper only; it performs no provider calls. Old verify.mn proofs cannot set/reset a PIN. Existing logins and PINs remain valid. The unused native `expo-sms` package is retained for runtime compatibility but no longer imported or invoked by verification UI.
+
+Production deployment `sms-only-1794836789378` cleared the old server key file and deployed the SendSMS-only API/UI. Read-only configuration checks confirm SendSMS enabled; a legacy start request returns 426 before sending and the served bundle has no 144773 instructions. Tests cover retired transport/environment, legacy-client rejection, no fallback on SendSMS outage, rejection of old proofs, OTP/PIN and browser/mobile API flows. Typecheck, lint and SQLite compatibility checks passed.
+
+SendSMS-only OTA release from `870f441`, using the same compatible runtimes listed above:
+
+| Channel | iOS update group | Android update group |
+| --- | --- | --- |
+| production | e6daa252-2e17-4e51-b7be-752cf6f37f46 | 45867455-c35d-4293-923c-970644b2fbb2 |
+| preview | 798e1600-428c-4c0f-82f1-3bcd41f7fca9 | b25bee0d-08ff-45d1-93cd-974952e7f659 |
