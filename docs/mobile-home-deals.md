@@ -98,3 +98,15 @@ alignment. `output/home-deals/pager-mid-drag.png` captures two partially visible
 pages during a real browser touch sequence. These browser gesture tests do not
 replace a physical iPhone/Android performance check. Native dependencies and
 runtime fingerprints remain unchanged; this change can use OTA.
+
+Published from `3c43d1a5b8366b18bb697b9bd27fa16074812706` after lint, typecheck,
+the expanded touch regression suite, discount checks and all-platform export:
+
+| Platform/channel | Continuous-pager update group |
+| --- | --- |
+| iOS production, runtime `646e611…` | `86d45be0-68e7-4d39-a2d9-118187059808` |
+| Android production, runtime `12e475e…` | `730b5d0a-aee5-4208-b0b6-7d85e2ea8fbf` |
+| Android APK preview, runtime `12e475e…` | `4cb1a499-4aa3-45d3-8402-22ac11d0f526` |
+
+All three update endpoint requests returned HTTP 200 and the expected new update
+IDs for their platform/runtime/channel. Physical-device receipt remains unobserved.
