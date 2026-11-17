@@ -56,7 +56,8 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     // data is the snapshot captured when this request starts, not a trigger for a second request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, index, page, retry, onSave]);
-  const products = data.products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale);
+  // Only the dedicated deals tab excludes full-price products.
+  const products = index === 0 ? data.products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale) : data.products;
   const nextPage = () => { if (active && !busy && !lock.current && data.more && !error) { lock.current = true; setPage(x => x + 1); } };
   const saveScroll = () => onSave(index, { ...snapshotRef.current, offset: offset.current });
   return <FlatList ref={list} testID={`home-feed-${index}`} key={columns} numColumns={columns} data={products} keyExtractor={p => p.id}
@@ -68,13 +69,13 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     contentContainerStyle={{ padding: 8, paddingBottom: 24, gap: 8 }} columnWrapperStyle={{ gap: 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
     ListHeaderComponent={<View style={{ gap: 12, marginBottom: 8 }}>
-      <HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} />
-      <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{index ? homeCategories[index].name + " · Хямдрал" : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу</Text></View>
+      {index === 0 && <><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
+      <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
     </View>}
     renderItem={({ item }) => <View style={{ flex: 1, maxWidth: columns === 4 ? "25%" : "50%" }}><DiscoveryCard product={item} /></View>}
     ListFooterComponent={<View style={{ paddingVertical: 12, gap: 8 }}>
-      {busy ? <Busy /> : !products.length && !error ? <Copy>{index ? "Энэ хуудсанд баталгаажсан хямдрал алга. Дараагийн хуудас эсвэл өөр ангиллыг шалгаарай." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy> : null}
+      {busy ? <Busy /> : !products.length && !error ? <Copy>{index ? "Энэ ангилалд одоогоор бараа олдсонгүй." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy> : null}
       {!busy && data.more && !error && <Button title="Дараагийн бараанууд" onPress={nextPage} />}
       <Text style={{ color: c.muted, fontSize: 11, textAlign: "center" }}>Эцсийн үнэ, хүргэлтийг захиалахын өмнө шалгана.</Text>
     </View>} />;
@@ -129,7 +130,7 @@ export function HomePager() {
         onScrollEndDrag={() => { dragging.current = false; }} onMomentumScrollEnd={settled}
         onScroll={onScroll}>
         {homeCategories.map((category, index) => <View key={category.id} testID={`home-page-${index}`} accessibilityElementsHidden={selected !== index} importantForAccessibility={selected === index ? "auto" : "no-hide-descendants"} aria-hidden={selected !== index} style={{ width, height: "100%", backgroundColor: c.surface }}>
-          {visited.includes(index) ? <CategoryFeed index={index} active={selected === index} initial={snapshots[index] || empty} onSave={save} onSelect={select} /> : <View style={{ padding: 24, gap: 20 }}><Text style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{category.name} · Хямдрал</Text>{[0, 1, 2].map(row => <View key={row} style={{ flexDirection: "row", gap: 12 }}>{[0, 1].map(col => <View key={col} style={{ flex: 1, height: 170, borderRadius: 16, backgroundColor: c.subtle }} />)}</View>)}</View>}
+          {visited.includes(index) ? <CategoryFeed index={index} active={selected === index} initial={snapshots[index] || empty} onSave={save} onSelect={select} /> : <View style={{ padding: 24, gap: 20 }}><Text style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{category.name}</Text>{[0, 1, 2].map(row => <View key={row} style={{ flexDirection: "row", gap: 12 }}>{[0, 1].map(col => <View key={col} style={{ flex: 1, height: 170, borderRadius: 16, backgroundColor: c.subtle }} />)}</View>)}</View>}
         </View>)}
       </Animated.ScrollView>
     </CarouselTouch>

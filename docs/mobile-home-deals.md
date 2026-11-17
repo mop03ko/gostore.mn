@@ -12,14 +12,16 @@ and photo shortcuts also select a category. Vertical scrolling and horizontal
 collage/category-photo scrolling keep their normal behavior. The active tab stays
 in view. Category changes clear old results and cancel obsolete requests.
 
-The default feed calls `supplier-deals`. Category feeds use the existing cached
-`supplier-search` query and display only rows accepted by `productSavings`: a
-sellable item, positive matching current price, higher previous price, and an
-unexpired verified discount. Highlights reuse these same rows without extra API
-calls. A category page may have no verified deals even when regular products are
-available; it shows an honest empty state and a manual next-page action instead
-of automatically scanning every page. Explicit text/image search still shows
-all matching products. No backend or native dependency change is required.
+The default feed calls `supplier-deals` and displays only rows accepted by
+`productSavings`: a sellable item, positive matching current price, higher previous
+price, and an unexpired verified discount. Highlights reuse these same rows without
+extra API calls. As of 2026-11-18, category feeds use the existing cached
+`supplier-search` query and show all matching products, including full-price items.
+Category pages open directly to their product grid; only the dedicated deals tab
+has discount collages and the orange deals shelf. Sale badges remain conditional
+on verified discounts. A category is empty only when its search results are empty.
+Pagination and explicit text/image search still show all matching products.
+No backend or native dependency change is required.
 
 Validation: Expo lint, TypeScript, iOS/Android/web export; product discount and
 campaign unit checks; `tests/expo-home-deals-ui.cjs` using isolated API fixtures

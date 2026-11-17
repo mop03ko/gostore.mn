@@ -32,8 +32,9 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
           await new Promise(resolve => setTimeout(resolve, 800)); // Race a slower category against a later selection.
           json = { products: [product(887650, 'Home discount'), product(887651, 'Home regular', false)], more: false, cache_ttl: 300 };
         } else if (q === categories[1].query) json = { products: [product(887660, 'Second category discount'), product(887661, 'Second regular', false)], more: false, cache_ttl: 300 };
-        else if (q === categories[2].query) json = params.get('page') === '1' ? { products: [product(887670, 'Regular only', false)], more: true } : { products: [product(887671, 'Next page discount')], more: false };
+        else if (q === categories[2].query) json = params.get('page') === '1' ? { products: Array.from({ length: 12 }, (_, i) => product(887700 + i, `Regular only ${i}`, false)), more: true } : { products: [product(887671, 'Next page regular', false)], more: false };
         else if (q === categories[3].query) return route.fulfill({ status: 503, json: { error: 'Fixture unavailable' } });
+        else if (q === categories[4].query) json = { products: [], more: false };
         else json = { products: [product(887680, 'Searched regular', false)], more: false };
       }
       await route.fulfill({ json });
@@ -49,7 +50,7 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     assert.equal(requests.filter(r => r.action === 'supplier-deals').length, 1, 'Highlights reuse the one feed request');
     assert.equal(requests.filter(r => ['campaign', 'supplier-recommend', 'supplier-free-shipping'].includes(r.action)).length, 0);
     fs.mkdirSync('output/home-deals', { recursive: true });
-    await page.screenshot({ path: 'output/home-deals/light-390.png' });
+    await page.screenshot({ path: 'output/home-deals/light-390.png', timeout: 60000 });
     const client = await context.newCDPSession(page);
     const carousel = activePage.getByTestId('home-deal-carousel'), carouselBox = await carousel.boundingBox();
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 310, y: carouselBox.y + 90 }] });
@@ -64,7 +65,11 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await page.getByRole('button', { name: 'Second category discount', exact: true }).first().waitFor();
     await page.waitForTimeout(1000);
     assert.equal(await page.getByRole('button', { name: 'Home discount', exact: true }).count(), 0, 'Old category cannot overwrite the current category');
-    assert.equal(await page.getByText('Second regular', { exact: true }).count(), 0);
+    await activePage.getByRole('button', { name: 'Second regular', exact: true }).waitFor();
+    assert.doesNotMatch(await activePage.getByRole('button', { name: 'Second regular', exact: true }).innerText(), /50%/, 'Regular products do not receive a sale badge');
+    assert.equal(await activePage.getByTestId('home-deal-highlights').count(), 0, 'Category opens directly to its full product list');
+    assert.equal(await activePage.getByRole('heading', { name: categories[1].name, exact: true }).count(), 1);
+    await page.screenshot({ path: 'output/home-deals/category-all-products.png', timeout: 60000 });
     console.log('Category race verified');
     // Touch swipe over the actual list heading, away from horizontal carousels.
     async function swipe(dx, dy = 0, capture = false) {
@@ -84,7 +89,7 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
           const duringX = await pager.evaluate(e => e.scrollLeft);
           assert.ok(Math.abs(duringX - beforeX) > 30 && Math.abs(duringX - beforeX) < 390, 'Page follows the finger before release');
           assert.notEqual(await indicator.evaluate(e => getComputedStyle(e).transform), beforeIndicator, 'Underline moves during the gesture');
-          await page.screenshot({ path: 'output/home-deals/pager-mid-drag.png' });
+          await page.screenshot({ path: 'output/home-deals/pager-mid-drag.png', timeout: 60000 });
         }
       }
       await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -92,6 +97,7 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await swipe(240, 0, true);
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="home-category-tabs"] [role="tab"]')[1].getAttribute('aria-selected') === 'true');
     await page.getByRole('button', { name: 'Home discount', exact: true }).first().waitFor();
+    await activePage.getByRole('button', { name: 'Home regular', exact: true }).waitFor();
     await swipe(-240);
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="home-category-tabs"] [role="tab"]')[2].getAttribute('aria-selected') === 'true');
     console.log('Both swipe directions verified');
@@ -102,14 +108,17 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await swipe(5, -90);
     assert.equal(requests.filter(r => r.action === 'supplier-search').length, searches, 'Vertical scrolling must not switch category');
     await tabs.getByRole('tab', { name: categories[2].name, exact: true }).click();
-    await activePage.getByText(/Энэ хуудсанд баталгаажсан хямдрал алга/).waitFor();
+    await activePage.getByRole('button', { name: 'Regular only 0', exact: true }).waitFor();
+    assert.equal(await activePage.getByText(/бараа олдсонгүй|хямдрал алга/).count(), 0, 'A regular-only category is not empty');
     await page.waitForTimeout(400);
-    assert.equal(requests.filter(r => r.q === categories[2].query).length, 1, 'No unbounded automatic requests through non-sale pages');
+    assert.equal(requests.filter(r => r.q === categories[2].query).length, 1, 'No extra requests to find discounts');
     await page.getByRole('button', { name: 'Дараагийн бараанууд', exact: true }).click();
-    await page.getByRole('button', { name: 'Next page discount', exact: true }).first().waitFor();
+    await page.getByRole('button', { name: 'Next page regular', exact: true }).first().waitFor();
     await tabs.getByRole('tab', { name: categories[3].name, exact: true }).click();
     await page.getByText('Fixture unavailable', { exact: true }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Next page discount', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Next page regular', exact: true }).count(), 0);
+    await tabs.getByRole('tab', { name: categories[4].name, exact: true }).click();
+    await activePage.getByText('Энэ ангилалд одоогоор бараа олдсонгүй.', { exact: true }).waitFor();
     await tabs.getByRole('tab', { name: 'Хямдрал', exact: true }).click();
     await activePage.getByTestId('home-deal-highlights').waitFor();
     assert.equal(requests.filter(r => r.action === 'supplier-deals').length, 1, 'Returning home uses the catalog cache');
@@ -131,10 +140,10 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await homeFeed.evaluate(e => { e.scrollTop = 0; });
     await page.waitForTimeout(200);
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.screenshot({ path: 'output/home-deals/dark-390.png' });
+    await page.screenshot({ path: 'output/home-deals/dark-390.png', timeout: 60000 });
     await page.setViewportSize({ width: 320, height: 568 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No page overflow at 320px');
-    await page.screenshot({ path: 'output/home-deals/dark-320.png' });
+    await page.screenshot({ path: 'output/home-deals/dark-320.png', timeout: 60000 });
     await tabs.getByRole('tab', { name: categories[1].name, exact: true }).click();
     await page.waitForTimeout(500);
     await page.setViewportSize({ width: 430, height: 932 });

@@ -75,7 +75,7 @@ export function HomeDealHighlights({ products }: { products: Product[] }) {
 export function HomeCategoryPhotos({ onSelect }: { onSelect: (index: number) => void }) {
   const c = usePalette();
   return <HomeCarousel horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 4 }} testID="home-category-photos">
-    {categories.map((category, index) => <Pressable key={category.id} accessibilityRole="button" accessibilityLabel={category.name + " хямдрал"} onPress={() => onSelect(index + 1)} style={{ width: 72, alignItems: "center", gap: 7 }}>
+    {categories.map((category, index) => <Pressable key={category.id} accessibilityRole="button" accessibilityLabel={category.name} onPress={() => onSelect(index + 1)} style={{ width: 72, alignItems: "center", gap: 7 }}>
       <CategoryPhoto image={category.image} /><Text numberOfLines={2} style={{ fontSize: 12, textAlign: "center", color: c.ink }}>{category.name}</Text>
     </Pressable>)}
   </HomeCarousel>;
