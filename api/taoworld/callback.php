@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__.'/../../server/taoworld-web.php';
 try{
+    admin_required();if(!admin_role_at_least('owner'))fail('Эзэмшигчийн эрх шаардлагатай.',403);
     if(($_SERVER['REQUEST_METHOD']??'')!=='GET')fail('Зөвшөөрлийн хүсэлтийн арга буруу.',405);
     taoworld_callback($_GET);$_SESSION['taoworld_notice']='TaoWorld данс холбогдлоо. Каталогийн API эрхийг тусад нь шалгана.';
 }catch(ApiError $e){$_SESSION['taoworld_notice']=$e->getMessage();}

@@ -25,6 +25,7 @@ function staff_push_record(array $o,array $old): void {
 function staff_push_identity(string $variant): array {
     if($variant==='admin'){
         $u=admin_current();if(!$u)fail('Нэвтэрнэ үү.',401);
+        admin_security_guard('staff-push','POST');
         return ['variant'=>$variant,'owner'=>$u['id'],'version'=>admin_session_version($u),'device_hash'=>''];
     }
     if($variant!=='warehouse')fail('Аппын төрөл буруу.',422);
@@ -37,6 +38,7 @@ function staff_push_active(array $d): bool {
     if((int)$d['expires']<=time())return false;
     if($d['variant']==='admin'){
         $u=$d['owner']==='owner'?admin_owner_record():admin_staff($d['owner']);
+        if($u&&admin_security_enforced()){$s=admin_security_status($u);if($s['password_change_required']||$s['mfa_setup_required'])return false;}
         return $u&&!empty($u['active'])&&isset(ADMIN_ROLES[$u['role']])&&$u['password_hash']!==''&&hash_equals(admin_session_version($u),$d['version']);
     }
     if($d['variant']!=='warehouse'||$d['owner']!=='ulaanbaatar')return false;

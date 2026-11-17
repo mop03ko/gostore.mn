@@ -6,6 +6,7 @@ return [
     'report_email' => 'shop@gostore.mn', // Daily operations report (server/daily-worker.php).
     'php_error_log' => dirname(__DIR__, 2) . '/logs/gostore_mn.php.error.log',
     'admin_password_hash' => '', // Generate with scripts/password.php; never use plaintext here.
+    'admin_security_enforced' => false, // Turn on after owner MFA enrollment/recovery verification; also GOSTORE_ADMIN_SECURITY_ENFORCED=1.
     'data_dir' => dirname(__DIR__, 2) . '/gostore-data', // MUST be outside public_html.
     'site_url' => 'https://gostore.mn',
     'otcommerce' => [

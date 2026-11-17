@@ -133,7 +133,7 @@ window.AdminExtra=(()=>{
   // Two-step sign-in for the signed-in account (security page).
   function totpPanel(){
     const on=data.admin?.totp;
-    return `<section class="panel integration-card" id="totp-panel"><h2>Хоёр алхмын баталгаажуулалт</h2><p>Нэвтрэх бүрт Google Authenticator, Microsoft Authenticator зэрэг аппын 6 оронтой кодыг нэмж асууна.</p>${on?`<p><span class="tag green">✓ Асаалттай</span></p><form id="totp-disable-form"><div class="form-grid"><label>Нууц үг<input name="password" type="password" autocomplete="current-password" required maxlength="1000"></label><label>Апп дээрх код<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required maxlength="7"></label></div><p class="error" role="alert"></p><button class="quiet" type="submit">Унтраах</button></form>`:`<div id="totp-setup"><button type="button" class="primary" data-totp-start>Асаах</button></div>`}</section>`;
+    return `<section class="panel integration-card" id="totp-panel"><h2>Хоёр алхмын баталгаажуулалт</h2><p>Нэвтрэх бүрт Google Authenticator, Microsoft Authenticator зэрэг аппын 6 оронтой кодыг нэмж асууна.</p>${on&&data.admin?.security?.enforced?'<p><span class="tag green">✓ Асаалттай · Заавал шаардана</span></p>':on?`<p><span class="tag green">✓ Асаалттай</span></p><form id="totp-disable-form"><div class="form-grid"><label>Нууц үг<input name="password" type="password" autocomplete="current-password" required maxlength="1000"></label><label>Апп дээрх код<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required maxlength="7"></label></div><p class="error" role="alert"></p><button class="quiet" type="submit">Унтраах</button></form>`:`<div id="totp-setup"><button type="button" class="primary" data-totp-start>Асаах</button></div>`}</section>`;
   }
 
   // TaoWorld after-sales inside the order view.
@@ -189,7 +189,7 @@ window.AdminExtra=(()=>{
     if(data.admin){const strong=document.querySelector('.account strong');if(strong)strong.textContent=data.admin.name;$('#admin-email').textContent=data.admin.email+' · '+data.admin.role_label;document.querySelector('.account .avatar').textContent=(data.admin.name||'G').slice(0,1).toUpperCase();}
     if(hidden.includes(p)){page='overview';render();return;}
     if(p==='overview')loadAlerts();
-    if(p==='security'){if(data.admin&&!data.admin.builtin){const h=document.querySelector('#content h2');if(h)h.textContent='Нууц үг солих';}$('#content').insertAdjacentHTML('beforeend',totpPanel());}
+    if(p==='security'){if(data.admin&&!data.admin.builtin){const h=document.querySelector('#content h2');if(h)h.textContent='Нууц үг солих';}$('#content').insertAdjacentHTML('afterbegin',adminSecurityNotice());$('#content').insertAdjacentHTML('beforeend',totpPanel());}
     pages[p]?.load?.();
   }
   const pages={reports:{html:reportsHtml,load:loadReports},taoworld:{html:taoworldHtml,load:loadTaoworld},site:{html:siteHtml,load:loadSite},admins:{html:adminsHtml,load:loadAdmins}};
@@ -208,7 +208,7 @@ window.AdminExtra=(()=>{
       else if(fid==='site-controls-form'){await api('catalog-controls-save',{blocked_items:String(fd.get('blocked_items')||''),blocked_shops:String(fd.get('blocked_shops')||''),home_keywords:String(fd.get('home_keywords')||''),campaign:{mode:fd.get('campaign_mode'),until:String(fd.get('campaign_until')||'')}});toast('Сайтын тохиргоо хадгалагдлаа');loadSite();}
       else if(fid==='admin-user-form'){const b=Object.fromEntries(fd);b.active=fd.has('active');b.reset_totp=fd.has('reset_totp');if(!b.password){delete b.password;delete b.password_confirm;}await api('admin-user-save',b);$('#editor').close();toast('Админ хадгалагдлаа');loadAdmins();}
       else if(fid==='totp-disable-form'){const r=await api('admin-totp-disable',{password:fd.get('password'),code:String(fd.get('code')||'')});data.admin=r.admin;toast('Хоёр алхмын баталгаажуулалт унтарлаа');render();}
-      else if(fid==='totp-enable-form'){const r=await api('admin-totp-enable',{code:String(fd.get('code')||'')});data.admin=r.admin;toast('Хоёр алхмын баталгаажуулалт асав');render();}
+      else if(fid==='totp-enable-form'){const r=await api('admin-totp-enable',{code:String(fd.get('code')||'')});data.admin=r.admin;toast('Хоёр алхмын баталгаажуулалт асав');await refresh();}
       else if(fid==='audit-search'){auditState={page:1,q:String(fd.get('q')||'').trim()};loadAudit();}
     }catch(x){if(err)err.textContent=x.message;else toast(x.message);}finally{if(button)button.disabled=false;}
   },true);

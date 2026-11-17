@@ -5,6 +5,7 @@ $notice=$_SESSION['taoworld_notice']??'';unset($_SESSION['taoworld_notice']);
 $authenticated=admin_authenticated();$state=null;
 if(!$authenticated)http_response_code(401);
 else try{
+    admin_required();if(!admin_role_at_least('owner'))fail('Эзэмшигчийн эрх шаардлагатай.',403);
     if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
         if(!is_string($_POST['csrf']??null)||!hash_equals($_SESSION['csrf'],$_POST['csrf']))fail('Хуудсаа шинэчлээд дахин оролдоно уу.',403);
         limit_attempts('taoworld-admin:'.($_SERVER['REMOTE_ADDR']??'cli'),20,900);

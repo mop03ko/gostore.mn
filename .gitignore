@@ -27,3 +27,5 @@ assets/uploads/*
 # Private Google/Firebase service-account keys (this repository is public).
 *-firebase-adminsdk-*.json
 *service-account*.json
+/amazon.txt
+/gostore-*-*.json

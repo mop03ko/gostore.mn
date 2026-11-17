@@ -137,13 +137,19 @@ function admin_authenticated(): bool {
     if(function_exists('admin_current'))return admin_current()!==null;
     return !empty($_SESSION['admin']) && ($_SESSION['admin_user']??'owner')==='owner' && hash_equals(hash('sha256',admin_password_hash()),(string)($_SESSION['admin_version']??''));
 }
-function admin_required(): void { session_boot(); if (!admin_authenticated()) fail('Админаар нэвтэрнэ үү.',401); }
+function admin_required(): void {
+    session_boot();
+    require_once __DIR__.'/admin-users.php';
+    if (!admin_authenticated()) fail('Админаар нэвтэрнэ үү.',401);
+    admin_security_guard(defined('GOSTORE_ADMIN_API_DISPATCH')?(string)($_GET['action']??''):'',(string)($_SERVER['REQUEST_METHOD']??''));
+}
 function admin_password_change(array $b): array {
     admin_required();limit_attempts('admin-password:'.($_SERVER['REMOTE_ADDR']??'cli'),8,900);
     if(($_SESSION['admin_user']??'owner')!=='owner')fail('Таны эрх энэ үйлдэлд хүрэлцэхгүй.',403);
     $current=$b['current_password']??null;$next=$b['new_password']??null;$confirm=$b['password_confirm']??null;
     if(!is_string($current)||strlen($current)>1000||!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
     if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');
+    admin_password_rules($next,$confirm);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try {
         admin_required();$hash=admin_password_hash();
@@ -151,9 +157,10 @@ function admin_password_change(array $b): array {
         if(password_verify($next,$hash))fail('Өмнөхөөс өөр шинэ нууц үг сонгоно уу.');
         $newHash=password_hash($next,PASSWORD_BCRYPT,['cost'=>12]);
         $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['admin_password_hash',$newHash]);
+        admin_security_password_record(admin_owner_record());
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
-    session_regenerate_id(true);$_SESSION['admin_version']=hash('sha256',$newHash);$_SESSION['csrf']=bin2hex(random_bytes(32));
+    session_regenerate_id(true);$_SESSION['admin_version']=admin_session_version(admin_owner_record());$_SESSION['csrf']=bin2hex(random_bytes(32));
     return ['ok'=>true,'csrf'=>$_SESSION['csrf']];
 }
 function csrf_required(): void {

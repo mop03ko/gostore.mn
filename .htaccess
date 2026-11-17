@@ -33,6 +33,10 @@ ErrorDocument 404 /404.html
 <FilesMatch "^(config.*|open taobao keys\.txt|verifymn\.txt|.*\.sqlite.*|.*\.log|.*\.ai|.*\.pdf|.*\.zip|README\.md)$">
 Require all denied
 </FilesMatch>
+# Credential exports must never be served, even if accidentally copied to the web root.
+<FilesMatch "^(amazon\.txt|sendsms\.mn\.txt|gostore-[0-9]+-[^.]+\.json|.*service-account.*\.json|.*firebase-adminsdk.*\.json|\.env(?:\..*)?)$">
+Require all denied
+</FilesMatch>
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteCond %{HTTPS} !=on

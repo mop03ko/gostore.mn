@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+define('GOSTORE_ADMIN_API_DISPATCH', true);
 require __DIR__.'/../server/bootstrap.php';
 require __DIR__.'/../server/qpay-http.php';
 require __DIR__.'/../server/qpay.php';

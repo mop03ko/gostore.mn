@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/admin-security.php';
 
 // Admin staff accounts, roles, two-step sign-in (TOTP) and the admin audit log.
 // The built-in owner is the configured administrator (config admin_email + admin_password_hash) and
@@ -28,7 +29,8 @@ function admin_owner_record(): array {
 }
 // Session binding: a password change, reset, deactivation or role removal ends the account's sessions.
 function admin_session_version(array $u): string {
-    return !empty($u['builtin'])?hash('sha256',$u['password_hash']):hash('sha256',$u['password_hash'].'|'.$u['auth_version']);
+    $base=!empty($u['builtin'])?$u['password_hash']:$u['password_hash'].'|'.$u['auth_version'];
+    return hash('sha256',$base.(!empty($u['totp_secret'])?'|mfa:'.$u['totp_secret']:''));
 }
 function admin_current(): ?array {
     if(session_status()!==PHP_SESSION_ACTIVE||empty($_SESSION['admin']))return null;
@@ -39,7 +41,7 @@ function admin_current(): ?array {
 }
 function admin_current_public(): ?array {
     $u=admin_current();if(!$u)return null;
-    return ['id'=>$u['id'],'email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role'],'role_label'=>ADMIN_ROLE_LABELS[$u['role']],'builtin'=>!empty($u['builtin']),'totp'=>!empty($u['totp_secret'])];
+    return ['id'=>$u['id'],'email'=>$u['email'],'name'=>$u['name'],'role'=>$u['role'],'role_label'=>ADMIN_ROLE_LABELS[$u['role']],'builtin'=>!empty($u['builtin']),'totp'=>!empty($u['totp_secret']),'security'=>admin_security_status($u)];
 }
 function admin_role_at_least(string $role): bool {
     $u=admin_current();return $u&&ADMIN_ROLES[$u['role']]>=ADMIN_ROLES[$role];
@@ -61,6 +63,7 @@ function admin_action_role(string $action,string $method): string {
 }
 function admin_authorize(string $action,string $method): void {
     $u=admin_current();if(!$u)return;
+    admin_security_guard($action,$method);
     if(ADMIN_ROLES[$u['role']]<ADMIN_ROLES[admin_action_role($action,$method)])fail('Таны эрх энэ үйлдэлд хүрэлцэхгүй.',403);
 }
 
@@ -126,12 +129,14 @@ function admin_login(array $b): array {
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try{
             $fresh=!empty($u['builtin'])?admin_owner_record():admin_staff($u['id']);
+            if(!$fresh||!(int)$fresh['active']||!hash_equals(admin_session_version($u),admin_session_version($fresh))){$db->exec('ROLLBACK');fail('Нэвтрэх мэдээлэл өөрчлөгдсөн. Дахин нэвтэрнэ үү.',401);}
             $step=totp_match((string)$fresh['totp_secret'],$code,(int)$fresh['totp_last_step']);
             if($step===null){$db->exec('ROLLBACK');admin_login_failed($email,'totp',$u);json_out(['totp_required'=>true,'error'=>'Баталгаажуулах код буруу эсвэл хугацаа нь дууссан байна.'],401);}
-            admin_totp_used($fresh,$step);$db->exec('COMMIT');
+            admin_totp_used($fresh,$step);$db->exec('COMMIT');$u=$fresh;
         }catch(Throwable $e){if($db->inTransaction())$db->exec('ROLLBACK');throw $e;}
     }
     session_regenerate_id(true);$_SESSION['admin']=true;$_SESSION['admin_user']=$u['id'];$_SESSION['admin_version']=admin_session_version($u);$_SESSION['csrf']=bin2hex(random_bytes(32));
+    $_SESSION['admin_mfa']=!empty($u['totp_secret'])?hash('sha256',$u['totp_secret']):'';
     if(empty($u['builtin']))db()->prepare('UPDATE admin_users SET last_login=? WHERE id=?')->execute([gmdate('c'),$u['id']]);
     admin_audit_write('login','','',$u);
     return ['ok'=>true,'csrf'=>$_SESSION['csrf'],'admin'=>admin_current_public()];
@@ -146,11 +151,12 @@ function admin_staff_password_change(array $b): array {
     if(password_verify($next,$u['password_hash']))fail('Өмнөхөөс өөр шинэ нууц үг сонгоно уу.');
     $hash=password_hash($next,PASSWORD_BCRYPT,['cost'=>12]);
     db()->prepare('UPDATE admin_users SET password_hash=?,auth_version=auth_version+1,updated=? WHERE id=?')->execute([$hash,gmdate('c'),$u['id']]);
-    $u=admin_staff($u['id']);session_regenerate_id(true);$_SESSION['admin_version']=admin_session_version($u);$_SESSION['csrf']=bin2hex(random_bytes(32));
+    $u=admin_staff($u['id']);admin_security_password_record($u);session_regenerate_id(true);$_SESSION['admin_version']=admin_session_version($u);$_SESSION['csrf']=bin2hex(random_bytes(32));
     return ['ok'=>true,'csrf'=>$_SESSION['csrf']];
 }
 function admin_password_rules(mixed $next,mixed $confirm): void {
     if(!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
+    if(!preg_match('/[\p{P}\p{S}]/u',$next))fail('Шинэ нууц үг дор хаяж нэг тусгай тэмдэгттэй байна.');
     if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');
 }
 // Two-step sign-in for the signed-in account: setup → confirm with a code → (later) disable with password + code.
@@ -165,13 +171,15 @@ function admin_totp_post(string $action,array $b): array {
     if($action==='admin-totp-enable'){
         $p=$_SESSION['admin_totp_pending']??null;if(!$p||$p['at']<time()-900)fail('Тохиргоог дахин эхлүүлнэ үү.',409);
         $step=totp_match($p['secret'],$b['code']??null,0);if($step===null)fail('Код таарсангүй. Апп дээрх шинэ кодыг оруулна уу.',422);
-        admin_totp_store($u,$p['secret'],$step);unset($_SESSION['admin_totp_pending']);return ['ok'=>true,'admin'=>admin_current_public()];
+        admin_totp_store($u,$p['secret'],$step);$u['totp_secret']=$p['secret'];$_SESSION['admin_version']=admin_session_version($u);$_SESSION['admin_mfa']=hash('sha256',$p['secret']);
+        session_regenerate_id(true);unset($_SESSION['admin_totp_pending']);return ['ok'=>true,'admin'=>admin_current_public()];
     }
     if($action==='admin-totp-disable'){
+        if(admin_security_enforced())fail('Админы хоёр алхмын баталгаажуулалт заавал шаардлагатай тул унтраах боломжгүй.',403);
         if(empty($u['totp_secret']))fail('Хоёр алхмын баталгаажуулалт асаагүй байна.',409);
         $password=$b['password']??'';if(!is_string($password)||strlen($password)>1000||!password_verify($password,$u['password_hash']))fail('Нууц үг буруу байна.',422);
         if(totp_match($u['totp_secret'],$b['code']??null,(int)$u['totp_last_step'])===null)fail('Код таарсангүй.',422);
-        admin_totp_store($u,null);return ['ok'=>true,'admin'=>admin_current_public()];
+        admin_totp_store($u,null);$u['totp_secret']=null;$_SESSION['admin_version']=admin_session_version($u);$_SESSION['admin_mfa']='';session_regenerate_id(true);return ['ok'=>true,'admin'=>admin_current_public()];
     }
     fail('Үйлдэл олдсонгүй.',404);
 }
@@ -197,11 +205,12 @@ function admin_user_save(array $b): array {
             admin_password_rules($password,$b['password_confirm']??$password);
             $id='adm-'.bin2hex(random_bytes(6));
             $db->prepare('INSERT INTO admin_users (id,email,name,role,password_hash,active,created,updated) VALUES (?,?,?,?,?,?,?,?)')->execute([$id,$email,$name,$role,password_hash($password,PASSWORD_BCRYPT,['cost'=>12]),$b['active']?1:0,$now,$now]);
+            admin_security_password_record(admin_staff($id));
         }else{
             $old=admin_staff($id);if(!$old)fail('Админ олдсонгүй.',404);
             $bump=$old['role']!==$role||(int)$old['active']!==($b['active']?1:0)||$old['email']!==$email;
             $db->prepare('UPDATE admin_users SET email=?,name=?,role=?,active=?,updated=? WHERE id=?')->execute([$email,$name,$role,$b['active']?1:0,$now,$id]);
-            if(is_string($password)&&$password!==''){admin_password_rules($password,$b['password_confirm']??$password);$db->prepare('UPDATE admin_users SET password_hash=? WHERE id=?')->execute([password_hash($password,PASSWORD_BCRYPT,['cost'=>12]),$id]);$bump=true;}
+            if(is_string($password)&&$password!==''){admin_password_rules($password,$b['password_confirm']??$password);$db->prepare('UPDATE admin_users SET password_hash=? WHERE id=?')->execute([password_hash($password,PASSWORD_BCRYPT,['cost'=>12]),$id]);admin_security_password_record(admin_staff($id));$bump=true;}
             if(($b['reset_totp']??false)===true){$db->prepare('UPDATE admin_users SET totp_secret=NULL,totp_last_step=0 WHERE id=?')->execute([$id]);$bump=true;}
             if($bump)$db->prepare('UPDATE admin_users SET auth_version=auth_version+1 WHERE id=?')->execute([$id]);
         }

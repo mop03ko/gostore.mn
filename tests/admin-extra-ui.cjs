@@ -71,7 +71,7 @@ await viewer.locator('nav [data-page=site]').click();await viewer.locator('#site
 // Operator: turn on two-step sign-in, then sign in again with a code.
 const ops=await browser.newPage({viewport:{width:1440,height:1000}});ops.on('pageerror',e=>errors.push(e.message));
 await signIn(ops,'ops@gostore.mn','staff-password-123');await ops.locator('#app').waitFor({state:'visible'});
-await ops.locator('nav [data-page=security]').click();await ops.locator('#totp-panel').waitFor();assert.match(await ops.locator('#content h2').first().innerText(),/^Нууц үг солих/);
+await ops.locator('nav [data-page=security]').click();await ops.locator('#totp-panel').waitFor();assert.equal(await ops.locator('#content').getByRole('heading',{name:'Нууц үг солих',exact:true}).count(),1);
 await post(ops,'admin-totp-setup',()=>ops.locator('[data-totp-start]').click());
 assert.equal(await ops.locator('.totp-qr svg').count(),1,'QR code shown');
 const secret=(await ops.locator('.totp-secret').innerText()).replace(/\s/g,'');assert.match(secret,/^[A-Z2-7]{32}$/);
