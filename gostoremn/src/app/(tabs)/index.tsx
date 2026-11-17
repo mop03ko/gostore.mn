@@ -11,15 +11,13 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
-import { HomeDiscovery, DiscoveryCard } from "@/components/discovery";
+import { DiscoveryCard } from "@/components/discovery";
+import { HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSwipeArea, HomeWarehouseLinks, homeCategories } from "@/components/home-deals";
 import { catalog } from "@/lib/api";
 import { productSavings } from "@/lib/product-offers";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
-import { WarehousePreferenceCard } from "@/components/warehouse-preference";
-import { BranchesPromo } from "@/components/branches-promo";
-import { SelfCargoEntry } from "@/components/self-cargo-entry";
 import { PromoPopup } from "@/components/promo-popup";
 type Results = {
   products: Product[];
@@ -33,6 +31,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
   const colors = usePalette();
   const inset = useSafeAreaInsets();
   const [searchMode, setSearchMode] = useState(!!initialQuery || !!initialImage);
+  const [category, setCategory] = useState(0);
+  const categorySearch = !searchMode && category > 0;
   const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
     { width } = useWindowDimensions(),
@@ -67,7 +67,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     setBusy(true);
     setError("");
     const params: Record<string, string | number> = {
-      q: query,
+      q: categorySearch ? homeCategories[category].query : query,
       page,
       limit: 12,
       sort,
@@ -76,8 +76,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     void (async () => {
       try {
         let r = await catalog<Results>(
-          searchMode ? "supplier-search" : "supplier-deals",
-          searchMode ? params : { page },
+          searchMode || categorySearch ? "supplier-search" : "supplier-deals",
+          searchMode || categorySearch ? params : { page },
           controller.signal,
         );
         if (g !== generation.current) return;
@@ -98,7 +98,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         );
         setMore(r.more);
         setStale(!!r.revalidate || !!r.stale);
-        if (searchMode && r.revalidate && !image) {
+        if ((searchMode || categorySearch) && r.revalidate && !image) {
           r = await catalog<Results>(
             "supplier-search",
             { ...params, refresh: 1 },
@@ -127,14 +127,35 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
       }
     })();
     return () => controller.abort();
-  }, [query, page, sort, image, retry, searchMode]);
+  }, [query, page, sort, image, retry, searchMode, category, categorySearch]);
+  const selectCategory = (index: number) => {
+    if (index === category && !searchMode) return;
+    generation.current++;
+    nextPageLock.current = false;
+    setCategory(index);
+    setSearchMode(false);
+    setDraft("");
+    setImage("");
+    setPage(1);
+    setSort("default");
+    setItems([]);
+    setMore(false);
+    setError("");
+    setStale(false);
+    list.current?.scrollToOffset({ offset: 0, animated: false });
+  };
   const search = (value: string) => {
+    generation.current++;
+    nextPageLock.current = false;
+    setCategory(0);
     setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
     setQuery(value.trim() || "__all__");
     setDraft(value === "__all__" ? "" : value);
     setItems([]);
+    setMore(false);
+    setStale(false);
     setRetry((x) => x + 1);
     list.current?.scrollToOffset({ offset: 0, animated: true });
   };
@@ -151,7 +172,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     setRetry((x) => x + 1);
   };
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View
         style={{
           backgroundColor: colors.surface,
@@ -168,11 +189,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             justifyContent: "space-between",
           }}
         >
-          <BrandLogo width={132} />
+          <BrandLogo width={156} />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
-            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", flexShrink: 1, color: colors.muted }}>
-              {searchMode ? "Хайлтын үр дүн" : "Хямдралтай бараа"}
-            </Text>
             <IconButton
               name="help"
               label="Тусламж"
@@ -193,7 +211,6 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             gap: 7,
           }}
         >
-          <Icon name="search" size={20} color={colors.muted} />
           <TextInput
             accessibilityLabel="Бараа хайх"
             value={draft}
@@ -230,10 +247,12 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontWeight: "700", color: colors.onPrimary }}>Хайх</Text>
+            <Icon name="search" size={22} color={colors.onPrimary} />
           </Pressable>
         </View>
       </View>
+      {!searchMode && <><HomeWarehouseLinks /><HomeCategories selected={category} onSelect={selectCategory} /></>}
+      <HomeSwipeArea selected={category} onSelect={selectCategory} disabled={searchMode}>
       <FlatList
         ref={list}
         key={columns}
@@ -244,21 +263,19 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: 8, paddingBottom: 20, gap: 8 }}
         columnWrapperStyle={{ gap: 8 }}
-        onEndReached={nextPage}
+        onEndReached={() => { if (displayedItems.length) nextPage(); }}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
             {!searchMode && <>
-            <WarehousePreferenceCard />
-            <SelfCargoEntry />
-            <BranchesPromo onBrowse={() => search("__all__")} />
-            <HomeDiscovery onSearch={search} />
+            <HomeDealHighlights products={displayedItems} />
+            <HomeCategoryPhotos onSelect={selectCategory} />
             </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
             </View>}
-            {!searchMode && <><Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy, padding: 5 }}>Хямдралтай бараа</Text><Copy>Баталгаажсан хямдрал · Хямдралын хувь ихээс эхэлнэ</Copy></>}
+            {!searchMode && <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy }}>{category ? homeCategories[category].name + " · Хямдрал" : "Хямдралтай бараа"}</Text><Text style={{ fontSize: 12, color: colors.muted }}>Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу</Text></View>}
             {searchMode && <View
               style={{
                 flexDirection: "row",
@@ -320,12 +337,11 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         )}
         ListFooterComponent={
           <View style={{ paddingVertical: 12, gap: 8 }}>
+            {!busy && !displayedItems.length && !error && <Copy>{searchMode ? "Бараа олдсонгүй. Өөр нэрээр хайгаарай." : category ? "Энэ хуудсанд баталгаажсан хямдрал алга. Дараагийн хуудас эсвэл өөр ангиллыг шалгаарай." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy>}
             {busy ? (
               <Busy />
-            ) : more ? (
+            ) : more && !error ? (
               <Button title="Дараагийн бараанууд" onPress={nextPage} />
-            ) : !displayedItems.length && !error ? (
-              <Copy>{searchMode ? "Бараа олдсонгүй. Өөр нэрээр хайгаарай." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy>
             ) : null}
             <Text
               style={{ fontSize: 11, textAlign: "center", color: colors.muted }}
@@ -335,6 +351,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           </View>
         }
       />
+      </HomeSwipeArea>
     </View>
   );
 }
