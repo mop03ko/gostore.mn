@@ -112,3 +112,26 @@ the expanded touch regression suite, discount checks and all-platform export:
 
 All three update endpoint requests returned HTTP 200 and the expected new update
 IDs for their platform/runtime/channel. Physical-device receipt remains unobserved.
+
+## All products in category tabs — 2026-11-18
+
+Source commit: `2f8dba1823b33cf1f47db497cc7a314eb08de69c`. Category results no
+longer disappear when they contain no discounts. Headings, photo shortcut labels,
+loading placeholders and empty-state copy now describe the category, not a sale.
+The dedicated deals tab retains its verified-discount filter and highlights.
+
+Validated with Expo lint, TypeScript, product-discount checks, iOS/Android/web
+export and the touch UI suite. Fixtures cover mixed-price and regular-only
+categories, ordinary products on subsequent pages, genuine empty results, sale
+badges, request races, swipe gestures, cache restoration and dark/resized layouts.
+Screenshot: `output/home-deals/category-all-products.png` (fixture data).
+
+| Platform/channel | Update group |
+| --- | --- |
+| iOS production, build 1.0.2 (20) runtime | `321eb5b9-a16a-4674-bd89-3242bd09a453` |
+| Android production | `62c2d290-64a8-4bed-92c8-248a101bc50f` |
+| Android preview / directly installed APK | `32251b2b-8cba-4dd0-acc7-c9e7ad7cfad3` |
+
+All three Expo manifest requests returned HTTP 200 with the expected new update
+IDs. Runtime fingerprints are unchanged. Receipt on a physical phone was not
+observed; compatible installed apps apply the downloaded OTA on restart.
