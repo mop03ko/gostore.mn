@@ -19,6 +19,41 @@ SENDSMS_TYPE=standard
 
 The user's supplied tariff is 20₮ per standard SMS. Both verification and notifications use this type. The provider must have an active plan and sufficient balance. Queue acceptance is not proof of delivery. GOStore records the returned cost when available.
 
+## Admin usage dashboard
+
+`/admin/#sms` is a read-only view for authenticated admin roles, including viewers.
+`GET admin-sms-usage` accepts `from`, `to`, `kind` (all/otp/order), and `page`;
+dates use Asia/Ulaanbaatar, with 50 rows per page and the existing 400-day range
+limit. Customer, warehouse and mobile API sessions cannot access the report.
+
+The dashboard combines existing order queue history with the new `sms_otp_usage`
+ledger. OTP attempts are recorded immediately before a provider call, after rate
+limits, and marked accepted, failed or uncertain afterward. Interrupted sending
+attempts older than five minutes display as uncertain. Correct OTP confirmation
+is recorded separately, once; it does not rewrite an uncertain provider response.
+Reporting-result failures never resend SMS or invalidate a correct OTP.
+
+Only masked phone numbers are returned. The OTP ledger stores no full phone,
+code, challenge, message, API key or token. OTP history starts when the ledger is
+initialized; earlier usage is not reconstructed from sessions or rate limits.
+Totals are selected by request creation date and show current states. Known cost
+is the sum of nonnegative provider-reported accepted amounts; unknown prices are
+counted separately. This is not the wallet balance, proof of handset delivery, or
+net cost after later provider refunds. SendSMS wallet/delivery reconciliation is
+available through the dashboard link; no balance API was supplied.
+
+Checks: `tests/sms-usage.php`, `tests/sms-otp.php`, `tests/sendsms.php`,
+`node tests/run-logistics.cjs admin-sms-ui`, and SQLite compatibility. They cover
+authentication, masking, timezone boundaries, pagination/filtering, real OTP
+accounting, ambiguous/rejected attempts, empty/error/retry UI and mobile layout.
+
+Deployed 2026-11-18 (Ulaanbaatar), release `sms-usage-1794932642226`, after a
+SQLite integrity-checked backup and backups of the replaced files. The production
+SQLite 3.7.17 report query passed; the worker heartbeat was healthy. Live admin
+HTML/JS/CSS match the reviewed files, anonymous reporting is rejected with 401,
+the mobile API rejects the admin action with 404, and direct server source access
+is forbidden. OTP remains enabled. No billable test SMS was sent.
+
 The transport posts to the fixed SendSMS HTTPS endpoint, verifies TLS and validates a single eight-digit Mongolian phone number and 160 ASCII / 70 Unicode character limits. Provider responses and secrets are not logged. Verification codes are cryptographically random and stored only as a keyed hash in the session.
 
 Rate limits before billed OTP calls: one/minute, five/hour and twenty/day per phone, ten/hour per IP, plus a global cap of 1,000/day. These are abuse/spend guards, not provider quotas. The code-entry UI never automatically resends a code. Rejected sends fail safely; ambiguous sends retain the challenge so a delayed code still works.

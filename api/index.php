@@ -95,6 +95,7 @@ try {
         if($action==='admin-export')admin_export($_GET);
         if($action==='admin-search-insights')json_out(admin_search_insights($_GET));
         if($action==='admin-api-usage')json_out(admin_api_usage());
+        if($action==='admin-sms-usage'){require_once __DIR__.'/../server/sms-usage.php';json_out(admin_sms_usage($_GET));}
         if($action==='admin-alerts')json_out(admin_alerts());
         if($action==='catalog-controls'){tw_catalog_enabled();json_out(catalog_controls_admin());}
         if($action==='admin-messages')json_out(customer_messages_admin());

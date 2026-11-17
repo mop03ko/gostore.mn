@@ -1,0 +1,24 @@
+const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
+const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
+(async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  assert.equal((await page.request.get(base+'/api/index.php?action=admin-sms-usage')).status(),401);
+  assert.equal((await page.request.get(base+'/api/mobile.php?action=admin-sms-usage')).status(),404);
+  const auth=JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8'));
+  await page.goto(base+'/admin/');await page.locator('[name=email]').fill(auth.email);await page.locator('[name=password]').fill(auth.password);await page.locator('#login-form button').click();await page.locator('#app').waitFor({state:'visible'});
+  await page.locator('nav [data-page=sms]').click();await page.locator('.sms-table').waitFor();
+  assert.match(await page.locator('#sms-result').innerText(),/Энэ хугацаанд бүртгэгдсэн SMS алга/);
+  const response=await page.request.get(base+'/api/index.php?action=admin-sms-usage');assert.equal(response.status(),200);const fixture=await response.json();
+  fixture.summary={total:51,known_cost:20,unknown_cost:1,verified:1};fixture.states={pending:48,sending:0,accepted:2,failed:1,uncertain:0,cancelled:0};fixture.pages=2;
+  fixture.rows=[{kind:'otp',event:'register',phone_mask:'99****33',order_id:'',created:new Date().toISOString(),state:'accepted',cost:20,verified_at:new Date().toISOString()},{kind:'order',event:'pickup',phone_mask:'88****44',order_id:'<img src=x onerror=alert(1)>',created:new Date().toISOString(),state:'accepted',cost:null,verified_at:null}];
+  let mode='ok',requests=[];
+  await page.route('**/api/index.php?action=admin-sms-usage*',route=>{const q=new URL(route.request().url()).searchParams;requests.push(Object.fromEntries(q));return route.fulfill({status:mode==='fail'?503:200,contentType:'application/json',body:JSON.stringify(mode==='fail'?{error:'Туршилтын алдаа'}:{...fixture,page:Number(q.get('page')||1)})});});
+  await page.locator('#sms-range button').click();await page.waitForFunction(()=>document.querySelector('.sms-table')?.textContent.includes('99****33'));
+  assert.match(await page.locator('#sms-result').innerText(),/Тодорхойгүй/);assert.equal(await page.locator('.sms-table img').count(),0,'Escaped server fields');
+  await page.locator('[data-sms-page="2"]').click();await page.waitForFunction(()=>document.querySelector('.sms-pagination')?.textContent.includes('2 / 2'));assert.equal(requests.at(-1).page,'2');
+  await page.locator('#sms-range [name=kind]').selectOption('otp');await page.locator('#sms-range button').click();await page.waitForFunction(()=>document.querySelector('.sms-pagination')?.textContent.includes('1 / 2'));assert.equal(requests.at(-1).kind,'otp');
+  mode='fail';await page.locator('#sms-range button').click();await page.locator('[data-sms-retry]').waitFor();mode='ok';await page.locator('[data-sms-retry]').click();await page.locator('.sms-table').waitFor();
+  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'No page overflow at phone width');
+  fs.mkdirSync('output/sms-usage',{recursive:true});await page.screenshot({path:'output/sms-usage/mobile.png',fullPage:true});
+  assert.deepEqual(errors,[]);console.log('PASS admin SMS: auth, mobile API isolation, empty/results, escaped fields, filters, pagination, retry, mobile layout.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

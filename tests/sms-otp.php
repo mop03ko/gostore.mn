@@ -34,4 +34,9 @@ $r=sms_otp_start(['phone'=>'77112233','purpose'=>'verify']);$_SESSION['phone_ver
 $mode='unknown';$r=sms_otp_start(['phone'=>'99112234','purpose'=>'verify']);check($r['deliveryUncertain']===true&&sms_otp_status(['challenge'=>$r['challenge']])['sessionStatus']==='PENDING','Uncertain SMS not auto-verified or resent');
 check(sms_otp_status(['challenge'=>$r['challenge'],'code'=>last_code()])['sessionStatus']==='VERIFIED','A delayed code can still verify');
 $mode='fail';denied(fn()=>sms_otp_start(['phone'=>'99112235']),503);check(!isset($_SESSION['phone_verification'],$_SESSION['phone_verified']),'Rejected send leaves no proof');
+check((int)db()->query('SELECT count(*) FROM sms_otp_usage')->fetchColumn()===count($sent),'Every outbound attempt counted once; throttled requests excluded');
+check((int)db()->query('SELECT count(*) FROM sms_otp_usage WHERE verified_at IS NOT NULL')->fetchColumn()===3,'Only correct OTPs counted verified');
+check((int)db()->query('SELECT count(*) FROM sms_otp_usage WHERE state="failed"')->fetchColumn()===1,'Rejected provider attempt tracked');
+check((int)db()->query('SELECT count(*) FROM sms_otp_usage WHERE state="uncertain"')->fetchColumn()===1,'Uncertain provider attempt tracked even if OTP later verified');
+check(!str_contains(json_encode(db()->query('SELECT * FROM sms_otp_usage')->fetchAll()),'99112233'),'Usage stores only masked numbers');
 echo "PASS SMS OTP: hashed code, 5-minute expiry, five guesses, cooldown, session binding, explicit confirmation, proof consumption, PIN setup/login, rejected and uncertain responses.\n";

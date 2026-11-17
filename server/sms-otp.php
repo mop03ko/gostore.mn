@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/sendsms.php';
+require_once __DIR__.'/sms-usage.php';
 function sms_verification_start(array $b): array {
     // Old MO clients have no code-entry screen: reject before any billable SMS.
     if(($b['delivery']??'')!=='otp')fail('Аппаа шинэчилнэ үү. Вэб ашиглаж байгаа бол хуудсаа дахин ачаалаад SMS код авна уу.',426);
@@ -19,10 +20,10 @@ function sms_otp_start(array $b): array {
     unset($_SESSION['phone_verified'],$_SESSION['phone_verification']);
     $challenge=bin2hex(random_bytes(24));$code=str_pad((string)random_int(0,999999),6,'0',STR_PAD_LEFT);$expires=time()+300;
     $_SESSION['phone_verification']=['provider'=>'sendsms','challenge'=>$challenge,'phone'=>$phone,'status'=>'PENDING','purpose'=>$purpose,'expires'=>$expires,'attempts'=>0,'code_hash'=>hash_hmac('sha256',$challenge.':'.$phone.':'.$code,$secret),'customer'=>$_SESSION['customer_id']??null,'auth_version'=>$_SESSION['customer_version']??null];
-    $uncertain=false;
-    try{sendsms_send($phone,'GOStore kod: '.$code.'. 5 minut huchintei. Kodyg busdad buu damjuul.');}
-    catch(SendSmsUncertain $e){$uncertain=true;}
-    catch(Throwable $e){unset($_SESSION['phone_verification']);fail('SMS илгээх боломжгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
+    $uncertain=false;$usage=sms_usage_otp_start($purpose,$phone);$_SESSION['phone_verification']['usage_id']=$usage;
+    try{$sent=sendsms_send($phone,'GOStore kod: '.$code.'. 5 minut huchintei. Kodyg busdad buu damjuul.');sms_usage_otp_result($usage,'accepted',$sent['cost']);}
+    catch(SendSmsUncertain $e){$uncertain=true;sms_usage_otp_result($usage,'uncertain');}
+    catch(Throwable $e){sms_usage_otp_result($usage,$e instanceof SendSmsRejected?'failed':'uncertain');unset($_SESSION['phone_verification']);fail('SMS илгээх боломжгүй байна. Түр хүлээгээд дахин оролдоно уу.',503);}
     return ['delivery'=>'otp','challenge'=>$challenge,'phone'=>$phone,'displayInstruction'=>'Таны утсанд ирэх 6 оронтой кодыг оруулна уу.','remainingSeconds'=>300,'expiresAt'=>gmdate('c',$expires),'deliveryUncertain'=>$uncertain];
 }
 function sms_otp_status(array $b): array {
@@ -35,6 +36,7 @@ function sms_otp_status(array $b): array {
         $valid=hash_equals($s['code_hash'],hash_hmac('sha256',$challenge.':'.$s['phone'].':'.$code,pin_auth_secret()));
         if(!$valid){if($s['attempts']>=5){$s['status']='EXPIRED';unset($s['code_hash']);}$_SESSION['phone_verification']=$s;fail($s['status']==='EXPIRED'?'Оролдлогын тоо дууслаа. Дахин код авна уу.':'Код буруу байна.', $s['status']==='EXPIRED'?429:400);}
         $s['status']='VERIFIED';unset($s['code_hash']);
+        sms_usage_otp_result((int)($s['usage_id']??0),'accepted',null,true);
         $_SESSION['phone_verified']=['phone'=>$s['phone'],'customer'=>$s['customer'],'verified_at'=>gmdate('c')];
     }
     $_SESSION['phone_verification']=$s;
