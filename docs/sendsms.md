@@ -60,3 +60,28 @@ SendSMS-only OTA release from `870f441`, using the same compatible runtimes list
 | --- | --- | --- |
 | production | e6daa252-2e17-4e51-b7be-752cf6f37f46 | 45867455-c35d-4293-923c-970644b2fbb2 |
 | preview | 798e1600-428c-4c0f-82f1-3bcd41f7fca9 | b25bee0d-08ff-45d1-93cd-974952e7f659 |
+
+### iOS build 20 compatibility correction — 2026-11-17
+
+The November 16 iOS updates above targeted the ordinary EAS fingerprint, not the
+Mac-built public 1.0.2 (20). Build 20 has runtime
+`646e611a39796fd0c8cb87ef08a4ea35cc51abba`: its signing plugin, Apple team and
+production request headers are included in the fingerprint. The native packages
+and their hashes match; no new native module is needed for SendSMS.
+
+The subsequent home-screen release from `d6c5057` includes the SendSMS registration
+changes and correctly targets build 20. Production group
+`5cd6f440-f3dc-4d03-b68d-047ad11b27d3`, iOS update
+`01a1e9ec-e60f-71c6-b90e-cfa180746182`, was checked through the Expo update endpoint
+using the installed runtime/channel. It returns this update, and its launch asset
+downloads successfully using the protocol-provided asset headers with a matching
+SHA-256 hash. The staged login, OTP component, API client and lockfile match the
+reviewed source: `delivery: otp`, six-digit input, server `VERIFIED` confirmation,
+and no verify.mn SMS composer. Expo typecheck and lint pass.
+
+Use `node scripts/customer-ios-ota.cjs` to reproduce and check build 20's native
+fingerprint before future iOS OTA releases; `--publish` publishes the verified
+staging project. Do not simply publish iOS from the ordinary EAS config or override
+the runtime string. No additional OTA was published during this verification:
+the compatible home-screen release already contains the fix. Handset update
+installation and real SMS delivery still require a user-device check.
