@@ -62,3 +62,39 @@ it serves the new update IDs. Publication/routing is verified, not receipt on a
 physical user device. Existing compatible apps download on launch and apply on
 a subsequent restart; no new store binary was created. The live mobile deals
 endpoint returned 50 unexpired discounted rows on its first page at verification.
+
+## Continuous category pager — 2026-11-17
+
+The original release switched category on a PanResponder release; the content did
+not move during the drag. It now uses the existing React Native horizontal
+ScrollView pager, so pages follow the finger, expose the neighboring page and
+snap using platform scrolling physics. The orange tab indicator interpolates
+with the scroll position using native Animated on iOS/Android. Adjacent tab taps
+animate; distant tab taps jump directly without fetching intermediate categories.
+
+Research: the user's Taobao reference establishes the tab/content structure.
+[Alibaba mPaaS Tabs](https://www.alibabacloud.com/help/en/mobile-platform-as-a-service/latest/biaoqian)
+documents swipeable panels, transition events, gesture angle and swipe thresholds;
+[Ant Design Mini Tabs](https://0x-mini.ant.design/components/tabs/) documents the
+same interaction family. These are primary references for the pattern, **not**
+proof of the current Taobao app's private gesture implementation or exact timing.
+No physical Taobao session was available to measure it frame by frame.
+[React Native ScrollView](https://reactnative.dev/docs/scrollview) and
+[Animated](https://reactnative.dev/docs/animated) provide the installed SDK's
+paging, direction locking, nested scrolling and animated scroll APIs.
+
+Each visited category owns its FlatList, fetched pages and scroll position. Keep
+at most five feeds mounted; evicted feeds restore from an in-memory snapshot.
+Unvisited neighboring pages show a lightweight placeholder and fetch only when
+selected. Offscreen requests are cancelled, expiry still filters prices, and a
+debounced scroll snapshot cannot overwrite a newer data response. Inner photo
+carousels retain their own horizontal scrolling; vertical drags scroll the list.
+Inactive pages are hidden from accessibility. Resizing re-aligns the active page.
+
+`tests/expo-home-deals-ui.cjs` additionally verifies intermediate page/indicator
+movement before release, snap-back after a short drag, independent nested
+carousel scrolling, five-feed eviction/restoration, lazy requests, and resize
+alignment. `output/home-deals/pager-mid-drag.png` captures two partially visible
+pages during a real browser touch sequence. These browser gesture tests do not
+replace a physical iPhone/Android performance check. Native dependencies and
+runtime fingerprints remain unchanged; this change can use OTA.

@@ -1,5 +1,5 @@
-import { createContext, use, useEffect, useMemo, useRef, type ComponentProps, type ComponentRef, type ReactNode } from "react";
-import { PanResponder, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { createContext, use, useEffect, useRef, useState, type ComponentProps, type ComponentRef } from "react";
+import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { CategoryPhoto, categories } from "./discovery";
@@ -11,39 +11,22 @@ import { percentLabel, productSavings } from "@/lib/product-offers";
 import type { Product } from "@/lib/types";
 
 export const homeCategories = [{ id: "all", name: "Хямдрал", query: "__all__", image: "" }, ...categories];
-const CarouselTouch = createContext<((active: boolean) => void) | null>(null);
+export const CarouselTouch = createContext<((active: boolean) => void) | null>(null);
 function HomeCarousel(props: ComponentProps<typeof ScrollView>) {
   const touch = use(CarouselTouch);
-  return <ScrollView {...props} onTouchStart={() => touch?.(true)} onTouchEnd={() => touch?.(false)} onTouchCancel={() => touch?.(false)} />;
+  return <ScrollView {...props} nestedScrollEnabled directionalLockEnabled onTouchStart={() => touch?.(true)} onTouchEnd={() => touch?.(false)} onTouchCancel={() => touch?.(false)} />;
 }
 
-export function HomeCategories({ selected, onSelect }: { selected: number; onSelect: (index: number) => void }) {
+export function HomeCategories({ selected, onSelect, position, pageWidth }: { selected: number; onSelect: (index: number) => void; position: Animated.Value; pageWidth: number }) {
   const c = usePalette(), scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const positions = useRef<Record<number, number>>({});
-  useEffect(() => { scroll.current?.scrollTo({ x: Math.max(0, (positions.current[selected] || 0) - 20), animated: true }); }, [selected]);
+  const [layouts, setLayouts] = useState<Record<number, { x: number; width: number }>>({});
+  useEffect(() => { const tab = layouts[selected]; if (tab) scroll.current?.scrollTo({ x: Math.max(0, tab.x + tab.width / 2 - pageWidth / 2), animated: true }); }, [selected, layouts, pageWidth]);
   return <ScrollView ref={scroll} horizontal showsHorizontalScrollIndicator={false} testID="home-category-tabs" contentContainerStyle={{ gap: 22, paddingHorizontal: 16 }} style={{ flexGrow: 0, backgroundColor: c.surface }}>
-    {homeCategories.map((category, index) => <Pressable key={category.id} onLayout={e => { positions.current[index] = e.nativeEvent.layout.x; }} accessibilityRole="tab" accessibilityState={{ selected: selected === index }} aria-selected={selected === index} onPress={() => onSelect(index)} style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 3, borderBottomColor: selected === index ? c.orange : "transparent" }}>
+    {homeCategories.map((category, index) => <Pressable key={category.id} onLayout={e => { const { x, width } = e.nativeEvent.layout; setLayouts(prev => prev[index]?.x === x && prev[index]?.width === width ? prev : { ...prev, [index]: { x, width } }); }} accessibilityRole="tab" accessibilityState={{ selected: selected === index }} aria-selected={selected === index} onPress={() => onSelect(index)} style={{ minHeight: 48, justifyContent: "center" }}>
       <Text style={{ color: selected === index ? c.ink : c.muted, fontSize: 16, fontWeight: selected === index ? "800" : "500" }}>{category.name}</Text>
     </Pressable>)}
+    {Object.keys(layouts).length === homeCategories.length && <Animated.View testID="home-tab-indicator" pointerEvents="none" style={{ position: "absolute", left: 0, bottom: 0, height: 3, width: 24, borderRadius: 2, backgroundColor: c.orange, transform: [{ translateX: position.interpolate({ inputRange: homeCategories.map((_, i) => i * pageWidth), outputRange: homeCategories.map((_, i) => layouts[i].x + (layouts[i].width - 24) / 2), extrapolate: "clamp" }) }] }} />}
   </ScrollView>;
-}
-
-// Horizontal child carousels keep their own responder. Vertical drags and taps
-// remain with the product list; only a deliberate horizontal drag changes category.
-export function HomeSwipeArea({ children, selected, onSelect, disabled }: { children: ReactNode; selected: number; onSelect: (index: number) => void; disabled: boolean }) {
-  const carouselTouch = useRef(false);
-  // PanResponder stores these callbacks; it reads the ref only on touch events.
-  // eslint-disable-next-line react-hooks/refs
-  const responder = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_, g) => !disabled && !carouselTouch.current && g.numberActiveTouches === 1 && Math.abs(g.dx) > 22 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
-    onPanResponderRelease: (_, g) => {
-      if (Math.abs(g.dx) < 60 || Math.abs(g.dx) < Math.abs(g.dy) * 2) return;
-      const next = selected + (g.dx < 0 ? 1 : -1);
-      if (next >= 0 && next < homeCategories.length) onSelect(next);
-    },
-    onPanResponderTerminationRequest: () => true,
-  }), [disabled, selected, onSelect]);
-  return <CarouselTouch value={active => { carouselTouch.current = active; }}><View testID="home-swipe-area" style={{ flex: 1 }} {...responder.panHandlers}>{children}</View></CarouselTouch>;
 }
 
 function priceLabel(product: Product) { return (product.mnt ? "" : "≈ ") + money(product.mnt || product.approx_mnt || 0); }
@@ -63,7 +46,7 @@ export function HomeDealHighlights({ products }: { products: Product[] }) {
   if (!deals.length) return null;
   const groups = [deals.slice(0, 3), deals.slice(3, 6)].filter(group => group.length);
   return <View testID="home-deal-highlights" style={{ gap: 14 }}>
-    <HomeCarousel horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+    <HomeCarousel testID="home-deal-carousel" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
       {groups.map((group, index) => <View key={group[0].id} style={{ width: Math.min(330, width * 0.79), borderRadius: 20, padding: 12, gap: 8, backgroundColor: index % 2 ? c.accentSurface : c.subtle }}>
         <Text numberOfLines={1} style={{ fontSize: 18, fontWeight: "800", color: c.navy }}>{index ? "Өнөөдрийн олз" : "Хямдралын сонголт"}</Text>
         <Text style={{ color: c.muted, fontSize: 12 }}>Үнэ буурсан бараанууд</Text>

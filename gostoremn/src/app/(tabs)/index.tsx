@@ -12,9 +12,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
 import { DiscoveryCard } from "@/components/discovery";
-import { HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSwipeArea, HomeWarehouseLinks, homeCategories } from "@/components/home-deals";
+import { HomeWarehouseLinks } from "@/components/home-deals";
+import { HomePager } from "@/components/home-pager";
 import { catalog } from "@/lib/api";
-import { productSavings } from "@/lib/product-offers";
 import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
@@ -31,8 +31,6 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
   const colors = usePalette();
   const inset = useSafeAreaInsets();
   const [searchMode, setSearchMode] = useState(!!initialQuery || !!initialImage);
-  const [category, setCategory] = useState(0);
-  const categorySearch = !searchMode && category > 0;
   const nextPageLock = useRef(false);
   const { shipping, error: bootError, refresh } = useStore(),
     { width } = useWindowDimensions(),
@@ -50,16 +48,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     [retry, setRetry] = useState(0);
   const generation = useRef(0),
     list = useRef<FlatList<Product>>(null);
-  const [expiryTick, setExpiryTick] = useState(0);
   useEffect(() => {
-    if (searchMode) return;
-    const expiry = Math.min(...items.map(p => p.card_discount?.expires ?? 0).filter(at => at * 1000 > Date.now()));
-    if (!Number.isFinite(expiry)) return;
-    const timer = setTimeout(() => setExpiryTick(x => x + 1), Math.max(20, Math.min(2147483647, expiry * 1000 - Date.now() + 20)));
-    return () => clearTimeout(timer);
-  }, [items, searchMode, expiryTick]);
-  const displayedItems = searchMode ? items : items.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale);
-  useEffect(() => {
+    if (!searchMode) return;
     const g = ++generation.current,
       controller = new AbortController();
     // Start a new cancellable network request when search parameters change.
@@ -67,7 +57,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     setBusy(true);
     setError("");
     const params: Record<string, string | number> = {
-      q: categorySearch ? homeCategories[category].query : query,
+      q: query,
       page,
       limit: 12,
       sort,
@@ -76,8 +66,8 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
     void (async () => {
       try {
         let r = await catalog<Results>(
-          searchMode || categorySearch ? "supplier-search" : "supplier-deals",
-          searchMode || categorySearch ? params : { page },
+          "supplier-search",
+          params,
           controller.signal,
         );
         if (g !== generation.current) return;
@@ -98,7 +88,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         );
         setMore(r.more);
         setStale(!!r.revalidate || !!r.stale);
-        if ((searchMode || categorySearch) && r.revalidate && !image) {
+        if (r.revalidate && !image) {
           r = await catalog<Results>(
             "supplier-search",
             { ...params, refresh: 1 },
@@ -127,27 +117,10 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
       }
     })();
     return () => controller.abort();
-  }, [query, page, sort, image, retry, searchMode, category, categorySearch]);
-  const selectCategory = (index: number) => {
-    if (index === category && !searchMode) return;
-    generation.current++;
-    nextPageLock.current = false;
-    setCategory(index);
-    setSearchMode(false);
-    setDraft("");
-    setImage("");
-    setPage(1);
-    setSort("default");
-    setItems([]);
-    setMore(false);
-    setError("");
-    setStale(false);
-    list.current?.scrollToOffset({ offset: 0, animated: false });
-  };
+  }, [query, page, sort, image, retry, searchMode]);
   const search = (value: string) => {
     generation.current++;
     nextPageLock.current = false;
-    setCategory(0);
     setSearchMode(!!value.trim());
     setPage(1);
     setImage("");
@@ -251,31 +224,25 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           </Pressable>
         </View>
       </View>
-      {!searchMode && <><HomeWarehouseLinks /><HomeCategories selected={category} onSelect={selectCategory} /></>}
-      <HomeSwipeArea selected={category} onSelect={selectCategory} disabled={searchMode}>
-      <FlatList
+      {!searchMode && <><HomeWarehouseLinks /><ErrorBox message={bootError} retry={() => void refresh().catch(() => {})} /><HomePager /></>}
+      {searchMode && <FlatList
         ref={list}
         key={columns}
         numColumns={columns}
-        data={displayedItems}
+        data={items}
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: 8, paddingBottom: 20, gap: 8 }}
         columnWrapperStyle={{ gap: 8 }}
-        onEndReached={() => { if (displayedItems.length) nextPage(); }}
+        onEndReached={() => { if (items.length) nextPage(); }}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
-            {!searchMode && <>
-            <HomeDealHighlights products={displayedItems} />
-            <HomeCategoryPhotos onSelect={selectCategory} />
-            </>}
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
               <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
             </View>}
-            {!searchMode && <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: "800", color: colors.navy }}>{category ? homeCategories[category].name + " · Хямдрал" : "Хямдралтай бараа"}</Text><Text style={{ fontSize: 12, color: colors.muted }}>Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу</Text></View>}
             {searchMode && <View
               style={{
                 flexDirection: "row",
@@ -337,7 +304,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         )}
         ListFooterComponent={
           <View style={{ paddingVertical: 12, gap: 8 }}>
-            {!busy && !displayedItems.length && !error && <Copy>{searchMode ? "Бараа олдсонгүй. Өөр нэрээр хайгаарай." : category ? "Энэ хуудсанд баталгаажсан хямдрал алга. Дараагийн хуудас эсвэл өөр ангиллыг шалгаарай." : "Одоогоор баталгаажсан хямдралтай бараа алга."}</Copy>}
+            {!busy && !items.length && !error && <Copy>Бараа олдсонгүй. Өөр нэрээр хайгаарай.</Copy>}
             {busy ? (
               <Busy />
             ) : more && !error ? (
@@ -350,8 +317,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             </Text>
           </View>
         }
-      />
-      </HomeSwipeArea>
+      />}
     </View>
   );
 }

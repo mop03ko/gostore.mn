@@ -40,7 +40,8 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     });
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 120000 });
     const tabs = page.getByTestId('home-category-tabs');
-    await page.getByTestId('home-deal-highlights').waitFor({ timeout: 120000 }).catch(async e => { console.error({ errors, requests, body: (await page.locator('body').innerText()).slice(0,2000) }); throw e; });
+    const activePage = page.locator('[data-testid^="home-page-"]:not([aria-hidden="true"])');
+    await activePage.getByTestId('home-deal-highlights').waitFor({ timeout: 120000 }).catch(async e => { console.error({ errors, requests, body: (await page.locator('body').innerText()).slice(0,2000) }); throw e; });
     console.log('Home loaded');
     assert.equal(await tabs.getByRole('tab').count(), categories.length + 1);
     assert.equal(await page.getByText('No discount', { exact: true }).count(), 0);
@@ -49,6 +50,15 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     assert.equal(requests.filter(r => ['campaign', 'supplier-recommend', 'supplier-free-shipping'].includes(r.action)).length, 0);
     fs.mkdirSync('output/home-deals', { recursive: true });
     await page.screenshot({ path: 'output/home-deals/light-390.png' });
+    const client = await context.newCDPSession(page);
+    const carousel = activePage.getByTestId('home-deal-carousel'), carouselBox = await carousel.boundingBox();
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 310, y: carouselBox.y + 90 }] });
+    for (let i = 1; i <= 8; i++) { await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 310 - 24 * i, y: carouselBox.y + 90 }] }); await page.waitForTimeout(30); }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(400);
+    assert.ok(await carousel.evaluate(e => e.scrollLeft) > 30, 'Inner carousel scrolls');
+    assert.equal(await page.getByTestId('home-category-pager').evaluate(e => e.scrollLeft), 0, 'Inner carousel does not change category');
+    assert.equal(requests.filter(r => r.action === 'supplier-search').length, 0, 'No adjacent category prefetch');
     await tabs.getByRole('tab', { name: categories[0].name, exact: true }).click();
     await tabs.getByRole('tab', { name: categories[1].name, exact: true }).click();
     await page.getByRole('button', { name: 'Second category discount', exact: true }).first().waitFor();
@@ -57,28 +67,42 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     assert.equal(await page.getByText('Second regular', { exact: true }).count(), 0);
     console.log('Category race verified');
     // Touch swipe over the actual list heading, away from horizontal carousels.
-    const client = await context.newCDPSession(page);
-    async function swipe(dx, dy = 0) {
-      const heading = page.getByTestId('home-deals-heading');
+    async function swipe(dx, dy = 0, capture = false) {
+      const heading = activePage.getByTestId('home-deals-heading');
       await heading.scrollIntoViewIfNeeded();
       await page.waitForTimeout(400);
       const box = await heading.boundingBox();
       const x = dx > 0 ? 70 : 310, y = box.y + 15;
+      const pager = page.getByTestId('home-category-pager');
+      const beforeX = await pager.evaluate(e => e.scrollLeft);
+      const indicator = page.getByTestId('home-tab-indicator');
+      const beforeIndicator = await indicator.evaluate(e => getComputedStyle(e).transform);
       await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
-      for (let i = 1; i <= 8; i++) { await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / 8, y: y + dy * i / 8 }] }); await page.waitForTimeout(30); }
+      for (let i = 1; i <= 8; i++) {
+        await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / 8, y: y + dy * i / 8 }] }); await page.waitForTimeout(30);
+        if (capture && i === 5) {
+          const duringX = await pager.evaluate(e => e.scrollLeft);
+          assert.ok(Math.abs(duringX - beforeX) > 30 && Math.abs(duringX - beforeX) < 390, 'Page follows the finger before release');
+          assert.notEqual(await indicator.evaluate(e => getComputedStyle(e).transform), beforeIndicator, 'Underline moves during the gesture');
+          await page.screenshot({ path: 'output/home-deals/pager-mid-drag.png' });
+        }
+      }
       await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     }
-    await swipe(150);
+    await swipe(240, 0, true);
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="home-category-tabs"] [role="tab"]')[1].getAttribute('aria-selected') === 'true');
     await page.getByRole('button', { name: 'Home discount', exact: true }).first().waitFor();
-    await swipe(-150);
+    await swipe(-240);
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="home-category-tabs"] [role="tab"]')[2].getAttribute('aria-selected') === 'true');
     console.log('Both swipe directions verified');
+    await swipe(35);
+    await page.waitForTimeout(600);
+    assert.equal(await tabs.getByRole('tab', { name: categories[1].name, exact: true }).getAttribute('aria-selected'), 'true', 'Short drag snaps back');
     const searches = requests.filter(r => r.action === 'supplier-search').length;
     await swipe(5, -90);
     assert.equal(requests.filter(r => r.action === 'supplier-search').length, searches, 'Vertical scrolling must not switch category');
     await tabs.getByRole('tab', { name: categories[2].name, exact: true }).click();
-    await page.getByText(/Энэ хуудсанд баталгаажсан хямдрал алга/).waitFor();
+    await activePage.getByText(/Энэ хуудсанд баталгаажсан хямдрал алга/).waitFor();
     await page.waitForTimeout(400);
     assert.equal(requests.filter(r => r.q === categories[2].query).length, 1, 'No unbounded automatic requests through non-sale pages');
     await page.getByRole('button', { name: 'Дараагийн бараанууд', exact: true }).click();
@@ -87,18 +111,40 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await page.getByText('Fixture unavailable', { exact: true }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Next page discount', exact: true }).count(), 0);
     await tabs.getByRole('tab', { name: 'Хямдрал', exact: true }).click();
-    await page.getByTestId('home-deal-highlights').waitFor();
+    await activePage.getByTestId('home-deal-highlights').waitFor();
     assert.equal(requests.filter(r => r.action === 'supplier-deals').length, 1, 'Returning home uses the catalog cache');
+    const homeFeed = page.getByTestId('home-feed-0');
+    await homeFeed.evaluate(e => { e.scrollTop = 440; });
+    await page.waitForTimeout(400);
+    const savedOffset = await homeFeed.evaluate(e => e.scrollTop);
+    assert.ok(savedOffset > 300);
+    for (const category of categories.slice(0, 6)) {
+      await tabs.getByRole('tab', { name: category.name, exact: true }).click();
+      await page.waitForTimeout(350);
+    }
+    assert.ok(await page.locator('[data-testid^="home-feed-"]').count() <= 5, 'At most five mounted feeds');
+    await tabs.getByRole('tab', { name: 'Хямдрал', exact: true }).click();
+    await homeFeed.waitFor();
+    await page.waitForTimeout(500);
+    assert.ok(Math.abs(await homeFeed.evaluate(e => e.scrollTop) - savedOffset) < 8, 'Evicted category restores scroll position');
+    assert.equal(requests.filter(r => r.action === 'supplier-deals').length, 1, 'Restored category retains fetched pages');
+    await homeFeed.evaluate(e => { e.scrollTop = 0; });
+    await page.waitForTimeout(200);
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.screenshot({ path: 'output/home-deals/dark-390.png' });
     await page.setViewportSize({ width: 320, height: 568 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No page overflow at 320px');
     await page.screenshot({ path: 'output/home-deals/dark-320.png' });
+    await tabs.getByRole('tab', { name: categories[1].name, exact: true }).click();
+    await page.waitForTimeout(500);
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.waitForTimeout(500);
+    assert.ok(Math.abs(await page.getByTestId('home-category-pager').evaluate(e => e.scrollLeft) - 860) < 2, 'Resize keeps the selected page aligned');
     await page.getByRole('textbox', { name: 'Бараа хайх', exact: true }).fill('test');
     await page.getByRole('button', { name: 'Хайх', exact: true }).click();
     await page.getByRole('button', { name: 'Searched regular', exact: true }).waitFor();
     assert.equal(await tabs.count(), 0, 'Explicit search remains an unrestricted search');
     assert.deepEqual(errors, []);
-    console.log('PASS home deals: verified discounts, no duplicate API calls, stale response race, left/right touch swipes, vertical scroll, pagination/empty/error, cache, search, dark and narrow layouts.');
+    console.log('PASS home pager: finger-follow and indicator, snap-back, left/right touch swipes, nested carousel, vertical scroll, five-feed limit, evicted scroll restoration, lazy/cache/races, discounts, pagination/error, search and resized/dark layouts.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
