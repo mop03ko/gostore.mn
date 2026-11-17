@@ -46,3 +46,19 @@ The script refuses publication if the app version or native fingerprint changes.
 Android runtime remains `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1`. Publish from
 `gostoremn` using `eas update --platform android --environment production` with
 `--channel production` and `--channel preview` (the directly installed APK).
+
+## Published OTA — 2026-11-17
+
+App source commit: `d6c50571b6ba54f2458c9bd488438fe4db37ae16`.
+
+| Platform/channel | Update group |
+| --- | --- |
+| iOS production, build 1.0.2 (20) runtime | `5cd6f440-f3dc-4d03-b68d-047ad11b27d3` |
+| Android production, build 1.0.2 (11) runtime | `5a2faf3e-9381-4a0b-8a17-183c545614dc` |
+| Android preview, APK 1.0.2 (12) runtime | `42265387-34b1-4f9d-948c-6387c8558df2` |
+
+The Expo update endpoint was checked with each platform, runtime and channel;
+it serves the new update IDs. Publication/routing is verified, not receipt on a
+physical user device. Existing compatible apps download on launch and apply on
+a subsequent restart; no new store binary was created. The live mobile deals
+endpoint returned 50 unexpired discounted rows on its first page at verification.

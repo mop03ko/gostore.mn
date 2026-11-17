@@ -10,6 +10,7 @@ const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).t
 if (git(['status', '--porcelain', '--', 'gostoremn'])) throw Error('Commit the reviewed customer app before preparing its OTA.');
 const args = process.argv.slice(2);
 if (args.some(arg => arg !== '--publish')) throw Error('Usage: node scripts/customer-ios-ota.cjs [--publish]');
+fs.mkdirSync(path.join(root, 'tmp'), { recursive: true });
 const stage = fs.mkdtempSync(path.join(root, 'tmp/customer-ios-ota-'));
 for (const relative of git(['ls-files', 'gostoremn']).split('\n')) {
   const target = path.resolve(stage, relative);
