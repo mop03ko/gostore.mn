@@ -81,6 +81,7 @@ function warehouse_split_order(array $b,string $location): array {
             'history'=>[['status'=>'confirmed']+warehouse_event('split_created')]];
         $child['warehouse']=$o['warehouse']??[];$child['warehouse']['order_code']=$childId;
         $child['delivery_address']=warehouse_delivery_address($o);
+        if($rates=settlement_service_rates($o))$child['service_rates']=array_merge($rates,['service_fee_mnt'=>0]);
         // Do not copy the original payment, provider purchase, pricing, refund, pickup code or photos.
         $child['logistics']=['version'=>1,'photos'=>[],'issues'=>[],'shelf'=>'','parcels'=>[],
             'audit'=>[warehouse_event('split_created')+['parent_id'=>$id,'mode'=>$mode,'reason'=>$reason,'numbers'=>$numbers]]];

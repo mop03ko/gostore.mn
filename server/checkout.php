@@ -17,7 +17,7 @@ function checkout_items(array $b,?int &$verifiedUntil=null): array {
     return $lines;
 }
 function checkout_quote(array $lines): array {
-    $s=shipping_settings();$goods=round(array_sum(array_column($lines,'goods_cny')),2);
+    $s=shipping_settings();$s['service_basis']='non_cargo';$goods=round(array_sum(array_column($lines,'goods_cny')),2);
     // Each seller ships separately to Erenhot; unknown sellers are counted per product.
     $vendors=count(array_unique(array_map(fn($l)=>$l['vendor_id']!==''?'v:'.$l['vendor_id']:'p:'.$l['id'],$lines)));
     $domestic=round($vendors*$s['domestic_default_cny'],2);
@@ -27,13 +27,15 @@ function checkout_quote(array $lines): array {
         require_once __DIR__.'/taoworld-domestic.php';$shipping=tw_domestic_quote($lines);$domestic=$shipping['shipping_fen']/100;$vendors=$shipping['seller_count'];
     }
     $goodsMnt=(int)ceil(round($goods*$s['cny_rate'],8));
-    $parts=['goods_mnt'=>$goodsMnt,'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goodsMnt*$s['service_percent']/100,8))+(int)$s['service_fee_mnt'],'cargo_mnt'=>0];
+    $parts=['goods_mnt'=>$goodsMnt,'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8))];
+    $parts['service_mnt']=order_service_fee($parts,$s);
+    $parts['cargo_mnt']=0;
     $total=array_sum($parts);if($total<1||$total>100000000)fail('Захиалгын дүн зөвшөөрөх хязгаараас гарсан.');
     // OT does not report Taobao domestic shipping; with no admin estimate it is billed at cost in the final settlement.
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'vendors'=>$vendors],'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c'),'auto'=>true,'cargo_later'=>true,'domestic_later'=>$shipping?false:$domestic<=0]+($shipping?['domestic'=>$shipping]:[]);
 }
 function checkout_public_quote(array $q): array {
-    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'domestic_cny'=>$q['inputs']['domestic_cny'],'cny_rate'=>$q['rates']['cny_rate'],'service_percent'=>$q['rates']['service_percent'],'service_fee_mnt'=>$q['rates']['service_fee_mnt'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>0.25,'payment_window_minutes'=>15];
+    return ['breakdown'=>$q['breakdown'],'total'=>$q['total'],'vendors'=>$q['inputs']['vendors'],'goods_cny'=>$q['inputs']['goods_cny'],'domestic_cny'=>$q['inputs']['domestic_cny'],'cny_rate'=>$q['rates']['cny_rate'],'service_basis'=>$q['rates']['service_basis']??'goods','service_percent'=>$q['rates']['service_percent'],'service_fee_mnt'=>$q['rates']['service_fee_mnt'],'domestic_later'=>$q['domestic_later']??false,'domestic_source'=>$q['domestic']['source']??'estimate','payment_window_hours'=>0.25,'payment_window_minutes'=>15];
 }
 function checkout_preview(array $b): array {
     customer_required();limit_attempts('checkout-quote:'.($_SERVER['REMOTE_ADDR']??''),60,3600);

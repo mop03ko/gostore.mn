@@ -316,7 +316,7 @@ function Checkout() {
                   {preview.quote.vendors} дэлгүүр
                 </Copy>
                 <Copy>
-                  Үйлчилгээ: барааны үнийн {preview.quote.service_percent}% +{" "}
+                  Үйлчилгээ: бараа, Хятад доторх хүргэлтийн нийлбэрийн {preview.quote.service_percent}% +{" "}
                   {money(preview.quote.service_fee_mnt)}.
                 </Copy>
                 {preview.quote.domestic_later && (

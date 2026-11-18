@@ -68,11 +68,23 @@ function warehouse_profile_save(array $b,bool $withinTransaction=false): array {
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['warehouse_profile_'.$location,json_encode($p,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
     return warehouse_profile($location);
 }
+// Calculate once from the full eligible balance, including any later domestic or last-mile costs.
+function order_service_fee(array $parts,array $rates): int {
+    $base=$parts['goods_mnt']+$parts['domestic_mnt']+($parts['delivery_mnt']??0);
+    return (int)ceil(round($base*$rates['service_percent']/100,8))+(int)($rates['service_fee_mnt']??0);
+}
+function settlement_service_rates(array $order): ?array {
+    $rates=$order['quote']['rates']??$order['service_rates']??[];
+    return ($rates['service_basis']??'')==='non_cargo'?array_intersect_key($rates,array_flip(['service_basis','service_percent','service_fee_mnt'])):null;
+}
 function shipping_calculate(array $b,?array $s=null): array {
     $s??=shipping_settings();$goods=decimal_field($b,'goods_cny',0,1000000);$domestic=decimal_field($b,'domestic_cny',0,1000000);
     $weight=decimal_field($b,'weight_kg',0.001,10000);$volume=decimal_field($b,'volume_m3',0.000000001,1000);
     $transport=cargo_tariff_calculate($weight,$volume,$s);
-    $parts=['goods_mnt'=>(int)ceil(round($goods*$s['cny_rate'],8)),'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8)),'service_mnt'=>(int)ceil(round($goods*$s['cny_rate']*$s['service_percent']/100,8)),'cargo_mnt'=>$transport['amount_mnt']];
+    $s['service_basis']='non_cargo';
+    $parts=['goods_mnt'=>(int)ceil(round($goods*$s['cny_rate'],8)),'domestic_mnt'=>(int)ceil(round($domestic*$s['cny_rate'],8))];
+    $parts['service_mnt']=order_service_fee($parts,$s);
+    $parts['cargo_mnt']=$transport['amount_mnt'];
     $total=array_sum($parts);if($total>100000000)fail('Үнийн санал зөвшөөрөх дүнгээс хэтэрсэн.');
     return ['inputs'=>['goods_cny'=>$goods,'domestic_cny'=>$domestic,'cargo_method'=>'auto','weight_kg'=>$weight,'volume_m3'=>$volume],'transport'=>$transport,'rates'=>$s,'breakdown'=>$parts,'total'=>$total,'created'=>gmdate('c')];
 }
@@ -94,7 +106,7 @@ function checkout_pickup_location(array $b): string {
     return $location;
 }
 function shipping_public(): array {
-    $s=shipping_settings();$s['payment_window_hours']=0.25;$s['payment_window_minutes']=15;unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
+    $s=shipping_settings();$s['service_basis']='non_cargo';$s['payment_window_hours']=0.25;$s['payment_window_minutes']=15;unset($s['api_daily_limit'],$s['supplier_enabled'],$s['catalog_snapshot_enabled']);
     $pickup=warehouse_profile('ulaanbaatar');$s['pickup']=array_intersect_key($pickup,array_flip(['name','address','phone','hours']));$s['pickup_locations']=shipping_pickup_locations();return $s;
 }
 function warehouse_destination(array $order,array $input): array {

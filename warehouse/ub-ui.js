@@ -30,13 +30,14 @@ function ubSortPreview(){
   const delivery=f.elements.method.value==='delivery';f.querySelector('[data-ub-address]').hidden=!delivery;f.querySelector('[data-ub-delivery]').hidden=!delivery;f.elements.address.required=delivery;
   const out=f.querySelector('[data-ub-bill]'),b=o?.billing||{};if(!o)return;
   if(o.freight_locked){out.textContent=`Тооцоо: нийт ${ubMoney(b.total)} · төлсөн ${ubMoney(b.paid)} · үлдэгдэл ${ubMoney(b.due)}`;return;}
-  const base=o.settlement?.breakdown||o.quote?.breakdown;if(!base){out.textContent='Тооцооны задаргаа алга: ангилсны дараа «Эцсийн тооцоо» хэсгээс батална.';return;}
+  const base=o.settlement?.breakdown||o.quote?.breakdown||(o.type==='forwarding'?{goods_mnt:0,domestic_mnt:0,service_mnt:0}:null);if(!base){out.textContent='Тооцооны задаргаа алга: ангилсны дараа «Эцсийн тооцоо» хэсгээс батална.';return;}
   const t=o.logistics?.transport,m=o.logistics?.measurement;
   const cargo=t?Math.ceil(t.amount_mnt):(m&&o.cargo_rates?Math.ceil(GOStoreCargo.calculate(m.weight_kg,m.volume_m3,o.cargo_rates)?.amount_mnt??NaN):NaN);
   if(!Number.isFinite(cargo)){out.textContent='Каргоны дүн тооцоолох хэмжилт дутуу байна.';return;}
   const domestic=f.elements.domestic_mnt?Number(f.elements.domestic_mnt.value)||0:Number(base.domestic_mnt)||0,fee=delivery?Number(f.elements.delivery_mnt.value)||0:0;
-  const total=(Number(base.goods_mnt)||0)+domestic+(Number(base.service_mnt)||0)+fee+cargo,due=total-(b.paid||0);
-  out.textContent=`Нийт ${ubMoney(total)} (бараа ${ubMoney(base.goods_mnt)} · Хятад хүргэлт ${ubMoney(domestic)} · үйлчилгээ ${ubMoney(base.service_mnt)} · карго ${ubMoney(cargo)}${delivery?' · УБ хүргэлт '+ubMoney(fee):''}) · төлсөн ${ubMoney(b.paid)} · ${due>=0?'үлдэгдэл '+ubMoney(due):'буцаах '+ubMoney(-due)}`;
+  const service=o.service_rates?warehouseServiceFee(o.service_rates,Number(base.goods_mnt)||0,domestic,fee):Number(base.service_mnt)||0;
+  const total=(Number(base.goods_mnt)||0)+domestic+service+fee+cargo,due=total-(b.paid||0);
+  out.textContent=`Нийт ${ubMoney(total)} (бараа ${ubMoney(base.goods_mnt)} · Хятад хүргэлт ${ubMoney(domestic)} · үйлчилгээ ${ubMoney(service)} · карго ${ubMoney(cargo)}${delivery?' · УБ хүргэлт '+ubMoney(fee):''}) · төлсөн ${ubMoney(b.paid)} · ${due>=0?'үлдэгдэл '+ubMoney(due):'буцаах '+ubMoney(-due)}`;
 }
 window.ubSortPreview=ubSortPreview;
 document.addEventListener('input',e=>{if(e.target.closest('[data-ub-sort]'))ubSortPreview();});

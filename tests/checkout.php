@@ -27,16 +27,16 @@ $line=checkout_items(['items'=>[$cart[0]]])[0];check(is_string($line['original_n
 $q=checkout_quote(checkout_items(['items'=>$cart]));
 // Goods 133¥ → 66,500₮; two sellers → 20¥ domestic; 5% service + 2,000₮ fixed; cargo later.
 check($q['inputs']==['goods_cny'=>133.0,'domestic_cny'=>20.0,'vendors'=>2],'Goods or seller count changed');
-check($q['breakdown']==['goods_mnt'=>66500,'domestic_mnt'=>10000,'service_mnt'=>5325,'cargo_mnt'=>0]&&$q['total']===81825,'Checkout total changed');
+check($q['breakdown']==['goods_mnt'=>66500,'domestic_mnt'=>10000,'service_mnt'=>5825,'cargo_mnt'=>0]&&$q['total']===82325,'Checkout total changed');
 expect_error(fn()=>checkout_items(['items'=>[['id'=>'tb-111111111','sku'=>'blue','qty'=>1]]]),400,'үлдэгдл');
 expect_error(fn()=>checkout_items(['items'=>[$cart[0],$cart[0]]]),400,'давхардсан');
 expect_error(fn()=>checkout_items(['items'=>[]]),400);
 expect_error(fn()=>checkout_order(['items'=>$cart,'expected_total'=>81824],['paid'=>false]),409,'Үнэ шинэчлэгдсэн');
 
-expect_error(fn()=>checkout_order(['items'=>$cart,'expected_total'=>81825,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>' ']),400,'хаяг');
-$delivery=checkout_order(['items'=>$cart,'expected_total'=>81825,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>'БЗД 1-р хороо']);check($delivery['fulfillment_request']==['method'=>'delivery']&&$delivery['delivery_address']==='БЗД 1-р хороо','Delivery choice lost');
-$o=checkout_order(['items'=>$cart,'expected_total'=>81825],['type'=>'checkout','title'=>'x','paid'=>false,'demo'=>false,'created'=>gmdate('c')]);
-check($o['status']==='quoted'&&$o['amount']===81825&&count($o['items'])===3&&$o['items'][0]['price']===6250&&$o['qty']===4,'Order fields changed');
+expect_error(fn()=>checkout_order(['items'=>$cart,'expected_total'=>82325,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>' ']),400,'хаяг');
+$delivery=checkout_order(['items'=>$cart,'expected_total'=>82325,'fulfillment'=>'delivery'],['paid'=>false,'delivery_address'=>'БЗД 1-р хороо']);check($delivery['fulfillment_request']==['method'=>'delivery']&&$delivery['delivery_address']==='БЗД 1-р хороо','Delivery choice lost');
+$o=checkout_order(['items'=>$cart,'expected_total'=>82325],['type'=>'checkout','title'=>'x','paid'=>false,'demo'=>false,'created'=>gmdate('c')]);
+check($o['status']==='quoted'&&$o['amount']===82325&&count($o['items'])===3&&$o['items'][0]['price']===6250&&$o['qty']===4,'Order fields changed');
 check(abs(strtotime($o['payment_due'])-time()-86400)<5,'Payment window must default to 24 hours');
 $insert=function(array $o,string $id){$o['id']=$id;db()->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$id,hash('sha256',$id),hash('sha256','k'.$id),json_encode($o,JSON_UNESCAPED_UNICODE),$o['created'],$o['created']]);};
 $insert($o,'GS-000001');
@@ -61,6 +61,11 @@ check(settlement_summary(order_row('GS-000001')['order'])['breakdown']['domestic
 check(str_contains(shipping_public()['pickup']['address'],'14б байр, 4 тоот'),'Default Ulaanbaatar pickup address missing');
 // Without an admin estimate, China domestic shipping is not charged upfront and is billed at cost later.
 $s=shipping_settings();$s['domestic_default_cny']=0;db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['shipping_settings',json_encode($s)]);
-$q0=checkout_quote(checkout_items(['items'=>$cart]));check($q0['breakdown']['domestic_mnt']===0&&$q0['domestic_later']===true&&$q0['total']===81825-10000,'Domestic shipping must be billed later by default');
+$q0=checkout_quote(checkout_items(['items'=>$cart]));check($q0['breakdown']['domestic_mnt']===0&&$q0['domestic_later']===true&&$q0['total']===71825,'Domestic shipping must be billed later by default');
 check(checkout_public_quote($q0)['domestic_later']===true,'Customer must see that domestic shipping is billed later');
+$eligible=['goods_mnt'=>100000,'domestic_mnt'=>5000,'delivery_mnt'=>8000,'cargo_mnt'=>20000,'service_mnt'=>3150];
+$rates=['service_percent'=>3,'service_fee_mnt'=>0,'service_basis'=>'non_cargo'];
+check(order_service_fee($eligible,$rates)===3390,'Final fee must exclude cargo and the prepaid service fee');
+check(order_service_fee(array_replace($eligible,['cargo_mnt'=>90000]),$rates)===3390,'Cargo must not affect the fee');
+check(settlement_service_rates(['quote'=>['rates'=>['service_percent'=>3]]])===null,'Historical quotes retain their original fee');
 echo "PASS: checkout pricing (sellers, service, cargo later), stock/duplicate/stale-total checks, 24 h expiry, invoice and paid protection.\n";

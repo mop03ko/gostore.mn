@@ -78,6 +78,7 @@ function warehouse_ub_sort(array $b,string $location): array {
                 $parts=['goods_mnt'=>(int)($base['goods_mnt']??0),'domestic_mnt'=>(int)($base['domestic_mnt']??0),'service_mnt'=>(int)($base['service_mnt']??0)];
                 if(!isset($o['settlement'])&&!empty($o['quote']['domestic_later']))$parts['domestic_mnt']=int_field($b,'domestic_mnt',0,100000000);
                 $parts['delivery_mnt']=$method==='delivery'?int_field($b,'delivery_mnt',0,10000000):0;
+                if($serviceRates=settlement_service_rates($o))$parts['service_mnt']=order_service_fee($parts,$serviceRates);
                 if(isset($l['transport'])){$q=$l['transport'];$cargoMethod=$q['method'];$rates=$q['rates'];}
                 else{$m=$l['measurement'];$rates=warehouse_cargo_rates($o);$q=warehouse_cargo_calculate($m['weight_kg'],$m['volume_m3'],$rates,$m['pieces']);$cargoMethod='auto';}
                 $parts['cargo_mnt']=(int)ceil($q['amount_mnt']);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');

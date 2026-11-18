@@ -139,6 +139,7 @@ function logistics_post(string $action,array $b,string $location): never {
                 $q=warehouse_cargo_calculate($m['weight_kg'],$m['volume_m3'],$rates,$m['pieces']);$measure=$q['measure'];$cargo=$q['amount_mnt'];
             }
             $parts=[];foreach(['goods_mnt','domestic_mnt','service_mnt','delivery_mnt'] as $key)$parts[$key]=int_field($b,$key,0,100000000);
+            if($serviceRates=settlement_service_rates($o))$parts['service_mnt']=order_service_fee($parts,$serviceRates);
             $parts['cargo_mnt']=(int)ceil($cargo);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');
             if($freightPaid&&$total>($o['settlement']['total']??0))fail('Төлбөр төлөгдсөн тул дүнг нэмэхгүй. Нэмэлт төлбөрийг админтай шийднэ үү.',409);
             $o['settlement']=['total'=>$total,'breakdown'=>$parts,'cargo_method'=>$method,'measure'=>$measure,'rates'=>$rates,'transport'=>$q,'confirmed_at'=>gmdate('c'),'note'=>str_field($b,'note',500)];

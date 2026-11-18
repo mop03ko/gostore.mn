@@ -4,6 +4,9 @@ const ctx={GOStoreCargo:require('../cargo-tariff.js'),window:{},document:{addEve
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../commerce-ui.js'),'utf8'),ctx);
 const ui=ctx.window.commerceUI,s={cny_rate:550,service_percent:5,service_fee_mnt:1000,domestic_default_cny:10};
 const items=[{id:'tb-111111',vendor_id:'a',cny:10,qty:2},{id:'tb-222222',vendor_id:'a',cny:12.5,qty:1}];
+const revised=ui.estimate(items,{...s,service_percent:3,service_basis:'non_cargo',service_fee_mnt:0});
+assert.equal(revised.service,702);assert.equal(revised.total,24077);
+assert.equal(ui.estimate(items,{...s,catalog_provider:'taoworld',service_basis:'non_cargo'}).service,null);
 let q=ui.estimate(items,s);assert.equal(q.goods,17875);assert.equal(q.service,1894);assert.equal(q.domestic,5500);assert.equal(q.total,25269);
 q=ui.estimate([...items,{id:'tb-333333',vendor_id:'b',cny:1,qty:1}],s);assert.equal(q.domestic,11000);
 q=ui.estimate(items,{...s,domestic_default_cny:0});assert.equal(q.domesticLater,true);assert.equal(q.total,19769);

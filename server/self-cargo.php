@@ -64,6 +64,7 @@ function self_cargo_create(array $c,array $b): array {
           'items'=>[['id'=>$id,'name'=>$title,'variant'=>$variant,'qty'=>$qty,'price'=>0]],'route'=>['Эрээн','Замын-Үүд','Улаанбаатар'],
           'warehouse_locations'=>['erenhot'=>'erenhot','ulaanbaatar'=>$pickupLocation],'fulfillment_request'=>['method'=>'pickup'],
           'history'=>[['status'=>'confirmed','at'=>$now,'actor'=>'customer']],'inbound'=>['numbers'=>[]]];
+        $o['service_rates']=['service_basis'=>'non_cargo','service_percent'=>shipping_settings()['service_percent'],'service_fee_mnt'=>0];
         $o['cargo_id']=customer_cargo_id($c['id']);$o['warehouse']=self_cargo_address($o);
         if(str_field($b,'number',40,false)!=='')self_cargo_waybill($o,$b);
         $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$id,hash('sha256',random_bytes(32)),$request,json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$now,$now]);

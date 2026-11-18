@@ -46,7 +46,7 @@ a=await mine(A);assert.match(a.cargo.pickup_code,/^\d{8}$/);const codeA=a.cargo.
 await uploadReceipt(ub,B);before=(await notices()).length;o=(await sort(B,{shelf:'A-02'})).order;assert.equal(o.status,'ready_pickup');assert.equal(o.billing.due,cargo);assert.deepEqual(o.flags,{unpaid:cargo});
 list=await notices();assert.equal(list.length,before+1);assert.match(list[0].message,new RegExp('Үлдэгдэл '+cargo.toLocaleString('en-US')+'₮ төлөөд'));
 await uploadReceipt(ub,C);assert.equal((await sort(C,{method:'delivery',address:''})).status,400,'Delivery needs an address');
-o=(await sort(C,{method:'delivery',address:'Хан-Уул, 3-р хороо',delivery_mnt:5000,shelf:'D-01'})).order;assert.equal(o.status,'ready_delivery');assert.equal(o.settlement.breakdown.delivery_mnt,5000);assert.equal(o.billing.due,cargo+5000);
+o=(await sort(C,{method:'delivery',address:'Хан-Уул, 3-р хороо',delivery_mnt:5000,shelf:'D-01'})).order;assert.equal(o.status,'ready_delivery');assert.equal(o.settlement.breakdown.delivery_mnt,5000);assert.equal(o.settlement.breakdown.service_mnt,2970);assert.equal(o.billing.due,cargo+5150);
 await uploadReceipt(ub,D);assert.equal((await sort(D)).status,400,'Unknown domestic cost must be entered');
 o=(await sort(D,{domestic_mnt:3000,shelf:'B-07'})).order;assert.equal(o.settlement.breakdown.domestic_mnt,3000);assert.equal(o.billing.due,cargo+3000);
 await uploadReceipt(ub,E);assert.equal((await sort(E)).status,409,'Open missing issue blocks sorting');

@@ -134,7 +134,7 @@ function warehouse_order_operable(array $o,string $location='erenhot'): bool {
 function warehouse_local_month(string $iso): string {$t=strtotime($iso);return $t?gmdate('Y-m',$t+8*3600):'';}
 function warehouse_month_param(): string {$m=str_field($_GET,'month',7,false);if($m!==''&&!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/D',$m))fail('Сар буруу.');return $m;}
 function warehouse_order_public(array $o,string $location='erenhot',bool $details=true): array {
-    $result=array_intersect_key($o,array_flip(['id','title','customer','cargo_id','status','created','warehouse','batch_id']));
+    $result=array_intersect_key($o,array_flip(['id','type','title','customer','cargo_id','status','created','warehouse','batch_id']));
     $result['read_only']=!warehouse_order_operable($o,$location);
     $items=shipment_items($o);
     $result['shipment_parent']=$o['shipment_parent']??null;
@@ -156,7 +156,7 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
     if(warehouse_role($location)==='erenhot'){$result['parcels']=warehouse_parcels($o);$result['parcels']['can_undo']=!$result['read_only']&&warehouse_parcel_undo_allowed($o);$result['alerts']=warehouse_alerts($o);$result['expected_pieces']=warehouse_expected_pieces($o);}
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
-    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;$result['freight_locked']=isset($o['freight']['invoice']);}
+    if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['service_rates']=settlement_service_rates($o);$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;$result['freight_locked']=isset($o['freight']['invoice']);}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
         $result['requested_method']=$o['fulfillment_request']['method']??null;
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
