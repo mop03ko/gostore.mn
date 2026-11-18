@@ -77,6 +77,29 @@
     fbq('track', 'PageView');
   })();
   </script>
+  <!-- Facebook JS SDK: this App ID is separate from the Meta Pixel ID above. -->
+  <script>
+  (() => {
+    if (window.gostoreFacebookSDKLoaded) return;
+    window.gostoreFacebookSDKLoaded = true;
+    let initialized = false;
+    window.fbAsyncInit = function () {
+      if (initialized) return;
+      initialized = true;
+      FB.init({appId: '1031552466623435', xfbml: true, version: 'v27.0'});
+      FB.AppEvents.logPageView();
+    };
+    const load = () => setTimeout(() => {
+      if (document.getElementById('facebook-jssdk')) return;
+      const sdk = document.createElement('script');
+      sdk.id = 'facebook-jssdk'; sdk.async = true;
+      sdk.src = 'https://connect.facebook.net/en_US/sdk.js';
+      document.head.append(sdk);
+    }, 1200);
+    if (document.readyState === 'complete') load();
+    else addEventListener('load', load, {once: true});
+  })();
+  </script>
   <!-- Google tag (gtag.js) -->
   <script>
     gtag('config', 'G-WLC1E39628');
