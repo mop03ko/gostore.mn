@@ -73,7 +73,7 @@ export function validCart(value: unknown): CartLine[] {
 export const selection = (cart: CartLine[]) =>
   cart.map(({ id, sku, qty }) => ({ id, sku, qty }));
 export const bankLink = (value: string) =>
-  /^(https|qpaywallet|khanbank|statebankmongolia|xacbank|tdbbank|socialpay-payment|most|nibank|ckbank|capitronbank|bogdbank|transbank|mbank|ard|toki|arig|monpay|hipay|tdbwallet|sono|payon|tino|pass):\/\//i.test(
+  /^(https|qpaywallet|khanbank|statebankmongolia|xacbank|tdbbank|tdbbankv2|socialpay-payment|most|nibank|ckbank|capitronbank|bogdbank|transbank|mbank|ard|toki|arig|monpay|hipay|tdbwallet|sono|payon|tino|pass):\/\//i.test(
     value,
   )
     ? value
