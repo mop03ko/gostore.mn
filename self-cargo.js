@@ -4,7 +4,8 @@
   // Discoverable entry on the storefront without changing its compiled bundle.
   if(!root){
     const host=document.querySelector('footer .footer-main > div:nth-child(3)');
-    if(host){const a=document.createElement('a');a.href='/self-cargo.html';a.textContent='Өөрөө захиалах · Эрээн карго';a.style.display='block';a.style.marginTop='12px';host.append(a);}
+    // The footer in index.html already links here; older cached pages get the link added.
+    if(host&&!document.querySelector('footer a[href="/self-cargo.html"]')){const a=document.createElement('a');a.href='/self-cargo.html';a.textContent='Өөрөө захиалах · Эрээн карго';a.style.display='block';a.style.marginTop='12px';host.append(a);}
     if(location.pathname==='/'||location.pathname==='/index.html'||location.pathname.startsWith('/account')){
       const css=document.createElement('link');css.rel='stylesheet';css.href='/self-cargo-entry.css?v=1';document.head.append(css);
       const main=document.querySelector('#account-page')||document.querySelector('main');

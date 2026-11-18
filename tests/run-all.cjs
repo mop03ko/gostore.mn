@@ -21,6 +21,7 @@ run(node,['tests/expo-product-discounts.cjs'],'expo-product-discounts');
 run(node,['tests/cargo-tariff.cjs'],'cargo-tariff');
 run(node,['tests/sqlite-compat.cjs'],'sqlite-compat');
 run(php,[...phpArgs,'tests/checkout-expiry-lock.php'],'checkout-expiry-lock');
+run(node,['tests/run-logistics.cjs','footer-ui'],'footer-ui');
 run(node,['tests/commerce-estimate.cjs'],'commerce-estimate');
 run(node,['tests/payment-countdown.cjs'],'payment-countdown');
 run(node,['tests/commerce-continuation.cjs'],'commerce-continuation');
