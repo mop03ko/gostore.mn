@@ -22,4 +22,12 @@ for(const [w,amount] of [[0.8,1000],[1.001,2002],[2,4000]]){
   assert.equal(C.calculate(w,.1,v2).amount_mnt,amount);
   assert.equal(php('$r=json_decode('+JSON.stringify(JSON.stringify(v2))+',true);echo json_encode(cargo_tariff_calculate('+w+',0.1,$r)["amount_mnt"]);'),amount,'server v2 '+w);
 }
-console.log('PASS shared cargo preview: 0.5 kg steps (browser = server), thresholds, both bulk bases, version 2 quotes, missing measurements and FX.');
+// Explicit warehouse methods must not fall back to the higher automatic price.
+for(const [w,v,method,amount] of [[1,2,'weight',2000],[1,.1,'volume',21450],[1000,1,'volume',214500],[100,2,'weight',71500],[70,2,'weight',50050],[1.2,2,'weight',3000]]){
+ const q=C.calculate(w,v,rates,method);assert.equal(q.amount_mnt,amount);assert.equal(q.method,method);
+ const s=php('$r=json_decode('+JSON.stringify(JSON.stringify(rates))+',true);echo json_encode(cargo_tariff_calculate('+w+','+v+',$r,"'+method+'"));');
+ assert.equal(s.amount_mnt,amount);assert.equal(s.method,method);assert.equal(s.measure,q.measure);
+ assert.ok(!C.description(q).includes('max('),'Selected method is shown without automatic max formula');
+}
+assert.equal(C.calculate(1,1,rates,'invalid'),null);
+console.log('PASS shared cargo preview: automatic and manager-selected weight/volume, browser/server parity, thresholds and historical quotes.');

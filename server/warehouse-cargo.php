@@ -6,8 +6,8 @@ function warehouse_cargo_rates(array $o): array {
     $s=$o['quote']['rates']??shipping_settings();
     return ['cny_rate'=>$s['cny_rate'],'cargo_tariff'=>cargo_tariff_policy()];
 }
-function warehouse_cargo_calculate(float $weight,float $volume,array $rates,int $pieces,array $dimensions=[]): array {
-    return cargo_tariff_calculate($weight,$volume,$rates)+['pieces'=>$pieces,'dimensions'=>$dimensions,'calculated_at'=>gmdate('c')];
+function warehouse_cargo_calculate(float $weight,float $volume,array $rates,int $pieces,array $dimensions=[],string $method='auto'): array {
+    return cargo_tariff_calculate($weight,$volume,$rates,$method)+['pieces'=>$pieces,'dimensions'=>$dimensions,'calculated_at'=>gmdate('c')];
 }
 function warehouse_cargo_required(array $o): void {
     $l=logistics_state($o);

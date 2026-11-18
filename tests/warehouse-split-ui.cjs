@@ -16,6 +16,15 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  const pending=page.waitForResponse(r=>r.url().includes('action=warehouse-order-split'));await f.locator('button[type=submit]').click();const response=await pending,d=await response.json();assert.equal(response.status(),200,JSON.stringify(d));
  await page.locator('[data-print-split]').waitFor();assert.match(await page.locator('.shipment-part-list').innerText(),new RegExp(d.part.id));assert.equal(await page.locator('[data-split-open]').count(),0,'New part cannot be split again');
  assert.equal(await page.locator('[data-receive-form] [name=pieces]').inputValue(),'1');
+ const receipt=page.locator('[data-receive-form]');
+ assert.equal(await receipt.locator('[name=cargo_method]').inputValue(),'');
+ await receipt.locator('[name=weight_kg]').fill('1');await receipt.locator('[name=volume_input]').selectOption('direct');await receipt.locator('[name=volume_m3]').fill('2');
+ await receipt.locator('[name=cargo_method]').selectOption('weight');
+ assert.match(await receipt.locator('[data-cargo-preview]').innerText(),/按重量.*2,000/);
+ const weightText=await receipt.locator('[data-cargo-preview]').innerText();
+ await receipt.locator('[name=cargo_method]').selectOption('volume');
+ assert.match(await receipt.locator('[data-cargo-preview]').innerText(),/按体积/);
+ assert.notEqual(await receipt.locator('[data-cargo-preview]').innerText(),weightText);
  await page.evaluate(()=>window.print=()=>{});await page.locator('[data-print-split]').click();assert.match(await page.locator('#print-area').innerHTML(),new RegExp(d.part.id));assert.equal(await page.locator('#print-area .batch-qr-code').count(),1);
  await page.locator('#editor').screenshot({path:'tmp/warehouse-split-part.png'});
  // Item count form uses the remaining SKU quantity and requires a nonempty remainder.

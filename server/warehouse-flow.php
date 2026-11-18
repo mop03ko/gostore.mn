@@ -116,7 +116,7 @@ function logistics_measure_input(array $b,array $o,string $location): array {
     else fail('Тээврийн хэмжилт буруу.',400);
     $pieces=int_field($b,'pieces',1,1000000);
     return [['weight_kg'=>$weight,'volume_m3'=>$volume,'pieces'=>$pieces,'at'=>gmdate('c')]+$dimensions,
-        warehouse_cargo_calculate($weight,$volume,warehouse_cargo_rates($o),$pieces,$dimensions)+['location'=>$location]];
+        warehouse_cargo_calculate($weight,$volume,warehouse_cargo_rates($o),$pieces,$dimensions,str_field($b,'cargo_method',20,false)?:($o['logistics']['transport']['method']??'auto'))+['location'=>$location]];
 }
 // One step: the receipt photo is already saved; this receives the order, records weight and size, and
 // approves the freight. A missing parcel or piece shortfall needs "partial" and opens an issue instead.

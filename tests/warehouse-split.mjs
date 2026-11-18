@@ -15,7 +15,7 @@ const root='GS-TEST-031',waybills=['SF1000000000001','SF1000000000002','SF100000
 const originalOverview=(await ub('warehouse-orders')).overview;
 const split=async(id,extra={},c=cn)=>{const o=await order(id);return c('warehouse-order-split',{id,expected_status:o.status,expected_version:o.logistics.version,mode:'parcels',numbers:[waybills[0]],token:token(),checked:true,reason:'Send arrived portion first',...extra});};
 const measure={weight_kg:1,volume_input:'dimensions',length_cm:10,width_cm:10,height_cm:10,pieces:1,checked:true};
-const receive=async id=>{const o=await order(id);return cn('warehouse-receive',{id,expected_status:o.status,expected_version:o.logistics.version,...measure,pieces:o.expected_pieces});};
+const receive=async(id,extra={})=>{const o=await order(id);return cn('warehouse-receive',{id,expected_status:o.status,expected_version:o.logistics.version,...measure,pieces:o.expected_pieces,...extra});};
 for(const number of waybills)assert.equal((await cn('warehouse-inbound-add',{id:root,number,company:'SF'})).status,200);
 assert.equal((await split(root)).status,409,'Cannot split an unarrived parcel');
 await cn('warehouse-parcel-arrive',{id:root,number:waybills[0]});
@@ -92,16 +92,24 @@ r=await split(checkout,{mode:'items',numbers:[],quantities:[1]});assert.equal(r.
 assert.ok((await owner('customer-orders')).orders.some(p=>p.id===purchasedPart),'New parts inherit customer ownership');
 let freightTotal=0;
 for(const partId of [checkout,purchasedPart]){
- await uploadReceipt(cn,partId);assert.equal((await receive(partId)).status,200);
+ await uploadReceipt(cn,partId);
+ const cargoMethod=partId===checkout?'weight':'volume';
+ assert.equal((await receive(partId,{cargo_method:'invalid'})).status,400);
+ const received=await receive(partId,{cargo_method:cargoMethod});assert.equal(received.status,200,JSON.stringify(received));
+ assert.equal(received.order.logistics.transport.method,cargoMethod);
+ const expectedFreight=received.order.logistics.transport.amount_mnt;
  let b=(await cn('warehouse-outbound-pack',{token:token(),order_ids:[partId],codes:[partId]})).batch;assert.ok(b);
  b=(await cn('warehouse-batch-dispatch',{id:b.id,expected_version:b.version,checked:true})).batch;
  b=(await ub('warehouse-batch-scan',{id:b.id,order_id:partId,expected_version:b.version})).batch;
  assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,200);
  await uploadReceipt(ub,partId);const p=await order(partId,ub);
  r=await ub('warehouse-sort',{id:partId,expected_status:p.status,expected_version:p.logistics.version,shelf:'SPLIT-2',method:'pickup',contact_phone:'99115050',address:'',checked:true});assert.equal(r.status,200,JSON.stringify(r));
+ assert.equal(r.order.logistics.transport.method,cargoMethod);
+ assert.equal(r.order.settlement.cargo_method,cargoMethod);
+ assert.equal(r.order.settlement.breakdown.cargo_mnt,expectedFreight);
  freightTotal+=r.order.logistics.transport.amount_mnt;
  if(partId===purchasedPart){
-  const x=r.order;r=await ub('warehouse-settlement',{id:partId,expected_version:x.logistics.version,cargo_method:'auto',goods_mnt:1,domestic_mnt:0,service_mnt:0,delivery_mnt:0,note:'Test invalid goods charge'});assert.equal(r.status,409,JSON.stringify(r));
+  const x=r.order;r=await ub('warehouse-settlement',{id:partId,expected_version:x.logistics.version,cargo_method:cargoMethod,goods_mnt:1,domestic_mnt:0,service_mnt:0,delivery_mnt:0,note:'Test invalid goods charge'});assert.equal(r.status,409,JSON.stringify(r));
  }
  fixture('pay',partId);const own=(await owner('order-get',{id:partId})).order;assert.ok(own.cargo.pickup_code);
  assert.equal((await ub('warehouse-handover',{items:[{id:partId,code:own.cargo.pickup_code}],received_by:'Split Customer'})).status,200);

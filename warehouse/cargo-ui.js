@@ -4,7 +4,7 @@ function warehouseCargoHtml(o){
  const q=o.logistics?.transport,r=o.cargo_rates,zh=locale==='zh';
  if(!q)return '';
  const amount=v=>Number(v).toLocaleString('en-US');
- return `<section class="warehouse-cargo"><h3>${lt('Эрээн → Улаанбаатар · Тээврийн үнэ','二连 → 乌兰巴托 · 运费')}</h3><div class="cargo-approval ${q.confirmed_at?'is-approved':''}"><span>${q.confirmed_at?lt('Баталгаажсан','已确认'):lt('Батлахыг хүлээж байна','待确认')}</span><strong>${amount(q.amount_mnt)} ₮</strong><p>${esc(GOStoreCargo.description(q,zh))}</p>${q.dimensions?.length_cm?`<p>${q.dimensions.length_cm} × ${q.dimensions.width_cm} × ${q.dimensions.height_cm} cm</p>`:''}<small>${lt('Тоо ширхэг','商品数量')}: ${q.pieces} · ${esc(date(q.confirmed_at||q.calculated_at))}</small></div>${r?`<p class="cargo-tariff">${esc(GOStoreCargo.tariff(r,zh))} · 1 CNY = ${amount(r.cny_rate)} ₮</p>`:''}</section>`;
+ return `<section class="warehouse-cargo"><h3>${lt('Эрээн → Улаанбаатар · Тээврийн үнэ','二连 → 乌兰巴托 · 运费')}</h3><div class="cargo-approval ${q.confirmed_at?'is-approved':''}"><span>${q.confirmed_at?lt('Баталгаажсан','已确认'):lt('Батлахыг хүлээж байна','待确认')}</span><strong>${amount(q.amount_mnt)} ₮</strong><p>${esc(GOStoreCargo.description(q,zh))}</p>${q.dimensions?.length_cm?`<p>${q.dimensions.length_cm} × ${q.dimensions.width_cm} × ${q.dimensions.height_cm} cm</p>`:''}<small>${lt('Тоо ширхэг','商品数量')}: ${q.pieces} · ${esc(date(q.confirmed_at||q.calculated_at))}</small></div>${r&&q.method==='auto'?`<p class="cargo-tariff">${esc(GOStoreCargo.tariff(r,zh))} · 1 CNY = ${amount(r.cny_rate)} ₮</p>`:''}</section>`;
 }
 // Erenhot can (re)receive while the order waits for it or sits in Erenhot outside a batch.
 const warehouseCanReceive=o=>cityRole()==='erenhot'&&!o.read_only&&(['confirmed','shipping'].includes(o.status)||(o.status==='erenhot'&&!o.batch_id));
@@ -25,6 +25,8 @@ function warehouseReceiveHtml(o){
 <p class="muted">${again?lt('Шинэ хэмжилтээр тээврийн үнийг дахин батална.','按新的测量重新确认运费。'):lt('Зураг, жин, хэмжээ оруулаад нэг товчоор хүлээн авч тээврийн үнийг батална. Илгээхдээ «Скан хийж илгээх»-ээр tracking уншуулна.','拍照并填写重量和尺寸，一键完成收货和运费确认。出库时用“扫码出库”扫描运单即可。')}</p>
 <label>${hasPhoto?lt('Нэмэлт зураг · заавал биш','补充照片 · 可选'):lt('Хүлээн авах зураг · камер эсвэл зургийн сан','收货照片 · 拍照或从相册选择')}<input type="file" name="image" accept="image/jpeg,image/png,image/webp"></label>
 ${hasPhoto?`<p class="muted">${lt('Энэ агуулахын зураг бүртгэгдсэн.','已保存本仓库收货照片。')}</p>`:''}<img class="warehouse-photo-preview" alt="${lt('Сонгосон зураг','照片预览')}" hidden>
+<label>${lt('Тээврийн үнэ тооцох арга','运费计费方式')}<select name="cargo_method" required><option value="">${lt('Аргаа сонгоно уу','请选择计费方式')}</option><option value="weight" ${l.transport?.method==='weight'?'selected':''}>${lt('Жингээр · kg','按重量 · kg')}</option><option value="volume" ${l.transport?.method==='volume'?'selected':''}>${lt('Эзэлхүүнээр · m³','按体积 · m³')}</option></select></label>
+<p class="muted">${lt('Сонгосон аргаар л тээврийн үнэ бодогдоно. Бодит бүртгэлд жин, эзэлхүүнийг хоёуланг оруулна.','仅按所选方式计算运费。重量和体积均须记录，以便核对。')}</p>
 ${field(lt('Нийт жин · kg','总重量 · kg'),'weight_kg',m?.weight_kg,0.001,'any','10000')}
 <label>${lt('Эзлэхүүн оруулах хэлбэр','体积录入方式')}<select name="volume_input"><option value="dimensions">${lt('Урт × өргөн × өндөр','长 × 宽 × 高')}</option><option value="direct" ${direct?'selected':''}>${lt('м³ шууд оруулах','直接输入 m³')}</option></select></label>
 <div class="form-grid" data-cargo-dimensions>${field(lt('Урт · cm','长 · cm'),'length_cm',m?.length_cm,0.1)}${field(lt('Өргөн · cm','宽 · cm'),'width_cm',m?.width_cm,0.1)}${field(lt('Өндөр · cm','高 · cm'),'height_cm',m?.height_cm,0.1)}</div>
@@ -45,7 +47,7 @@ function warehouseCargoPreview(){
  const f=document.querySelector('[data-receive-form]');if(!f)return;const direct=f.elements.volume_input.value==='direct';
  for(const [selector,show] of [['[data-cargo-dimensions]',!direct],['[data-cargo-direct]',direct]]){const el=f.querySelector(selector);el.hidden=!show;el.querySelectorAll('input').forEach(i=>i.disabled=!show);}
  const volume=direct?Number(f.elements.volume_m3.value):Number((['length_cm','width_cm','height_cm'].reduce((n,k)=>n*Number(f.elements[k].value),1)/1000000).toFixed(9));
- const q=GOStoreCargo.calculate(f.elements.weight_kg.value,volume,activeLogisticsOrder?.cargo_rates);
+ const q=GOStoreCargo.calculate(f.elements.weight_kg.value,volume,activeLogisticsOrder?.cargo_rates,f.elements.cargo_method.value);
  f.querySelector('[data-cargo-preview]').textContent=q?`${GOStoreCargo.description(q,locale==='zh')} · ${lt('Тооцоолсон тээвэр','预计运费')}: ${q.amount_mnt.toLocaleString('en-US')} ₮`:lt('Нийт жин болон эзлэхүүнээ оруулна уу.','请输入总重量和总体积。');
  // A missing parcel or a different piece count needs the explicit partial receipt.
  const short=Number(f.dataset.missing)>0||Number(f.elements.pieces.value)!==Number(f.dataset.expectedPieces);
@@ -62,7 +64,7 @@ document.addEventListener('submit',async e=>{
   // The photo is saved even if the receipt below fails, so a retry does not ask for it again.
   if(file){f.dataset.version=String(await warehouseReceiptUpload(f.dataset.id,f.dataset.version,file));f.dataset.hasPhoto='1';f.elements.image.value='';}
   const v=k=>Number(f.elements[k].value),direct=f.elements.volume_input.value==='direct';
-  const body={id:f.dataset.id,expected_status:f.dataset.expected,expected_version:Number(f.dataset.version),weight_kg:v('weight_kg'),volume_input:direct?'direct':'dimensions',pieces:v('pieces'),checked:f.elements.checked.checked,partial:!f.querySelector('[data-partial-row]').hidden&&f.elements.partial.checked,...(direct?{volume_m3:v('volume_m3')}:{length_cm:v('length_cm'),width_cm:v('width_cm'),height_cm:v('height_cm')})};
+  const body={id:f.dataset.id,cargo_method:f.elements.cargo_method.value,expected_status:f.dataset.expected,expected_version:Number(f.dataset.version),weight_kg:v('weight_kg'),volume_input:direct?'direct':'dimensions',pieces:v('pieces'),checked:f.elements.checked.checked,partial:!f.querySelector('[data-partial-row]').hidden&&f.elements.partial.checked,...(direct?{volume_m3:v('volume_m3')}:{length_cm:v('length_cm'),width_cm:v('width_cm'),height_cm:v('height_cm')})};
   const d=await api('warehouse-receive',body);
   showOrder(d.order);
   toast(d.order.logistics?.transport?.confirmed_at?lt('Хүлээн авч, тээвэр батлагдлаа','已收货，运费已确认'):t('saved'));

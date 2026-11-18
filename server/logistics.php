@@ -109,7 +109,7 @@ function logistics_post(string $action,array $b,string $location): never {
             $expected=warehouse_expected_pieces($o);
             if($m['pieces']!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
             $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,9);$m['at']=gmdate('c');$l['measurement']=$m;
-            if(warehouse_role($location)==='erenhot')$l['transport']=warehouse_cargo_calculate($m['weight_kg'],$m['volume_m3'],warehouse_cargo_rates($o),$m['pieces'],array_intersect_key($m,array_flip(['length_cm','width_cm','height_cm'])))+['location'=>$location];
+            if(warehouse_role($location)==='erenhot')$l['transport']=warehouse_cargo_calculate($m['weight_kg'],$m['volume_m3'],warehouse_cargo_rates($o),$m['pieces'],array_intersect_key($m,array_flip(['length_cm','width_cm','height_cm'])),str_field($b,'cargo_method',20,false)?:($l['transport']['method']??'auto'))+['location'=>$location];
         }elseif($action==='warehouse-shelf'){
             if(warehouse_role($location)!=='ulaanbaatar'||!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('УБ агуулахад ирсэн барааны байрлалыг бүртгэнэ.',409);
             $l['shelf']=str_field($b,'shelf',50);

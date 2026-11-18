@@ -329,26 +329,27 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
 (function(root){
  const n=v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:9});
  const KEYS={2:['light_limit_kg','light_mnt','small_per_kg_mnt'],3:['small_step_kg','small_step_mnt']};
- function calculate(weight,volume,r){
+ function calculate(weight,volume,r,method='auto'){
+  if(!['auto','weight','volume'].includes(method))return null;
   const w=Number(weight),v=Number(volume),p=r?.cargo_tariff,fx=Number(r?.cny_rate);
   if(!p||!KEYS[p.version]||![w,v,fx].every(Number.isFinite)||w<0.001||w>10000||v<=0||v>1000||fx<=0)return null;
   if(!['small_weight_limit_kg','small_volume_limit_m3',...KEYS[p.version],'large_per_m3_cny','large_per_tonne_cny'].every(k=>Number.isFinite(Number(p[k]))&&Number(p[k])>0))return null;
-  const large=w>=p.small_weight_limit_kg||v>p.small_volume_limit_m3,wc=w*p.large_per_tonne_cny/1000,vc=v*p.large_per_m3_cny;
+  const large=method==='volume'||w>=p.small_weight_limit_kg||(method==='auto'&&v>p.small_volume_limit_m3),wc=w*p.large_per_tonne_cny/1000,vc=v*p.large_per_m3_cny;
   let basis,raw,steps=null;
-  if(large){basis=wc>=vc?'weight':'volume';raw=Math.max(wc,vc)*fx;}
+  if(large){basis=method==='auto'?(wc>=vc?'weight':'volume'):method;raw=(basis==='weight'?wc:vc)*fx;}
   else if(p.version===2){basis=w<=p.light_limit_kg?'light':'weight';raw=basis==='light'?p.light_mnt:w*p.small_per_kg_mnt;}
   else{basis='weight';steps=Math.max(1,Math.ceil(Number((w/p.small_step_kg).toFixed(8))));raw=steps*p.small_step_mnt;}
-  const cny=large?Math.max(wc,vc):null,amount=Math.ceil(Number(raw.toFixed(8)));
-  return amount<=100000000?{method:'auto',category:large?'large':'small',basis,steps,weight_kg:w,volume_m3:v,weight_cny:large?wc:null,volume_cny:large?vc:null,amount_cny:cny,amount_mnt:amount,rates:r}:null;
+  const cny=large?(basis==='weight'?wc:vc):null,amount=Math.ceil(Number(raw.toFixed(8)));
+  return amount<=100000000?{method,category:large?'large':'small',basis,measure:basis==='volume'?v:w,steps,weight_kg:w,volume_m3:v,weight_cny:large?wc:null,volume_cny:large?vc:null,amount_cny:cny,amount_mnt:amount,rates:r}:null;
  }
  function description(q,zh=false){
   if(!q)return '';
-  if(q.method!=='auto')return (q.method==='volume'?'m³':'kg')+' · '+n(q.measure);
+  if(q.method!=='auto'&&!q.rates?.cargo_tariff)return (q.method==='volume'?'m³':'kg')+' · '+n(q.measure);
   const p=q.rates.cargo_tariff,kind=q.category==='large'?(zh?'大货':'Том ачаа'):(zh?'小包裹':'Жижиг илгээмж');
-  const formula=q.category==='large'?'max('+n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000, '+n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny)+') = ¥'+n(q.amount_cny)+' × '+n(q.rates.cny_rate)+' ₮'
+  const formula=q.category==='large'?(q.method==='volume'?n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny):q.method==='weight'?n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000':'max('+n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000, '+n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny)+')')+' = ¥'+n(q.amount_cny)+' × '+n(q.rates.cny_rate)+' ₮'
    :p.version===3?n(q.steps)+' × '+n(p.small_step_kg)+' kg × '+n(p.small_step_mnt)+' ₮'
    :q.basis==='light'?'≤ '+n(p.light_limit_kg)+' kg = '+n(p.light_mnt)+' ₮':n(q.weight_kg)+' kg × '+n(p.small_per_kg_mnt)+' ₮';
-  return kind+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³ · '+formula;
+  return (q.method==='auto'?kind:q.method==='volume'?(zh?'按体积':'Эзэлхүүнээр'):(zh?'按重量':'Жингээр'))+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³ · '+formula;
  }
  function tariff(r,zh=false){
   const p=r?.cargo_tariff;if(!p)return '';
