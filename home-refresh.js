@@ -37,9 +37,10 @@ Promise.resolve(window.catalogReady).then(()=>{
    const items=all.map(p=>'<li><strong>'+esc(p.name)+'</strong><address>'+esc(p.address)+'</address>'+(p.hours?'<span>'+esc(p.hours)+'</span>':'')+(tel(p)?'<a href="tel:'+esc(tel(p))+'" aria-label="'+esc(p.name+' руу залгах: '+p.phone)+'">'+esc(p.phone)+'</a>':'')+'</li>').join('');
    const erenhot=list.querySelector('[data-footer-erenhot]')?.outerHTML||'';
    if(list.innerHTML.replace(/>\s+</g,'><').trim()!==items+erenhot)list.innerHTML=items+erenhot;
-   const main=all.find(p=>p.location==='ulaanbaatar')||all[0],hours=document.querySelector('[data-footer-hours]'),phone=document.querySelector('[data-footer-phone]');
-   if(hours&&main.hours)hours.textContent=main.hours;
-   if(phone&&tel(main)){phone.textContent='Утас: '+main.phone;phone.href='tel:'+tel(main);phone.setAttribute('aria-label','GOStore руу залгах: '+main.phone);}
+   // Hours and the contact phone belong to the Ulaanbaatar warehouse only; without that entry the static block stays.
+   const main=all.find(p=>p.location==='ulaanbaatar'),block=document.querySelector('[data-footer-hours-block]'),hours=document.querySelector('[data-footer-hours]'),phone=document.querySelector('[data-footer-phone]');
+   if(main&&block&&hours){block.hidden=!main.hours;if(main.hours)hours.textContent=main.hours;}
+   if(main&&phone&&tel(main)){phone.textContent='Утас: '+main.phone;phone.href='tel:'+tel(main);phone.setAttribute('aria-label','GOStore руу залгах: '+main.phone);}
   }}
  const host=document.querySelector('#branch-promo'),cities=['Улаанбаатар','Замын-Үүд','Сайншанд'];
  const branches=(window.storeServer?.shipping?.pickup_locations||[]).filter(p=>cities.includes(p.city)).sort((a,b)=>cities.indexOf(a.city)-cities.indexOf(b.city));

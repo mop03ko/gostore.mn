@@ -91,7 +91,7 @@ function leaveAuthView(){
   const back=authReturn||'/';authPushed=false;closeAuthView(false);
   if(location.pathname+location.search+location.hash!==back)history.replaceState(null,'',back);
 }
-document.addEventListener('click',e=>{if(!authOpen)return;const c=e.target.closest('a,button');if(!c||c.closest('#auth-view,dialog,#toast')||c.matches('[data-action=account],[data-theme-toggle]'))return;leaveAuthView();},true);
+document.addEventListener('click',e=>{if(!authOpen)return;const c=e.target.closest('a,button');if(!c||c.closest('#auth-view,dialog,#toast')||c.matches('[data-action=account],[data-theme-toggle],a[href^="tel:"],a[href^="mailto:"],a[target="_blank"]'))return;leaveAuthView();},true);
 document.addEventListener('submit',e=>{if(authOpen&&!e.target.closest('#auth-view,dialog'))leaveAuthView();},true);
 window.addEventListener('popstate',()=>{
   const mode=authModeFor(location.pathname);

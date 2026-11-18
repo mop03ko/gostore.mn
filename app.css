@@ -529,7 +529,7 @@ html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 
 .site-footer .sf-links a,.sf-links button,.site-footer .sf-contact a{display:block;color:#bbc6d7;font-size:14px;line-height:20px;padding:6px 0;margin:0;text-align:left;text-decoration:none}
 .site-footer .sf-links a:hover,.sf-links button:hover,.site-footer .sf-contact a:hover,.site-footer .sf-places a:hover{color:#fff;text-decoration:underline;text-underline-offset:4px}
 .sf-links [hidden]{display:none}
-.sf-contact h3:not(:first-child){margin-top:24px}
+.sf-contact>h3:not(:first-child){margin-top:24px}.sf-contact>[hidden]+h3{margin-top:0}
 .site-footer .sf-contact .contact-email{display:block;min-height:0;margin:0;font-size:14px;line-height:20px;text-decoration:none;color:#bbc6d7}
 .sf-contact p{color:#fff;font-size:14px;line-height:20px;margin:0}.sf-contact p small{display:block;color:var(--theme-muted,#aeb8c8);font-size:12px;line-height:18px;margin-top:2px}
 .sf-places ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 32px}
@@ -552,7 +552,7 @@ html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 
  .sf-brand .brand{width:170px;min-height:44px;display:flex;align-items:center}
  .site-footer .sf-contact .contact-email{display:flex;align-items:center;min-height:44px}
  .sf-qr{display:none}
- .sf-app{flex-direction:row;flex-wrap:wrap}.sf-app h3{flex:0 0 100%}.sf-store{flex:1 1 150px;min-width:0;width:auto}
+ .sf-app{flex-direction:row;flex-wrap:wrap;align-items:stretch}.sf-app h3{flex:0 0 100%}.sf-store{flex:1 1 150px;min-width:0;width:auto}
  .site-footer .sf-links a,.sf-links button,.site-footer .sf-contact a{display:flex;align-items:center;min-height:44px;padding:4px 0}
  .site-footer .sf-places a{display:flex;align-items:center;min-height:44px}
  .sf-places ul{grid-template-columns:minmax(0,1fr);gap:18px}

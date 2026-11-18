@@ -37,5 +37,28 @@ const places=[{name:'Улаанбаатар агуулах',address:'Улаан�
   await footer.locator('[data-action=shipping]').click();await page.waitForURL(/\/help#delivery$/);
   assert.deepEqual(errors,[]);await page.close();
  }
- console.log('PASS footer: static company, app and warehouse content without JavaScript; pickup points from settings with escaping and tel links; App Store link and QR, Android announced; single self-cargo link; 4/3/2 columns, no overflow and 44 px targets at 1440/1024/390/320 px; help links.');
+ // Hours and the contact phone follow the Ulaanbaatar warehouse only.
+ const withPlaces=async(list,width=1280)=>{const page=await browser.newPage({viewport:{width,height:900}});await page.route('**/api/index.php?action=catalog*',async r=>{const res=await r.fetch(),j=await res.json();j.shipping.pickup_locations=list;await r.fulfill({response:res,json:j});});await page.goto(base+'/help',{waitUntil:'networkidle'});await page.waitForFunction(n=>document.querySelectorAll('[data-footer-places] li').length===n,list.length+1);return page;};
+ {const page=await withPlaces([{...places[0],hours:''},places[1]]);
+  assert.equal(await page.locator('[data-footer-hours-block]').isVisible(),false,'No hours in the settings: the footer does not keep old ones');
+  assert.equal(await page.locator('.sf-contact h3:visible').first().innerText(),'Холбоо барих');await page.close();}
+ {const page=await withPlaces([places[1],places[2]]);
+  assert.equal(await page.locator('[data-footer-hours]').innerText(),'Өдөр бүр 09:00 - 18:00','A branch never supplies the Ulaanbaatar hours');
+  assert.equal(await page.locator('[data-footer-phone]').getAttribute('href'),'tel:86079077','A branch never becomes the main contact phone');await page.close();}
+ // «Бүх бараа» is a real link, so it works from pages that are not the catalog.
+ {const page=await browser.newPage({viewport:{width:1280,height:900}});await page.goto(base+'/help',{waitUntil:'networkidle'});
+  await page.locator('body > footer .sf-shop a[href="/products"]').click();await page.waitForURL(/\/products$/);
+  await page.waitForFunction(()=>document.documentElement.classList.contains('listing-view')&&!document.documentElement.classList.contains('store-page-view'));await page.close();}
+ // On the sign-in page a call, mail or new-tab link in the footer leaves the form alone; other links still leave it.
+ {const page=await browser.newPage({viewport:{width:390,height:844}});await page.goto(base+'/login',{waitUntil:'networkidle'});await page.locator('#auth-view form').first().waitFor();
+  await page.evaluate(()=>document.querySelector('body > footer [data-footer-phone]').dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));
+  await page.evaluate(()=>{const a=document.querySelector('body > footer .contact-email');a.addEventListener('click',e=>e.preventDefault(),{once:true});a.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));});
+  assert.ok(await page.locator('#auth-view form').count()>0&&/\/login$/.test(page.url()),'Calling or mailing from the footer keeps the sign-in form');
+  await page.locator('body > footer .sf-help [data-action=privacy]').click();await page.waitForFunction(()=>!document.querySelector('#auth-view form'));await page.close();}
+ // Narrow phones: the two app badges share a row and a height.
+ for(const width of [360,375]){const page=await browser.newPage({viewport:{width,height:800}});await page.goto(base+'/help',{waitUntil:'networkidle'});
+  const boxes=await page.locator('body > footer .sf-store').evaluateAll(a=>a.map(e=>{const r=e.getBoundingClientRect();return [Math.round(r.top),Math.round(r.height)];}));
+  if(boxes[0][0]===boxes[1][0])assert.equal(boxes[0][1],boxes[1][1],'Badges on one row have one height at '+width);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.close();}
+ console.log('PASS footer: static company, app and warehouse content without JavaScript; pickup points from settings with escaping and tel links; hours hidden when unset and never taken from a branch; App Store link and QR, Android announced; single self-cargo link; «Бүх бараа» link from a non-catalog page; sign-in form kept on call and mail links; 4/3/2 columns, no overflow, 44 px targets and even badges at 1440/1024/390/375/360/320 px; help links.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
