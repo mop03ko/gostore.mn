@@ -15,7 +15,7 @@ if($path==='/admin/reviews.css')return false;
 if(in_array($path,['/admin/sms-usage.js','/admin/sms-usage.css'],true))return false;
 if(in_array($path,['/warehouse/ub-dashboard.js','/warehouse/ub-dashboard.css'],true))return false;
 if(in_array($path,['/warehouse/workspace.js','/warehouse/workspace.css'],true))return false;
-if(in_array($path,['/warehouse/split-ui.js','/warehouse/split-ui.css'],true))return false;
+if(in_array($path,['/warehouse/split-ui.js','/warehouse/split-ui.css','/warehouse/unpack-ui.js'],true))return false;
 if(preg_match('#^/warehouse/(ub|erlian|erenhot|ulaanbaatar|wh-[a-f0-9]{12})/?$#',$path)){header('Content-Type: text/html; charset=utf-8');readfile(__DIR__.'/../warehouse/index.html');return true;}
 // Product pages go through the link-preview script, as .htaccess does in production.
 if(preg_match('#^/v/((?:tb-)?[0-9]{5,20})/?$#',$path,$m)){$_GET['id']=$m[1];require __DIR__.'/../api/product-page.php';return true;}
