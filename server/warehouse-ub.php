@@ -101,7 +101,7 @@ function warehouse_ub_sort(array $b,string $location): array {
 }
 
 function warehouse_ub_card(array $o,bool $verified=false): array {
-    $s=settlement_summary($o);$items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
+    $s=settlement_summary($o);$items=shipment_items($o);
     $reason='';
     if($o['status']!=='ready_pickup')$reason=match($o['status']){'ulaanbaatar_unsorted','ulaanbaatar'=>'not_sorted','ready_delivery'=>'delivery','out_for_delivery'=>'out_for_delivery',default=>'unavailable'};
     elseif(logistics_open_issues($o))$reason='issue';

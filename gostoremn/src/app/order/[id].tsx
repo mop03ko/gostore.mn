@@ -110,9 +110,9 @@ function OrderScreen() {
             <Row label="Төлөв" value={statusName(order.status)} />
             <Row
               label="Эхний төлбөр"
-              value={order.type === "forwarding" ? "Барааг өөрөө худалдан авсан" : order.paid ? "Төлөгдсөн" : "Төлөгдөөгүй"}
+              value={order.shipment_parent ? "Үндсэн захиалгад бүртгэгдсэн" : order.type === "forwarding" ? "Барааг өөрөө худалдан авсан" : order.paid ? "Төлөгдсөн" : "Төлөгдөөгүй"}
             />
-            {order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
+            {order.shipment_parent ? <Copy>{order.shipment_parent} захиалгын тусдаа илгээж буй хэсэг. Барааны төлбөр давхар тооцогдохгүй.</Copy> : order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
             <Copy>{dateText(order.created)}</Copy>
             {!!order.payment_due && !order.paid && order.status === "quoted" && (
               <Copy>Төлөх хугацаа: {dateText(order.payment_due)}</Copy>
@@ -124,6 +124,22 @@ function OrderScreen() {
               onPress={() => void load()}
             />
           </Card>
+          {!!order.shipment_parts?.length && (
+            <Card>
+              <Title>Захиалгын хэсгүүд</Title>
+              <Copy>Барааны төлбөр үндсэн захиалгад нэг удаа, тээврийн төлбөр хэсэг бүрд тусдаа тооцогдоно. Хэсгээ нээж явц, зураг, төлбөрөө харна уу.</Copy>
+              {order.shipment_parts.map((part) => (
+                <Card key={part.id}>
+                  <Copy>{part.id}{part.remainder ? " · Үлдсэн хэсэг" : ""}</Copy>
+                  <Row label="Төлөв" value={statusName(part.status)} />
+                  <Row label={part.unit === "parcel" ? "Хайрцаг" : "Тоо ширхэг"} value={String(part.quantity)} />
+                  {!!part.numbers.length && <Copy>{part.numbers.join("\n")}</Copy>}
+                  <Row label="Төлөх үлдэгдэл" value={money(part.billing.due)} />
+                  {part.id !== order.id && <Button title="Хэсгийг харах" secondary onPress={() => router.push({ pathname: "/order/[id]", params: { id: part.id } })} />}
+                </Card>
+              ))}
+            </Card>
+          )}
           {timedPayment && <Copy>{expired
             ? "Төлөх хугацаа дууссан. Төлбөрийн төлөвийг тулгаж байна."
             : `Төлөх хугацаа: ${Math.floor(Math.max(0, Math.ceil((deadline-now)/1000))/60)}:${String(Math.max(0, Math.ceil((deadline-now)/1000))%60).padStart(2,"0")} · Хугацаандаа төлөөгүй захиалга автоматаар цуцлагдана.`}</Copy>}

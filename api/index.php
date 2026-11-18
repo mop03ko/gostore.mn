@@ -105,11 +105,12 @@ try {
         if($action==='admin-customer')json_out(admin_customer_detail(str_field($_GET,'id',64)));
         if($action==='admin-order'){
             $o=order_row(str_field($_GET,'id',50))['order'];
+            $o['shipment_parts']=shipment_summary($o);
             $o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
             json_out(['order'=>$o]);
         }
         if ($action==='dashboard') {
-            $orders=array_map(function($r){$o=json_decode($r['data'],true);$o['billing']=settlement_summary($o);return $o;},db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
+            $orders=array_map(function($r){$o=json_decode($r['data'],true);$o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);return $o;},db()->query('SELECT data FROM orders ORDER BY created DESC LIMIT 1000')->fetchAll());
             json_out(['products'=>products(true),'orders'=>$orders,'email'=>config()['admin_email'],'warehouse_profiles'=>warehouse_catalog(),'warehouse_account'=>warehouse_account_public(),'warehouse_accounts'=>warehouse_accounts(),'local_products_enabled'=>config()['local_products_enabled'],'shipping'=>shipping_settings(),'supplier_health'=>supplier_snapshot_health(),'supplier'=>supplier_ready(),'ot_operator'=>ot_operator_public(),'taobao_buyer'=>taobao_buyer_public(),'taoworld'=>tw_settings_public(),'qpay'=>['enabled'=>qpay_ready(),'environment'=>config()['qpay']['environment']],'admin'=>admin_current_public(),'csrf'=>$_SESSION['csrf']]);
         }
         fail('Үйлдэл олдсонгүй.',404);

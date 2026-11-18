@@ -136,10 +136,19 @@ function warehouse_month_param(): string {$m=str_field($_GET,'month',7,false);if
 function warehouse_order_public(array $o,string $location='erenhot',bool $details=true): array {
     $result=array_intersect_key($o,array_flip(['id','title','customer','cargo_id','status','created','warehouse','batch_id']));
     $result['read_only']=!warehouse_order_operable($o,$location);
-    $items=isset($o['supplier'])?[$o['supplier']]:($o['items']??[]);
+    $items=shipment_items($o);
+    $result['shipment_parent']=$o['shipment_parent']??null;
+    $result['shipment_unit']=$o['shipment_unit']??(($o['shipment_split']['mode']??'')==='parcels'?'parcel':'item');
+    $result['shipment_parts']=$details?shipment_summary($o):[];
+    $result['split_mode']=$o['shipment_split']['mode']??null;
+    $result['can_split']=warehouse_role($location)==='erenhot'&&!$result['read_only']&&shipment_split_allowed($o);
     $result['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
     // Photos and the original Chinese title/options help the warehouse match parcel contents.
     $result['items']=array_map(fn($item)=>array_intersect_key($item,array_flip(['name','variant','qty','original_name','original_variant']))+(is_string($item['image']??null)&&str_starts_with($item['image'],'https://')?['image'=>$item['image']]:[]),$items);
+    if($result['shipment_unit']==='parcel'){
+        $original=!empty($o['shipment_parent'])?order_row($o['shipment_parent'])['order']:$o;
+        $result['reference_items']=array_map(fn($i)=>array_intersect_key($i,array_flip(['name','variant','qty','original_name','original_variant'])),isset($original['supplier'])?[$original['supplier']]:($original['items']??[]));
+    }
     $result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])), $o['history']??[]);
     $result['logistics']=logistics_state($o);unset($result['logistics']['audit']);
     if(warehouse_role($location)==='erenhot')$result['cargo_rates']=warehouse_cargo_rates($o);
@@ -164,10 +173,12 @@ function warehouse_overview_add(array &$overview,array $order): void {
     if(($order['status']??'')==='cancelled')return;
     $items=isset($order['supplier'])?[$order['supplier']]:($order['items']??[]);
     $quantity=array_sum(array_map(fn($item)=>max(0,(int)($item['qty']??0)),$items));
-    $groups=['ordered'];
+    if(empty($order['shipment_parent'])){$overview['ordered']['orders']++;$overview['ordered']['quantity']+=$quantity;}
+    $groups=[];
     if(in_array('Эрээн',$order['route']??[],true)&&in_array($order['status'],['erenhot','erenhot_ready'],true))$groups[]='erenhot';
     if(in_array('Улаанбаатар',$order['route']??[],true)&&in_array($order['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))$groups[]='ulaanbaatar';
-    foreach($groups as $group){$overview[$group]['orders']++;$overview[$group]['quantity']+=$quantity;}
+    $boxes=($order['shipment_unit']??'')==='parcel'||($order['shipment_split']['mode']??'')==='parcels';
+    foreach($groups as $group){$overview[$group]['orders']++;if($boxes)$overview[$group]['parcels']=($overview[$group]['parcels']??0)+warehouse_expected_pieces($order);else $overview[$group]['quantity']+=warehouse_expected_pieces($order);}
 }
 // Exact incoming carrier-number matching; branch visibility remains authoritative.
 // Search suggestions (owner request 2026-11-10): four or more characters, e.g. a waybill's last four digits, list
@@ -180,7 +191,7 @@ function warehouse_suggest(string $q,string $location): array {
     $add=function(array $item,string $value)use($q,&$items){$items[]=$item+['match'=>$value,'rank'=>str_ends_with($value,$q)?0:1];};
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $r){
         $o=json_decode($r['data'],true);if(!is_array($o)||!warehouse_order_visible($o,$location))continue;
-        $values=[['order',$o['id']],['order',$o['cargo_id']??'']];foreach($o['inbound']['numbers']??[] as $n)$values[]=['waybill',strtoupper((string)($n['no']??''))];
+        $values=[['order',$o['id']],['order',$o['cargo_id']??'']];foreach(shipment_numbers($o) as $n)$values[]=['waybill',strtoupper((string)($n['no']??''))];
         if($ub)foreach([$o['phone']??'',$o['fulfillment']['contact_phone']??''] as $p)$values[]=['phone',(string)preg_replace('/\D/','',(string)$p)];
         foreach($values as [$field,$value])if($value!==''&&str_contains($value,$q)){$add(['type'=>'order','id'=>$o['id'],'customer'=>(string)($o['customer']??''),'status'=>$o['status'],'field'=>$field],$value);break;}
         if(count($items)>=60)break;
@@ -201,7 +212,7 @@ function warehouse_tracking_matches(string $number,string $location): array {
     foreach(db()->query('SELECT data FROM orders ORDER BY created DESC,id DESC') as $row){
         $o=json_decode($row['data'],true);
         if(!warehouse_order_visible($o,$location))continue;
-        foreach($o['inbound']['numbers']??[] as $entry){
+        foreach(shipment_numbers($o) as $entry){
             if(strtoupper(trim((string)($entry['no']??'')))!==$number)continue;
             $total++;if(count($matches)<50)$matches[]=warehouse_order_public($o,$location,false);
             break;
@@ -294,6 +305,10 @@ function warehouse_post(string $action,array $b): never {
         warehouse_notice_schema(db());$through=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE warehouse_notifications SET read_at=? WHERE location=? AND id<=? AND read_at IS NULL')->execute([gmdate('c'),$location,$through]);json_out(['ok'=>true]);
     }
     if($action==='warehouse-receive')json_out(['order'=>warehouse_order_public(warehouse_receive($b,$location),$location)]);
+    if($action==='warehouse-order-split'){
+        $split=warehouse_split_order($b,$location);
+        json_out(['order'=>warehouse_order_public($split['order'],$location),'part'=>warehouse_order_public($split['part'],$location)]);
+    }
     if($action==='warehouse-outbound-pack')json_out(['batch'=>warehouse_batch_public(warehouse_outbound_pack($b,$location),$location,true)]);
     if($action==='warehouse-sort')json_out(['order'=>warehouse_order_public(warehouse_ub_sort($b,$location),$location)]);
     if($action==='warehouse-handover')json_out(['orders'=>array_map(fn($o)=>warehouse_order_public($o,$location),warehouse_handover($b,$location))]);
@@ -322,6 +337,15 @@ function warehouse_post(string $action,array $b): never {
 }
 function warehouse_error_zh(string $message): string {
     return match($message){
+        'Салгах бараа болон үлдэгдлийг тулгаж батална уу.'=>'请确认已核对本次拆分商品及剩余部分。',
+        'Салгах арга, тайлбараа оруулна уу.'=>'请选择拆分方式并填写说明。',
+        'Багцалсан, тооцоо баталсан эсвэл салгасан хэсгийг дахин салгахгүй.'=>'已装包、已结算或已拆出的分件不能再次拆分。请从原订单的剩余部分继续拆分。',
+        'Нэг захиалгыг өмнө сонгосон аргаар нь үргэлжлүүлэн салгана.'=>'请继续使用该订单原来的拆分方式。',
+        'Салгах илгээмжийн жагсаалт буруу.'=>'拆分运单列表无效。',
+        'Зөвхөн ирснээр бүртгэсэн илгээмжийг салгана.'=>'只能选择已登记到件的包裹。',
+        'Илгээх болон үлдэх хэсэг хоёулаа хоосон биш байна.'=>'本次拆出和保留的部分都不能为空。',
+        'Салгах барааны тоо ширхэг буруу.'=>'拆分数量无效，不能超过剩余数量。',
+        'Бараагаар салгасан хэсгийг GS кодоор тулгана.'=>'按商品拆分的分件请使用独立 GS 编码核对。',
         'Сар буруу.'=>'月份格式不正确。',
         'Эрээнээс Улаанбаатар хүрэх тээврийн дүнг батална уу.'=>'请先确认二连至乌兰巴托的运费。',
         'Нийт жин болон эзлэхүүнийг зөв оруулна уу.'=>'请输入正确的总重量和总体积。',

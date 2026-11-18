@@ -29,7 +29,7 @@ function warehouse_batch_public(array $batch,string $location,bool $detail=false
     $result['source_name']=warehouse_profile($result['source'])['name'];$result['destination_name']=warehouse_profile($result['destination'])['name'];
     $members=warehouse_batch_members($batch['id']);$result['order_count']=count($members);
     $result['unsorted_count']=count(array_filter($members,fn($o)=>$o['status']==='ulaanbaatar_unsorted'));
-    $result['piece_count']=array_sum(array_map(fn($o)=>array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty')),$members));
+    $result['piece_count']=array_sum(array_map('warehouse_expected_pieces',$members));
     $result['scanned']=$batch['checks'][$location]??[];
     if($detail){$result['orders']=array_map(fn($o)=>warehouse_order_public($o,$location),$members);$result['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['event','at'])),$batch['history']);}
     return $result;

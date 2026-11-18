@@ -95,7 +95,7 @@ function customer_products(array $c): array {
     $s=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders co ON co.order_id=o.id WHERE co.customer_id=? ORDER BY o.created DESC LIMIT 300');$s->execute([$c['id']]);
     $products=[];
     foreach($s->fetchAll() as $row){
-        $o=json_decode($row['data'],true);if(!is_array($o)||($o['status']??'')==='cancelled')continue;
+        $o=json_decode($row['data'],true);if(!is_array($o)||($o['status']??'')==='cancelled'||!empty($o['shipment_parent']))continue;
         foreach($o['items']??(isset($o['supplier'])?[$o['supplier']]:[]) as $line){
             $id=(string)($line['id']??'');if($id==='')continue;
             if(isset($products[$id])){$products[$id]['times']++;continue;}
@@ -109,6 +109,7 @@ function order_owner(string $id): ?string {
     $s=db()->prepare('SELECT customer_id FROM customer_orders WHERE order_id=?');$s->execute([$id]);return $s->fetchColumn()?:null;
 }
 function customer_order_access(array $r,array $b): void {
+    if(!empty($r['order']['shipment_parent']))$r=order_row($r['order']['shipment_parent']);
     $owner=order_owner($r['id']);
     if($owner!==null){if((current_customer()['id']??null)!==$owner)fail('Энэ захиалгыг харах эрхгүй.',403);return;}
     $token=str_field($b,'token',100,false);
@@ -120,7 +121,7 @@ function customer_get(string $action): never {
     $c=customer_required();
     if($action==='customer-self-cargo'){
         $q=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders c ON c.order_id=o.id WHERE c.customer_id=? ORDER BY o.created DESC,o.id DESC');$q->execute([$c['id']]);$orders=[];
-        foreach($q as $row){$o=json_decode($row['data'],true);if(($o['type']??'')==='forwarding')$orders[]=public_order($o);if(count($orders)>=100)break;}
+        foreach($q as $row){$o=json_decode($row['data'],true);if(($o['type']??'')==='forwarding'&&empty($o['shipment_parent']))$orders[]=public_order($o);if(count($orders)>=100)break;}
         $cargoId=customer_cargo_id($c['id']);
         json_out(['orders'=>$orders,'cargo_id'=>$cargoId,'delivery'=>self_cargo_delivery($cargoId),'warehouse'=>array_intersect_key(warehouse_profile('erenhot'),array_flip(['name','address','phone','contact_phone','hours']))]);
     }
@@ -224,9 +225,13 @@ function customer_post(string $action,array $b): never {
         limit_attempts('customer-claim:'.$c['id'],100,3600);$id=str_field($b,'id',50);$token=str_field($b,'token',100);
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try{
-            $r=order_row($id);$owner=order_owner($id);
+            $r=order_row($id);if(!empty($r['order']['shipment_parent'])){$id=$r['order']['shipment_parent'];$r=order_row($id);}$owner=order_owner($id);
             if(($owner!==null&&$owner!==$c['id'])||!hash_equals($r['token_hash'],hash('sha256',$token)))fail('Энэ захиалгыг холбох эрхгүй.',403);
-            $db->prepare('INSERT OR IGNORE INTO customer_orders VALUES (?,?,?)')->execute([$id,$c['id'],gmdate('c')]);$db->exec('COMMIT');
+            foreach(array_merge([$id],$r['order']['shipment_split']['parts']??[]) as $partId){
+                $partOwner=order_owner($partId);if($partOwner!==null&&$partOwner!==$c['id'])fail('Энэ захиалгыг холбох эрхгүй.',403);
+                $db->prepare('INSERT OR IGNORE INTO customer_orders VALUES (?,?,?)')->execute([$partId,$c['id'],gmdate('c')]);
+            }
+            $db->exec('COMMIT');
         }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
         json_out(['ok'=>true]);
     }

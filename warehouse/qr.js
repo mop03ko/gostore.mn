@@ -1,7 +1,7 @@
 'use strict';
-// Labels contain internal GB codes. Camera scanning also reads GS and incoming carrier barcodes.
+// Labels contain GB batch codes or GS consignment codes, including split shipments.
 function batchQr(id,label=false){
-  if(!/^GB-[A-Z0-9-]{1,45}$/.test(id))return '';
+  if(!/^(?:GB|GS)-[A-Z0-9-]{1,45}$/.test(id))return '';
   const qr=qrcode(0,'M');qr.addData(id,'Alphanumeric');qr.make();
   // Whole printer dots per module at XP-420B's 203 dpi; retain a four-module quiet zone.
   const dots=Math.floor((label?44:60)*203/25.4/(qr.getModuleCount()+8));

@@ -23,7 +23,7 @@ function self_cargo_delivery(string $cargoId,string $location='erenhot'): array 
 function self_cargo_owned(array $customer,string $id): array {
     $q=db()->prepare('SELECT o.data FROM orders o JOIN customer_orders c ON c.order_id=o.id WHERE o.id=? AND c.customer_id=?');$q->execute([$id,$customer['id']]);$data=$q->fetchColumn();
     if(!$data)fail('Ачаа олдсонгүй.',404);$o=json_decode($data,true);
-    if(($o['type']??'')!=='forwarding')fail('Ачаа олдсонгүй.',404);return $o;
+    if(($o['type']??'')!=='forwarding'||!empty($o['shipment_parent']))fail('Ачаа олдсонгүй.',404);return $o;
 }
 function self_cargo_address(array $o): array {
     if(!empty($o['cargo_id']))return self_cargo_delivery($o['cargo_id'],warehouse_order_location($o,'erenhot'))+['order_code'=>$o['id']];

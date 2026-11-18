@@ -192,6 +192,9 @@ function order_row(string $id): array {
 function save_order(array $o): void {
     require_once __DIR__.'/staff-push.php';staff_push_schema();
     $old=order_row($o['id'])['order'];
+    if(!empty($old['shipment_parent'])&&(($o['type']??'')!=='forwarding'||($o['amount']??0)!==0||!empty($o['paid'])||isset($o['purchase'])||isset($o['invoice'])))fail('Салгасан хэсэгт барааны төлбөр эсвэл худалдан авалт давхар үүсгэхгүй.',409);
+    if(!empty($old['shipment_parent']))foreach(['goods_mnt','domestic_mnt','service_mnt'] as $key)if(($o['settlement']['breakdown'][$key]??0)!==0)fail('Салгасан хэсэгт барааны төлбөр эсвэл худалдан авалт давхар үүсгэхгүй.',409);
+    if((!empty($old['shipment_split'])||!empty($old['shipment_parent']))&&$o['status']==='cancelled'&&$old['status']!=='cancelled')fail('Салгасан захиалгыг бүх хэсэгтэй нь тулгаж шийднэ үү.',409);
     db()->exec('SAVEPOINT save_order_write');
     try{
     db()->prepare('UPDATE orders SET data=?,updated=? WHERE id=?')->execute([json_encode($o,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),gmdate('c'),$o['id']]);
@@ -203,16 +206,20 @@ function save_order(array $o): void {
     }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT save_order_write');db()->exec('RELEASE SAVEPOINT save_order_write');throw $e;}
 }
 function public_order(array $o): array {
+    if(function_exists('shipment_summary')){
+        $o['shipment_parts']=shipment_summary($o);
+    }
     // Old app versions must not receive a payable QR after the deadline either.
     if(!$o['paid']&&isset($o['invoice'])&&($o['status']==='cancelled'||(!empty($o['payment_due'])&&strtotime($o['payment_due'])<=time()))){
         $o['invoice']=['state'=>'expired'];
     }
     unset($o['quote']['domestic'],$o['quote']['verified_until']);
     if(function_exists('logistics_public'))$o['cargo']=logistics_public($o);
+    if(!empty($o['shipment_parts'])&&empty($o['shipment_parent'])){$o['remaining_status']=$o['status'];$o['status']=shipment_customer_status($o['shipment_parts']);}
     if(function_exists('warehouse_profile')&&(($o['fulfillment']['method']??'')==='pickup'||(($o['type']??'')==='checkout'&&!isset($o['fulfillment'])&&($o['fulfillment_request']['method']??'pickup')==='pickup')))$o['pickup_warehouse']=warehouse_profile(function_exists('warehouse_order_location')?warehouse_order_location($o,'ulaanbaatar'):'ulaanbaatar');
     if(function_exists('warehouse_order_location'))$o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
     unset($o['warehouse_assignment_history'],$o['warehouse_locations']);
-    unset($o['purchase'],$o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement']);
+    unset($o['purchase'],$o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement'],$o['shipment_split'],$o['shipping_items']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;

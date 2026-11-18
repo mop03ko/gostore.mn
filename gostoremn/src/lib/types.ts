@@ -85,6 +85,18 @@ export type Invoice = {
   urls?: { name: string; description: string; link: string }[];
 };
 export type Order = {
+  shipment_parent?: string;
+  remaining_status?: string;
+  shipment_parts?: {
+    id: string;
+    parent_id: string;
+    remainder: boolean;
+    status: string;
+    unit: "parcel" | "item";
+    quantity: number;
+    numbers: string[];
+    billing: { due: number; finalized: boolean };
+  }[];
   type?: string;
   id: string;
   title: string;

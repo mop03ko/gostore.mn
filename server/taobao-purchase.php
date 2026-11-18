@@ -209,13 +209,14 @@ function inbound_add_manual(string $id,array $b,?string $location=null): array {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $o=order_row($id)['order'];
+        if(!empty($o['shipment_parent']))fail('Салгасан хэсгийн tracking дугаарыг өөрчлөхгүй.',409);
         if($location!==null&&(!warehouse_order_visible($o,$location)||!in_array($o['status'],['confirmed','shipping'],true)))fail('Захиалга олдсонгүй.',404);
         inbound_merge($o,[['no'=>$number,'company'=>$company]],$location===null?'admin':'warehouse');save_order($o);$db->exec('COMMIT');return $o;
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
 function inbound_public(array $o,bool $details=true): array {
     $p=$o['purchase']??[];
-    return ['numbers'=>array_map(fn($n)=>array_intersect_key($n,array_flip(['no','company','source'])),$o['inbound']['numbers']??[]),'status'=>$o['inbound']['status']??'','checked_at'=>$o['inbound']['checked_at']??null,
+    return ['numbers'=>array_map(fn($n)=>array_intersect_key($n,array_flip(['no','company','source'])),function_exists('shipment_numbers')?shipment_numbers($o):($o['inbound']['numbers']??[])),'status'=>$o['inbound']['status']??'','checked_at'=>$o['inbound']['checked_at']??null,
         'provider_order_ids'=>$p['provider_order_ids']??[],'details'=>$details?inbound_details_public($o):null,'trackable'=>(($p['provider']??'')==='taoworld'&&!empty($p['submitted_at']))||(($p['state']??'')==='created'&&!empty($p['provider_order_ids']))];
 }
 // Erenhot list views refresh a few stale purchases after the response has been sent.

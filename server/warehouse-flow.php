@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/warehouse-split.php';
 // Erenhot shortcuts (2026-11-08/09): parcel-by-parcel arrival, one-step receipt with freight approval,
 // scan-to-dispatch packing (GB batch created when packing is confirmed) and late-parcel alerts.
 // This file only defines functions; the TaoWorld CLI worker loads it without logistics.php.
@@ -12,7 +13,7 @@ const WAREHOUSE_TRACKING_REFRESH=21600;
 // Courier numbers known for an order and which of them the warehouse has scanned in.
 function warehouse_parcels(array $o): array {
     $arrived=is_array($o['logistics']['parcels']??null)?$o['logistics']['parcels']:[];$list=[];
-    foreach($o['inbound']['numbers']??[] as $n){
+    foreach(function_exists('shipment_numbers')?shipment_numbers($o):($o['inbound']['numbers']??[]) as $n){
         $no=strtoupper(trim((string)($n['no']??'')));if($no===''||isset($list[$no]))continue;
         $list[$no]=['no'=>$no,'company'=>(string)($n['company']??''),'added_at'=>$n['added_at']??null,'arrived_at'=>$arrived[$no]['at']??null];
     }
@@ -45,7 +46,7 @@ function warehouse_alerts(array $o,?int $now=null): array {
     return $alerts;
 }
 function warehouse_expected_pieces(array $o): int {
-    return (int)array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
+    return (int)array_sum(array_column(function_exists('shipment_items')?shipment_items($o):(isset($o['supplier'])?[$o['supplier']]:($o['items']??[])),'qty'));
 }
 // Scanning or tapping a courier parcel records its arrival; the last one clears the automatic shortfall.
 function warehouse_parcel_arrive(array $b,string $location): array {
@@ -61,7 +62,7 @@ function warehouse_parcel_arrive(array $b,string $location): array {
         $l=logistics_state($o);
         if(!isset($l['parcels'][$number])){
             $l['parcels'][$number]=['at'=>gmdate('c'),'location'=>$location];
-            if($o['status']==='erenhot'&&!warehouse_parcels(['inbound'=>$o['inbound']??[],'logistics'=>$l])['missing']){
+            if($o['status']==='erenhot'&&!warehouse_parcels(array_replace($o,['logistics'=>$l]))['missing']){
                 foreach($l['issues'] as &$issue)if(($issue['auto']??'')==='receipt'&&$issue['state']==='open'&&($issue['parcels']??[])){$issue['state']='resolved';$issue['resolution']='全部包裹已到 · Бүх илгээмж ирсэн';$issue['resolved_at']=gmdate('c');$issue['resolved_location']=$location;}
                 unset($issue);
             }

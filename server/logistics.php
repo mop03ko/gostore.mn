@@ -51,7 +51,13 @@ function logistics_notify(array $o,?array $old): void {
     $oldPhotos=array_column(logistics_state($old)['photos'],'id');
     foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',warehouse_profile($p['location'])['name'].' · зураг нэмэгдлээ'];
     if($events)customer_push_schedule();
-    foreach($events as [$kind,$message])db()->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],$kind,$message,gmdate('c')]);
+    foreach($events as [$kind,$message]){
+        if(!empty($o['shipment_parent'])||!empty($o['shipment_split'])){
+            $labels=['confirmed'=>'Бүртгэгдсэн','shipping'=>'Эрээн рүү явж байна','erenhot'=>'Эрээнд ирсэн','erenhot_ready'=>'Илгээхэд бэлэн','erenhot_dispatched'=>'Эрээнээс гарсан','zamyn_uud'=>'Замын-Үүдэд ирсэн','ulaanbaatar_unsorted'=>'Улаанбаатарт ангилж байна','ulaanbaatar'=>'Улаанбаатарт ирсэн','ready_pickup'=>'Авахад бэлэн','ready_delivery'=>'Хүргэлтэд бэлэн','out_for_delivery'=>'Хүргэлтэд гарсан','completed'=>'Хүлээлгэн өгсөн'];
+            $message=($o['shipment_parent']??$o['id']).' · '.(!empty($o['shipment_parent'])?$o['id'].' хэсэг':'үлдсэн хэсэг').': '.($kind==='status'?($labels[$message]??$message):$message);$kind='shipment_part';
+        }
+        db()->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],$kind,$message,gmdate('c')]);
+    }
 }
 function logistics_public(array $o): array {
     $l=logistics_state($o);
@@ -100,7 +106,7 @@ function logistics_post(string $action,array $b,string $location): never {
             if(!$legacy&&(warehouse_role($location)!=='erenhot'||$o['status']!=='erenhot'))fail('Эрээнд хүлээн авсны дараа хэмжилт хийнэ.',409);
             $m=[];foreach(['weight_kg'=>[0.001,10000],'length_cm'=>[0.1,1000],'width_cm'=>[0.1,1000],'height_cm'=>[0.1,1000]] as $key=>$range)$m[$key]=decimal_field($b,$key,...$range);
             $m['pieces']=int_field($b,'pieces',1,1000000);
-            $expected=array_sum(array_column(isset($o['supplier'])?[$o['supplier']]:($o['items']??[]),'qty'));
+            $expected=warehouse_expected_pieces($o);
             if($m['pieces']!==$expected)fail('Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.',409);
             $m['volume_m3']=round($m['length_cm']*$m['width_cm']*$m['height_cm']/1000000,9);$m['at']=gmdate('c');$l['measurement']=$m;
             if(warehouse_role($location)==='erenhot')$l['transport']=warehouse_cargo_calculate($m['weight_kg'],$m['volume_m3'],warehouse_cargo_rates($o),$m['pieces'],array_intersect_key($m,array_flip(['length_cm','width_cm','height_cm'])))+['location'=>$location];
