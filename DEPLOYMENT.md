@@ -1,5 +1,29 @@
 # cPanel суулгалт
 
+## New footer; cart and saved-items sync switched on — 2026-11-19
+
+- **Footer** (`2db5b99`, follow-up `5dacf56`), requested by the owner after a reference layout:
+  - Link columns, an app download block, hours, contact and warehouses, in GOStore's colours.
+  - App download: App Store link and QR code for the public iOS listing (`apps.apple.com/mn/app/gostore-mn/id6828991827`). Android is announced as «Тун удахгүй» and is not a link. The QR is hidden on phones.
+  - Warehouses: Ulaanbaatar, Zamyn-Uud and Sainshand with address, hours and phone, refreshed from the pickup settings checkout uses. Erenhot links to the self-order page, because parcels sent there need the customer's cargo ID.
+  - From the review: «Бүх бараа» is a link (the old button left `/help`, `/cart` and `/account` empty); hours hide when the setting is empty; call, mail and new-tab links no longer close the sign-in form; the two app badges share a height on phones.
+  - No social links: none are recorded for GOStore.
+- **Cart and saved-items sync** (`c578b39`, `0bd1c48`, `e6a2f50`):
+  - Every save had failed on live since 27 October (UPSERT on SQLite 3.7.17): 81 logged failures from 15 to 18 November alone. Browsers still held marks saying their lists were synced.
+  - Client: new mark key, so the first sync merges device and account instead of replacing either; a list is marked synced only after its push succeeds; requests carry `sync=2`.
+  - Server (`server/customer-state.php`, one file): the save works on SQLite 3.7.17. A request without `sync=2` comes from a page still running the old script and gets what it always got, an empty account at version 0 and a refused save (426), until that page is reloaded.
+  - **Do not roll this file back** to a version without the gate once accounts hold data: old tabs would replace their lists with the account's. Fix forward instead.
+- **Tests.** `footer-ui` (new), `customer-sync-ui` (outage mark, failed pushes, old-page gate, logout with an unsaved list; it now runs from `/help` and selects the pickup branch checkout requires), `customer-state`, `customers`, `mobile`, `sqlite-compat` pass. The 19 storefront UI suites that fail on `main` since the home redesign still fail (see the previous entry).
+- **Reviews.** The footer review (three lenses, findings re-checked by a second agent) finished and its findings are fixed. The review of the sync change was cut short by a usage limit before it reported; the change went live on the strength of its tests and of the earlier review that found the hazard.
+- **Deployed** over FTPS with baseline, backup and hash verification, in three steps:
+  - Footer and the new sync client: `assets/app-store-qr.svg` (new), `app.css`, `app.js`, `home-refresh.js`, `self-cargo.js`, `index.html`. Backup `/gostore-backups/footer-20261119-ae4f2cd328`.
+  - Footer follow-up: `app.css`, `app.js`, `home-refresh.js`, `index.html` (`app.js?v=270c814071a2`, `app.css?v=9a161689f55f`). Backup `/gostore-backups/footer2-20261119-ffc73f3927`.
+  - `server/customer-state.php`. Backup `/gostore-backups/cart-sync-20261119-c763c50934`.
+- **Live checks.**
+  - Live files hash-match `5dacf56`. `health`, `catalog` and `campaign` answer 200 with the new server file, which every API request loads; `customer-state` without a session answers 401 as before.
+  - Footer on `/`, `/help` and `/c/tech` at 1440 and 390 px: four places with phone links, hours, App Store link and QR (loaded on desktop, hidden on phones), Android badge, company sentence, no overflow, 44 px targets, no script errors.
+  - No new entry in the PHP error log after any of the deploys. No signed-in customer synced during the night, so a real save has not been observed yet: check the log for `customer-state-save` during the day.
+
 ## Service fee note, registered company name, pending server fixes; customer app OTA — 2026-11-19
 
 - **What changed** (`9f73337`, with `0da60ae`, `c578b39` and `f8b0168` from 10–15 November that had never been deployed):
