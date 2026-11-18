@@ -22,3 +22,17 @@ Customers and administrators can open linked parts from the original order. The 
 `node tests/run-logistics.cjs warehouse-split warehouse-split-ui`
 
 Tests cover both modes, quantity conservation, duplicate retries, stale writes, roles/ownership, courier lookup, QR printing, phone layouts, independent Erenhot dispatch and UB receipt, freight-only billing, original payment conservation, pickup and family completion. Existing warehouse-flow, warehouse-ub-flow, warehouse-batches and logistics suites also pass. Native lint and TypeScript checks pass.
+
+## Release: 2026-11-18
+
+Source commit `7805a3f9` was pushed to main. Production deployment updated 23 files, verified remote hashes and public assets, and confirmed anonymous warehouse access returns 401. Backup: `/gostore-backups/shipment-split-20261118-5df5a39b`. Existing live differences in API checkout expiry, standalone cargo and stylesheet/index content were retained while applying this feature.
+
+Customer OTA updates were published and their served launch-asset SHA-256 hashes matched the validated local export:
+
+| Platform/channel | Update ID | Runtime |
+| --- | --- | --- |
+| iOS production | `01a1ee08-96a0-73c9-be88-f4cc6ecc7ca0` | `646e611a39796fd0c8cb87ef08a4ea35cc51abba` |
+| Android production | `01a1ee08-bf0b-7f98-81d0-f15a9a2f48bd` | `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` |
+| Android preview APK | `01a1ee08-beb3-71bc-8e34-d0de7a67722d` | `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` |
+
+iOS uses the verified native configuration of public 1.0.2 (20). No new native binary is required. Validation used isolated fixtures; real customer orders were not mutated and physical-device acceptance remains to be checked by warehouse staff.
