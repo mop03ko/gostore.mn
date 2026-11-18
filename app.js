@@ -546,14 +546,26 @@ storeServer.orders=async(offset=0)=>{try{
   openModal('Миний захиалгууд',`<p class="modal-intro">${user?'Бүртгэлтэй холбогдсон захиалгууд бүх төхөөрөмжөөс харагдана.':'Нэвтэрч орсноор захиалгуудаа өөр төхөөрөмжөөс харах боломжтой.'}</p>${!user?'<button class="button blue" data-action="account">Нэвтрэх / Бүртгүүлэх</button>':''}${result.orders.map(card).join('')}${user&&(offset>0||result.more)?`<div class="form-actions">${offset>0?`<button class="button outline" data-orders-offset="${Math.max(0,offset-20)}">Өмнөх</button>`:''}${result.more?`<button class="button outline" data-orders-offset="${offset+20}">Дараах</button>`:''}</div>`:''}${!offset&&guest.length?`<h3 class="account-section-title">Энэ хөтчийн хүсэлтүүд</h3>${guest.map(r=>`<article class="draft-card"><h3>${esc(r.title)}</h3><p>${esc(r.id)}</p><button class="text-button" data-server-order="${esc(r.id)}">Харах →</button>${user?`<button class="text-button" data-claim-order="${esc(r.id)}">Бүртгэлдээ холбох</button>`:''}</article>`).join('')}`:''}${!result.orders.length&&!guest.length?'<div class="empty-state"><h3>Захиалга алга</h3><p>Каталогоос бараа сонгон хүсэлт илгээгээрэй.</p></div>':''}${state.drafts.length?`<p class="modal-intro">Энэ хөтөчид серверт илгээгээгүй ${state.drafts.length} ноорог бий.</p>`:''}`);
 }catch(e){toast(e.message);}};
 function bankUrl(v){try{const u=new URL(v);return ['https:','qpaywallet:','khanbank:','statebankmongolia:','xacbank:','tdbbank:','tdbbankv2:','socialpay-payment:','most:','nibank:','ckbank:','capitronbank:','bogdbank:','transbank:','mbank:','ard:','toki:','arig:','monpay:','hipay:','tdbwallet:','sono:','payon:','tino:','pass:'].includes(u.protocol)?u.href:null;}catch{return null;}}
+const qpayLogoSchemes = new Set([
+  'ard', 'arig', 'bogdbank', 'capitronbank', 'ckbank', 'hipay',
+  'khanbank', 'mbank', 'monpay', 'most', 'nibank', 'pass',
+  'payon', 'qpaywallet', 'socialpay-payment', 'sono', 'statebankmongolia', 'tdbbank',
+  'tdbwallet', 'tino', 'toki', 'transbank', 'xacbank',
+]);
+function qpayBankLogo(link, providerLogo) {
+  const scheme = new URL(link).protocol.slice(0, -1);
+  const key = scheme === 'tdbbankv2' ? 'tdbbank' : scheme;
+  if (qpayLogoSchemes.has(key)) return '/assets/qpay-logos/' + key + '.png';
+  return typeof providerLogo === 'string' && providerLogo.startsWith('https://') ? providerLogo : '';
+}
 function qpayPanel(invoice, orderId, amount, freight=false){
   if(invoice?.state!=='ready')return invoice?'<p class="form-error">Нэхэмжлэлийн төлөвийг шалгаж байна. Төлөв шинэчлэх товчийг дарна уу.</p>':'';
   const id=esc(orderId),qr=String(invoice.qr_image||'').replace(/[^a-zA-Z0-9+/=]/g,'');
   const banks=(Array.isArray(invoice.urls)?invoice.urls:[]).map(bank=>{
     const url=bankUrl(bank?.link);
     if(!url)return '';
-    const logo=String(bank.logo||'');
-    return `<a class="button outline" href="${esc(url)}" rel="noopener noreferrer">${logo.startsWith('https://')?`<img src="${esc(logo)}" alt="" width="24" height="24" loading="lazy" referrerpolicy="no-referrer">`:''}<span>${esc(bank.description||bank.name||'Банкны апп')}</span></a>`;
+    const logo=qpayBankLogo(url,bank.logo);
+    return `<a class="button outline" href="${esc(url)}" rel="noopener noreferrer">${logo?`<img src="${esc(logo)}" alt="" width="24" height="24" loading="lazy" referrerpolicy="no-referrer">`:''}<span>${esc(bank.description||bank.name||'Банкны апп')}</span></a>`;
   }).join('');
   const row=(label,value,copy)=>`<div><dt>${label}</dt><dd><strong>${value}</strong><button type="button" class="text-button" data-qpay-copy="${copy}" aria-label="${label} хуулах">Хуулах</button></dd></div>`;
   return `<section class="cargo-payment qpay-panel" data-qpay-kind="${freight?'freight':'initial'}">
