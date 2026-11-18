@@ -319,6 +319,15 @@ function Checkout() {
                   Үйлчилгээ: бараа, Хятад доторх хүргэлтийн нийлбэрийн {preview.quote.service_percent}% +{" "}
                   {money(preview.quote.service_fee_mnt)}.
                 </Copy>
+                {preview.quote.service_percent > 0 && (
+                  <Copy>
+                    {preview.quote.domestic_later
+                      ? "Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн"
+                      : "УБ хүргэлт сонговол хүргэлтийн"}{" "}
+                    дүнд {preview.quote.service_percent}% үйлчилгээний төлбөр нэмэгдэнэ.
+                    Эрээн–Улаанбаатарын каргод үйлчилгээний төлбөр бодохгүй.
+                  </Copy>
+                )}
                 {preview.quote.domestic_later && (
                   <Copy>
                     Хятад доторх хүргэлт одоогийн дүнд ороогүй. Бодит зардлаар

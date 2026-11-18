@@ -39,9 +39,10 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   assert.ok(await page.locator('#supplier-status').isVisible()&&await page.locator('#supplier-grid .supplier-card').first().isVisible(),'Catalog shows once drawn: '+route);
   assert.deepEqual(errors,[]);await page.close();
  }
- // If the app script never runs, the waiting catalog part shows again after 2 s instead of staying blank.
- {const page=await browser.newPage({viewport:{width:390,height:844}});await page.route(/\/app\.js(\?|$)/,r=>r.abort());
+ // If the app script never runs, the waiting catalog part shows again after 2 s instead of staying blank; the
+ // reduced-motion reset (animation:none!important on every element) must not cancel that reveal.
+ for(const reducedMotion of ['no-preference','reduce']){const ctx=await browser.newContext({viewport:{width:390,height:844},reducedMotion});const page=await ctx.newPage();await page.route(/\/app\.js(\?|$)/,r=>r.abort());
   await page.goto(base+'/c/tech',{waitUntil:'load'});assert.equal(await page.locator('#supplier-status').evaluate(e=>getComputedStyle(e).visibility),'hidden','Waiting while the script may still come');
-  await page.waitForTimeout(2300);assert.equal(await page.locator('#supplier-status').evaluate(e=>getComputedStyle(e).visibility),'visible','Shown again without the script');await page.close();}
+  await page.waitForTimeout(2300);assert.equal(await page.locator('#supplier-status').evaluate(e=>getComputedStyle(e).visibility),'visible','Shown again without the script, reduced motion: '+reducedMotion);await ctx.close();}
  console.log('PASS layout shift: home, search, help, cart, account and official stores stay below 0.02 CLS at 1440/1024/390/320 px during and after 11.11; sale section placement and campaign class; catalog pages with a late app script (category, subcategory, search, legacy and all-products routes) and the 2 s fallback without it.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

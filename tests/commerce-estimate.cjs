@@ -22,7 +22,10 @@ const snapshot={inputs:{goods_cny:32.5,domestic_cny:10,vendors:1},rates:s,breakd
 let html=ui.calculationHtml(snapshot,[{name:'<img onerror=alert(1)>',variant:'<b>test</b>',unit_cny:10,qty:2,goods_cny:20}]);
 assert.match(html,/17875 × 5% \+ 1000/);assert.match(html,/¥32.5 × 550/);assert.match(html,/1894/);assert.ok(!html.includes('<img')&&html.includes('&lt;img'),'Customer item names must remain text');
 ctx.window.storeServer={shipping:{...s,cny_rate:999}};assert.match(ui.calculationHtml(snapshot),/¥32.5 × 550/,'Orders show the saved rate');
-assert.match(ui.calculationHtml({...snapshot,domestic_later:true}),/Дараа тооцно/);assert.equal(ui.calculationHtml({breakdown:{},rates:{cny_rate:550},inputs:{}}),'','Incomplete old quotes must not display NaN');
+assert.match(ui.calculationHtml({...snapshot,domestic_later:true}),/Дараа тооцно/);
+// Later costs: the note names what the fee applies to only for quotes priced on the non-cargo basis.
+assert.ok(!ui.calculationHtml(snapshot).includes('каргод хураамж бодохгүй'),'Old quotes keep the old note');
+{const later=ui.calculationHtml({...snapshot,rates:{...s,service_basis:'non_cargo',service_percent:3}});assert.ok(later.includes('УБ хүргэлт сонговол хүргэлтийн дүнд 3% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.')&&!later.includes('Дараа тооцох Хятад доторх хүргэлт болон'),'Quoted domestic delivery: only the UB delivery is named');assert.ok(ui.calculationHtml({...snapshot,domestic_later:true,rates:{...s,service_basis:'non_cargo',service_percent:3}}).includes('Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн дүнд 3% үйлчилгээний хураамж нэмэгдэнэ.'),'Domestic delivery left for later is named too');assert.ok(!ui.calculationHtml({...snapshot,rates:{...s,service_basis:'non_cargo',service_percent:0}}).includes('каргод хураамж'),'No fee, no note');}assert.equal(ui.calculationHtml({breakdown:{},rates:{cny_rate:550},inputs:{}}),'','Incomplete old quotes must not display NaN');
 console.log('PASS commerce estimates: seller grouping, service fee, later domestic fee, old carts, rounding, payment copy and SKU units.');
 const {spawnSync}=require('node:child_process');
 const policy=spawnSync('tmp/tooling/php/php.exe',['-r',"require 'server/cargo-tariff.php'; echo json_encode(cargo_tariff_policy());"],{encoding:'utf8'});assert.equal(policy.status,0,policy.stderr);

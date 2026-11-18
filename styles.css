@@ -508,8 +508,9 @@ html.auth-view-open #main>#auth-view{display:block!important;padding-block:22px 
 /* Until supplier.js draws a catalog page (it unhides the breadcrumb in the same step as the subcategory row, the
    reset button and the skeletons), the part it rearranges stays invisible: the only thing there is the loading line,
    and nothing visible jumps down when a slow script arrives after first paint. If the script never draws the page,
-   the part shows again after 2 s. */
-.listing-view .catalog-breadcrumb[hidden]~:is(.catalog-context,#product-grid,#supplier-paging,.catalog-shipping){visibility:hidden;animation:catalog-undrawn 0s 2s forwards}
+   the part shows again after 2 s. The animation is !important because the reduced-motion reset sets animation:none
+   !important on every element; this one only flips visibility and moves nothing. */
+.listing-view .catalog-breadcrumb[hidden]~:is(.catalog-context,#product-grid,#supplier-paging,.catalog-shipping){visibility:hidden;animation:catalog-undrawn 0s 2s forwards!important}
 @keyframes catalog-undrawn{to{visibility:visible}}
 /* While the first results load, the list keeps a screen of room so what follows it does not jump. */
 .listing-view #supplier-grid:empty,.listing-view #supplier-grid[aria-busy=true]{min-height:100vh}
