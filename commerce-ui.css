@@ -77,3 +77,20 @@
 /* Store, account and brand pages render after the site data loads. Keeping #main one viewport tall
    holds the footer below the fold meanwhile, so the arriving content does not push it (layout shift). */
 :is(.store-page-view,.account-view,.brand-page-view,.official-stores-view) #main{min-height:100vh;min-height:100svh}
+
+#delivery .commerce-calculator { max-width: none; padding: clamp(18px, 3vw, 32px); }
+#delivery .commerce-calculator h3 { margin: 0; }
+#delivery .help-delivery-grid { grid-template-columns: 1fr; }
+.cargo-entry { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.cargo-entry .field { margin: 0; min-width: 0; }
+.cargo-entry .cargo-dimensions { grid-column: 1/-1; gap: 12px; }
+.commerce-calculator .cargo-result { margin-top: 16px; padding: 16px; border-radius: 12px; background: var(--theme-accent-surface,#fff4ec); }
+.cargo-result > span { font-size: 13px; }
+.commerce-calculator .cargo-result output { background: transparent; padding: 0; }
+.cargo-result strong { display: block; font-size: 26px; }
+.commerce-calculator .cargo-result small { font-weight: 400; margin: 4px 0; }
+@media (min-width: 760px) {
+  #delivery .commerce-calculator { display: grid; grid-template-columns: minmax(0,3fr) minmax(0,2fr); gap: 12px 24px; }
+  #delivery .commerce-calculator > :is(h3,p,small) { grid-column: 1/-1; margin: 0; }
+  #delivery .cargo-result { margin: 0; align-self: stretch; }
+}

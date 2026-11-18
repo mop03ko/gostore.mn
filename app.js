@@ -405,18 +405,36 @@ window.commerceUI = (() => {
     const formula=q?`<p class="calculation-note">Ханш: 1 CNY = ${money(s.cny_rate)}<br>Бараа: ¥${number(Math.round(items.reduce((sum,i)=>sum+Number(i.cny)*i.qty,0)*100)/100)} × ${number(s.cny_rate)} ₮ = ${money(q.goods)}<br>Үйлчилгээ: ${money(q.goods)} × ${number(Number(s.service_percent)||0)}% + ${money(Number(s.service_fee_mnt)||0)} = ${money(q.service)}</p>`:'';
     return `<dl class="commerce-estimate"><div><dt>Барааны дүн</dt><dd>${value(q?.goods)}</dd></div><div><dt>Үйлчилгээний хураамж</dt><dd>${value(q?.service)}</dd></div><div><dt>Хятад доторх хүргэлт</dt><dd>${q?.domesticLater ? 'Дараа · бодит дүнгээр' : value(q?.domestic)}</dd></div><div class="total"><dt>Одоо төлөх · урьдчилсан</dt><dd>${value(q?.total)}</dd></div></dl>${formula}<p class="account-hint">Үнэ, үлдэгдлийг захиалгын дараагийн алхамд дахин шалгана.</p><div class="commerce-later"><strong>Дараа төлөх</strong><p>${q?.domesticLater ? 'Хятад доторх хүргэлт, ' : ''}олон улсын карго, сонгосон бол УБ хүргэлт. Эцсийн нийт зардалд эдгээр төлбөр нэмэгдэнэ.</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div>`;
   }
-  function calculator(s = settings()) {
+  function calculator(s = settings(), expanded = false) {
     if(settings().cargo_tariff)s=settings();
     if (!s.cargo_tariff) return '';
     const rates={cny_rate:s.cny_rate,cargo_tariff:s.cargo_tariff};
-    return `<details class="commerce-calculator" data-cargo-rates="${esc(JSON.stringify(rates))}"><summary>Жин, эзлэхүүнээр карго тооцоолох</summary><p>Эрээн → Улаанбаатар тээврийн урьдчилсан зардал. Нийт жин болон савласан эзлэхүүн хоёул хэрэгтэй. Эцсийн төлбөрийг агуулах бодитоор хэмжиж батална.</p><p>${esc(GOStoreCargo.tariff(s))}</p><label class="field">Нийт жин · кг<input data-cargo-weight type="number" min="0.001" max="10000" step="any" inputmode="decimal" placeholder="Жишээ: 1.5"></label><label class="field">Эзлэхүүн оруулах хэлбэр<select data-cargo-method><option value="dimensions">Урт × өргөн × өндөр · см</option><option value="volume">Нийт эзлэхүүн · м³</option></select></label><label class="field" data-cargo-direct hidden>Нийт эзлэхүүн · м³<input data-cargo-measure type="number" min="0.000000001" max="1000" step="any" inputmode="decimal"></label><div class="cargo-dimensions">${[['length','Урт · см'],['width','Өргөн · см'],['height','Өндөр · см'],['packages','Ижил хэмжээтэй савлагааны тоо']].map(([k,label])=>`<label class="field">${label}<input data-cargo-${k} type="number" inputmode="decimal" min="${k==='packages'?1:0.1}" max="${k==='packages'?10000:1000}" step="${k==='packages'?1:'any'}" ${k==='packages'?'value="1"':''}></label>`).join('')}<small>Савлагааны тоогоор зөвхөн эзлэхүүнийг үржүүлнэ. Дээр нийт жингээ оруулна.</small></div><output data-cargo-estimate aria-live="polite">Жин болон эзлэхүүнээ оруулна уу.</output><small>Барааны үнэ, үйлчилгээ, Эрээн хүртэлх болон УБ хүргэлт энэ дүнд ороогүй.</small></details>`;
+    const field=(key,label,min,max,options='')=>`<label class="field">${label}<input data-cargo-${key} type="number" min="${min}" max="${max}" step="${key==='packages'?1:'any'}" inputmode="${key==='packages'?'numeric':'decimal'}" ${options}></label>`;
+    const fields=`<div class="cargo-entry">
+      ${field('weight','Нийт жин (кг)',0.001,10000,'placeholder="1.2"')}
+      <label class="field">Эзлэхүүн<select data-cargo-method><option value="dimensions">Савлагааны хэмжээгээр</option><option value="volume">м³-ээр оруулах</option></select></label>
+      <label class="field" data-cargo-direct hidden>Нийт эзлэхүүн (м³)<input data-cargo-measure type="number" min="0.000000001" max="1000" step="any" inputmode="decimal"></label>
+      <div class="cargo-dimensions">
+        ${field('length','Урт (см)',0.1,1000)}${field('width','Өргөн (см)',0.1,1000)}${field('height','Өндөр (см)',0.1,1000)}
+        ${field('packages','Ижил хэмжээтэй хайрцаг (ш)',1,10000,'value="1"')}
+      </div></div>
+      <div class="cargo-result"><span>Урьдчилсан тээврийн төлбөр</span>
+        <output data-cargo-estimate aria-live="polite"><strong>— ₮</strong><small>Нийт жин, савлагааны хэмжээг оруулна уу.</small></output>
+        <span data-calculated-volume></span>
+      </div>`;
+    const attrs=`class="commerce-calculator" data-cargo-rates="${esc(JSON.stringify(rates))}"`;
+    if(expanded)return `<section ${attrs}><h3>Тээврийн тооцоолуур</h3><p>Эрээнээс Улаанбаатар хүртэл. Олон хайрцагтай бол нийлбэр жинг оруулна.</p>${fields}<small>Эцсийн төлбөрийг агуулахад жигнэж, хэмжсэний дараа баталгаажуулна.</small></section>`;
+    return `<details ${attrs}><summary>Жин, эзлэхүүнээр карго тооцоолох</summary><p>Эрээн → Улаанбаатар. Нийт жин болон савласан эзлэхүүнээ оруулна уу.</p>${fields}<small>Барааны үнэ, үйлчилгээ, Эрээн хүртэлх болон УБ хүргэлт энэ дүнд ороогүй.</small></details>`;
+  }
+  function dimensionVolume(values){
+    const [l,w,h,count]=['length','width','height','packages'].map(k=>Number(values[k]));
+    if(![l,w,h].every(v=>Number.isFinite(v)&&v>=0.1&&v<=1000)||!Number.isInteger(count)||count<1||count>10000)return null;
+    return Number((l*w*h*count/1000000).toFixed(9));
   }
   function cargoEstimate(method, values, s) {
     let volume=Number(values.measure);
     if(method==='dimensions'){
-      const [l,w,h,count]=['length','width','height','packages'].map(k=>Number(values[k]));
-      if(![l,w,h].every(v=>Number.isFinite(v)&&v>=0.1&&v<=1000)||!Number.isInteger(count)||count<1||count>10000)return null;
-      volume=Number((l*w*h*count/1000000).toFixed(9));
+      volume=dimensionVolume(values);
     }else if(method!=='volume')return null;
     const q=GOStoreCargo.calculate(values.weight,volume,s);
     return q?{...q,measure:volume,amount:q.amount_mnt,formula:GOStoreCargo.description(q)}:null;
@@ -426,7 +444,11 @@ window.commerceUI = (() => {
     const s=JSON.parse(box.dataset.cargoRates),method=box.querySelector('[data-cargo-method]').value;
     box.querySelector('[data-cargo-direct]').hidden=method==='dimensions';box.querySelector('.cargo-dimensions').hidden=method!=='dimensions';
     const values=Object.fromEntries(['weight','measure','length','width','height','packages'].map(k=>[k,box.querySelector(`[data-cargo-${k}]`).value])),q=cargoEstimate(method,values,s);
-    box.querySelector('output').textContent=q?`${q.formula}\nКаргоны урьдчилсан дүн: ${money(q.amount)}`:'Нийт жин болон эзлэхүүнээ зөв оруулна уу. Савлагааны тоо бүхэл байна.';
+    const volume=method==='dimensions'?dimensionVolume(values):Number(values.measure);
+    box.querySelector('[data-calculated-volume]').textContent=volume>0&&volume<=1000?'Нийт эзлэхүүн · '+volume.toLocaleString('en-US',{maximumFractionDigits:9})+' м³':'';
+    const output=box.querySelector('[data-cargo-estimate]');
+    output.querySelector('strong').textContent=q?money(q.amount):'— ₮';
+    output.querySelector('small').textContent=q?q.formula:'Нийт жин болон эзлэхүүнээ зөв оруулна уу. Савлагааны тоо бүхэл байна.';
   }
   document.addEventListener('input',updateCalculator);document.addEventListener('change',updateCalculator);
   const calculationTitle='Захиалах үеийн тооцоо';
@@ -1795,9 +1817,10 @@ window.productCompare=(()=>{
           </section>
           <section id="delivery" class="help-section store-delivery">
             <div class="help-section-heading"><span>03</span><div><h2>Карго, хүргэлт</h2><p>Таны бараа ямар замаар ирэх вэ?</p></div></div>
+            ${commerceUI.calculator(s,true)}
             <ol class="store-route"><li><strong>Нийлүүлэгч</strong><span>Барааг Эрээн агуулах руу илгээнэ.</span></li><li><strong>Эрээн агуулах</strong><span>Хүлээн авч, зураг авч, жигнэж, багцална.</span></li><li><strong>Замын-Үүд</strong><span>Хил дамжин Монголд орж ирнэ.</span></li><li><strong>Улаанбаатар</strong><span>Захиалга бүрээр ангилж, танд мэдэгдэнэ.</span></li></ol>
             <p class="help-note">${esc(commerceUI.timingText())}</p>
-            <div class="help-delivery-grid"><div class="help-panel"><h3>Каргоны тариф</h3>${s.cargo_tariff?`<p>${esc(GOStoreCargo.tariff(s))}</p><p>1 CNY = ${money(s.cny_rate)}. ${s.cargo_tariff.small_step_kg?`Жижиг илгээмжийн жинг ${Number(s.cargo_tariff.small_step_kg).toLocaleString('en-US')} кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.`:'Жинг кг руу дээш бүхэлчлэхгүй.'} Төлбөрийг бүхэл төгрөг рүү дээш тоймлоно.</p>`:'<p>Тарифын мэдээлэл ачаалагдсангүй. Бидэнтэй холбогдож лавлана уу.</p>'}</div><div class="help-panel"><h3>Зардлаа урьдчилан тооцоолох</h3><p>Жин болон эзлэхүүнээ оруулж каргоны ойролцоо төлбөрийг хараарай.</p>${commerceUI.calculator(s)}</div></div>
+            <div class="help-delivery-grid"><div class="help-panel"><h3>Каргоны тариф</h3>${s.cargo_tariff?`<p>${esc(GOStoreCargo.tariff(s))}</p><p>1 CNY = ${money(s.cny_rate)}. ${s.cargo_tariff.small_step_kg?`Жижиг илгээмжийн жинг ${Number(s.cargo_tariff.small_step_kg).toLocaleString('en-US')} кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.`:'Жинг кг руу дээш бүхэлчлэхгүй.'} Төлбөрийг бүхэл төгрөг рүү дээш тоймлоно.</p>`:'<p>Тарифын мэдээлэл ачаалагдсангүй. Бидэнтэй холбогдож лавлана уу.</p>'}</div></div>
           </section>
           <section id="pickup" class="help-section">
             <div class="help-section-heading"><span>04</span><div><h2>Бараагаа хүлээн авах</h2><p>Агуулахаас авах эсвэл хүргүүлэх боломжтой.</p></div></div>
