@@ -126,7 +126,7 @@ function customer_get(string $action): never {
         json_out(['orders'=>$orders,'cargo_id'=>$cargoId,'delivery'=>self_cargo_delivery($cargoId),'warehouse'=>array_intersect_key(warehouse_profile('erenhot'),array_flip(['name','address','phone','contact_phone','hours']))]);
     }
     if($action==='customer-addresses')json_out(['addresses'=>customer_addresses($c)]);
-    if($action==='customer-state')json_out(customer_state_get($c));
+    if($action==='customer-state')json_out(customer_state_get_for($c,customer_state_protocol()));
     if($action==='customer-products')json_out(['products'=>customer_products($c)]);
     if($action==='customer-notifications'){
         $s=db()->prepare('SELECT n.* FROM order_notifications n JOIN customer_orders co ON co.order_id=n.order_id WHERE co.customer_id=? ORDER BY n.id DESC LIMIT 100');$s->execute([$c['id']]);
@@ -200,7 +200,7 @@ function customer_post(string $action,array $b): never {
         $id=int_field($b,'through_id',0,PHP_INT_MAX);db()->prepare('UPDATE order_notifications SET read_at=? WHERE id<=? AND read_at IS NULL AND order_id IN (SELECT order_id FROM customer_orders WHERE customer_id=?)')->execute([gmdate('c'),$id,$c['id']]);
         if(isset($b['messages_through_id']))customer_messages_read($c['id'],int_field($b,'messages_through_id',0,PHP_INT_MAX));json_out(['ok'=>true]);
     }
-    if($action==='customer-state-save')json_out(customer_state_save($c,$b));
+    if($action==='customer-state-save')json_out(customer_state_save_for($c,$b,customer_state_protocol()));
     if($action==='customer-address-save'){limit_attempts('customer-address:'.$c['id'],60,3600);json_out(['addresses'=>customer_address_save($c,$b)]);}
     if($action==='customer-address-delete')json_out(['addresses'=>customer_address_delete($c,str_field($b,'id',32))]);
     if($action==='customer-profile'){

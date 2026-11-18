@@ -4,7 +4,12 @@
 // the other side's list, and edits on both sides are unioned (this device first). Checkout
 // still re-prices every line on the server, so stored prices are display hints only.
 (()=>{
-  const CART=window.taobaoCart?.key||'gostore-taobao-cart-v1',FAV='gostore-taobao-favorites-v1',MARK='gostore-state-sync-v1';
+  const CART=window.taobaoCart?.key||'gostore-taobao-cart-v1',FAV='gostore-taobao-favorites-v1',MARK='gostore-state-sync-v2';
+  // v1 marks were written while every save failed on the server (27 October to 19 November 2026): they call lists
+  // synced that never reached the account. Dropping them makes the first sync here a merge, never a replacement.
+  try{localStorage.removeItem('gostore-state-sync-v1');}catch{}
+  // sync=2 tells the server this script merges; older pages keep seeing an empty account (server/customer-state.php).
+  const GET='customer-state&sync=2',SAVE='customer-state-save&sync=2';
   const LIMIT={[CART]:30,[FAV]:100},KEY={[CART]:i=>i.id+'|'+i.sku,[FAV]:p=>p.id};
   const read=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(v)?v:[];}catch{return [];}};
   const hash=v=>{const s=JSON.stringify(v);let h=5381;for(let i=0;i<s.length;i++)h=(Math.imul(h,33)^s.charCodeAt(i))>>>0;return h.toString(36)+':'+s.length;};
@@ -25,7 +30,7 @@
   }
   async function push(lists){
     const body={},sent={};for(const k of lists){const items=read(k);sent[k]=hash(items);body[k===CART?'cart':'favorites']=outgoing(k,items);}
-    const r=await shopApi('customer-state-save',body);
+    const r=await shopApi(SAVE,body);
     // Mark what was sent, not what is stored now: edits made while the request was in flight
     // must still differ from the mark so the next debounce pushes them.
     const m=mark();if(m&&m.customer===user?.id){m.version=r.version;Object.assign(m,sent);setMark(m);}
@@ -36,7 +41,7 @@
     const id=user.id;
     syncing=(async()=>{
       try{
-        const server=await shopApi('customer-state');if(user?.id!==id)return;
+        const server=await shopApi(GET);if(user?.id!==id)return;
         const m=mark(),fresh=!m||m.customer!==id,remoteChanged=fresh||m.version!==server.version,changed=[];
         for(const [k,remote] of [[CART,server.cart||[]],[FAV,server.favorites||[]]]){
           const local=read(k),localChanged=fresh||hash(local)!==m[k];
@@ -46,7 +51,10 @@
           if(hash(merged)!==hash(local))apply(k,merged);
           if(hash(outgoing(k,merged))!==hash(remote))changed.push(k);
         }
-        setMark({customer:id,version:server.version,[CART]:hash(read(CART)),[FAV]:hash(read(FAV))});
+        // A list that still has to be pushed is not marked as synced until push() succeeds. A failed push then
+        // leaves it different from the mark: it is sent again on the next sync or edit, another device's list can
+        // never replace it, and logout does not clear it from this device.
+        setMark({customer:id,version:server.version,[CART]:changed.includes(CART)?'':hash(read(CART)),[FAV]:changed.includes(FAV)?'':hash(read(FAV))});
         if(changed.length)await push(changed);
         lastSync=Date.now();renderPending(server.pending||[]);
       }catch{}finally{syncing=null;}

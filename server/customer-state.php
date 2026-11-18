@@ -73,6 +73,21 @@ function customer_state_row(array $c): array {
     $s=db()->prepare('SELECT cart,favorites,version FROM customer_state WHERE customer_id=?');$s->execute([$c['id']]);$r=$s->fetch();
     return ['cart'=>$r?json_decode($r['cart'],true):[],'favorites'=>$r?json_decode($r['favorites'],true):[],'version'=>$r?(int)$r['version']:0];
 }
+// Sync protocol 2 (2026-11-19). From 27 October until this release every save failed on live (UPSERT on SQLite
+// 3.7.17), yet browsers recorded their lists as synced at version 0. A page still running that script would, once
+// saves work, replace its own lists with the account's or the account's with its stale copy. Requests without
+// sync=2 therefore keep getting what they always got: an empty account at version 0, and a save that is refused.
+// Reloading the page loads the script that sends sync=2 and merges instead of replacing.
+function customer_state_protocol(): int {
+    return (string)($_GET['sync']??'')==='2'?2:1;
+}
+function customer_state_get_for(array $c,int $protocol): array {
+    return $protocol===2?customer_state_get($c):['cart'=>[],'favorites'=>[],'version'=>0,'pending'=>customer_state_pending($c)];
+}
+function customer_state_save_for(array $c,array $b,int $protocol): array {
+    if($protocol!==2)fail('Хуудсаа дахин ачаалсны дараа сагс, хадгалсан бараа синк хийгдэнэ.',426);
+    return customer_state_save($c,$b);
+}
 function customer_state_get(array $c): array {
     return customer_state_row($c)+['pending'=>customer_state_pending($c)];
 }
