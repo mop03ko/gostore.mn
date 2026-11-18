@@ -94,3 +94,20 @@
   #delivery .commerce-calculator > :is(h3,p,small) { grid-column: 1/-1; margin: 0; }
   #delivery .cargo-result { margin: 0; align-self: stretch; }
 }
+
+#modal:has(.qpay-panel){width:min(840px,calc(100% - 24px))}
+.qpay-panel.cargo-payment{margin:0;text-align:start}
+.qpay-panel>header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--theme-raised,#f3f5f8);border-radius:12px}
+.qpay-panel>header strong{color:var(--theme-text,#21214f);font-size:20px}
+.qpay-panel>header span{font-size:14px}
+.qpay-columns{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,5fr);gap:24px;padding:18px 0}
+.qpay-panel h3,.qpay-panel h4{margin:0 0 12px}
+.qpay-scan{text-align:center}
+.qpay-scan .qpay-qr{width:min(100%,280px);aspect-ratio:1;object-fit:contain;margin:0 auto 12px;padding:12px;background:#fff;border:1px solid #ddd;border-radius:10px;display:block}
+.qpay-scan small,.qpay-scan b{display:block}.qpay-scan b{font-size:24px}
+.qpay-info dl{display:grid;gap:8px;margin:0 0 16px}
+.qpay-info dl>div{padding:10px 14px;background:var(--theme-raised,#f3f5f8);border-radius:9px}
+.qpay-info dt{font-size:13px}.qpay-info dd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0}.qpay-info dd strong{overflow-wrap:anywhere}
+.qpay-info .text-button{min-height:40px}.qpay-info .bank-links{margin:0;max-height:216px;overflow:auto;scrollbar-gutter:stable}
+.qpay-panel .qpay-note{padding:12px 16px;margin:0;background:var(--theme-accent-surface,#fff5e3);border-radius:10px;font-size:14px;line-height:1.55}
+@media(max-width:600px){.qpay-columns{grid-template-columns:minmax(0,1fr);gap:20px}.qpay-info{grid-row:1}.qpay-scan .qpay-qr{width:200px}.qpay-info .bank-links{max-height:160px}}
