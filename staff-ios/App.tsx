@@ -234,7 +234,7 @@ function StaffApp() {
           // non-persistent data store and loses the warehouse device cookie.
           // API responses remain no-store; persistence does not cache order data.
           incognito={false}
-          cacheEnabled={variant === "warehouse"}
+          cacheEnabled
           allowsBackForwardNavigationGestures
           allowsInlineMediaPlayback
           mediaCapturePermissionGrantType="prompt"

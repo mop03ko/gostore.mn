@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // Device credentials restore short PHP sessions without retaining the manager's password.
 const WAREHOUSE_DEVICE_COOKIE='gostore_warehouse_device';
-const WAREHOUSE_DEVICE_TTL=90*86400;
+const WAREHOUSE_DEVICE_TTL=365*86400;
 function warehouse_device_schema(): void {
     static $ready=false;if($ready)return;
     db()->exec('CREATE TABLE IF NOT EXISTS warehouse_login_devices (token_hash TEXT PRIMARY KEY, location TEXT NOT NULL, account_version TEXT NOT NULL, csrf TEXT NOT NULL, session_hash TEXT NOT NULL, expires INTEGER NOT NULL, touched INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS warehouse_login_devices_expires ON warehouse_login_devices(expires);');$ready=true;
