@@ -27,3 +27,11 @@ warehouse isolation, stale versions, repeated undo, unknown/unarrived waybills,
 audit retention, receipt/freight correction, packing/billing guards and the actual
 Chinese confirmation/cancel/re-scan flow with isolated test orders. No real
 customer parcel was changed during validation.
+
+Deployed source commit `8772b27` to the live warehouse panel. The four existing
+files matched their reviewed base before publication, were backed up, staged and
+hash-verified via verified-TLS FTPS, then promoted in backend-first order. Public
+HTML/JavaScript hashes match local source and anonymous warehouse access still
+returns 401. Backup: `/gostore-backups/parcel-undo-20261118-4f21a00b08`.
+Existing warehouse apps receive the UI on a full panel reload; physical-device
+receipt has not been observed.
