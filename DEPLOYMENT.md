@@ -1,5 +1,39 @@
 # cPanel суулгалт
 
+## Service fee note, registered company name, pending server fixes; customer app OTA — 2026-11-19
+
+- **What changed** (`9f73337`, with `0da60ae`, `c578b39` and `f8b0168` from 10–15 November that had never been deployed):
+  - Quotes say which later costs carry the service fee: a Ulaanbaatar delivery, and a China domestic delivery left for later. Erenhot–Ulaanbaatar cargo carries none. Quotes saved before the non-cargo basis keep their old note.
+  - `/company.html` and the home footer name the operator as on the state registration certificate: «Арвис транс Ки Эл Ти Си» ХХК (Arvis Trans KLTC LLC).
+  - Catalog requests no longer fail when the checkout expiry sweep meets a busy database (`api/index.php`).
+  - The promo notification setting saves on the live SQLite 3.7.17 (`server/customer-messages.php`).
+  - Catalog pages keep the list invisible until the script draws the page, so nothing jumps. The 2 s fallback now survives the reduced-motion reset.
+- **Held back:** `server/customer-state.php` (cart and saved-items sync). Every save has failed on live since 27 October, yet browsers hold marks saying their lists are synced. Turning saves on with the current client would let one device overwrite another's lists. It ships with a client fix in the next deploy.
+- **Before the deploy.**
+  - All 179 served code files were downloaded and compared with the repository. Live differed only by these pending fixes; every other difference is a bundle source that no page loads.
+  - A five-lens read-only review of the delta (PHP, CSS, fee wording, company page, deploy mechanics) with a second agent trying to refute each finding. It produced the hold above, the conditional fee wording and the reduced-motion fix.
+- **Tests.**
+  - Passed: `commerce-estimate`, `checkout`, `checkout-expiry-lock`, `sqlite-compat`, Expo typecheck and lint, and a late-script catalog check (18 route and width cases at 0.000 shift, fallback with and without reduced motion).
+  - The full suite is not green: 19 storefront UI suites fail on `main` since the home page redesign. The test environment has no TaoWorld, so the deals feed the home page now starts with answers 503 and no cards appear; several selectors also changed. Live deals return 50 products. These suites need updating separately.
+- **Deployed** `server/customer-messages.php`, `api/index.php`, `app.css`, `app.js`, `company.html`, `index.html` (`app.js?v=c061cc499bf4`, `app.css?v=b84fddc5c772`) over FTPS with baseline, backup and hash verification; rollback is in reverse order.
+  - Baselines: the reviewed live copies; every live file still matched at deploy time.
+  - Backup: `/gostore-backups/codex-finish-20261119-88c06afb08`.
+- **Live checks.**
+  - The four static files hash-match `9f73337`. `health`, `catalog` and `campaign` answer 200; `/server/` answers 403.
+  - Seven pages at 1440 and 390 px: no script errors, no failed requests, no overflow, 50 cards on the catalog pages.
+  - The fee note rendered by the live bundle with live settings (3 %, non-cargo) is correct for quoted, later and old quotes.
+  - No new entry in the PHP error log after the deploy.
+- **Customer app OTA** from `9f73337`, message «Explain service fees on later delivery costs». The checkout and help screens carry the same fee wording. Fingerprints were verified before publishing; no runtime override.
+
+  | Target | Runtime | Update group |
+  | --- | --- | --- |
+  | iOS production, build 1.0.2 (20) | `646e611a39796fd0c8cb87ef08a4ea35cc51abba` | `83cad458-04bf-4ce5-bd89-88d25b8552fb` |
+  | Android production | `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` | `645ac84e-fc05-4589-a5be-ca6fba579067` |
+  | Android preview (directly installed APK) | `12e475e0cbbc9ab91d7ecfa01d472e04d133f2a1` | `f82a6066-de0d-4309-ab49-40a90c3e0a24` |
+
+  - The update endpoint returns these groups for each platform, runtime and channel. Each launch asset downloads with the protocol headers, matches its SHA-256 and contains the new text. Receipt on a physical phone was not observed.
+  - The preview channel had not received the earlier «Explain service fees on goods and domestic shipping» update (production only, 02:02–02:04); this release covers it.
+
 ## Help page: 0.5 kg rounding note — 2026-11-10
 
 - **What changed** (`7e5795a`): `/help#delivery` said «Жинг кг руу дээш бүхэлчлэхгүй», which contradicts the 0.5 kg steps. It now reads «Жижиг илгээмжийн жинг 0.5 кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.» The step comes from the live tariff.
