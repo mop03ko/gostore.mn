@@ -12,7 +12,7 @@ function warehouseParcelsHtml(o){
  const p=o.parcels;if(!p)return '';
  if(!p.total)return `<p class="muted parcel-none">${lt('Tracking дугаар мэдэгдээгүй тул илгээмжээр тулгахгүй. Бүх барааг тулгаад хүлээн авна.','暂无运单号，无法按包裹核对。请核对全部商品后收货。')}</p>`;
  const open=warehouseCanReceive(o)&&['confirmed','shipping','erenhot'].includes(o.status);
- return `<div class="parcel-check"><strong>${lt('Илгээмж','包裹')} ${p.arrived} / ${p.total} ${lt('ирсэн','已到')}</strong><ul>${p.list.map(x=>`<li class="${x.arrived_at?'arrived':''}"><span><b>${esc(x.no)}</b>${x.company?' · '+esc(x.company):''}</span><span>${x.arrived_at?'✓ '+lt('Ирсэн','已到')+' · '+esc(date(x.arrived_at)):lt('Ирээгүй','未到')}</span>${!x.arrived_at&&open?`<button type="button" class="quiet" data-parcel-arrive="${esc(x.no)}" data-id="${esc(o.id)}">${lt('Ирснийг бүртгэх','登记到件')}</button>`:''}</li>`).join('')}</ul><small>${lt('Илгээмжийн баркодыг уншуулахад ирснийг автоматаар бүртгэнэ.','扫描快递运单条码会自动登记到件。')}</small></div>`;
+ return `<div class="parcel-check"><strong>${lt('Илгээмж','包裹')} ${p.arrived} / ${p.total} ${lt('ирсэн','已到')}</strong><ul>${p.list.map(x=>`<li class="${x.arrived_at?'arrived':''}"><span><b>${esc(x.no)}</b>${x.company?' · '+esc(x.company):''}</span><span>${x.arrived_at?'✓ '+lt('Ирсэн','已到')+' · '+esc(date(x.arrived_at)):lt('Ирээгүй','未到')}</span>${x.arrived_at&&open&&p.can_undo?`<button type="button" class="quiet" data-parcel-undo="${esc(x.no)}" data-id="${esc(o.id)}">${lt('Ирсэн бүртгэлийг буцаах','撤销到件')}</button>`:''}${!x.arrived_at&&open?`<button type="button" class="quiet" data-parcel-arrive="${esc(x.no)}" data-id="${esc(o.id)}">${lt('Ирснийг бүртгэх','登记到件')}</button>`:''}</li>`).join('')}</ul><small>${lt('Илгээмжийн баркодыг уншуулахад ирснийг автоматаар бүртгэнэ.','扫描快递运单条码会自动登记到件。')}</small></div>`;
 }
 // One step: receipt photo, weight, size and piece count, then receive and approve the freight together.
 function warehouseReceiveHtml(o){
@@ -76,4 +76,25 @@ async function warehouseParcelArrive(id,number){
  showOrder(d.order);refresh().catch(()=>{});return d.order;
 }
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-parcel-arrive]');if(!b)return;b.disabled=true;try{await warehouseParcelArrive(b.dataset.id,b.dataset.parcelArrive);}catch(error){toast(error.message);}finally{b.disabled=false;}});
+
+document.addEventListener('click',e=>{
+ const cancel=e.target.closest('[data-parcel-undo-cancel]');if(cancel){if(activeLogisticsOrder)showOrder(activeLogisticsOrder);return;}
+ const b=e.target.closest('[data-parcel-undo]');if(!b||activeLogisticsOrder?.id!==b.dataset.id)return;
+ const o=activeLogisticsOrder;
+ modal(lt('Ирсэн бүртгэлийг буцаах','撤销到件'),`<form data-parcel-undo-form data-id="${esc(o.id)}" data-number="${esc(b.dataset.parcelUndo)}" data-version="${o.logistics.version}" class="warehouse-confirm">
+ <p><strong>${esc(o.id)} · ${esc(b.dataset.parcelUndo)}</strong></p>
+ <p>${lt('Энэ илгээмжийг «Ирээгүй» болгоно. Өмнөх бүртгэл түүхэнд хадгалагдана.','该包裹将恢复为“未到”。原到件记录保留在操作日志中。')}</p>
+ ${o.status==='erenhot'?`<p class="note">${lt('Дутуу илгээмжийн зөрчил нээгдэж, тээврийн үнийг дахин батлах шаардлагатай болно.','将登记缺件异常并取消运费确认。包裹到齐后请重新核对并确认运费。')}</p>`:''}
+ <label>${lt('Буцаах шалтгаан','撤销原因')}<textarea name="reason" maxlength="500" rows="3" required></textarea></label>
+ ${errorBox()}<button type="submit" class="primary">${lt('Буцаахыг батлах','确认撤销到件')}</button><button type="button" class="quiet" data-parcel-undo-cancel>${lt('Болих','取消')}</button></form>`);
+});
+document.addEventListener('submit',async e=>{
+ const f=e.target;if(!f.matches('[data-parcel-undo-form]'))return;e.preventDefault();
+ const button=f.querySelector('button.primary');if(button.disabled)return;button.disabled=true;f.querySelector('.error').textContent='';
+ try{
+  const reason=f.elements.reason.value.trim();if(!reason)throw Error(lt('Буцаах шалтгаанаа оруулна уу.','请填写撤销原因。'));
+  const d=await api('warehouse-parcel-undo',{id:f.dataset.id,number:f.dataset.number,expected_version:Number(f.dataset.version),reason,checked:true});
+  showOrder(d.order);toast(lt('Илгээмжийн ирсэн бүртгэлийг буцаалаа','已撤销到件登记'));refresh().catch(()=>{});
+ }catch(error){f.querySelector('.error').textContent=error.message;}finally{button.disabled=false;}
+});
 document.addEventListener('change',e=>{const input=e.target,f=input.closest('[data-receive-form]');if(!f||input.type!=='file')return;const file=input.files[0];if(!file)return;const preview=f.querySelector('.warehouse-photo-preview'),url=URL.createObjectURL(file);preview.onload=preview.onerror=()=>URL.revokeObjectURL(url);preview.src=url;preview.hidden=false;});

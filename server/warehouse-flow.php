@@ -71,6 +71,40 @@ function warehouse_parcel_arrive(array $b,string $location): array {
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     return $o;
 }
+// Correct a mistaken parcel scan before packing. Preserve the receipt and audit trail;
+// a received order becomes incomplete and needs freight approval again after correction.
+function warehouse_parcel_undo_allowed(array $o): bool {
+    return in_array($o['status'],['confirmed','shipping','erenhot'],true)&&!isset($o['batch_id'])&&!isset($o['settlement'])&&!isset($o['freight']['invoice']);
+}
+function warehouse_parcel_undo(array $b,string $location): array {
+    if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
+    if(($b['checked']??false)!==true)fail('Ирсэн бүртгэлийг буцаахаа батална уу.');
+    $number=strtoupper(str_field($b,'number',40));
+    if(!preg_match('/^[A-Z0-9-]{6,40}$/D',$number))fail('Tracking дугаар буруу.');
+    $reason=str_field($b,'reason',500);
+    if($reason==='')fail('Буцаах шалтгаанаа оруулна уу.');
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
+        if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
+        if(!warehouse_parcel_undo_allowed($o))fail('Багцалсан эсвэл тооцоо баталсан захиалгын ирсэн бүртгэлийг буцаах боломжгүй.',409);
+        $l=logistics_state($o);
+        if(int_field($b,'expected_version',0,PHP_INT_MAX)!==$l['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
+        if(!in_array($number,array_column(warehouse_parcels($o)['list'],'no'),true))fail('Энэ tracking дугаар захиалгад бүртгэлгүй.',409);
+        if(empty($l['parcels'][$number]['at']))fail('Илгээмж ирснээр бүртгэгдээгүй байна.',409);
+        $previous=$l['parcels'][$number];unset($l['parcels'][$number]);
+        if($o['status']==='erenhot'){
+            if(count($l['issues'])>=100)fail('Зөрчлийн бүртгэлийн хязгаарт хүрсэн.',409);
+            $l['issues'][]=['id'=>bin2hex(random_bytes(8)),'kind'=>'missing','note'=>'撤销到件 / Ирсэн бүртгэлийг буцаасан: '.$number."\n".$reason,'state'=>'open','location'=>$location,'at'=>gmdate('c'),'auto'=>'receipt','parcels'=>[$number]];
+        }
+        unset($l['transport']['confirmed_at'],$l['transport']['confirmed_location']);
+        $l['version']++;
+        $l['audit'][]=warehouse_event('parcel_arrival_reverted')+['number'=>$number,'reason'=>$reason,'previous_arrival'=>$previous];
+        $o['logistics']=$l;save_order($o);
+        $db->exec('COMMIT');
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+    return $o;
+}
 // Shared by the freight calculator and the one-step receipt.
 function logistics_measure_input(array $b,array $o,string $location): array {
     $weight=decimal_field($b,'weight_kg',0.001,10000);$dimensions=[];

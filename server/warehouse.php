@@ -145,7 +145,7 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     if(warehouse_role($location)==='erenhot')$result['cargo_rates']=warehouse_cargo_rates($o);
     $result['logistics']['photos']=array_map(fn($p)=>$p+['warehouse_name'=>warehouse_profile($p['location'])['name']],$result['logistics']['photos']);
     if(warehouse_role($location)==='erenhot'&&function_exists('inbound_public'))$result['inbound']=inbound_public($o,$details);
-    if(warehouse_role($location)==='erenhot'){$result['parcels']=warehouse_parcels($o);$result['alerts']=warehouse_alerts($o);$result['expected_pieces']=warehouse_expected_pieces($o);}
+    if(warehouse_role($location)==='erenhot'){$result['parcels']=warehouse_parcels($o);$result['parcels']['can_undo']=!$result['read_only']&&warehouse_parcel_undo_allowed($o);$result['alerts']=warehouse_alerts($o);$result['expected_pieces']=warehouse_expected_pieces($o);}
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
     if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;$result['freight_locked']=isset($o['freight']['invoice']);}
     if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
@@ -299,6 +299,7 @@ function warehouse_post(string $action,array $b): never {
     if($action==='warehouse-handover')json_out(['orders'=>array_map(fn($o)=>warehouse_order_public($o,$location),warehouse_handover($b,$location))]);
     if($action==='warehouse-delivery-dispatch')json_out(['orders'=>array_map(fn($o)=>warehouse_order_public($o,$location),warehouse_delivery_dispatch($b,$location))]);
     if($action==='warehouse-parcel-arrive')json_out(['order'=>warehouse_order_public(warehouse_parcel_arrive($b,$location),$location)]);
+    if($action==='warehouse-parcel-undo')json_out(['order'=>warehouse_order_public(warehouse_parcel_undo($b,$location),$location)]);
     if(in_array($action,['warehouse-cargo-calculate','warehouse-cargo-confirm','warehouse-measure','warehouse-shelf','warehouse-issue','warehouse-issue-resolve','warehouse-issue-unassigned','warehouse-issue-resolve-unassigned','warehouse-settlement'],true))logistics_post($action,$b,$location);
     if(str_starts_with($action,'warehouse-batch-'))warehouse_batch_post($action,$b,$location);
     if($action==='warehouse-fulfillment-update')warehouse_fulfillment($b,$location);
@@ -347,6 +348,10 @@ function warehouse_error_zh(string $message): string {
         'Хэсэгчилсэн хүлээн авалтын тохиргоо буруу.'=>'部分到货选项无效，请刷新页面后重试。',
         'Энэ захиалгыг хүлээн авах боломжгүй.'=>'此订单当前不能收货或重新测量，可能已加入包裹。',
         'Энэ захиалгад илгээмж бүртгэх боломжгүй.'=>'此订单当前状态不能登记到件。',
+        'Ирсэн бүртгэлийг буцаахаа батална уу.'=>'请确认撤销到件登记。',
+        'Буцаах шалтгаанаа оруулна уу.'=>'请填写撤销原因。',
+        'Багцалсан эсвэл тооцоо баталсан захиалгын ирсэн бүртгэлийг буцаах боломжгүй.'=>'订单已装包、已出库或已结算，不能撤销到件。请联系管理员核对。',
+        'Илгээмж ирснээр бүртгэгдээгүй байна.'=>'此包裹尚未登记到件，或已经撤销。',
         'Энэ tracking дугаар захиалгад бүртгэлгүй.'=>'此运单号不属于该订单。',
         'Tracking дугаар буруу.'=>'运单号格式不正确。',
         'Тоо ширхэг зөрсөн байна. Зөрчил бүртгэж шалгана уу.'=>'商品数量不符，请登记异常后核对。',

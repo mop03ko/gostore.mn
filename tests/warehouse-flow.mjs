@@ -18,6 +18,21 @@ assert.equal((await cn('warehouse-parcel-arrive',{id:A,number:'bad number'})).st
 let r=await cn('warehouse-parcel-arrive',{id:A,number:'sf1000000000001'});assert.equal(r.status,200);assert.deepEqual([r.order.parcels.arrived,r.order.parcels.total,r.order.parcels.missing],[1,2,['SF1000000000002']]);assert.equal(r.order.status,'confirmed','Arrival is not receipt');
 const version=r.order.logistics.version;r=await cn('warehouse-parcel-arrive',{id:A,number:'SF1000000000001'});assert.equal(r.order.logistics.version,version,'Repeated scan changes nothing');
 assert.deepEqual((await cn('warehouse-tracking&number=SF1000000000002')).orders[0].parcels.missing,['SF1000000000002'],'Scan lookup shows parcel progress');
+const undo=async(id,number,extra={},c=cn)=>c('warehouse-parcel-undo',{id,number,expected_version:(await order(id)).logistics.version,reason:'误点 / Андуурсан',checked:true,...extra});
+assert.equal((await undo(A,'SF1000000000001',{},ub)).status,403,'UB cannot undo Erenhot scans');
+const otherBranch={role:'erenhot',city:'Other Erenhot',name:'Other test warehouse',address:'Test address',phone:'99112233',hours:'09:00–18:00',email:'other-undo@example.test',password:'Other-warehouse-test-2026'};
+const createdBranch=await admin('warehouse-create',otherBranch);assert.equal(createdBranch.status,201);const other=client();await other('warehouse-session');await other('warehouse-login',{...otherBranch,location:createdBranch.warehouse.location});
+assert.equal((await undo(A,'SF1000000000001',{},other)).status,404,'Other Erenhot warehouse cannot modify this order');
+assert.equal((await undo(A,'SF1000000000001',{checked:false})).status,400);
+assert.equal((await undo(A,'SF1000000000001',{reason:'  '})).status,400);
+assert.equal((await undo(A,'SF1000000000001',{expected_version:0})).status,409);
+assert.equal((await undo(A,'SF9999999999999')).status,409);
+assert.equal((await undo(A,'SF1000000000002')).status,409,'An unarrived parcel cannot be undone');
+r=await undo(A,'sf1000000000001');assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.order.parcels.arrived,0);assert.equal(r.order.status,'confirmed');assert.equal(r.order.logistics.version,version+1);
+const audit=(await admin('admin-order&id='+A)).order.logistics.audit.at(-1);assert.equal(audit.event,'parcel_arrival_reverted');assert.equal(audit.number,'SF1000000000001');assert.equal(audit.reason,'误点 / Андуурсан');assert.ok(audit.previous_arrival.at);assert.equal(audit.actor_email,'erenhot-flow@example.test');
+assert.equal((await undo(A,'SF1000000000001')).status,409,'Duplicate undo is rejected without changing progress');
+await cn('warehouse-parcel-arrive',{id:A,number:'SF1000000000001'});
+assert.equal((await undo(A,'SF1000000000001',{expected_version:version})).status,409,'Old undo cannot remove a new scan');
 
 // One-step receipt: photo, checks, stale data and the partial confirmation are enforced.
 assert.equal((await receive(A,{partial:true})).status,409,'Receipt photo required');await uploadReceipt(cn,A);
@@ -36,12 +51,18 @@ assert.ok(o.history.some(h=>h.status==='erenhot'),'Receipt recorded in history')
 r=await cn('warehouse-parcel-arrive',{id:A,number:'SF1000000000002'});assert.equal(r.order.parcels.arrived,2);assert.ok(r.order.logistics.issues.every(i=>i.state==='resolved'),'Automatic shortfall resolved');
 r=await receive(A,{weight_kg:2});assert.equal(r.status,200,JSON.stringify(r));o=r.order;assert.ok(o.logistics.transport.confirmed_at);assert.equal(o.logistics.transport.amount_mnt,4000,"2 kg at 2000₮/kg");assert.equal(o.batch_id,undefined,'No automatic batch');
 r=await receive(A,{weight_kg:1});assert.equal(r.status,200,'Re-measuring works until the order is packed');assert.equal(r.order.logistics.measurement.weight_kg,1);assert.ok(r.order.logistics.transport.amount_mnt<4000,'Freight follows the new weight');
+r=await undo(A,'SF1000000000002');assert.equal(r.status,200);assert.equal(r.order.status,'erenhot');assert.equal(r.order.parcels.arrived,1);assert.equal(r.order.logistics.transport.confirmed_at,undefined);assert.equal(r.order.logistics.measurement.weight_kg,1,'Measurements retained');assert.ok(r.order.logistics.photos.length,'Receipt photos retained');assert.ok(r.order.logistics.issues.some(i=>i.state==='open'&&i.parcels.includes('SF1000000000002')));
+assert.equal((await cn('warehouse-outbound-lookup&code='+A)).orders[0].reason,'issue','Undo blocks dispatch until resolved');
+await cn('warehouse-parcel-arrive',{id:A,number:'SF1000000000002'});
+assert.equal((await cn('warehouse-outbound-lookup&code='+A)).orders[0].reason,'freight','Re-arrival does not silently approve freight');
+assert.equal((await receive(A)).status,200);
 
 // A manual (legacy) draft batch still works.
 await uploadReceipt(cn,D);assert.equal((await cn('warehouse-order-update',{id:D,status:'erenhot',expected_status:'confirmed'})).status,200);
 const manual=(await cn('warehouse-batch-create',{token:crypto.randomBytes(32).toString('hex'),order_ids:[D],note:'Manual'})).batch;assert.equal(manual.status,'draft');
+assert.equal((await undo(D,'SF1000000000001')).status,409,'Even a draft batch blocks undo');
 // An order without known parcels is received in one step and is packed by its GS label.
-await uploadReceipt(cn,B);r=await receive(B);assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.order.batch_id,undefined);assert.deepEqual(r.order.parcels,{list:[],total:0,arrived:0,missing:[]});
+await uploadReceipt(cn,B);r=await receive(B);assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.order.batch_id,undefined);assert.deepEqual(r.order.parcels,{list:[],total:0,arrived:0,missing:[],can_undo:true});
 // Wrong piece count: partial receipt opens an "extra" issue that blocks the scan-out until resolved.
 await uploadReceipt(cn,C);r=await receive(C,{pieces:3,partial:true});assert.equal(r.status,200);issue=r.order.logistics.issues.find(i=>i.state==='open');assert.equal(issue.kind,'extra');assert.match(issue.note,/3/);assert.equal(r.order.batch_id,undefined);
 
@@ -105,6 +126,7 @@ assert.equal((await ub('warehouse-batch&id='+gb.id)).status,200,'Ulaanbaatar see
 // 已发货 lists the dispatched batches.
 assert.deepEqual((await cn('warehouse-batches&status=shipped')).batches.map(b=>b.id).sort(),[batch.id,gb.id].sort());assert.equal((await cn('warehouse-orders')).counts.shipped_batches,2);assert.equal((await cn('warehouse-orders')).counts.packed_batches,1,'Only the manual draft is left');
 assert.equal((await ub('warehouse-order&id='+A)).order.parcels,undefined,'Parcel check-in stays with Erenhot');
+assert.equal((await undo(A,'SF1000000000001')).status,409,'Dispatched order cannot be undone');assert.equal((await order(A)).parcels.can_undo,false);
 
 // Arrival alerts: late parcels and courier-delivered parcels that were not scanned.
 const seed=spawnSync('tmp/tooling/php/php.exe',['-d','extension_dir=tmp/tooling/php/ext','-d','extension=pdo_sqlite','-d','extension=mbstring','tests/warehouse-flow-fixture.php'],{encoding:'utf8',env:process.env});assert.equal(seed.status,0,seed.stderr+seed.stdout);

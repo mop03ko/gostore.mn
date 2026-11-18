@@ -18,6 +18,14 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  // Scanning a courier waybill checks that parcel in and opens the order.
  await page.locator('#scan-code').fill('SF1000000000001');await post('warehouse-parcel-arrive',()=>page.locator('#scan-form button').click());await page.locator('#editor[open]').waitFor();assert.equal(await page.locator('#editor-title').innerText(),id);
  assert.match(await page.locator('.parcel-check').innerText(),/包裹 1 \/ 2 已到/);assert.equal(await page.locator('.parcel-check [data-parcel-arrive]').count(),1);
+ // Undo is explicit, requires a reason, and refreshes the individual parcel count.
+ assert.equal(await page.locator('.parcel-check [data-parcel-undo]').count(),1);
+ assert.equal(await page.locator('.parcel-check [data-parcel-undo]').innerText(),'撤销到件');
+ await page.locator('[data-parcel-undo]').click();await page.locator('[data-parcel-undo-cancel]').click();assert.match(await page.locator('.parcel-check').innerText(),/包裹 1 \/ 2 已到/);
+ await page.locator('[data-parcel-undo]').click();const undo=page.locator('[data-parcel-undo-form]');await undo.locator('button.primary').click();assert.equal(await undo.locator('[name=reason]').evaluate(e=>e.validity.valueMissing),true);
+ await undo.locator('[name=reason]').fill('误点，包裹还未到仓');await post('warehouse-parcel-undo',()=>undo.locator('button.primary').click());
+ assert.match(await page.locator('.parcel-check').innerText(),/包裹 0 \/ 2 已到/);assert.equal(await page.locator('[data-parcel-undo]').count(),0);
+ await post('warehouse-parcel-arrive',()=>page.locator('[data-parcel-arrive="SF1000000000001"]').click());
  let f=page.locator('[data-receive-form]');assert.equal(await f.locator('[data-partial-row]').isVisible(),true,'Missing parcel asks for partial receipt');assert.equal(await f.locator('[name=partial]').evaluate(e=>e.required),true);
  const photo=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=640;c.height=480;c.getContext('2d').fillRect(0,0,640,480);return c.toDataURL('image/jpeg').split(',')[1];});
  await f.locator('[name=image]').setInputFiles({name:'parcel.jpg',mimeType:'image/jpeg',buffer:Buffer.from(photo,'base64')});for(const [n,v] of Object.entries({weight_kg:'1',length_cm:'20',width_cm:'20',height_cm:'20'}))await f.locator('[name='+n+']').fill(v);
