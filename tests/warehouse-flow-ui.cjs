@@ -29,7 +29,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  let f=page.locator('[data-receive-form]');assert.equal(await f.locator('[data-partial-row]').isVisible(),true,'Missing parcel asks for partial receipt');assert.equal(await f.locator('[name=partial]').evaluate(e=>e.required),true);
  const photo=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=640;c.height=480;c.getContext('2d').fillRect(0,0,640,480);return c.toDataURL('image/jpeg').split(',')[1];});
  await f.locator('[name=image]').setInputFiles({name:'parcel.jpg',mimeType:'image/jpeg',buffer:Buffer.from(photo,'base64')});for(const [n,v] of Object.entries({weight_kg:'1',length_cm:'20',width_cm:'20',height_cm:'20'}))await f.locator('[name='+n+']').fill(v);
- await f.locator('[name=partial]').check();await f.locator('[name=checked]').check();
+ await f.locator('[name=cargo_method]').selectOption('weight');await f.locator('[name=partial]').check();await f.locator('[name=checked]').check();
  await page.setViewportSize({width:390,height:2600});await page.locator('#editor').screenshot({path:'tmp/warehouse-receive-form.png'});await page.setViewportSize({width:390,height:844});
  let d=await post('warehouse-receive',()=>f.locator('button.primary').click());
  assert.equal(d.order.status,'erenhot');assert.equal(d.order.batch_id,undefined);await page.locator('#editor-body details[open] .receipt-info').first().waitFor();assert.match(await page.locator('#editor-body').innerText(),/未到包裹/);

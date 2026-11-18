@@ -118,4 +118,21 @@ for(const partId of [checkout,purchasedPart]){
 const done=(await owner('order-get',{id:checkout})).order;assert.equal(done.status,'completed');assert.ok(done.shipment_parts.every(p=>p.status==='completed'));
 assert.equal(done.shipment_parts.reduce((sum,p)=>sum+p.billing.total,0),99000+freightTotal,'Goods charged exactly once across all consignments');
 assert.equal(done.shipment_parts.reduce((sum,p)=>sum+p.billing.paid,0),99000+freightTotal,'Original payment credited once');
-console.log('Warehouse split: parcel/item conservation, isolation, retries, billing, independent dispatch and UB receipt passed.');
+// Three arrived courier codes can each travel in their own GB batch while a fourth is still missing.
+const separateRoot='GS-TEST-039',separateNumbers=['YT7656758091214','YT7656758091221','JT3184693254906','YT7656758091207'];
+for(const number of separateNumbers)assert.equal((await cn('warehouse-inbound-add',{id:separateRoot,number,company:'Courier'})).status,200);
+const arrivedNumbers=separateNumbers.filter(n=>!n.startsWith('JT')),separateBatches=[];
+for(const number of arrivedNumbers)assert.equal((await cn('warehouse-parcel-arrive',{id:separateRoot,number})).status,200);
+for(const number of arrivedNumbers){
+ const result=await split(separateRoot,{numbers:[number]});assert.equal(result.status,200,JSON.stringify(result));
+ assert.deepEqual(result.part.parcels.list.map(p=>p.no),[number]);
+ await uploadReceipt(cn,result.part.id);assert.equal((await receive(result.part.id)).status,200);
+ const packed=await cn('warehouse-outbound-pack',{token:token(),order_ids:[result.part.id],codes:[number]});assert.equal(packed.status,200,JSON.stringify(packed));
+ assert.equal(packed.batch.piece_count,1);separateBatches.push(packed.batch.id);
+ assert.equal((await cn('warehouse-batch-dispatch',{id:packed.batch.id,expected_version:packed.batch.version,checked:true})).status,200);
+}
+assert.equal(new Set(separateBatches).size,3);
+const remainder=await order(separateRoot);assert.deepEqual(remainder.parcels.missing,['JT3184693254906']);assert.equal(remainder.parcels.total,1);assert.equal(remainder.status,'confirmed');
+assert.equal(remainder.shipment_parts.filter(p=>p.status==='erenhot_dispatched').length,3);
+assert.equal((await cn('warehouse-outbound-pack',{token:token(),order_ids:[separateRoot],codes:['JT3184693254906']})).status,409,'Missing remainder cannot be packed');
+console.log('Warehouse split: parcel/item conservation, isolation, retries, billing, independent dispatch, three-of-four courier batches and UB receipt passed.');
