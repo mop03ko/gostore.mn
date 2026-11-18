@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // Isolated fake credentials and transport; never reads local TaoWorld secrets.
 $root=__DIR__.'/../tmp/taoworld-auth-'.bin2hex(random_bytes(5));mkdir($root.'/server',0700,true);
-foreach(['bootstrap.php','product-policy.php','config.example.php','seed.json','taoworld-auth.php','taoworld-config.example.php'] as $file)copy(__DIR__.'/../server/'.$file,$root.'/server/'.$file);
+foreach(['bootstrap.php','admin-users.php','admin-security.php','product-policy.php','config.example.php','seed.json','taoworld-auth.php','taoworld-config.example.php'] as $file)copy(__DIR__.'/../server/'.$file,$root.'/server/'.$file);
 putenv('GOSTORE_DATA_DIR='.$root.'/data');putenv('GOSTORE_DISABLE_SUPPLIER_NETWORK=1');
 file_put_contents($root.'/server/taoworld.local.php',"<?php return ['app_key'=>'123456','app_secret'=>'fixture-secret-only-123456','callback_url'=>'https://gostore.mn/api/taoworld/callback.php'];");
 require $root.'/server/bootstrap.php';require $root.'/server/taoworld-auth.php';

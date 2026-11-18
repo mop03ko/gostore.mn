@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/warehouse-notifications.php';
+// The notification suite ends in a revoked UB session. Register this device as
+// the active Erenhot manager, matching the authenticated API request lifecycle.
+unset($_SERVER['HTTP_AUTHORIZATION'],$_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN']);
+$_SESSION['warehouse_location']='erenhot';
+$_SESSION['warehouse_version']=warehouse_account('erenhot')['version'];
+check(warehouse_authenticated(),'FCM fixture requires an active Erenhot manager');
 check(!warehouse_fcm_configured(),'Unconfigured FCM advertised as ready');
 denied(fn()=>warehouse_fcm_subscribe(['fcm_token'=>str_repeat('a',150)],'erenhot'),'Unconfigured subscribe accepted');
 $key=openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_RSA,'private_key_bits'=>2048,'config'=>__DIR__.'/../server/warehouse-push-openssl.cnf']);
@@ -12,6 +18,7 @@ foreach(['','https://evil.test/device',str_repeat('a',4097),str_repeat('a',40)."
 $fcmToken=str_repeat('A',150);$native=warehouse_fcm_subscribe(['fcm_token'=>$fcmToken],'erenhot');
 $_SERVER['HTTP_X_GOSTORE_PUSH_TOKEN']=$native['token'];$device=warehouse_push_authenticated_device();
 check($device['endpoint']==='fcm:'.$fcmToken,'Native endpoint lost');
+check($device['location']==='erenhot'&&$device['account_version']===$_SESSION['warehouse_version'],'Native device bound to wrong warehouse or manager');
 denied(fn()=>warehouse_fcm_rotate(['fcm_token'=>'bad']),'Invalid rotation accepted');
 $nextToken=str_repeat('B',150);warehouse_fcm_rotate(['fcm_token'=>$nextToken]);
 check(warehouse_push_authenticated_device()['endpoint']==='fcm:'.$nextToken,'Token rotation failed');
