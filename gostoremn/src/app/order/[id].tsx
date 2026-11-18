@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Linking } from "react-native";
-import { Image } from "expo-image";
+import { PaymentSheet } from "@/components/payment-sheet";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { bankLink } from "@/lib/cart";
 import { useStore } from "@/lib/store";
-import type { Invoice, Order } from "@/lib/types";
+import type { Order } from "@/lib/types";
 import { statusName, partName, dateText } from "@/lib/orders";
 import {
   Page,
@@ -24,11 +24,12 @@ export default function OrderRoute() {
   return <OrderScreen key={(customer?.id || "guest") + ":" + id} />;
 }
 function OrderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>(),
+  const { id, pay } = useLocalSearchParams<{ id: string; pay?: string }>(),
     { customer, qpay } = useStore();
   const [order, setOrder] = useState<Order | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [payment, setPayment] = useState<"initial" | "freight" | null>(pay === "initial" ? "initial" : null);
   const [now, setNow] = useState(Date.now);
   const locked = useRef(false),
     bankOpened = useRef(false);
@@ -99,8 +100,23 @@ function OrderScreen() {
       </Page>
     );
   const bill = order?.cargo?.billing;
+  const initialDue = order?.type !== "forwarding" && !order?.paid && order?.status === "quoted" && !expired;
+  const freightDue = !!(order && (order.paid || order.type === "forwarding") && bill?.finalized && bill.due > 0);
+  const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));
+  function startPayment(kind: "initial" | "freight") {
+    setPayment(kind);
+    if (!(kind === "freight" ? order?.cargo?.freight_invoice : order?.invoice)) void load(kind === "freight" ? "freight-invoice" : "invoice");
+  }
   return (
     <Page>
+      {order && payment && (payment === "initial" ? initialDue : freightDue) && (
+        <PaymentSheet key={payment} orderId={order.id} freight={payment === "freight"}
+          invoice={payment === "initial" ? order.invoice : order.cargo?.freight_invoice}
+          amount={payment === "initial" ? order.amount : bill!.due} busy={busy} error={error}
+          remaining={payment === "initial" && timedPayment ? Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0") : ""}
+          onClose={() => setPayment(null)} onOpen={open} onCheck={() => void load("payment-check")}
+          onInvoice={() => startPayment(payment)} />
+      )}
       <ErrorBox message={error} retry={() => void load()} />
       {busy && <Busy />}
       {order && (
@@ -154,25 +170,7 @@ function OrderScreen() {
               {order.type !== "forwarding" && <Row label="Барааны дүн" value={"¥" + i.goods_cny?.toFixed(2)} />}
             </Card>
           ))}
-          {order.type !== "forwarding" && !order.paid && order.status === "quoted" && !expired && (
-            <>
-              {order.invoice ? (
-                <InvoiceCard
-                  i={order.invoice}
-                  busy={busy}
-                  onOpen={(link) => void open(link)}
-                  onCheck={() => void load("payment-check")}
-                />
-              ) : (
-                <Button
-                  title="QPay нэхэмжлэл авах"
-                  disabled={busy || !qpay}
-                  onPress={() => void load("invoice")}
-                />
-              )}
-              <Copy>Төлбөрийн төлөвийг GOStore сервер банкнаас шалгана.</Copy>
-            </>
-          )}
+          {initialDue && <Button title="QPay-аар төлөх" disabled={busy || (!qpay && !order.invoice)} onPress={() => startPayment("initial")} />}
           {order.paid && (
             <Copy>
               Хэрэглэгчийн төлбөр баталгаажсан. Нийлүүлэгчийн худалдан авалт,
@@ -213,24 +211,7 @@ function OrderScreen() {
               />
             </Card>
           )}
-          {(order.paid || order.type === "forwarding") && bill?.finalized && bill.due > 0 && (
-            <>
-              {order.cargo?.freight_invoice ? (
-                <InvoiceCard
-                  i={order.cargo.freight_invoice}
-                  busy={busy}
-                  onOpen={(link) => void open(link)}
-                  onCheck={() => void load("payment-check")}
-                />
-              ) : (
-                <Button
-                  title="Хүргэлтийн үлдэгдэл төлөх"
-                  disabled={busy || !qpay}
-                  onPress={() => void load("freight-invoice")}
-                />
-              )}
-            </>
-          )}
+          {freightDue && <Button title="Хүргэлтийн үлдэгдэл төлөх" disabled={busy || (!qpay && !order.cargo?.freight_invoice)} onPress={() => startPayment("freight")} />}
           {!!order.cargo?.pickup_code && (
             <Card>
               <Title>Авах код: {order.cargo.pickup_code}</Title>
@@ -266,47 +247,4 @@ function OrderScreen() {
       )}
     </Page>
   );
-}
-
-function InvoiceCard({
-  i,
-  busy,
-  onOpen,
-  onCheck,
-}: {
-  i: Invoice | undefined;
-  busy: boolean;
-  onOpen: (link: string) => void;
-  onCheck: () => void;
-}) {
-  return i?.state === "ready" ? (
-    <Card>
-      <Title>QPay төлбөр</Title>
-      {!!i.qr_image && (
-        <Image
-          accessibilityLabel="QPay QR"
-          source={
-            i.qr_image.startsWith("data:")
-              ? i.qr_image
-              : "data:image/png;base64," + i.qr_image
-          }
-          style={{ width: 250, height: 250, alignSelf: "center" }}
-          contentFit="contain"
-        />
-      )}
-      <Copy>Банкны апп сонгоод төлбөрөө баталгаажуулна уу.</Copy>
-      {i.urls?.map((u, n) => (
-        <Button
-          key={n}
-          title={u.description || u.name}
-          secondary
-          disabled={busy || !bankLink(u.link)}
-          onPress={() => onOpen(u.link)}
-        />
-      ))}
-      <Button title="Төлбөр шалгах" disabled={busy} onPress={() => onCheck()} />
-    </Card>
-  ) : i ? (
-    <Copy>Нэхэмжлэл боловсруулж байна. Төлөвийг шинэчилнэ үү.</Copy>
-  ) : null;
 }

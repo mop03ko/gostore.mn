@@ -39,7 +39,7 @@ type Submission = {
 function Checkout() {
   const { selected: pickup, loaded: pickupLoaded } = useWarehousePreference();
   const pickupLocation = pickup?.location ?? "";
-  const { customer, cart, cartReady, saveCart } = useStore(),
+  const { customer, cart, cartReady, saveCart, qpay } = useStore(),
     [preview, setPreview] = useState<Preview | null>(null),
     [addresses, setAddresses] = useState<Address[]>([]),
     [name, setName] = useState<string | null>(null),
@@ -154,7 +154,7 @@ function Checkout() {
       );
       await AsyncStorage.removeItem(key);
       setPending(null);
-      router.replace({ pathname: "/order/[id]", params: { id: r.order.id } });
+      router.replace({ pathname: "/order/[id]", params: { id: r.order.id, ...(qpay ? { pay: "initial" } : {}) } });
     } catch (e) {
       if (
         e instanceof ApiError &&

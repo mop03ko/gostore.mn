@@ -82,7 +82,7 @@ export type PricedLine = CartLine & { unit_cny: number; goods_cny: number };
 export type Invoice = {
   state: string;
   qr_image?: string;
-  urls?: { name: string; description: string; link: string }[];
+  urls?: { name: string; description: string; link: string; logo?: string }[];
 };
 export type Order = {
   shipment_parent?: string;
