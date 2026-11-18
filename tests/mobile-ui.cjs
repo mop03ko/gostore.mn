@@ -1,10 +1,12 @@
 const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ // The home page lists deals only; this suite needs its catalog there (tests/home-feed-helper.cjs).
+ require('./home-feed-helper.cjs').everyPage(browser);
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await require('./customer-ui-helper.cjs')(page,base);
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
- await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();
+ await page.goto(base+'/');await page.locator('#supplier-grid .supplier-card').first().waitFor();
  for(const width of [320,390,430,760]){
    await page.setViewportSize({width,height:844});await page.evaluate(()=>scrollTo(0,0));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow at '+width);
@@ -14,7 +16,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    await page.locator('.mobile-nav [data-open-categories]').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=categories]').getAttribute('aria-current')==='page');await page.locator('#close-category-menu').click();await page.waitForFunction(()=>document.querySelector('.mobile-nav [data-mobile-tab=home]').getAttribute('aria-current')==='page');await page.locator('#catalog').scrollIntoViewIfNeeded();
    assert.equal(Math.round((await page.locator('.header').boundingBox()).y),0,'Search header remains reachable');
    const input=await page.locator('#search').boundingBox(),button=await page.locator('#search-form button[type=submit]').boundingBox();assert.ok(Math.abs((input.y+input.height/2)-(button.y+button.height/2))<2,'Search action stays beside input');
-   await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('.supplier-card').first().waitFor();
+   await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('#supplier-grid .supplier-card').first().waitFor();
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-catalog.png'});
    await page.locator('.mobile-nav [data-action=cart]').click();await page.locator('#modal .empty-state').waitFor();
    const modal=await page.locator('#modal').boundingBox();assert.ok(Math.abs(modal.width-width)<=1&&modal.y>=0,'Sheet fits screen');

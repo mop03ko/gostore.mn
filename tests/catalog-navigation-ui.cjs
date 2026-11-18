@@ -1,17 +1,19 @@
 const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
+ // The home page lists deals only; this suite needs its catalog there (tests/home-feed-helper.cjs).
+ require('./home-feed-helper.cjs').everyPage(browser);
  const page=await browser.newPage({viewport:{width:1692,height:950},reducedMotion:'reduce'}),calls=[],requests=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://img.alicdn.com/**',r=>r.abort());
  await page.route('**/api/index.php?action=supplier-search*',r=>{const params=new URL(r.request().url()).searchParams,q=params.get('q');calls.push(q);requests.push(Object.fromEntries(params));return r.fulfill({json:{products:[{id:'tb-123456789',name:q,image:'',mnt:5500}],shipping:{cny_rate:550},more:q==='nike'&&params.get('page')==='1',stale:false,cache_ttl:600}});});
- await page.goto(base+'/');await page.locator('.supplier-card').waitFor();
+ await page.goto(base+'/');await page.locator('#supplier-grid .supplier-card').waitFor();
  const nav=page.locator('#catalog-category-nav'),row=page.locator('.catalog-category-list'),active=nav.locator('[aria-pressed=true]');
  assert.equal(await row.locator('button').count(),28);assert.equal(await active.innerText(),'Бүгд');assert.equal(calls[0],'__all__');assert.equal(calls.length,1,'Rendering categories adds no API calls');
  await nav.locator('[data-catalog-scroll="1"]').click();assert.ok(await row.evaluate(e=>e.scrollLeft)>0);assert.equal(calls.length,1,'Scrolling adds no API calls');
  await row.locator('button').first().focus();await page.keyboard.press('End');assert.equal(await page.evaluate(()=>document.activeElement.dataset.catalogCategory),'health');assert.ok(await row.evaluate(e=>e.scrollLeft)>100);
- await row.locator('[data-catalog-category=men]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3')?.textContent==='men clothing');assert.equal(await active.innerText(),'Эрэгтэй хувцас');assert.equal(calls.at(-1),'men clothing');assert.equal(new URL(page.url()).pathname,'/c/men','A category is its own page');
- await page.reload();await page.locator('.supplier-card').waitFor();assert.equal(await active.innerText(),'Эрэгтэй хувцас','Reload preserves category selection');
- await row.locator('[data-catalog-category=bags]').click();await page.waitForFunction(()=>document.querySelector('.supplier-card h3')?.textContent==='bag');assert.equal(await active.innerText(),'Цүнх, үүргэвч');await page.reload();await page.locator('.supplier-card').waitFor();assert.equal(await active.innerText(),'Цүнх, үүргэвч','Default query does not lose explicit bag category');
+ await row.locator('[data-catalog-category=men]').click();await page.waitForFunction(()=>document.querySelector('#supplier-grid .supplier-card h3')?.textContent==='men clothing');assert.equal(await active.innerText(),'Эрэгтэй хувцас');assert.equal(calls.at(-1),'men clothing');assert.equal(new URL(page.url()).pathname,'/c/men','A category is its own page');
+ await page.reload();await page.locator('#supplier-grid .supplier-card').waitFor();assert.equal(await active.innerText(),'Эрэгтэй хувцас','Reload preserves category selection');
+ await row.locator('[data-catalog-category=bags]').click();await page.waitForFunction(()=>document.querySelector('#supplier-grid .supplier-card h3')?.textContent==='bag');assert.equal(await active.innerText(),'Цүнх, үүргэвч');await page.reload();await page.locator('#supplier-grid .supplier-card').waitFor();assert.equal(await active.innerText(),'Цүнх, үүргэвч','Default query does not lose explicit bag category');
  await row.locator('[data-catalog-category=all]').click();assert.equal(await active.innerText(),'Бүгд');assert.equal(new URL(page.url()).searchParams.has('category'),false);
  await page.evaluate(()=>document.querySelector('.catalog-category-list').scrollLeft=0);await nav.screenshot({path:'tmp/catalog-navigation-desktop.png'});
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal page overflow');
