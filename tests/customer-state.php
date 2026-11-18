@@ -9,6 +9,8 @@ $now=gmdate('c');$db=db();
 foreach([['c1','a@example.test'],['c2','b@example.test']] as [$id,$email])
     $db->prepare('INSERT INTO customers VALUES (?,?,?,?,?,?,1,?,?)')->execute([$id,$email,'Бат','99112233','','x',$now,$now]);
 $c1=['id'=>'c1'];$c2=['id'=>'c2'];
+// These checks speak sync protocol 2, like the current storefront script; the gate for older pages is checked at the end.
+$_GET['sync']='2';
 
 $empty=customer_state_get($c1);
 check($empty===['cart'=>[],'favorites'=>[],'version'=>0,'pending'=>[]],'New customer must start empty');
@@ -43,8 +45,8 @@ check(count($pending)===1&&$pending[0]['id']==='GS-PAY1'&&$pending[0]['amount']=
 check(customer_state_get($c2)['pending']===[],'Reminders are per customer');
 // Protocol gate: a page still running the pre-fix script (no sync=2) sees an empty account and cannot save.
 $_GET['sync']='2';check(customer_state_protocol()===2,'sync=2 selects protocol 2');$_GET['sync']='1';check(customer_state_protocol()===1,'Other values are the old protocol');unset($_GET['sync']);check(customer_state_protocol()===1,'A missing flag is the old protocol');
-$legacy=customer_state_get_for($c1,1);check($legacy['cart']===[]&&$legacy['favorites']===[]&&$legacy['version']===0&&count($legacy['pending'])===1,'Old pages see an empty account at version 0 and keep the reminder');
-check(customer_state_get_for($c1,2)===customer_state_get($c1),'Protocol 2 reads the account');
-$before=customer_state_get($c1);expect_error(fn()=>customer_state_save_for($c1,['cart'=>[]],1),426);check(customer_state_get($c1)===$before,'A refused save changes nothing');
-check(customer_state_save_for($c1,['cart'=>[]],2)['version']===$before['version']+1,'Protocol 2 saves');
+$legacy=customer_state_get($c1);check($legacy['cart']===[]&&$legacy['favorites']===[]&&$legacy['version']===0&&count($legacy['pending'])===1,'Old pages see an empty account at version 0 and keep the reminder');
+$before=customer_state_get($c1,2);check($before['version']>0&&count($before['favorites'])===1&&customer_state_get($c1,1)===$legacy,'Protocol 2 reads the account; the explicit old protocol matches a request without the flag');
+expect_error(fn()=>customer_state_save($c1,['cart'=>[]]),426);expect_error(fn()=>customer_state_save($c1,['cart'=>[]],1),426);check(customer_state_get($c1,2)===$before,'A refused save changes nothing');
+check(customer_state_save($c1,['cart'=>[]],2)['version']===$before['version']+1,'Protocol 2 saves');
 echo "PASS: customer state (whitelisted cart/favorites, policy filter, per-customer versions, caps, unpaid-checkout reminder, sync protocol gate).\n";

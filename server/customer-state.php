@@ -78,20 +78,18 @@ function customer_state_row(array $c): array {
 // saves work, replace its own lists with the account's or the account's with its stale copy. Requests without
 // sync=2 therefore keep getting what they always got: an empty account at version 0, and a save that is refused.
 // Reloading the page loads the script that sends sync=2 and merges instead of replacing.
+// The gate sits in the two functions the routes already call, in the same file as the save fix, so saving and the
+// gate go live in one step: there is no moment when an old page's save can succeed.
 function customer_state_protocol(): int {
     return (string)($_GET['sync']??'')==='2'?2:1;
 }
-function customer_state_get_for(array $c,int $protocol): array {
-    return $protocol===2?customer_state_get($c):['cart'=>[],'favorites'=>[],'version'=>0,'pending'=>customer_state_pending($c)];
-}
-function customer_state_save_for(array $c,array $b,int $protocol): array {
-    if($protocol!==2)fail('Хуудсаа дахин ачаалсны дараа сагс, хадгалсан бараа синк хийгдэнэ.',426);
-    return customer_state_save($c,$b);
-}
-function customer_state_get(array $c): array {
+// $protocol is given by tests; API requests take it from the query string.
+function customer_state_get(array $c,?int $protocol=null): array {
+    if(($protocol??customer_state_protocol())!==2)return ['cart'=>[],'favorites'=>[],'version'=>0,'pending'=>customer_state_pending($c)];
     return customer_state_row($c)+['pending'=>customer_state_pending($c)];
 }
-function customer_state_save(array $c,array $b): array {
+function customer_state_save(array $c,array $b,?int $protocol=null): array {
+    if(($protocol??customer_state_protocol())!==2)fail('Хуудсаа дахин ачаалсны дараа сагс, хадгалсан бараа синк хийгдэнэ.',426);
     limit_attempts('customer-state:'.$c['id'],240,3600);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
