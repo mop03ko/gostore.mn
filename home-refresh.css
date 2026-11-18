@@ -103,7 +103,7 @@ html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-m
 @media(max-width:760px){
  .home-refresh .container,.home-refresh .discovery-home{width:calc(100% - 32px);padding-inline:0}
  .home-refresh .header-main{gap:12px;min-height:0;padding-block:14px 12px}.home-refresh .header .brand{width:148px}.home-refresh .header-actions{gap:15px}
- .home-refresh .header .search-form{height:48px;border-radius:14px}.home-refresh .header .search-form input{font-size:16px}.home-refresh .search-form button[type=submit]{height:44px;min-height:44px}
+ .home-refresh .header .search-form{height:48px;border-radius:14px}.home-refresh .header .search-form input{font-size:13px}.home-refresh .search-form button[type=submit]{height:38px;min-height:38px}
  .home-refresh #self-cargo-entry{margin-top:12px}.home-refresh #self-cargo-entry .sc-entry-link{padding:11px 12px;border-radius:14px;gap:10px}
  .home-refresh #self-cargo-entry .sc-entry-copy{display:grid;grid-template-columns:1fr;gap:3px}.home-refresh #self-cargo-entry .sc-entry-copy strong{font-size:13px}.home-refresh #self-cargo-entry .sc-entry-copy small{font-size:10px}.home-refresh #self-cargo-entry .sc-entry-copy>span{display:none}
  .home-refresh #self-cargo-entry .sc-entry-cta{font-size:0}
@@ -302,9 +302,9 @@ html.home-refresh[data-theme=dark] .header .brand .brand-dark{display:block}
  .home-refresh .announcement .container{height:28px;font-size:10px}
  .home-refresh .header-main{gap:10px;min-height:0;padding-block:10px}
  .home-refresh .header-main>.brand{width:clamp(112px,35vw,154px);padding:0}
- .home-refresh .header-actions{gap:2px}.home-refresh .header-actions .header-action,.home-refresh .header-actions [data-action=account]{min-width:44px;padding:4px}
+ .home-refresh .header-actions{gap:2px}.home-refresh .header-actions .header-action,.home-refresh .header-actions [data-action=account]{min-width:40px;padding:4px}
  .home-refresh .search-form{height:46px;border-radius:10px;background:var(--home-bg)}
- .home-refresh .search-form input{font-size:16px}.home-refresh .search-form button[type=submit]{height:44px;min-height:44px;padding:0 14px}
+ .home-refresh .search-form input{font-size:16px}.home-refresh .search-form button[type=submit]{height:38px;min-height:38px;padding:0 14px}
  .home-refresh .home-hub{display:flex;flex-direction:column;padding-top:14px;gap:12px}
  .home-refresh .hub-main{display:flex;flex-direction:column;gap:12px}
  .home-refresh .hub-channels{display:flex;order:-1;overflow-x:auto;gap:18px;padding:2px 0 6px;border:0;scrollbar-width:none;min-height:84px}

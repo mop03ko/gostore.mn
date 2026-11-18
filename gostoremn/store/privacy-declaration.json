@@ -1,6 +1,6 @@
 {
   "purpose": "APP_FUNCTIONALITY",
-  "tracking": false,
+  "tracking": true,
   "linked": [
     "NAME",
     "EMAIL_ADDRESS",
@@ -16,7 +16,7 @@
     "PRODUCT_INTERACTION",
     "DEVICE_ID"
   ],
-  "basis": "Customer profiles, saved delivery addresses, order records, optional uploaded images and support. Public search cache stores queries without a customer account key. iOS includes Firebase Analytics without advertising identifiers; its data is not linked to the GOStore account. Push tokens are linked to the account for app functionality. Website Google/Facebook tags are not embedded in the native app. Payment bank credentials are entered in the bank app, not collected by gostore.mn.",
+  "basis": "Customer profiles, saved delivery addresses, order records, optional uploaded images and support. Public search cache stores queries without a customer account key. iOS includes Firebase Analytics without advertising identifiers; its data is not linked to the GOStore account. Push tokens are linked to the account for app functionality. Website Google/Facebook tags are not embedded in the native app; iOS and Android include the Meta SDK for App Events (see advertising). Payment bank credentials are entered in the bank app, not collected by gostore.mn.",
   "analytics": {
     "purpose": "ANALYTICS",
     "linked": false,
@@ -26,5 +26,17 @@
       "DEVICE_ID"
     ],
     "note": "iOS Firebase Analytics: installation ID, session/device metadata and allowlisted screen names; no IDFA, IDFV, ads, user ID, search terms or order IDs. User can disable collection in Account."
+  },
+  "advertising": {
+    "purpose": "THIRD_PARTY_ADVERTISING",
+    "linked": false,
+    "tracking": true,
+    "types": [
+      "DEVICE_ID",
+      "PRODUCT_INTERACTION",
+      "PURCHASE_HISTORY",
+      "ADVERTISING_DATA"
+    ],
+    "note": "iOS and Android Meta App Events: install, launch, product view, add to cart, checkout start and purchase with product IDs, quantities and MNT amounts. Android advertising ID; iOS IDFA only after the App Tracking Transparency prompt is allowed. No name, phone, email, address, user ID, search terms or order IDs. The Account statistics switch stops these events and advertiser ID collection."
   }
 }

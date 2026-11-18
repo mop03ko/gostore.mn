@@ -1,8 +1,6 @@
 const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict');
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
- // The home page lists deals only; this suite needs its catalog there (tests/home-feed-helper.cjs).
- require('./home-feed-helper.cjs').everyPage(browser);
  const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const images=[];await context.route('https://img.alicdn.com/**',r=>{images.push(r.request().url());return r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'});});
  const reads=[];page.on('request',r=>{if(r.url().includes('action=supplier-product'))reads.push(r.url());});
@@ -18,7 +16,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  reads.length=0;await page.reload();await page.locator('#pd-options').waitFor();
  assert.equal(reads.length,0,'Cached product makes no API request');assert.equal(await page.evaluate(()=>window.earlySupplierProduct),undefined);
  // Other routes never start a product request.
- reads.length=0;await page.goto(base+'/');await page.locator('#supplier-grid .supplier-card').first().waitFor();assert.equal(reads.length,0);
+ reads.length=0;await page.goto(base+'/');await page.locator('.supplier-card').first().waitFor();assert.equal(reads.length,0);
  assert.deepEqual(errors,[]);
  console.log('PASS early product load: single adopted request, main image first, matching resize rule, cache skip, home untouched.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

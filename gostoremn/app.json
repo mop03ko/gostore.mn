@@ -97,6 +97,25 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false
         }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1031552466623435",
+          "clientToken": "META_CLIENT_TOKEN",
+          "displayName": "GOStore",
+          "scheme": "fb1031552466623435",
+          "isAutoInitEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "advertiserIDCollectionEnabled": true,
+          "iosUserTrackingPermission": false
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Facebook, Instagram дээрх GOStore-ийн зар танд хэр хүрч, худалдан авалтад хүргэж байгааг хэмжихэд зарын танигчийг ашиглана. Зөвшөөрөхгүй байсан ч апп бүрэн ажиллана."
+        }
       ]
     ],
     "experiments": {

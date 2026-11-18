@@ -14,6 +14,7 @@ import { IconButton, Choice, Quantity } from "@/components/shop-ui";
 import { ProductDetails } from "@/components/product-details";
 import { catalog } from "@/lib/api";
 import { addLine } from "@/lib/cart";
+import { metaAddedToCart, metaViewedProduct } from "@/lib/meta-events";
 import { useStore } from "@/lib/store";
 import type { Product } from "@/lib/types";
 import {
@@ -48,6 +49,7 @@ export default function ProductScreen() {
       .then((r) => {
         if (c.signal.aborted) return;
         setProduct(r.product);
+        metaViewedProduct(r.product.id, r.product.mnt ?? r.product.approx_mnt ?? null);
         setQty(r.product.min_qty);
         setSku("");
         setAdded(false);
@@ -64,6 +66,7 @@ export default function ProductScreen() {
     setSaving(true);
     try {
       await saveCart(addLine(cart, product, variant, qty));
+      metaAddedToCart(product.id, qty, variant.cny && rate ? variant.cny * rate * qty : null);
       setAdded(true);
       if (intent === "buy") {
         setSheet(false);

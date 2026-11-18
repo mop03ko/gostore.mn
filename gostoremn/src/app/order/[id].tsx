@@ -4,6 +4,7 @@ import { PaymentSheet } from "@/components/payment-sheet";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { api } from "@/lib/api";
 import { bankLink } from "@/lib/cart";
+import { metaPurchased } from "@/lib/meta-events";
 import { useStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 import { statusName, partName, dateText } from "@/lib/orders";
@@ -41,6 +42,8 @@ function OrderScreen() {
       try {
         const r = await api<{ order: Order }>(action, { id });
         setOrder(r.order);
+        if (r.order.paid && r.order.type !== "forwarding")
+          void metaPurchased(r.order.id, r.order.amount, (r.order.items || []).map(({ id: item, qty }) => ({ id: item, qty })));
         setError("");
       } catch (e) {
         setError((e as Error).message);

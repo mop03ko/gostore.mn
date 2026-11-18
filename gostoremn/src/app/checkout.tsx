@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import { router, useFocusEffect } from "expo-router";
 import { api, ApiError } from "@/lib/api";
 import { selection } from "@/lib/cart";
+import { metaInitiatedCheckout, metaOrderPlaced } from "@/lib/meta-events";
 import { useStore } from "@/lib/store";
 import type { Address, Order, Quote, PricedLine } from "@/lib/types";
 import { partName } from "@/lib/orders";
@@ -54,6 +55,7 @@ function Checkout() {
     [loaded, setLoaded] = useState(false),
     [quotedItems, setQuotedItems] = useState("");
   const locked = useRef(false),
+    checkoutLogged = useRef(false),
     quoteAt = useRef(0),
     key = "gostore-pending-" + (customer?.id || "guest"),
     signature = JSON.stringify(selection(cart));
@@ -94,6 +96,10 @@ function Checkout() {
       setQuotedItems(signature);
       quoteAt.current = Date.now();
       setPreview(r);
+      if (!checkoutLogged.current) {
+        checkoutLogged.current = true;
+        metaInitiatedCheckout(selection(cart), r.quote.total);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -154,6 +160,7 @@ function Checkout() {
       );
       await AsyncStorage.removeItem(key);
       setPending(null);
+      await metaOrderPlaced(r.order.id);
       router.replace({ pathname: "/order/[id]", params: { id: r.order.id, ...(qpay ? { pay: "initial" } : {}) } });
     } catch (e) {
       if (

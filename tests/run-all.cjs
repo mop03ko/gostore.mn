@@ -16,6 +16,7 @@ for(const test of ['sendsms','sms-otp'])run(php,[...phpArgs,'tests/'+test+'.php'
 run(node,['tests/warehouse-preference.cjs'],'warehouse-preference');
 run(node,['tests/run-logistics.cjs','warehouse-preference-ui'],'warehouse-preference-ui');
 run(node,['tests/expo-push.cjs'],'expo-push');
+run(node,['tests/expo-meta-events.cjs'],'expo-meta-events');
 run(node,['tests/expo-eleven-sale.cjs'],'expo-eleven-sale');
 run(node,['tests/expo-product-discounts.cjs'],'expo-product-discounts');
 run(node,['tests/cargo-tariff.cjs'],'cargo-tariff');

@@ -51,8 +51,6 @@ function audit(){
   return [...new Set(found)];
 }
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});const report={};let errors=[];try{
- // The home page lists deals only; this suite needs its catalog there (tests/home-feed-helper.cjs).
- require('./home-feed-helper.cjs').everyPage(browser);
  const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});await context.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await context.route('https://qpay.mn/**',r=>r.fulfill({path:'assets/favicon.svg',contentType:'image/svg+xml'}));
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
@@ -60,8 +58,8 @@ function audit(){
  const visit=async(path,ready)=>{await page.goto(base+path);await page.locator(ready).first().waitFor();};
  const line=(id,name)=>({id,sku:'555',qty:2,name,image:'https://img.alicdn.com/x.jpg',variant:'Хар / XXL / Урт нэртэй хувилбарын сонголт 2025 оны шинэ загвар',cny:189.5,min_qty:1,step:1,stock:null,vendor_id:'v'+id});
 
- await visit('/','#supplier-grid .supplier-card');await check('home');
- await visit('/?q=bag#catalog','#supplier-grid .supplier-card');await check('search');
+ await visit('/','.supplier-card');await check('home');
+ await visit('/?q=bag#catalog','.supplier-card');await check('search');
  await visit('/v/tb-123456789','#pd-options');await check('product');
  await visit('/official-stores','#official-stores:not([hidden])');await check('official stores');
  await visit('/help','.help-page, main');await check('help');
@@ -72,7 +70,7 @@ function audit(){
  const customer=await register(page,base);
  await visit('/v/tb-123456789','#pd-options');await page.locator('[data-pd-submit]').click();await page.locator('#taobao-checkout-form').waitFor();
  await check('checkout modal');
- await page.locator('#taobao-checkout-form [name=family_name]').fill('Тестийнхэн');await page.locator('#taobao-checkout-form [name=pickup_location]').selectOption({index:1});
+ await page.locator('#taobao-checkout-form [name=family_name]').fill('Тестийнхэн');
  const created=page.waitForResponse(r=>r.url().includes('action=order-create'));await page.locator('#taobao-checkout-form [type=submit]').click();const order=(await(await created).json()).order;
  await page.locator('#cargo-search').waitFor();await check('order list modal');
  await page.route(/action=order-get/,async route=>{const response=await route.fetch(),body=await response.json();body.order.paid=false;body.order.invoice={state:'ready',qr_image:QR,qr_text:'x',urls:BANKS};await route.fulfill({response,json:body});});
@@ -82,7 +80,7 @@ function audit(){
  await page.unroute(/action=order-get/);
  await page.evaluate(o=>cargoPaymentSuccess({...o,paid:true,status:'confirmed',amount:1234567},'initial'),order);await page.locator('#modal .payment-success').waitFor();await check('payment success modal');
  await page.locator('#close-modal').click();
- await page.evaluate(()=>sessionStorage.removeItem('gostore-pending-dismissed'));await visit('/','#supplier-grid .supplier-card');await page.locator('.pending-pay').waitFor();await check('pending payment reminder');
+ await page.evaluate(()=>sessionStorage.removeItem('gostore-pending-dismissed'));await visit('/','.supplier-card');await page.locator('.pending-pay').waitFor();await check('pending payment reminder');
  for(const section of ['orders','products','saved','addresses','notifications','profile']){await visit('/account/'+section,'#account-content');await page.waitForTimeout(400);await check('account '+section);}
 }finally{await browser.close();}
  for(const [screen,list] of Object.entries(report)){console.log('\n## '+screen);for(const f of list.slice(0,25))console.log('  - '+f);if(list.length>25)console.log('  … '+(list.length-25)+' more');}
