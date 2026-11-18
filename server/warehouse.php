@@ -124,7 +124,7 @@ function warehouse_order_visible(array $o,string $location='erenhot'): bool {
 // Operational access stays narrower than visibility: early UB tracking is read-only.
 function warehouse_order_operable(array $o,string $location='erenhot'): bool {
     if(warehouse_order_location($o,warehouse_role($location))!==$location)return false;
-    if(warehouse_role($location)==='erenhot')return in_array('Эрээн',$o['route']??[],true);
+    if(warehouse_role($location)==='erenhot')return ($o['status']??'')!=='cancelled'&&in_array('Эрээн',$o['route']??[],true);
     if(!in_array('Улаанбаатар',$o['route']??[],true))return false;
     return (isset($o['batch_id'])&&$o['status']==='erenhot_dispatched')
         || in_array($o['status'],['zamyn_uud','ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)
