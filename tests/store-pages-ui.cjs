@@ -31,12 +31,12 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  page.once('dialog',d=>d.accept());await page.locator('[data-cart-clear]').click();await page.locator('#store-page .account-empty').waitFor();assert.equal(await page.locator('#cart-count').innerText(),'0');
  // Help page: header link, FAQ search, delivery section with live tariff, no floating button on itself.
  await page.goto(base+'/');await page.locator('.service-strip [data-action=help]').click();await page.waitForURL(u=>u.pathname==='/help');
- await page.locator('.store-faq details').first().waitFor();assert.equal(await page.locator('.store-faq details').count(),9);assert.equal(await page.locator('.float-help').count(),0);
+ await page.locator('.store-faq details').first().waitFor();assert.equal(await page.locator('.store-faq details').count(),12);assert.equal(await page.locator('.float-help').count(),0);
  await page.locator('#help-search').fill('карго');await page.waitForFunction(()=>[...document.querySelectorAll('.store-faq details')].filter(d=>!d.hidden).length>=1&&[...document.querySelectorAll('.store-faq details')].some(d=>d.hidden));
  assert.ok(await page.locator('.store-faq details:not([hidden])').first().getAttribute('open')!==null,'Matching answers open');
  await page.locator('#help-search').fill('zzzz');await page.locator('#help-empty').waitFor();
  await page.locator('[data-help-reset]').click();
- assert.equal(await page.locator('.store-faq details:not([hidden])').count(),9);
+ assert.equal(await page.locator('.store-faq details:not([hidden])').count(),12);
  assert.equal(await page.locator('.store-faq details[open]').count(),0,'Clearing search closes search-expanded answers');
  await page.locator('[data-help-topic="payment"]').click();
  assert.equal(await page.locator('[data-help-topic="payment"]').getAttribute('aria-pressed'),'true');
@@ -45,7 +45,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.evaluate(()=>{location.hash='returns';});
  await page.locator('#returns[open]').waitFor();
  assert.equal(await page.locator('#help-search').inputValue(),'','Deep links reveal answers even when filtered out');
- assert.equal(await page.locator('.store-faq details:not([hidden])').count(),9);
+ assert.equal(await page.locator('.store-faq details:not([hidden])').count(),12);
  await page.locator('.help-nav a[href="#pickup"]').click();
  await page.waitForFunction(()=>document.querySelector('#pickup').getBoundingClientRect().top<innerHeight);
  assert.ok((await page.locator('#pickup').innerText()).includes('8 оронтой'));
