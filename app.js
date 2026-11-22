@@ -206,12 +206,13 @@ function addToCart(id,variant,qty=1) {
 }
 function cartTotal() {return state.cart.reduce((sum,item)=>sum+productById(item.id).price*item.qty,0);}
 function showCart() {
-  // Ready-stock sales are paused; the header cart then holds Taobao checkout items.
-  if(window.taobaoCart&&!localProductsEnabled&&!state.cart.length)return window.taobaoCart.show();
-  if(!window.customerAccount?.require())return;
-  if(!state.cart.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Өөрт таалагдсан бараагаа сонгоорой.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-  openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);
+  if(/^\/cart\/?$/.test(location.pathname)){closeModal();return;}
+  location.assign('/cart');
 }
+function legacyCartHtml() {
+  return state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`;
+}
+
 function showCheckout() {
   if(!window.customerAccount?.require())return;
   if(window.storeServer?.ready)return window.storeServer.checkout();
@@ -222,12 +223,11 @@ function showCheckout() {
 function saveDraft(type,title,text) {
   if(state.drafts.length>=100){toast('100 ноорог хадгалсан байна. Хэрэггүй нооргоо устгаад дахин оролдоорой.');return false;}
   const id='GS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
-  state.drafts.unshift({id,type,title,created:new Date().toISOString(),text});persist();showOrders();
+  state.drafts.unshift({id,type,title,created:new Date().toISOString(),text});persist();showDrafts();
   toast(storageAvailable?'Ноорог энэ хөтөчид хадгалагдлаа':'Нооргоо алдахгүйн тулд одоо татаж аваарай.');return true;
 }
-function showOrders() {
+function showDrafts() {
   if(!window.customerAccount?.require())return;
-  if(window.storeServer?.ready)return window.storeServer.orders();
   openModal('Миний захиалгын ноорог',`<p class="modal-intro">Энд зөвхөн энэ хөтөчид бэлдсэн нооргууд харагдана. Серверт баталгаажсан захиалга болон ачааны бодит хяналт хараахан холбогдоогүй.</p>`+(state.drafts.length?state.drafts.map(d=>`<article class="draft-card"><div class="draft-top"><h3>${esc(d.title)}</h3><span class="draft-tag">Ноорог · илгээгээгүй</span></div><p>${esc(d.id)} · ${Number.isNaN(Date.parse(d.created))?'Огноо тодорхойгүй':new Date(d.created).toLocaleDateString('mn-MN')}</p><p>${d.type==='link'?'Хуучин хүсэлтийн ноорог':'GOStore сагсны ноорог'}</p><div class="draft-buttons"><button class="text-button" data-view-draft="${esc(d.id)}">Дэлгэрэнгүй</button><button class="text-button" data-download="${esc(d.id)}">Татах ↓</button><button class="text-button" data-delete-draft="${esc(d.id)}">Устгах</button></div></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>Ноорог хараахан алга</h3><p>Сагснаасаа ноорог үүсгээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`));
 }
 function downloadDraft(id) {
@@ -243,11 +243,11 @@ const helpContent = {
 };
 function runAction(action) {
   if(action==='account')return window.customerAccount?customerAccount.open():toast('Серверийн холболт хүлээгдэж байна.');
-  if(action==='cart')return showCart();if(action==='orders')return showOrders();if(action==='checkout')return showCheckout();
-  if(action==='favorites'){if($('#modal').open)closeModal();return filterType('saved');}
+  if(action==='cart')return showCart();if(action==='orders')return location.assign('/account/orders');if(action==='drafts')return showDrafts();if(action==='checkout')return showCheckout();
+  if(action==='favorites')return location.assign('/saved');
   if(action==='browse'){closeModal();resetFilters();return scrollCatalog();}
   if(helpContent[action])return openModal(helpContent[action].title,helpContent[action].html);
-  if(action==='clear-data-confirm')return openModal('Хадгалсан мэдээллийг цэвэрлэх үү?',`<p class="modal-intro">Сагс, хадгалсан бараа, бүх ноорог энэ хөтөчөөс устна. Хэрэгтэй нооргоо эхлээд татаж аваарай.</p><div class="form-actions"><button class="button outline" data-action="orders">Нооргуудыг харах</button><button class="button blue" data-action="clear-data">Бүгдийг цэвэрлэх</button></div>`);
+  if(action==='clear-data-confirm')return openModal('Хадгалсан мэдээллийг цэвэрлэх үү?',`<p class="modal-intro">Сагс, хадгалсан бараа, бүх ноорог энэ хөтөчөөс устна. Хэрэгтэй нооргоо эхлээд татаж аваарай.</p><div class="form-actions"><button class="button outline" data-action="drafts">Нооргуудыг харах</button><button class="button blue" data-action="clear-data">Бүгдийг цэвэрлэх</button></div>`);
   if(action==='clear-data'){if(window.clearSupplierFavorites?.()===false)return;state.cart=[];state.favorites=[];state.drafts=[];persist();renderProducts();closeModal();toast('Хадгалсан мэдээллийг цэвэрлэлээ');}
 }
 document.addEventListener('click',event=>{
@@ -259,11 +259,11 @@ document.addEventListener('click',event=>{
   if(b.dataset.detail)return showProduct(b.dataset.detail);
   if(b.dataset.add){const p=productById(b.dataset.add);if(!p)return;if(p.variants.length>1)return showProduct(p.id);return addToCart(p.id,p.variants[0]);}
   if(b.dataset.favorite){const id=b.dataset.favorite;if(state.favorites.includes(id))state.favorites=state.favorites.filter(x=>x!==id);else state.favorites.push(id);persist();renderProducts();$(`[data-favorite="${id}"]`)?.focus({preventScroll:true});return;}
-  if(b.hasAttribute('data-quantity')){const i=Number(b.dataset.quantity),item=state.cart[i];if(item){item.qty=Math.max(1,Math.min(99,item.qty+Number(b.dataset.delta)));persist();showCart();}return;}
-  if(b.hasAttribute('data-remove')){state.cart.splice(Number(b.dataset.remove),1);persist();showCart();return;}
+  if(b.hasAttribute('data-quantity')){const i=Number(b.dataset.quantity),item=state.cart[i];if(item){item.qty=Math.max(1,Math.min(99,item.qty+Number(b.dataset.delta)));persist();window.dispatchEvent(new Event('gostore-cart-changed'));}return;}
+  if(b.hasAttribute('data-remove')){state.cart.splice(Number(b.dataset.remove),1);persist();window.dispatchEvent(new Event('gostore-cart-changed'));return;}
   if(b.dataset.download)return downloadDraft(b.dataset.download);
-  if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="orders">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
-  if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showOrders();return;}
+  if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="drafts">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
+  if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showDrafts();return;}
 });
 $('#search-form').addEventListener('submit',e=>{e.preventDefault();if(matchMedia('(max-width:760px)').matches)$('#search').blur();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return toast('Барааны нэрээр хайж, каталогоос сонгоно уу.');if(window.supplierBrowse){window.supplierBrowse(value||'__all__');scrollCatalog();return;}filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
 $('#search').addEventListener('search',()=>{if(!$('#search').value){if(window.supplierBrowse)window.supplierBrowse('__all__',false,'all');else{filters.query='';renderProducts();}}});
@@ -287,12 +287,12 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal'),menu=document.querySelector('#category-menu');let scheduled=false;
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
    let tab='home';
-   if(location.pathname==='/cart')tab='cart';
+   if(/^\/cart\/?$/.test(location.pathname))tab='cart';
    if(location.pathname.startsWith('/c/'))tab='categories';
-   if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
+   if(location.pathname.startsWith('/account'))tab=/^\/account(?:\/orders(?:\/|$)|\/?$)/.test(location.pathname)?'orders':'account';
    if(document.documentElement.classList.contains('auth-view-open'))tab='account';
    if(menu?.open)tab='categories';
-   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
+   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
  addEventListener('hashchange',syncMobileNav);addEventListener('popstate',syncMobileNav);
@@ -539,13 +539,7 @@ storeServer.checkout=()=>{if(!customerAccount.require())return;if(!state.cart.le
 const orderLabels={new:'Хүсэлт хүлээн авсан',reviewing:'Шалгаж байна',quoted:'Үнийн санал ирсэн',confirmed:'Баталгаажсан',shipping:'Хүргэлтэд',erenhot:'Эрээн агуулахад ирсэн',erenhot_ready:'Улаанбаатар луу гарахад бэлэн',erenhot_dispatched:'Замын-Үүд рүү явж байна',zamyn_uud:'Замын-Үүдэд',ulaanbaatar:'Улаанбаатарт хүлээн авсан',ulaanbaatar_unsorted:'Улаанбаатар агуулахад ирсэн · ангилж байна',ready_pickup:'Агуулахаас авахад бэлэн',ready_delivery:'Хүргэлтэд гаргахад бэлэн',out_for_delivery:'Хүргэлтэд гарсан',completed:'Хүлээлгэн өгсөн',cancelled:'Цуцалсан'};
 function orderStatusLabel(o,status=o.status){if(status==='quoted'&&o.type==='checkout')return 'Төлбөр хүлээж байна';const names=o.warehouse_names;if(names){if(status==='erenhot')return names.erenhot+' · бараа ирсэн';if(status==='erenhot_ready')return names.ulaanbaatar+' руу гарахад бэлэн';if(status==='ulaanbaatar'||status==='ulaanbaatar_unsorted')return names.ulaanbaatar+(status==='ulaanbaatar_unsorted'?' · ангилж байна':' · хүлээн авсан');}return orderLabels[status]||status;}
 
-storeServer.orders=async(offset=0)=>{try{
-  await customerAccount.refresh();const user=customerAccount.user;
-  const result=user?await shopApi('customer-orders&offset='+offset):{orders:[],more:false};
-  const ownIds=new Set(result.orders.map(o=>o.id));const guest=savedRequests().filter(r=>!ownIds.has(r.id));
-  const card=o=>`<article class="draft-card"><h3>${esc(o.title)}</h3><p>${esc(o.id)}${o.status?' · '+esc(orderStatusLabel(o)):''}</p><button class="text-button" data-server-order="${esc(o.id)}">Харах →</button></article>`;
-  openModal('Миний захиалгууд',`<p class="modal-intro">${user?'Бүртгэлтэй холбогдсон захиалгууд бүх төхөөрөмжөөс харагдана.':'Нэвтэрч орсноор захиалгуудаа өөр төхөөрөмжөөс харах боломжтой.'}</p>${!user?'<button class="button blue" data-action="account">Нэвтрэх / Бүртгүүлэх</button>':''}${result.orders.map(card).join('')}${user&&(offset>0||result.more)?`<div class="form-actions">${offset>0?`<button class="button outline" data-orders-offset="${Math.max(0,offset-20)}">Өмнөх</button>`:''}${result.more?`<button class="button outline" data-orders-offset="${offset+20}">Дараах</button>`:''}</div>`:''}${!offset&&guest.length?`<h3 class="account-section-title">Энэ хөтчийн хүсэлтүүд</h3>${guest.map(r=>`<article class="draft-card"><h3>${esc(r.title)}</h3><p>${esc(r.id)}</p><button class="text-button" data-server-order="${esc(r.id)}">Харах →</button>${user?`<button class="text-button" data-claim-order="${esc(r.id)}">Бүртгэлдээ холбох</button>`:''}</article>`).join('')}`:''}${!result.orders.length&&!guest.length?'<div class="empty-state"><h3>Захиалга алга</h3><p>Каталогоос бараа сонгон хүсэлт илгээгээрэй.</p></div>':''}${state.drafts.length?`<p class="modal-intro">Энэ хөтөчид серверт илгээгээгүй ${state.drafts.length} ноорог бий.</p>`:''}`);
-}catch(e){toast(e.message);}};
+storeServer.orders=()=>location.assign('/account/orders');
 function bankUrl(v){try{const u=new URL(v);return ['https:','qpaywallet:','khanbank:','statebankmongolia:','xacbank:','tdbbank:','tdbbankv2:','socialpay-payment:','most:','nibank:','ckbank:','capitronbank:','bogdbank:','transbank:','mbank:','ard:','toki:','arig:','monpay:','hipay:','tdbwallet:','sono:','payon:','tino:','pass:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 const qpayLogoSchemes = new Set([
   'ard', 'arig', 'bogdbank', 'capitronbank', 'ckbank', 'hipay',
@@ -585,15 +579,15 @@ document.addEventListener('click',async e=>{
 });
 
 // Uses the stored deadline; closing/reopening never resets the payment window.
-function watchOrderPayment(o){
-  const label=document.querySelector('[data-payment-countdown]');if(!label)return;
+function watchOrderPayment(o,scope=document.querySelector('#modal')){
+  const label=scope.querySelector('[data-payment-countdown]');if(!label)return;
   let refreshed=false;
   const tick=()=>{
-    if(!label.isConnected||!document.querySelector('#modal[open]')){clearInterval(timer);return;}
+    if(!label.isConnected||(scope.id==='modal'&&!scope.open)){clearInterval(timer);return;}
     const left=Math.max(0,Math.ceil((Date.parse(o.payment_due)-Date.now())/1000));
     label.textContent=left?'Төлөх хугацаа: '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0')+' · Хугацаандаа төлөөгүй захиалга автоматаар цуцлагдана.':'Төлөх хугацаа дууссан. Төлбөрийн төлөвийг шалгаж байна.';
     if(!left){
-      document.querySelectorAll('#modal-body [data-qpay-kind="initial"], #modal-body [data-invoice]').forEach(e=>e.remove());
+      scope.querySelectorAll('[data-qpay-kind="initial"], [data-invoice]').forEach(e=>e.remove());
       if(!refreshed){refreshed=true;shopApi('order-get',{id:o.id,token:savedRequests().find(r=>r.id===o.id)?.token||''}).then(({order})=>{
         if(!label.isConnected)return;
         if(order.paid||order.status==='cancelled'){void viewServerOrder(o.id);return;}
@@ -603,8 +597,7 @@ function watchOrderPayment(o){
   };
   const timer=setInterval(tick,1000);tick();
 }
-async function viewServerOrder(id,requestInvoice=false){const r=savedRequests().find(x=>x.id===id)||{id,token:''};try{const {order:o}=await shopApi(requestInvoice?'invoice':'order-get',{id:r.id,token:r.token});openModal('Хүсэлт '+o.id,`${o.payment_due&&o.invoice&&!o.paid&&o.status==='quoted'?'<p class="info-box" data-payment-countdown></p>':''}<p class="modal-intro">${esc(o.title)}</p><div class="info-box"><strong>${esc(orderStatusLabel(o))}</strong><br>${o.paid?'QPay төлбөр баталгаажсан':'Төлбөр хүлээн аваагүй'}${o.payment_due&&o.status==='quoted'&&!o.paid?'<br>Төлөх хугацаа: '+esc(new Date(o.payment_due).toLocaleString('mn-MN'))+' хүртэл':''}${o.cancel_reason==='payment_timeout'?'<br>Төлбөрийн хугацаа дууссан тул цуцлагдсан.':''}</div><p class="product-price">${o.type==='checkout'?'Урьдчилан төлөх: '+money(o.amount):o.amount?'Хүргэлт орсон нийт: '+money(o.amount):'Үнийн санал хүлээгдэж байна'}</p>${shippingOrderHtml(o)}${o.demo?'<p class="modal-intro">Жишээ бараа тул төлбөр авахгүй.</p>':''}${o.invoice?.state==='ready'&&o.status==='quoted'&&!o.paid&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?qpayPanel(o.invoice,o.id,o.amount):''}<div class="form-actions"><button class="button outline" data-server-order="${esc(o.id)}">Төлөв шинэчлэх</button>${o.status==='quoted'&&!o.paid&&!o.demo&&qpayEnabled&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?`<button class="button blue" data-invoice="${esc(o.id)}">QPay нэхэмжлэл харах</button>`:''}</div>${!qpayEnabled?'<p class="modal-intro">QPay холболт хараахан идэвхжээгүй.</p>':''}`);watchOrderPayment(o);}catch(e){toast(e.message);}}
-document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ordersOffset!==undefined){await storeServer.orders(Number(b.dataset.ordersOffset));return;}if(b.dataset.claimOrder){b.disabled=true;try{const r=savedRequests().find(x=>x.id===b.dataset.claimOrder);if(!r)return;await shopApi('customer-claim-order',{id:r.id,token:r.token});localStorage.setItem(REQUESTS_KEY,JSON.stringify(savedRequests().filter(x=>x.id!==r.id)));await storeServer.orders();toast('Захиалга бүртгэлтэй холбогдлоо');}catch(err){toast(err.message);}finally{b.disabled=false;}return;}const id=b.dataset.serverOrder||b.dataset.invoice;if(id){b.disabled=true;try{await viewServerOrder(id,!!b.dataset.invoice);}finally{b.disabled=false;}}});
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.claimOrder){b.disabled=true;try{const r=savedRequests().find(x=>x.id===b.dataset.claimOrder);if(!r)return;await shopApi('customer-claim-order',{id:r.id,token:r.token});localStorage.setItem(REQUESTS_KEY,JSON.stringify(savedRequests().filter(x=>x.id!==r.id)));await storeServer.orders();toast('Захиалга бүртгэлтэй холбогдлоо');}catch(err){toast(err.message);}finally{b.disabled=false;}return;}const id=b.dataset.serverOrder||b.dataset.invoice;if(id){b.disabled=true;try{await viewServerOrder(id,!!b.dataset.invoice);}finally{b.disabled=false;}}});
 document.addEventListener('submit',async e=>{const f=e.target;if(f.id!=='server-cart-form')return;e.preventDefault();const submit=f.querySelector('[type="submit"]');submit.disabled=true;try{if(!customerAccount.require())return;const fields=Object.fromEntries(new FormData(f));fields.type='cart';fields.items=state.cart.map(x=>({...x}));f.dataset.requestToken ||= Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');fields.token=f.dataset.requestToken;fields.require_account=true;const result=await shopApi('order-create',fields);const requests=savedRequests().filter(x=>x.id!==result.order.id);requests.unshift({id:result.order.id,token:fields.token,title:fields.title});try{if(!window.customerAccount?.user)localStorage.setItem(REQUESTS_KEY,JSON.stringify(requests.slice(0,100)));}catch{throw Error('Хүсэлт серверт ирсэн боловч хөтөч хадгалах боломжгүй. Захиалгын дугаар: '+result.order.id);}state.cart=[];persist();toast('Хүсэлт амжилттай илгээгдлээ');storeServer.orders();}catch(e){const error=f.querySelector('#request-error');if(error)error.textContent=e.message;}finally{submit.disabled=false;}});
 window.catalogReady=(async()=>{if(!['http:','https:'].includes(location.protocol))return;try{const result=await shopApi('catalog');if(!Array.isArray(result.products))return;localProductsEnabled=result.local_products_enabled===true;document.querySelectorAll('[data-filter="local"]').forEach(el=>el.hidden=true);products.splice(0,products.length,...result.products);Object.assign(state,readState());qpayEnabled=result.qpay;storeServer.shipping=result.shipping;document.querySelectorAll('[data-image-search]').forEach(el=>el.hidden=!(result.supplier===true&&result.shipping?.image_search_enabled===true));storeServer.customer=result.customer;window.customerAccount?.setUser(result.customer);storeServer.ready=true;helpContent.help.html='<p class="modal-intro">Бараагаа сонгоод сагслан, QPay-ээр шууд төлнө.</p><ol class="help-list"><li>Бараа, хувилбар, тоо ширхэгээ сонгоно.</li><li>Сагсандаа нэмээд «Төлбөр тооцох» дарна. Барааны үнэ, үйлчилгээний дүн шууд гарна.</li><li>QPay нэхэмжлэл гарснаас хойш 15 минутын дотор төлнө. Хятад доторх хүргэлт, олон улсын каргог Улаанбаатарт ирэхэд бодит дүнгээр тооцож төлнө.</li><li>Бараагаа Улаанбаатар дахь каргоны хаягаас авах кодоороо авна.</li></ol>'+pickupHtml()+'<div class="info-box">'+(qpayEnabled?'Үнийн санал баталгаажмагц QPay QR эсвэл банкны апп-аар төлнө.':'QPay холболт одоогоор идэвхгүй байна.')+' Жишээ бараагаар төлбөр авахгүй.</div>';renderProducts();updateCounts();$('#catalog .sample-label').textContent='QPay · Улаанбаатарт хүргэлт';$('.preview-notice').innerHTML=icon('shield')+'<div><strong>Сагслаад шууд худалдан авна.</strong> '+esc(commerceUI.paymentText(result.shipping))+'</div>';helpContent.privacy.html='<p class="detail-copy">Вэб сайт Google Analytics болон Meta Pixel ашиглан хуудасны хандалт, зар сурталчилгааны үр дүнг хэмжинэ. Хуудасны URL, хөтөч/төхөөрөмжийн мэдээлэл болон cookie танигчид эдгээр үйлчилгээнд дамжиж болно. Cookie болон tracking-ийг хөтөчийн тохиргоогоор хязгаарлаж болно.</p><p class="modal-intro">Сагс, хадгалсан бараа хөтөчид хадгалагдана. Нэвтэрсэн үед өөр төхөөрөмжөөс үргэлжлүүлэхийн тулд таны бүртгэлд мөн хадгалагдаж, бүртгэлээс гарахад энэ төхөөрөмжөөс цэвэрлэгдэнэ. Бүртгэлийн нэр, имэйл, утас, хүргэлтийн хаяг болон захиалга GOStore-ийн серверт хадгалагдана. Зургаар хайхад сонгосон зургийг TaoWorld-д дамжуулна; GOStore дээр хайлтын зургийг 7 хоног хүртэл хадгална. Профайлд нэвтрэх нууц үгийг hash хэлбэрээр хадгална. Нэвтэрсэн хэрэглэгч өөрийн захиалгыг, админ захиалгын хүргэлтийн мэдээллийг харна. Эрээн агуулахын менежер хүлээн авагчийн нэр, код, бараа болон багцыг харна. Улаанбаатар агуулахын менежер барааг ангилж хүлээлгэн өгөхдөө холбоо барих утас, хүргэлтийн хаягийг ашиглана.</p><p class="detail-copy">Бүртгэлтэй холбогдсон захиалгаа өөр төхөөрөмжөөс нэвтэрч харж болно. Зочны хүсэлтийн түлхүүр зөвхөн энэ хөтөчид хадгалагдана. Нууц үг, картын мэдээллийг тэмдэглэлд оруулахгүй.</p>';}catch{/* A static preview has no PHP endpoint. */}})();
 ;
@@ -1353,35 +1346,37 @@ function cargoPhotosHtml(photos=[]){
   }).join('')+'</section>';
 }
 function cargoPickupWarehouse(o){const w=o.pickup_warehouse;if(!w?.address)return '';return `<section class="info-box"><h3>${esc(w.name)}</h3><p style="white-space:pre-line">${esc(w.address)}</p><p>Утас: ${esc(w.phone)}${w.contact_phone?' · '+esc(w.contact_phone):''}</p>${w.hours?`<p>Ажиллах цаг: ${esc(w.hours)}</p>`:''}</section>`;}
-let cargoList=[],cargoFilter='all',cargoQuery='',cargoRequest=0,cargoUserSwitches=0,cargoNoticeThrough=0,cargoMessageThrough=0;
+let cargoRequest=0;
+const cargoPageId=location.pathname.match(/^\/account\/orders\/(GS-[a-z0-9-]{3,45})\/?$/i)?.[1].toUpperCase();
+const cargoOrderHref=id=>'/account/orders/'+encodeURIComponent(id);
+const cargoPage=cargoPageId?document.createElement('section'):null;
+function renderCargoPage(body){
+  cargoPage.innerHTML=`<nav class="pd-breadcrumb" aria-label="Байршил"><a href="/">Нүүр</a><span>/</span><a href="/account/orders">Миний ачаа</a><span>/</span><span>${esc(cargoPageId)}</span></nav><h1 class="store-title">Ачааны дэлгэрэнгүй</h1>${body}`;
+}
+function cargoSignInHtml(){
+  const next=encodeURIComponent(cargoOrderHref(cargoPageId));
+  return `<div class="account-empty"><h2>Нэвтэрч орно уу</h2><a class="button blue" href="/login?next=${next}">Нэвтрэх</a></div>`;
+}
+if(cargoPage){
+  cargoPage.id='cargo-page';cargoPage.className='container store-page';
+  document.querySelector('#main').prepend(cargoPage);
+  document.title='Ачааны дэлгэрэнгүй · gostore.mn';
+  renderCargoPage('<p class="account-loading" role="status">Ачаалж байна…</p>');
+}
 const cargoNext=o=>o.cancel_reason==='payment_timeout'?'Төлбөрийн хугацаа дууссан тул автоматаар цуцлагдсан. Сагсаа дахин захиална уу.':o.payment_due&&o.status==='quoted'&&!o.paid?'Төлөх хугацаа: '+cargoDate(o.payment_due)+' хүртэл. Төлбөр орсны дараа нийлүүлэгчээс захиална.':o.status==='cancelled'?'Захиалга цуцлагдсан. Асуух зүйл байвал GOStore-той холбогдоно уу.':o.cargo?.issue_count?'Агуулах зөрчлийг шалгаж байна.':o.cargo?.billing?.due&&o.cargo?.billing?.finalized?'Үлдэгдэл төлбөрөө төлөөд авах кодоо харна уу.':o.status==='ready_pickup'?'Авах кодоо агуулахын ажилтанд үзүүлнэ үү.':o.status==='out_for_delivery'?'Бараагаа авах үедээ хүргэгчид авах кодоо хэлнэ үү.':o.status==='erenhot_ready'?'Барааг багцалж дууссан. Агуулахаас илгээхийг хүлээж байна.':o.status==='erenhot_dispatched'?(o.warehouse_names?.erenhot||'Эрээн агуулах')+'-аас гарсан. Замын-Үүдээр дамжин '+(o.warehouse_names?.ulaanbaatar||'Улаанбаатар агуулах')+' руу хүргэгдэнэ.':o.status==='quoted'?'Үнийн саналаа шалгаж төлбөрөө төлнө үү.':o.status==='completed'?'Барааг хүлээлгэн өгсөн.':'Дараагийн төлөв шинэчлэгдэхэд сайтын мэдэгдэлд харагдана.';
 const cargoGroup=o=>o.status==='cancelled'?'cancelled':o.status==='quoted'&&!o.paid?'payment':o.status==='completed'?'done':o.cargo?.billing?.finalized&&o.cargo.billing.due>0?'payment':['ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)?'ready':'transit';
 
 
-function cargoCards(){
-  const rows=cargoList.filter(o=>(cargoFilter==='all'||cargoGroup(o)===cargoFilter)&&(!cargoQuery||(o.id+' '+o.title).toLowerCase().includes(cargoQuery.toLowerCase())));
-  return rows.length?rows.map(o=>`<article class="cargo-card"><div><span class="cargo-code">${esc(o.id)}</span><span class="cargo-status">${esc(orderStatusLabel(o))}</span></div><h3>${esc(o.title)}</h3><p class="tracking-list-location">${esc(OrderTracking.state(o).location)}</p><p>${esc(cargoNext(o))}</p><div class="cargo-card-footer"><small>${cargoDate(o.created,true)}</small><strong>${o.cargo?.billing?.finalized?'Үлдэгдэл '+money(o.cargo.billing.due):'Эцсийн тооцоо хүлээгдэж байна'}</strong></div><button class="button outline" data-server-order="${esc(o.id)}">Дэлгэрэнгүй →</button></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>${cargoQuery||cargoFilter!=='all'?'Тохирох ачаа алга':'Энд таны захиалга харагдана'}</h3><p>${cargoQuery||cargoFilter!=='all'?'Код, барааны нэр эсвэл төлөвийн шүүлтүүрээ шалгаарай.':'Бараагаа сонгон захиалсны дараа явцыг эндээс хянана.'}</p>${cargoQuery||cargoFilter!=='all'?'<button class="button outline" data-cargo-reset>Шүүлтүүр цэвэрлэх</button>':'<button class="button blue" data-action="browse">Бараа үзэх</button>'}</div>`;
-}
-storeServer.orders=async(offset=0)=>{
-  let request=++cargoRequest;const switches=cargoUserSwitches;
-  try{
-    await customerAccount.refresh();
-    // refresh() can sign the customer in right after page load, and setUser() then bumps the
-    // counter. Bumps from that sign-in alone must not cancel this list; a newer request still does.
-    if(cargoRequest-request===cargoUserSwitches-switches)request=cargoRequest;else return;
-    const user=customerAccount.user;if(!user)return accountForm();
-    const r=user?await shopApi('customer-orders&offset='+offset):{orders:[],more:false};
-    const own=new Set(r.orders.map(o=>o.id)),guest=savedRequests().filter(g=>!own.has(g.id));
-    const fetched=offset===0?await Promise.allSettled(guest.map(g=>shopApi('order-get',g))):[];
-    if(request!==cargoRequest)return;cargoList=[...r.orders,...fetched.filter(x=>x.status==='fulfilled').map(x=>x.value.order)];
-    openModal('Миний ачаа',`<p class="modal-intro">Захиалгын кодоороо явц, төлбөр, авах мэдээллээ нэг дороос хараарай.</p>${!user?'<button class="button blue" data-action="account">Нэвтрэх / Бүртгүүлэх</button><p>Энэ хөтөчид хадгалсан захиалгууд харагдана.</p>':''}<div class="cargo-toolbar"><label class="field">Код / барааны нэр<input id="cargo-search" value="${esc(cargoQuery)}" placeholder="GS-A1B2C3"></label><label class="field">Төлөв<select id="cargo-filter">${Object.entries({all:'Бүгд',transit:'Замд / Бэлтгэж байна',payment:'Төлбөр хүлээж байна',ready:'Авах / Хүргүүлэх',done:'Хүлээн авсан',cancelled:'Цуцлагдсан'}).map(([k,v])=>`<option value="${k}" ${k===cargoFilter?'selected':''}>${v}</option>`).join('')}</select></label></div><p class="account-hint">Энэ хуудсанд ${cargoList.length} захиалга · Код эсвэл нэрээр хайна.</p><div id="cargo-cards">${cargoCards()}</div>${user&&(offset>0||r.more)?`<div class="form-actions">${offset>0?`<button class="button outline" data-orders-offset="${Math.max(0,offset-20)}">Өмнөх</button>`:''}${r.more?`<button class="button outline" data-orders-offset="${offset+20}">Дараах</button>`:''}</div>`:''}${user&&guest.length?`<details><summary>Энэ хөтчийн хүсэлтийг бүртгэлдээ холбох</summary>${guest.map(g=>`<p>${esc(g.id)} <button class="text-button" data-claim-order="${esc(g.id)}">Холбох</button></p>`).join('')}</details>`:''}`);
-    refreshCargoNotifications().catch(()=>{});
-  }catch(e){toast(e.message);}
-};
-viewServerOrder=async(id,requestInvoice=false,action=null)=>{
+async function viewServerOrder(id,requestInvoice=false,action=null){
+  const onPage=cargoPageId===id;
+  if(!requestInvoice&&!action&&!onPage){location.assign(cargoOrderHref(id));return;}
+  if(!requestInvoice&&!action&&onPage)closeModal();
+  if(!customerAccount.user){
+    if(onPage)renderCargoPage(cargoSignInHtml());else accountForm();
+    return;
+  }
   const request=++cargoRequest,r=savedRequests().find(x=>x.id===id)||{id,token:''};
   try{
-    if(!await customerAccount.refresh())return accountForm();
     const {order:o}=await shopApi(action||(requestInvoice?'invoice':'order-get'),r);if(request!==cargoRequest)return;
     const c=o.cargo||{},bill=c.billing||{finalized:false,total:o.amount,paid:o.paid?o.amount:0,due:o.paid?0:o.amount,breakdown:o.quote?.breakdown||{}},m=c.measurement;
     const activeInitial=o.invoice?.state==='ready'&&!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now());
@@ -1394,31 +1389,39 @@ viewServerOrder=async(id,requestInvoice=false,action=null)=>{
       watchCargoPayment(r,o,request);
       return;
     }
+    if(!onPage){location.assign(cargoOrderHref(id));return;}
+    closeModal();
     const labels={goods_mnt:'Бараа',domestic_mnt:'Хятад доторх хүргэлт',service_mnt:'Үйлчилгээ',cargo_mnt:'Карго',delivery_mnt:'УБ хүргэлт'};
     const history=[{status:'new',at:o.created},...(o.history||[])];
-    openModal('Ачааны дэлгэрэнгүй',`<div class="cargo-detail"><div class="cargo-detail-code"><strong>${esc(o.id)}</strong><button class="text-button" data-copy-cargo="${esc(o.id)}">Код хуулах</button></div><span class="cargo-status">${esc(orderStatusLabel(o))}</span><h3>${esc(o.title)}</h3><p class="cargo-next-step">${esc(cargoNext(o))}</p>${OrderTracking.html(o,{history:false})}${o.supplier?.image?`<img class="cargo-product" src="${esc(o.supplier.image)}" alt="${esc(o.title)}" referrerpolicy="no-referrer">`:''}${(o.type==='checkout'||o.shipment_parent)&&o.items?.length?`<ul class="cargo-items">${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty}</li>`).join('')}</ul>`:`<p>${esc(o.supplier?.variant||o.variant||'')} ${o.supplier?.qty?'× '+o.supplier.qty:''}</p>`}${c.issue_count?'<div class="info-box">Агуулахад зөрчил бүртгэгдсэн. Шалгалт дуусмагц явц шинэчлэгдэнэ.</div>':''}${cargoPickupWarehouse(o)}${!o.fulfillment&&o.fulfillment_request?.method==='delivery'?`<div class="info-box"><strong>Хүргэлтээр авна</strong><p>${esc(o.delivery_address||'')}</p><p>УБ хүргэлтийн төлбөрийг эцсийн тооцоонд нэмнэ.</p></div>`:''}${c.pickup_code?`<section class="pickup-pass"><h3>${(o.remaining_status||o.status)==='ready_pickup'?'Агуулахаас авах код':'Хүргэлт хүлээн авах код'}</h3><strong>${esc(c.pickup_code)}</strong>${code39(c.pickup_code)}<p>Бараагаа авах үедээ ажилтанд үзүүлнэ үү. Нэг удаа ашиглана.</p></section>`:''}<details ${["ready_pickup","out_for_delivery","completed"].includes(o.status)?"":"open"}><summary>Явцын түүх</summary><ol class="cargo-timeline">${history.map(h=>`<li><strong>${esc(orderStatusLabel(o,h.status))}</strong><small>${cargoDate(h.at)}</small></li>`).join('')}</ol></details>${cargoPhotosHtml(c.photos)}${o.type==='checkout'&&o.quote?`<details class="order-calculation" ${bill.finalized?'':'open'}><summary>${esc(commerceUI.calculationTitle)}</summary>${commerceUI.calculationHtml(o.quote,o.items||[],commerceUI.calculationTitle,'Захиалгын эхний төлбөр')}</details>`:''}<section class="cargo-bill">${bill.finalized&&o.quote?`<p>Урьдчилсан тооцоо: ${money(o.quote.total)} · Зөрүү: ${money(bill.total-o.quote.total)}</p>`:''}<h3>${bill.finalized?'Эцсийн тооцоо':o.type==='checkout'?'Урьдчилан төлөх дүн':'Урьдчилсан үнийн санал'}</h3>${Object.entries(labels).filter(([k])=>k in bill.breakdown).map(([k,v])=>`<div><span>${v}</span><strong>${k==='cargo_mnt'&&!bill.finalized&&o.quote?.cargo_later?'Салбарт ирэхэд бодит жингээр':k==='domestic_mnt'&&!bill.finalized&&o.quote?.domestic_later?'Салбарт ирэхэд бодит дүнгээр':money(bill.breakdown[k])}</strong></div>`).join('')}<div><span>Нийт</span><strong>${money(bill.total)}</strong></div><div><span>Төлсөн</span><strong>${money(bill.paid)}</strong></div><div class="cargo-total"><span>Үлдэгдэл</span><strong>${money(bill.due)}</strong></div>${bill.refund_due?`<p class="form-error">Илүү төлөлт ${money(bill.refund_due)}. Админ буцаалтыг тулгаж шалгана.</p>`:''}</section>${m?`<section><h3>Агуулахын хэмжилт</h3><p>${m.weight_kg} кг · ${m.length_cm?`${m.length_cm} × ${m.width_cm} × ${m.height_cm} см · `:''}${m.volume_m3} м³ · ${m.pieces} ширхэг</p></section>`:''}${o.fulfillment?`<p>Хүлээн авах: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.payment_due&&o.invoice&&!o.paid&&o.status==='quoted'?'<p class="info-box" data-payment-countdown></p>':''}${!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?qpayPanel(o.invoice,o.id,o.amount):''}${bill.due>0?qpayPanel(c.freight_invoice,o.id,bill.due,true):''}<div class="form-actions"><button class="button outline" data-server-order="${esc(o.id)}">Төлөв шинэчлэх</button>${qpayEnabled&&!o.demo&&o.status==='quoted'&&!o.paid&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?`<button class="button blue" data-invoice="${esc(o.id)}">Эхний төлбөр · QPay</button>`:''}${qpayEnabled&&!o.demo&&bill.finalized&&bill.due>0?`<button class="button blue" data-freight-invoice="${esc(o.id)}">Үлдэгдэл төлөх · QPay</button>`:''}${qpayEnabled&&(o.invoice||c.freight_invoice)?`<button class="button outline" data-payment-check="${esc(o.id)}">Төлбөр шалгах</button>`:''}</div><button class="text-button" data-action="orders">← Миний ачаа</button></div>`);
-    document.querySelectorAll('[data-cargo-photo]').forEach(async img=>{try{const res=await fetch('/api/index.php?action=order-photo',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':shopCsrf},body:JSON.stringify({...r,photo:img.dataset.cargoPhoto})});if(!res.ok)throw Error();const blob=await res.blob();if(!img.isConnected)return;const url=URL.createObjectURL(blob);img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);img.src=url;}catch{img.alt='Зураг ачаалсангүй. Төлөв шинэчилж дахин оролдоно уу.';}});
-    watchOrderPayment(o);
-    watchCargoPayment(r,o,request);
-  }catch(e){toast(e.message);}
-};
+    renderCargoPage(`<div class="cargo-detail"><div class="cargo-detail-code"><strong>${esc(o.id)}</strong><button class="text-button" data-copy-cargo="${esc(o.id)}">Код хуулах</button></div><span class="cargo-status">${esc(orderStatusLabel(o))}</span><h3>${esc(o.title)}</h3><p class="cargo-next-step">${esc(cargoNext(o))}</p>${OrderTracking.html(o,{history:false})}${o.supplier?.image?`<img class="cargo-product" src="${esc(o.supplier.image)}" alt="${esc(o.title)}" referrerpolicy="no-referrer">`:''}${(o.type==='checkout'||o.shipment_parent)&&o.items?.length?`<ul class="cargo-items">${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty}</li>`).join('')}</ul>`:`<p>${esc(o.supplier?.variant||o.variant||'')} ${o.supplier?.qty?'× '+o.supplier.qty:''}</p>`}${c.issue_count?'<div class="info-box">Агуулахад зөрчил бүртгэгдсэн. Шалгалт дуусмагц явц шинэчлэгдэнэ.</div>':''}${cargoPickupWarehouse(o)}${!o.fulfillment&&o.fulfillment_request?.method==='delivery'?`<div class="info-box"><strong>Хүргэлтээр авна</strong><p>${esc(o.delivery_address||'')}</p><p>УБ хүргэлтийн төлбөрийг эцсийн тооцоонд нэмнэ.</p></div>`:''}${c.pickup_code?`<section class="pickup-pass"><h3>${(o.remaining_status||o.status)==='ready_pickup'?'Агуулахаас авах код':'Хүргэлт хүлээн авах код'}</h3><strong>${esc(c.pickup_code)}</strong>${code39(c.pickup_code)}<p>Бараагаа авах үедээ ажилтанд үзүүлнэ үү. Нэг удаа ашиглана.</p></section>`:''}<details ${["ready_pickup","out_for_delivery","completed"].includes(o.status)?"":"open"}><summary>Явцын түүх</summary><ol class="cargo-timeline">${history.map(h=>`<li><strong>${esc(orderStatusLabel(o,h.status))}</strong><small>${cargoDate(h.at)}</small></li>`).join('')}</ol></details>${cargoPhotosHtml(c.photos)}${o.type==='checkout'&&o.quote?`<details class="order-calculation" ${bill.finalized?'':'open'}><summary>${esc(commerceUI.calculationTitle)}</summary>${commerceUI.calculationHtml(o.quote,o.items||[],commerceUI.calculationTitle,'Захиалгын эхний төлбөр')}</details>`:''}<section class="cargo-bill">${bill.finalized&&o.quote?`<p>Урьдчилсан тооцоо: ${money(o.quote.total)} · Зөрүү: ${money(bill.total-o.quote.total)}</p>`:''}<h3>${bill.finalized?'Эцсийн тооцоо':o.type==='checkout'?'Урьдчилан төлөх дүн':'Урьдчилсан үнийн санал'}</h3>${Object.entries(labels).filter(([k])=>k in bill.breakdown).map(([k,v])=>`<div><span>${v}</span><strong>${k==='cargo_mnt'&&!bill.finalized&&o.quote?.cargo_later?'Салбарт ирэхэд бодит жингээр':k==='domestic_mnt'&&!bill.finalized&&o.quote?.domestic_later?'Салбарт ирэхэд бодит дүнгээр':money(bill.breakdown[k])}</strong></div>`).join('')}<div><span>Нийт</span><strong>${money(bill.total)}</strong></div><div><span>Төлсөн</span><strong>${money(bill.paid)}</strong></div><div class="cargo-total"><span>Үлдэгдэл</span><strong>${money(bill.due)}</strong></div>${bill.refund_due?`<p class="form-error">Илүү төлөлт ${money(bill.refund_due)}. Админ буцаалтыг тулгаж шалгана.</p>`:''}</section>${m?`<section><h3>Агуулахын хэмжилт</h3><p>${m.weight_kg} кг · ${m.length_cm?`${m.length_cm} × ${m.width_cm} × ${m.height_cm} см · `:''}${m.volume_m3} м³ · ${m.pieces} ширхэг</p></section>`:''}${o.fulfillment?`<p>Хүлээн авах: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.payment_due&&o.invoice&&!o.paid&&o.status==='quoted'?'<p class="info-box" data-payment-countdown></p>':''}${!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?qpayPanel(o.invoice,o.id,o.amount):''}${bill.due>0?qpayPanel(c.freight_invoice,o.id,bill.due,true):''}<div class="form-actions"><button class="button outline" data-server-order="${esc(o.id)}">Төлөв шинэчлэх</button>${qpayEnabled&&!o.demo&&o.status==='quoted'&&!o.paid&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?`<button class="button blue" data-invoice="${esc(o.id)}">Эхний төлбөр · QPay</button>`:''}${qpayEnabled&&!o.demo&&bill.finalized&&bill.due>0?`<button class="button blue" data-freight-invoice="${esc(o.id)}">Үлдэгдэл төлөх · QPay</button>`:''}${qpayEnabled&&(o.invoice||c.freight_invoice)?`<button class="button outline" data-payment-check="${esc(o.id)}">Төлбөр шалгах</button>`:''}</div><a class="text-button" href="/account/orders">← Миний ачаа</a></div>`);
+    cargoPage.querySelectorAll('[data-cargo-photo]').forEach(async img=>{try{const res=await fetch('/api/index.php?action=order-photo',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':shopCsrf},body:JSON.stringify({...r,photo:img.dataset.cargoPhoto})});if(!res.ok)throw Error();const blob=await res.blob();if(!img.isConnected)return;const url=URL.createObjectURL(blob);img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);img.src=url;}catch{img.alt='Зураг ачаалсангүй. Төлөв шинэчилж дахин оролдоно уу.';}});
+    watchOrderPayment(o,cargoPage);
+    watchCargoPayment(r,o,request,cargoPage.querySelector('.cargo-detail'));
+  }catch(e){
+    if(request!==cargoRequest)return;
+    if(onPage&&!requestInvoice&&!action){
+      renderCargoPage(`<p class="form-error" role="alert">${esc(e.message)}</p><div class="form-actions"><button class="button outline" data-server-order="${esc(id)}">Дахин оролдох</button><a class="button outline" href="/account/orders">Миний ачаа</a></div>`);
+    }else toast(e.message);
+  }
+}
 // While an unpaid QPay invoice is open, follow the server-side callback so the customer
 // does not need to press "Төлбөр шалгах" after returning from the bank app.
 let cargoPaymentWatch=null;
 const cargoDue=o=>!o.paid&&o.status==='quoted'&&o.invoice?.state==='ready'?'initial':o.cargo?.freight_invoice&&o.cargo?.billing?.due>0?'freight':null;
 function stopCargoPaymentWatch(){cargoPaymentWatch?.();cargoPaymentWatch=null;}
-function watchCargoPayment(r,o,request){
+function watchCargoPayment(r,o,request,detail=null){
   stopCargoPaymentWatch();const kind=cargoDue(o);if(!kind)return;
   const modal=document.querySelector('#modal'),started=Date.now();let ticks=0,busy=false;
+  const active=()=>detail?detail.isConnected:modal.open;
   const check=async full=>{
-    if(request!==cargoRequest||!modal.open||Date.now()-started>15*60*1000){stopCargoPaymentWatch();return;}
+    if(request!==cargoRequest||!active()||Date.now()-started>15*60*1000){stopCargoPaymentWatch();return;}
     if(busy)return;busy=true;
     // order-get reads the stored order; payment-check also asks QPay in case its callback was missed.
-    try{const {order:next}=await shopApi(full?'payment-check':'order-get',r);if(request===cargoRequest&&modal.open&&!cargoDue(next)){stopCargoPaymentWatch();if(cargoPaymentSettled(next,kind))cargoPaymentSuccess(next,kind);else void viewServerOrder(next.id);}}catch{}finally{busy=false;}
+    try{const {order:next}=await shopApi(full?'payment-check':'order-get',r);if(request===cargoRequest&&active()&&!cargoDue(next)){stopCargoPaymentWatch();if(cargoPaymentSettled(next,kind)){if(detail){await viewServerOrder(next.id);if(cargoRequest===request+1&&cargoPage.querySelector('.cargo-detail'))cargoPaymentSuccess(next,kind);}else cargoPaymentSuccess(next,kind);}else void viewServerOrder(next.id);}}catch{}finally{busy=false;}
   };
   const timer=setInterval(()=>check(++ticks%8===0),4000);
   const returned=()=>{if(document.visibilityState==='visible')check(true);};
-  document.addEventListener('visibilitychange',returned);modal.addEventListener('close',stopCargoPaymentWatch,{once:true});
+  document.addEventListener('visibilitychange',returned);if(!detail)modal.addEventListener('close',stopCargoPaymentWatch,{once:true});
   cargoPaymentWatch=()=>{clearInterval(timer);document.removeEventListener('visibilitychange',returned);modal.removeEventListener('close',stopCargoPaymentWatch);};
 }
 const cargoPaymentSettled=(o,kind)=>kind==='initial'?o.paid===true:!!o.cargo?.billing?.finalized&&o.cargo.billing.due===0;
@@ -1431,16 +1434,40 @@ function cargoPaymentSuccess(o,kind){
 }
 document.addEventListener('click',e=>{if(e.target.closest('[data-payment-done]'))document.querySelector('#close-modal').click();});
 async function refreshCargoNotifications(){if(!window.customerAccount?.user){document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent='');return null;}const userId=customerAccount.user.id,d=await shopApi('customer-notifications');if(customerAccount.user?.id!==userId)return null;const unread=(d.unread||0)+(d.messages_unread||0);document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent=unread?String(unread):'');return d;}
-// GOStore messages (service notices, promotions) come first; their links always stay on gostore.mn.
-function customerMessageCards(messages){return (messages||[]).map(m=>`<article class="cargo-notice customer-message ${m.read_at?'':'unread'}"><strong>${esc(m.title)}</strong><p class="customer-message-body">${esc(m.body)}</p><p>${m.kind==='promo'?'Урамшуулал':'GOStore мэдээлэл'} · ${cargoDate(m.created)}</p>${/^\/(?!\/)/.test(m.link||'')?`<a class="text-button" href="${esc(m.link)}">Дэлгэрэнгүй →</a>`:''}</article>`).join('');}
-async function showCargoNotifications(){if(!window.customerAccount?.user){await customerAccount.open();return;}const d=await refreshCargoNotifications();if(!d)return;cargoNoticeThrough=d.notifications[0]?.id||0;cargoMessageThrough=d.messages?.[0]?.id||0;openModal('Мэдэгдэл',`<p class="modal-intro">Захиалгын явц, төлбөрийн шинэчлэлт болон GOStore-ийн мэдээлэл.</p>${d.notifications.length||d.messages?.length?`<button class="button outline" data-read-notifications>Бүгдийг уншсан болгох</button>${customerMessageCards(d.messages)}${d.notifications.map(n=>`<article class="cargo-notice ${n.read_at?'':'unread'}"><strong>${n.kind==='status'?esc(orderLabels[n.message]||n.message):esc(n.message)}</strong><p>${esc(n.order_id)} · ${cargoDate(n.created)}</p><button class="text-button" data-server-order="${esc(n.order_id)}">Ачаа харах →</button></article>`).join('')}`:'<div class="empty-state">Шинэ мэдэгдэл алга.</div>'}`);}
-document.addEventListener('input',e=>{if(e.target.id==='cargo-search'){cargoQuery=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
-document.addEventListener('change',e=>{if(e.target.id==='cargo-filter'){cargoFilter=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
-document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||!b.matches('[data-cargo-reset],[data-copy-cargo],[data-notifications],[data-read-notifications],[data-freight-invoice],[data-payment-check]'))return;try{if(b.hasAttribute('data-cargo-reset')){cargoFilter='all';cargoQuery='';$('#cargo-search').value='';$('#cargo-filter').value='all';$('#cargo-cards').innerHTML=cargoCards();$('#cargo-search').focus();}if(b.dataset.copyCargo){try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}}if(b.hasAttribute('data-notifications'))await showCargoNotifications();if(b.hasAttribute('data-read-notifications')){await shopApi('customer-notifications-read',{through_id:Number(cargoNoticeThrough),messages_through_id:Number(cargoMessageThrough)});await showCargoNotifications();}if(b.dataset.freightInvoice||b.dataset.paymentCheck){b.disabled=true;await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}}catch(err){toast(err.message);}finally{b.disabled=false;}});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('button');
+  if(b?.dataset.copyCargo){
+    try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}
+    catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}
+  }
+  if(b?.dataset.freightInvoice||b?.dataset.paymentCheck){
+    b.disabled=true;
+    try{await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}
+    finally{b.disabled=false;}
+  }
+});
 setInterval(()=>{if(!document.hidden&&window.customerAccount?.user)refreshCargoNotifications().catch(()=>{});},60000);
 setTimeout(()=>refreshCargoNotifications().catch(()=>{}),2000);
 
-const cargoSetUser=customerAccount.setUser;customerAccount.setUser=user=>{if(customerAccount.user?.id!==user?.id){++cargoRequest;++cargoUserSwitches;}cargoSetUser(user);if(!user){cargoList=[];document.querySelectorAll("[data-notification-count]").forEach(n=>n.textContent="");}else refreshCargoNotifications().catch(()=>{});};
+let cargoPageReady=false;
+const cargoSetUser=customerAccount.setUser;
+customerAccount.setUser=user=>{
+  const changed=customerAccount.user?.id!==user?.id;
+  if(changed){++cargoRequest;stopCargoPaymentWatch();}
+  cargoSetUser(user);
+  if(!user)document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent='');
+  else refreshCargoNotifications().catch(()=>{});
+  if(changed&&cargoPageReady){
+    closeModal();
+    renderCargoPage('<p class="account-loading" role="status">Ачаалж байна…</p>');
+    void viewServerOrder(cargoPageId);
+  }
+};
+if(cargoPage)window.catalogReady.then(async()=>{
+  try{await customerAccount.refresh();}catch{}
+  cargoPageReady=true;
+  void viewServerOrder(cargoPageId);
+});
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cargo-photo-toggle]');if(!b)return;const expanded=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',expanded?'Зургийг хураах':'Зургийг томруулах');b.closest('figure').classList.toggle('expanded',expanded);});
 ;
@@ -1476,15 +1503,6 @@ window.taobaoCart=(()=>{
     el.classList.add('visible');clearTimeout(flyTimer); // Keep the cart action available until dismissed or navigation.
   }
   const hideFlyout=()=>document.querySelector('#cart-flyout')?.classList.remove('visible');
-  function row(i,index){
-    const mnt=lineMnt(i);
-    return `<div class="cart-row">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:'<span></span>'}<div><h3><a href="/v/${esc(i.id.replace(/^abb-/,''))}">${esc(i.name)}</a></h3><small>${esc(i.variant)}</small><div class="quantity-controls"><button data-tb-qty="${index}" data-delta="-1" aria-label="${esc(i.name)} тоог бууруулах" ${i.qty-i.step<i.min_qty?'disabled':''}>−</button><span>${i.qty}</span><button data-tb-qty="${index}" data-delta="1" aria-label="${esc(i.name)} тоог нэмэх" ${i.qty+i.step>Math.min(9999,i.stock??9999)?'disabled':''}>+</button></div></div><div><strong>${mnt===null?'Үнэ тооцоолно':money(mnt)}</strong><button class="remove-item" data-tb-remove="${index}">Хасах</button></div></div>`;
-  }
-  function show(){
-    const items=read();
-    if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-    openModal('Миний сагс',items.map(row).join('')+commerceUI.estimateHtml(items)+`<div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
-  }
   function breakdown(q){return `<div class="checkout-totals">${commerceUI.calculationHtml(q,quoteItems)}</div>`;}
   // «Худалдан авах» orders only the shown item; the cart button orders the saved cart.
   const ordering=()=>selected||read();
@@ -1492,11 +1510,17 @@ window.taobaoCart=(()=>{
   async function checkout(message='',only){
     if(only!==undefined){selected=only;checkoutToken='';}
     if(!customerAccount.user){await customerAccount.forCheckout(()=>checkout());return;}
-    if(!ordering().length)return show();
+    if(!ordering().length)return showCart();
+    document.querySelector('[data-cart-error]')?.remove();
     try{
       await window.catalogReady;await window.warehousePreference?.ready;if(window.warehousePreference)pickupLocation=window.warehousePreference.selected()?.location||'';if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
       const priced=await shopApi('checkout-quote',{items:payload()});quote=priced.quote;quoteItems=priced.items;
-    }catch(e){if(selected){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}show();const footer=$('.cart-footer');if(footer)footer.insertAdjacentHTML('beforebegin',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
+    }catch(e){
+      const summary=document.querySelector('.store-cart-summary');
+      if(!summary){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
+      summary.querySelector('.store-cart-checkout').insertAdjacentHTML('afterend',`<p class="form-error" role="alert" data-cart-error>${esc(e.message)}</p>`);
+      toast(e.message);return;
+    }
     checkoutToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
     if(!pickupProfile())pickupLocation=window.warehousePreference?'':(pickupLocations()[0]?.location||'ulaanbaatar');
     openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Салбараас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Улаанбаатарт хүргүүлэх · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-pickup-choice>Авах салбар<select name="pickup_location" required><option value="" disabled ${!pickupLocation?'selected':''}>Авах агуулахаа сонгоно уу</option>${pickupLocations().map(p=>`<option value="${esc(p.location)}" ${p.location===pickupLocation?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${(pickupProfile()?pickupHtml(pickupProfile()):'<p>Авах агуулахаа сонгоно уу.</p>')}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. Нэхэмжлэл гарснаас хойш 15 минутын дотор төлөөгүй захиалга автоматаар цуцлагдана. ${quote.domestic_later?'Хятад доторх хүргэлт болон олон улсын каргог':'Олон улсын каргог'} сонгосон салбарт ирэхэд бодит дүнгээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Төлөх · ${money(quote.total)}</button></div></form>`);
@@ -1533,11 +1557,9 @@ window.taobaoCart=(()=>{
     if(b.hasAttribute('data-flyout-close')){hideFlyout();return;}
     if(b.hasAttribute('data-flyout-checkout')){hideFlyout();checkout('',null);return;}
     if(b.hasAttribute('data-tb-checkout')){hideFlyout();checkout('',null);return;}
-    if(b.dataset.tbRemove!==undefined){const items=read();items.splice(Number(b.dataset.tbRemove),1);write(items);show();return;}
-    if(b.dataset.tbQty!==undefined){const items=read(),i=items[Number(b.dataset.tbQty)];if(!i)return;const qty=i.qty+Number(b.dataset.delta)*i.step;if(qty<i.min_qty||qty>Math.min(9999,i.stock??9999))return;i.qty=qty;write(items);show();}
   });
   window.addEventListener('storage',e=>{if(e.key===KEY)updateCounts();});
-  return {add,show,checkout,buyNow:(p,variant,qty)=>checkout('',[item(p,variant,qty)]),count:()=>read().length,items:read,save:write,unitMnt:i=>rate()&&Number(i.cny)>0?Math.ceil(i.cny*rate()):null,key:KEY};
+  return {add,checkout,buyNow:(p,variant,qty)=>checkout('',[item(p,variant,qty)]),count:()=>read().length,items:read,save:write,unitMnt:i=>rate()&&Number(i.cny)>0?Math.ceil(i.cny*rate()):null,key:KEY};
 })();
 updateCounts();
 ;
@@ -1665,13 +1687,13 @@ window.productCompare=(()=>{
 // address book, notifications and personal details. Sign-in and registration are their own pages (account.js).
 (()=>{
   const match=location.pathname.match(/^\/account(?:\/([a-z]+))?\/?$/);
-  const sections={orders:'Миний захиалгууд',products:'Миний бүтээгдэхүүнүүд',saved:'Хадгалсан бараа',addresses:'Хаягууд',notifications:'Мэдэгдэл',profile:'Хувийн мэдээлэл'};
-  const go=section=>{if(window.accountPage.active){window.accountPage.show(section);return;}location.assign('/account'+(section&&section!=='orders'?'/'+section:''));};
+  const sections={orders:'Миний ачаа',products:'Миний бүтээгдэхүүнүүд',saved:'Хадгалсан бараа',addresses:'Хаягууд',notifications:'Мэдэгдэл',profile:'Хувийн мэдээлэл'};
+  const go=section=>{if(window.accountPage.active){window.accountPage.show(section);return;}location.assign('/account/'+(section||'orders'));};
   window.accountPage={active:!!match,go,show:()=>{}};
   if(!match)return;
   const groups={all:'Бүгд',payment:'Төлбөр хүлээж буй',transit:'Замд / Бэлтгэж байна',ready:'Авах / Хүргүүлэх',done:'Хүлээн авсан',cancelled:'Цуцлагдсан'};
   const status=new URLSearchParams(location.search).get('status');
-  let section=sections[match[1]]?match[1]:'orders',orders=null,filter=Object.hasOwn(groups,status)?status:'all',query='',editing=null;
+  let section=sections[match[1]]?match[1]:'orders',orders=null,claimable=[],filter=Object.hasOwn(groups,status)?status:'all',query='',editing=null;
   const root=document.createElement('section');root.id='account-page';root.className='container account-page';document.querySelector('#main').prepend(root);
   document.title='Миний бүртгэл · gostore.mn';
   const content=()=>root.querySelector('#account-content');
@@ -1681,7 +1703,11 @@ window.productCompare=(()=>{
 
   async function allOrders(){
     const list=[];for(let offset=0;offset<200;offset+=20){const r=await shopApi('customer-orders&offset='+offset);list.push(...r.orders);if(!r.more)break;}
-    return list;
+    const own=new Set(list.map(o=>o.id));
+    const guest=savedRequests().filter(g=>!own.has(g.id));
+    const fetched=await Promise.allSettled(guest.map(g=>shopApi('order-get',g)));
+    const local=fetched.filter(result=>result.status==='fulfilled').map(result=>result.value.order);
+    return {orders:[...list,...local],claimable:local};
   }
   function layout(){
     const u=customerAccount.user,payment=(orders||[]).filter(o=>cargoGroup(o)==='payment').length;
@@ -1692,13 +1718,13 @@ window.productCompare=(()=>{
     // A reply for a section the customer has already left must not redraw the page over the new one.
     const wanted=section;
     try{
-      if(section==='orders'){orders=await allOrders();if(section!==wanted)return;layout();renderOrders();return;}
+      if(section==='orders'){const data=await allOrders();if(section!==wanted||!box.isConnected)return;({orders,claimable}=data);layout();renderOrders();return;}
       if(section==='products'){const {products}=await shopApi('customer-products');if(section!==wanted)return;box.innerHTML=`<h2>${sections.products}</h2>`+(products.length?`<div class="account-products">${products.map(p=>`<article class="account-product">${p.image?`<img src="${esc(p.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="account-product-image">${icon('box')}</span>`}<div><h3>${p.supplier?`<a href="${productHref(p.id)}">${esc(p.name)}</a>`:esc(p.name)}</h3><p>${esc(p.variant)}${p.qty?' · '+p.qty+' ширхэг':''}</p><small>${date(p.ordered_at)} · ${esc(p.order_id)}${p.times>1?` · ${p.times} удаа захиалсан`:''}</small></div>${p.supplier?`<a class="button outline" href="${productHref(p.id)}">Дахин захиалах</a>`:''}</article>`).join('')}</div>`:empty('Захиалсан бараа алга','Захиалга хийсний дараа бараанууд энд харагдана.','<a class="button blue" href="/products">Бараа үзэх</a>'));return;}
       if(section==='saved'){const items=typeof supplierFavoriteItems==='function'?supplierFavoriteItems():[];box.innerHTML=`<h2>${sections.saved}</h2>`+(items.length?`<div class="account-products">${items.map(p=>`<article class="account-product">${/^https:\/\//i.test(p.image||'')?`<img src="${esc(p.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="account-product-image">${icon('heart')}</span>`}<div><h3><a href="${productHref(p.id)}">${esc(p.name)}</a></h3><p>${Number(p.mnt)>0?money(p.mnt):'Үнийг барааны хуудаснаас шалгана'}</p></div><a class="button outline" href="${productHref(p.id)}">Харах</a></article>`).join('')}</div>`:empty('Хадгалсан бараа алга','Барааны зүрхэн тэмдгийг дарж хадгалаарай.','<a class="button blue" href="/products">Бараа үзэх</a>'));return;}
       if(section==='addresses'){const {addresses}=await shopApi('customer-addresses');if(section!==wanted)return;renderAddresses(addresses);return;}
       if(section==='notifications'){const [r,pref]=await Promise.all([shopApi('customer-notifications'),shopApi('customer-message-settings').catch(()=>null)]);if(section!==wanted)return;const msgs=r.messages||[];
         // GOStore messages first; the promotional-push choice applies to the customer's app devices.
-        box.innerHTML=`<h2>${sections.notifications}</h2>`+(pref?`<label class="account-promo-push"><input type="checkbox" data-promo-push ${pref.promo_push?'checked':''}><span>Хямдрал, урамшууллын мэдэгдлийг GOStore аппаар утсандаа авах</span></label>`:'')+(r.notifications.length||msgs.length?`<ol class="account-notices">${msgs.map(m=>`<li class="${m.read_at?'':'unread'}"><div class="account-message"><strong>${esc(m.title)}</strong><span>${esc(m.body)}</span><small>${m.kind==='promo'?'Урамшуулал':'GOStore мэдээлэл'} · ${new Date(m.created).toLocaleString('mn-MN')}</small>${/^\/(?!\/)/.test(m.link||'')?`<a href="${esc(m.link)}">Дэлгэрэнгүй →</a>`:''}</div></li>`).join('')}${r.notifications.map(n=>`<li class="${n.read_at?'':'unread'}"><button type="button" data-server-order="${esc(n.order_id)}"><strong>${esc(n.order_id)}</strong><span>${esc(n.message)}</span><small>${new Date(n.created).toLocaleString('mn-MN')}</small></button></li>`).join('')}</ol>`:empty('Мэдэгдэл алга','Захиалгын явц өөрчлөгдөхөд энд мэдэгдэнэ.'));
+        box.innerHTML=`<h2>${sections.notifications}</h2>`+(pref?`<label class="account-promo-push"><input type="checkbox" data-promo-push ${pref.promo_push?'checked':''}><span>Хямдрал, урамшууллын мэдэгдлийг GOStore аппаар утсандаа авах</span></label>`:'')+(r.notifications.length||msgs.length?`<ol class="account-notices">${msgs.map(m=>`<li class="${m.read_at?'':'unread'}"><div class="account-message"><strong>${esc(m.title)}</strong><span>${esc(m.body)}</span><small>${m.kind==='promo'?'Урамшуулал':'GOStore мэдээлэл'} · ${new Date(m.created).toLocaleString('mn-MN')}</small>${/^\/(?!\/)/.test(m.link||'')?`<a href="${esc(m.link)}">Дэлгэрэнгүй →</a>`:''}</div></li>`).join('')}${r.notifications.map(n=>`<li class="${n.read_at?'':'unread'}"><a href="${esc(cargoOrderHref(n.order_id))}"><strong>${esc(n.order_id)}</strong><span>${esc(orderLabels[n.message]||n.message)}</span><small>${new Date(n.created).toLocaleString('mn-MN')}</small></a></li>`).join('')}</ol>`:empty('Мэдэгдэл алга','Захиалгын явц өөрчлөгдөхөд энд мэдэгдэнэ.'));
         if((r.unread&&r.notifications.length)||(r.messages_unread&&msgs.length))shopApi('customer-notifications-read',{through_id:r.notifications.length?Math.max(...r.notifications.map(n=>Number(n.id))):0,messages_through_id:msgs.length?Math.max(...msgs.map(m=>Number(m.id))):0}).then(()=>window.refreshCargoNotifications?.()).catch(()=>{});return;}
       const u=customerAccount.user;
       box.innerHTML=`<h2>${sections.profile}</h2><form id="account-profile-form" class="account-form account-card"><div class="form-grid"><label class="field">Таны нэр<input name="name" value="${esc(u.name)}" autocomplete="name" maxlength="100" required></label><label class="field">Утасны дугаар<input name="phone" value="${esc(u.phone)}" type="tel" autocomplete="tel" maxlength="25"></label>${u.email_login===false?`<label class="field full">Нэвтрэх утас<input value="${esc(u.login_phone||'')}" disabled></label>`:`<label class="field full">Имэйл<input value="${esc(u.email)}" disabled></label>`}</div><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="button" data-verify-phone>Утас баталгаажуулах</button><button class="button blue" type="submit">Мэдээлэл хадгалах</button></form>${u.pin_enabled?`<h3 class="account-subtitle">PIN солих</h3><form id="account-pin-form" class="account-form account-card"><div class="form-grid">${['current_pin:Одоогийн PIN:current-password','pin:Шинэ PIN:new-password','pin_confirm:Шинэ PIN давтах:new-password'].map(x=>{const [n,l,a]=x.split(':');return `<label class="field">${l}<input name="${n}" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="${a}" required></label>`;}).join('')}</div><p class="account-hint">PIN солиход бусад төхөөрөмж дээрх нэвтрэлт хаагдана.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">PIN солих</button></form>`:`<h3 class="account-subtitle">Утас, PIN-ээр нэвтрэх</h3><p class="account-hint">Утсаа SMS-ээр баталгаажуулж PIN үүсгэвэл апп, вэбд утас + PIN-ээр нэвтэрнэ.</p><button class="button outline" type="button" data-account-link-pin>Утас, PIN холбох</button>`}${u.email_login===false?'':`<h3 class="account-subtitle">Нууц үг солих</h3><form id="account-password-form" class="account-form account-card"><div class="form-grid"><label class="field full">Одоогийн нууц үг<input name="current_password" type="password" autocomplete="current-password" maxlength="72" required></label><label class="field">Шинэ нууц үг<input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label><label class="field">Шинэ нууц үг давтах<input name="password_confirm" type="password" autocomplete="new-password" minlength="10" maxlength="72" required></label></div><p class="account-hint">Нууц үг солиход бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай болно.</p><p class="form-error" data-account-error role="alert"></p><button class="button outline" type="submit">Нууц үг солих</button></form>`}`;
@@ -1707,7 +1733,7 @@ window.productCompare=(()=>{
   function renderOrders(){
     const counts=Object.fromEntries(Object.keys(groups).map(k=>[k,k==='all'?orders.length:orders.filter(o=>cargoGroup(o)===k).length]));
     const rows=orders.filter(o=>(filter==='all'||cargoGroup(o)===filter)&&(!query||(o.id+' '+o.title).toLowerCase().includes(query.toLowerCase())));
-    content().innerHTML=`<h2>${sections.orders}</h2><div class="account-tabs-row" role="tablist" aria-label="Захиалгын төлөв">${Object.entries(groups).map(([k,v])=>`<button type="button" role="tab" data-account-filter="${k}" aria-selected="${k===filter}">${esc(v)}<span>${counts[k]}</span></button>`).join('')}</div><label class="field account-search">Код эсвэл барааны нэрээр хайх<input id="account-order-search" value="${esc(query)}" placeholder="GS-A1B2C3" autocomplete="off"></label><div class="account-orders">${rows.length?rows.map(o=>`<article class="cargo-card account-order"><div><span class="cargo-code">${esc(o.id)}</span><span class="cargo-status">${esc(orderStatusLabel(o))}</span></div><h3>${esc(o.title)}</h3><p>${esc(cargoNext(o))}</p><div class="cargo-card-footer"><small>${cargoDate(o.created,true)}${o.amount?' · '+money(o.amount):''}</small><span class="account-order-actions">${cargoGroup(o)==='payment'&&o.status==='quoted'&&!o.paid&&qpayEnabled?`<button class="button blue" data-invoice="${esc(o.id)}">Төлөх</button>`:''}<button class="text-button" data-server-order="${esc(o.id)}">Дэлгэрэнгүй →</button></span></div></article>`).join(''):empty(orders.length?'Тохирох захиалга алга':'Захиалга олдсонгүй',orders.length?'Өөр төлөв эсвэл кодоор хайна уу.':'Танд одоогоор захиалга байхгүй байна.',orders.length?'':'<a class="button blue" href="/products">Бараа үзэх</a>')}</div>`;
+    content().innerHTML=`<h2>${sections.orders}</h2><div class="account-tabs-row" role="tablist" aria-label="Захиалгын төлөв">${Object.entries(groups).map(([k,v])=>`<button type="button" role="tab" data-account-filter="${k}" aria-selected="${k===filter}">${esc(v)}<span>${counts[k]}</span></button>`).join('')}</div><label class="field account-search">Код эсвэл барааны нэрээр хайх<input id="account-order-search" value="${esc(query)}" placeholder="GS-A1B2C3" autocomplete="off"></label><div class="account-orders">${rows.length?rows.map(o=>`<article class="cargo-card account-order"><div><span class="cargo-code">${esc(o.id)}</span><span class="cargo-status">${esc(orderStatusLabel(o))}</span></div><h3>${esc(o.title)}</h3><p class="tracking-list-location">${esc(OrderTracking.state(o).location)}</p><p>${esc(cargoNext(o))}</p><div class="cargo-card-footer"><small>${cargoDate(o.created,true)}${o.amount?' · '+money(o.amount):''}</small><span class="account-order-actions">${cargoGroup(o)==='payment'&&o.status==='quoted'&&!o.paid&&qpayEnabled?`<button class="button blue" data-invoice="${esc(o.id)}">Төлөх</button>`:''}<a class="text-button" href="${esc(cargoOrderHref(o.id))}" data-server-order="${esc(o.id)}">Дэлгэрэнгүй →</a></span></div></article>`).join(''):empty(orders.length?'Тохирох захиалга алга':'Захиалга олдсонгүй',orders.length?'Өөр төлөв эсвэл кодоор хайна уу.':'Танд одоогоор захиалга байхгүй байна.',orders.length?'':'<a class="button blue" href="/products">Бараа үзэх</a>')}</div>${claimable.length?`<details class="account-card"><summary>Энэ хөтчийн хүсэлтийг бүртгэлдээ холбох</summary>${claimable.map(o=>`<p>${esc(o.id)} <button class="text-button" data-claim-order="${esc(o.id)}">Холбох</button></p>`).join('')}</details>`: ''}${state.drafts.length?'<button class="text-button" data-action="drafts">Хадгалсан ноорог харах</button>':''}`;
   }
   function renderAddresses(addresses){
     const form=a=>`<form id="account-address-form" class="account-form account-card" data-id="${esc(a?.id||'')}"><h3>${a?'Хаяг засах':'Шинэ хаяг'}</h3><div class="form-grid"><label class="field">Нэр (жишээ: Гэр, Ажил)<input name="label" value="${esc(a?.label||'')}" maxlength="40" placeholder="Гэр"></label><label class="field">Хүлээн авагч<input name="recipient" value="${esc(a?.recipient||customerAccount.user.name)}" maxlength="100" autocomplete="name" required></label><label class="field">Утас<input name="phone" value="${esc(a?.phone||customerAccount.user.phone)}" type="tel" maxlength="25" autocomplete="tel" required></label><label class="field full">Хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот" required>${esc(a?.address||'')}</textarea></label><label class="check full"><input type="checkbox" name="is_default" ${a?.is_default||!addresses.length?'checked':''}> Үндсэн хаяг болгох</label></div><p class="form-error" data-account-error role="alert"></p><div class="form-actions"><button class="button blue" type="submit">Хадгалах</button><button class="button outline" type="button" data-address-cancel>Болих</button></div></form>`;
@@ -1716,9 +1742,9 @@ window.productCompare=(()=>{
   }
   function show(next){
     section=sections[next]?next:'orders';editing=null;
-    history.pushState(null,'','/account'+(section==='orders'?'':'/'+section));
+    history.pushState(null,'','/account/'+section);
     root.querySelectorAll('[data-account-section]').forEach(b=>{if(b.dataset.accountSection===section)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
-    render();content()?.focus({preventScroll:true});
+    window.syncMobileNav?.();render();content()?.focus({preventScroll:true});
   }
   async function start(){
     root.innerHTML='<p class="account-loading">Ачаалж байна…</p>';
@@ -1761,7 +1787,7 @@ window.productCompare=(()=>{
     try{box.checked=(await shopApi('customer-message-settings-save',{promo_push:box.checked})).promo_push;toast(box.checked?'Урамшууллын мэдэгдэл асаалаа':'Урамшууллын мэдэгдэл унтраалаа');}
     catch(err){box.checked=!box.checked;toast(err.message);}finally{box.disabled=false;}});
   // Signing in or out elsewhere (modal, another tab) redraws the page for the current account.
-  const setUser=customerAccount.setUser;customerAccount.setUser=user=>{const changed=(customerAccount.user?.id||null)!==(user?.id||null);setUser(user);if(changed){orders=null;start();}};
+  const setUser=customerAccount.setUser;customerAccount.setUser=user=>{const changed=(customerAccount.user?.id||null)!==(user?.id||null);setUser(user);if(changed){orders=null;claimable=[];start();}};
   start();
 })();
 ;
@@ -1812,6 +1838,11 @@ window.productCompare=(()=>{
     const shop=g=>`<section class="store-cart-shop"><header><label class="cart-check">${checkbox(`data-cart-shop="${esc(g.key)}"`,g.lines,(g.name||'Дэлгүүр')+' — бүх барааг сонгох')}<span>${icon('bag')}${esc(g.name||'Нийлүүлэгчийн дэлгүүр')}</span></label><small>${g.lines.length} бараа</small></header>${g.lines.map(cartLine).join('')}</section>`;
     root.innerHTML=crumbs('Миний сагс')+`<h1 class="store-title">Миний сагс <span>${items.length} бараа</span></h1>`+(items.length?`<div class="store-cart"><div class="store-cart-lines"><p class="account-hint">${esc(commerceUI.unitHelp)}</p><div class="store-cart-tools"><label class="cart-check cart-check-all">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгдийг сонгох</span></label><button type="button" class="text-button" data-cart-save-all>Бүх барааг хадгалах</button><button type="button" class="text-button danger" data-cart-clear>Бүгдийг хасах</button></div>${shops.map(shop).join('')}</div><aside class="store-cart-summary"><h2>Захиалгын хураангуй</h2><p class="store-cart-picked">Сонгосон: <strong>${chosen.length}</strong> / ${items.length} бараа</p>${chosen.length?commerceUI.estimateHtml(chosen,settings()):'<p class="account-hint">Тооцоо хийх бараагаа сонгоно уу.</p>'}${checkout}<p class="account-hint">QPay нэхэмжлэл гарснаас хойш 15 минутын дотор төлнө. Бараагаа Улаанбаатар агуулахаас авах эсвэл хүргүүлж болно.</p><div class="store-help-card"><strong>Тусламж хэрэгтэй юу?</strong><p>Захиалгатай холбоотой асуултаа бидэнд илгээгээрэй.</p>${phone()?`<a class="text-button" href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:''}<a class="text-button" href="mailto:shop@gostore.mn">shop@gostore.mn</a></div></aside></div><div class="store-cart-bar"><label class="cart-check">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгд</span></label><p><small>${q?.total!=null?'Одоо төлөх':'Барааны дүн'}</small><strong>${pay===null?'—':money(pay)}</strong></p>${barCheckout}</div>`:`<div class="account-empty">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><a class="button blue" href="/products">Бараа үзэх</a></div>`);
     root.querySelectorAll('[data-mixed]').forEach(i=>i.indeterminate=true);
+    if(state.cart.length){
+      const local='<section class="legacy-cart"><h2>Бэлэн барааны хүсэлт</h2>'+legacyCartHtml()+'</section>';
+      const empty=!items.length&&root.querySelector('.account-empty');
+      if(empty)empty.outerHTML=local;else root.insertAdjacentHTML('beforeend',local);
+    }
     document.documentElement.classList.toggle('store-cart-filled',!!items.length);
   }
   // ---------- Help & delivery ----------

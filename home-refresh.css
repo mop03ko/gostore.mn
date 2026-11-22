@@ -57,7 +57,7 @@ html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-m
 .home-refresh .hub-user-guest .blue{background:#282354;color:#fff}
 .home-refresh .hub-orders{gap:3px;border-color:var(--home-line);padding-top:18px}
 .home-refresh .hub-orders a{font-size:10px;gap:10px;color:var(--home-ink)}.home-refresh .hub-orders .icon{color:var(--home-muted);width:20px;height:20px}
-.home-refresh .hub-shortcuts button{background:var(--home-bg);padding:12px 2px;font-size:10px;color:var(--home-muted)}
+.home-refresh .hub-shortcuts a{background:var(--home-bg);padding:12px 2px;font-size:10px;color:var(--home-muted)}
 .home-refresh .hub-note{font-size:11px;line-height:1.65;color:var(--home-muted);padding-top:10px}
 .home-refresh .home-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px;margin-bottom:28px}
 .home-refresh .home-service{display:flex;gap:14px;align-items:center;text-align:left;min-width:0;min-height:92px;padding:18px 20px;border:1px solid var(--home-line);border-radius:18px;background:var(--home-card);color:var(--home-ink);transition:border-color .15s,transform .15s}

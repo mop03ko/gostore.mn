@@ -8,6 +8,8 @@ cached('/v1/taobao/product/511111111?language=mn',product('511111111','shop-a',[
 cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[['one',30]]));
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await page.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));
  await require('./customer-ui-helper.cjs')(page,base);
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  const open=async id=>{await page.goto(base+'/v/tb-'+id);await page.locator('#pd-options').waitFor();await page.waitForFunction(()=>storeServer.ready);};
@@ -15,10 +17,10 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.locator('#pd-options [name=variant][value=blue]').check();await page.locator('[data-pd-delta="1"]').click();await page.locator('[data-pd-add]').click();
  await open('522222222');await page.locator('[data-pd-add]').click();
  assert.equal(await page.locator('#cart-count').innerText(),'3','Header counts cart lines');
- await page.locator('.header-actions [data-action=cart]').click();await page.locator('.cart-row').first().waitFor();
- assert.equal(await page.locator('.cart-row').count(),3);
- await page.locator('[data-tb-qty="0"][data-delta="1"]').click();await page.waitForFunction(()=>document.querySelector('.cart-row .quantity-controls span').textContent==='2');
- await page.locator('[data-tb-remove="2"]').click();await page.waitForFunction(()=>document.querySelectorAll('.cart-row').length===2);
+ await page.locator('.header-actions [data-action=cart]').click();await page.locator('.store-cart-line').first().waitFor();
+ assert.equal(await page.locator('.store-cart-line').count(),3);
+ await page.locator('[data-cart-qty="0"][data-delta="1"]').click();await page.waitForFunction(()=>document.querySelector('.store-cart-line .quantity-controls span').textContent==='2');
+ await page.locator('[data-cart-remove="2"]').click();await page.waitForFunction(()=>document.querySelectorAll('.store-cart-line').length===2);
  await open('522222222');await page.locator('[data-pd-add]').click();
  await page.locator('.header-actions [data-action=cart]').click();await page.locator('[data-tb-checkout]').click();await page.locator('#taobao-checkout-form').waitFor();
  // Goods 2×10 + 2×12 + 30 = 74 CNY = 40,700₮; show the source-price calculation and defer unknown shipping.
@@ -35,8 +37,8 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  assert.equal(order.type,'checkout');assert.equal(order.fulfillment_request.method,'pickup');assert.equal(order.delivery_address,'');assert.equal(order.status,'quoted');assert.equal(order.items.length,3);assert.equal(order.quote.breakdown.cargo_mnt,0);assert.ok(order.amount>0&&order.payment_due);
  await page.waitForFunction(()=>document.querySelector('#cart-count').textContent==='0');
  assert.ok((await page.locator('.cargo-card').innerText()).includes('Төлбөр хүлээж байна'));await page.locator('.cargo-card [data-server-order]').first().click();await page.locator('.cargo-detail').waitFor();assert.ok((await page.locator('.cargo-detail').innerText()).includes('Төлөх хугацаа'));assert.equal(await page.locator('.cargo-items li').count(),3);assert.ok((await page.locator('.cargo-detail').innerText()).includes('Шуудангийн код: 14252-0024'),'Order shows the pickup address');
- assert.ok((await page.locator('#modal').innerText()).includes('Салбарт ирэхэд бодит жингээр'),'Cargo is billed later');
+ assert.ok((await page.locator('#cargo-page').innerText()).includes('Салбарт ирэхэд бодит жингээр'),'Cargo is billed later');
  assert.match(await page.locator('.order-calculation').innerText(),/¥74 × 550/);
- await page.setViewportSize({width:390,height:844});assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth));
- assert.deepEqual(errors,[]);console.log('PASS checkout: product add/buy-now buttons, cart lines/quantity/remove, seller-based domestic fee, upfront total, order with cargo later, 24 h due date, cart cleared, mobile modal.');
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);console.log('PASS checkout: product add/buy-now buttons, cart lines/quantity/remove, seller-based domestic fee, upfront total, order with cargo later, stored due date, cart cleared, mobile cargo page.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

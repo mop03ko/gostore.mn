@@ -18,16 +18,15 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
    const input=await page.locator('#search').boundingBox(),button=await page.locator('#search-form button[type=submit]').boundingBox();assert.ok(Math.abs((input.y+input.height/2)-(button.y+button.height/2))<2,'Search action stays beside input');
    await page.locator('#search').fill('bag');await page.locator('#search').press('Enter');assert.notEqual(await page.evaluate(()=>document.activeElement.id),'search','Search dismisses the mobile keyboard');await page.locator('#supplier-grid .supplier-card').first().waitFor();
    if(width===390)await page.screenshot({path:'tmp/mobile-redesign-catalog.png'});
-   await page.locator('.mobile-nav [data-action=cart]').click();await page.locator('#modal .empty-state').waitFor();
-   const modal=await page.locator('#modal').boundingBox();assert.ok(Math.abs(modal.width-width)<=1&&modal.y>=0,'Sheet fits screen');
-   assert.ok(await page.locator('#modal').evaluate(e=>e.scrollWidth<=e.clientWidth),'Sheet has no horizontal overflow');
-   if(width===390)await page.screenshot({path:'tmp/mobile-redesign-cargo.png'});
-   await page.locator('#close-modal').click();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'cart','Close restores focus');
+   await page.locator('.mobile-nav [data-action=cart]').click();await page.waitForURL(u=>u.pathname==='/cart');await page.locator('#store-page .account-empty').waitFor();assert.equal(await page.locator('#modal').isVisible(),false);
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Cart page fits '+width);
+   if(width===390)await page.screenshot({path:'tmp/mobile-redesign-cart.png'});
+   await page.locator('.mobile-nav [data-mobile-tab=home]').click();await page.waitForURL(u=>u.pathname==='/');
  }
- await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.mobile-nav [data-mobile-tab]').count(),5,'Five tabs');assert.equal(await page.locator('.mobile-nav [data-mobile-tab=orders]').getAttribute('href'),'/account');
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.mobile-nav [data-mobile-tab]').count(),5,'Five tabs');assert.equal(await page.locator('.mobile-nav [data-mobile-tab=orders]').getAttribute('href'),'/account/orders');
  await page.locator('.mobile-nav [data-mobile-tab=home]').click();await page.screenshot({path:'tmp/mobile-redesign-home.png'});
  // Signed-in customers open the account page; its profile form must fit a short narrow screen.
- await page.locator('.mobile-nav [data-action=account]').click();await page.waitForURL(url=>url.pathname==='/account');await page.locator('.account-menu').waitFor();await page.screenshot({path:'tmp/mobile-redesign-account.png'});
+ await page.locator('.mobile-nav [data-action=account]').click();await page.waitForURL(url=>url.pathname==='/account/orders');await page.locator('.account-menu').waitFor();await page.screenshot({path:'tmp/mobile-redesign-account.png'});
  await page.locator('[data-account-section=profile]').click();await page.locator('#account-profile-form').waitFor();
  await page.setViewportSize({width:320,height:460});await page.locator('#account-profile-form [name=phone]').focus();await page.locator('#account-profile-form [type=submit]').scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Short viewport account page fits'); await page.goto(base+'/v/123456789');await page.locator('#pd-options').waitFor();assert.equal(await page.locator('#search-form').isVisible(),false);
  const bar=await page.locator('.pd-buybar').boundingBox();assert.ok(bar.x>=0&&bar.x+bar.width<=320&&bar.y+bar.height<=461,'Buy bar stays inside narrow screen');

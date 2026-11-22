@@ -156,12 +156,13 @@ function addToCart(id,variant,qty=1) {
 }
 function cartTotal() {return state.cart.reduce((sum,item)=>sum+productById(item.id).price*item.qty,0);}
 function showCart() {
-  // Ready-stock sales are paused; the header cart then holds Taobao checkout items.
-  if(window.taobaoCart&&!localProductsEnabled&&!state.cart.length)return window.taobaoCart.show();
-  if(!window.customerAccount?.require())return;
-  if(!state.cart.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Өөрт таалагдсан бараагаа сонгоорой.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-  openModal('Миний сагс',state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`);
+  if(/^\/cart\/?$/.test(location.pathname)){closeModal();return;}
+  location.assign('/cart');
 }
+function legacyCartHtml() {
+  return state.cart.map((item,index)=>{const p=productById(item.id);return `<div class="cart-row"><img src="/assets/${p.image}.jpg" alt="${esc(p.name)}"><div><h3>${esc(p.name)}</h3><small>${esc(item.variant)} · ${p.type==='local'?'Бэлэн бараа':'Захиалгаар'}</small><div class="quantity-controls"><button data-quantity="${index}" data-delta="-1" aria-label="${esc(p.name)} тоог бууруулах" ${item.qty===1?'disabled':''}>−</button><span>${item.qty}</span><button data-quantity="${index}" data-delta="1" aria-label="${esc(p.name)} тоог нэмэх" ${item.qty===99?'disabled':''}>+</button></div></div><div><strong>${money(p.price*item.qty)}</strong><button class="remove-item" data-remove="${index}">Хасах</button></div></div>`;}).join('')+`<div class="cart-totals"><div><span>Барааны жишээ дүн</span><strong>${money(cartTotal())}</strong></div><div><span>Хүргэлт, бусад төлбөр</span><span>Баталгаажаагүй</span></div><div class="total"><span>Дэд нийт</span><strong>${money(cartTotal())}</strong></div></div><div class="info-box">${window.storeServer?.ready?'Хүсэлт илгээсний дараа админ нийт үнийг баталгаажуулна.':'Ноорог хадгалах нь бодит захиалга үүсгэхгүй.'} Тээвэр болон бусад төлбөр дэд нийтэд ороогүй.</div><div class="cart-footer"><button class="button blue" data-action="checkout">${window.storeServer?.ready?'Захиалгын хүсэлт илгээх':'Захиалгын ноорог бэлдэх'} ${icon('arrow')}</button></div>`;
+}
+
 function showCheckout() {
   if(!window.customerAccount?.require())return;
   if(window.storeServer?.ready)return window.storeServer.checkout();
@@ -172,12 +173,11 @@ function showCheckout() {
 function saveDraft(type,title,text) {
   if(state.drafts.length>=100){toast('100 ноорог хадгалсан байна. Хэрэггүй нооргоо устгаад дахин оролдоорой.');return false;}
   const id='GS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase();
-  state.drafts.unshift({id,type,title,created:new Date().toISOString(),text});persist();showOrders();
+  state.drafts.unshift({id,type,title,created:new Date().toISOString(),text});persist();showDrafts();
   toast(storageAvailable?'Ноорог энэ хөтөчид хадгалагдлаа':'Нооргоо алдахгүйн тулд одоо татаж аваарай.');return true;
 }
-function showOrders() {
+function showDrafts() {
   if(!window.customerAccount?.require())return;
-  if(window.storeServer?.ready)return window.storeServer.orders();
   openModal('Миний захиалгын ноорог',`<p class="modal-intro">Энд зөвхөн энэ хөтөчид бэлдсэн нооргууд харагдана. Серверт баталгаажсан захиалга болон ачааны бодит хяналт хараахан холбогдоогүй.</p>`+(state.drafts.length?state.drafts.map(d=>`<article class="draft-card"><div class="draft-top"><h3>${esc(d.title)}</h3><span class="draft-tag">Ноорог · илгээгээгүй</span></div><p>${esc(d.id)} · ${Number.isNaN(Date.parse(d.created))?'Огноо тодорхойгүй':new Date(d.created).toLocaleDateString('mn-MN')}</p><p>${d.type==='link'?'Хуучин хүсэлтийн ноорог':'GOStore сагсны ноорог'}</p><div class="draft-buttons"><button class="text-button" data-view-draft="${esc(d.id)}">Дэлгэрэнгүй</button><button class="text-button" data-download="${esc(d.id)}">Татах ↓</button><button class="text-button" data-delete-draft="${esc(d.id)}">Устгах</button></div></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>Ноорог хараахан алга</h3><p>Сагснаасаа ноорог үүсгээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`));
 }
 function downloadDraft(id) {
@@ -193,11 +193,11 @@ const helpContent = {
 };
 function runAction(action) {
   if(action==='account')return window.customerAccount?customerAccount.open():toast('Серверийн холболт хүлээгдэж байна.');
-  if(action==='cart')return showCart();if(action==='orders')return showOrders();if(action==='checkout')return showCheckout();
-  if(action==='favorites'){if($('#modal').open)closeModal();return filterType('saved');}
+  if(action==='cart')return showCart();if(action==='orders')return location.assign('/account/orders');if(action==='drafts')return showDrafts();if(action==='checkout')return showCheckout();
+  if(action==='favorites')return location.assign('/saved');
   if(action==='browse'){closeModal();resetFilters();return scrollCatalog();}
   if(helpContent[action])return openModal(helpContent[action].title,helpContent[action].html);
-  if(action==='clear-data-confirm')return openModal('Хадгалсан мэдээллийг цэвэрлэх үү?',`<p class="modal-intro">Сагс, хадгалсан бараа, бүх ноорог энэ хөтөчөөс устна. Хэрэгтэй нооргоо эхлээд татаж аваарай.</p><div class="form-actions"><button class="button outline" data-action="orders">Нооргуудыг харах</button><button class="button blue" data-action="clear-data">Бүгдийг цэвэрлэх</button></div>`);
+  if(action==='clear-data-confirm')return openModal('Хадгалсан мэдээллийг цэвэрлэх үү?',`<p class="modal-intro">Сагс, хадгалсан бараа, бүх ноорог энэ хөтөчөөс устна. Хэрэгтэй нооргоо эхлээд татаж аваарай.</p><div class="form-actions"><button class="button outline" data-action="drafts">Нооргуудыг харах</button><button class="button blue" data-action="clear-data">Бүгдийг цэвэрлэх</button></div>`);
   if(action==='clear-data'){if(window.clearSupplierFavorites?.()===false)return;state.cart=[];state.favorites=[];state.drafts=[];persist();renderProducts();closeModal();toast('Хадгалсан мэдээллийг цэвэрлэлээ');}
 }
 document.addEventListener('click',event=>{
@@ -209,11 +209,11 @@ document.addEventListener('click',event=>{
   if(b.dataset.detail)return showProduct(b.dataset.detail);
   if(b.dataset.add){const p=productById(b.dataset.add);if(!p)return;if(p.variants.length>1)return showProduct(p.id);return addToCart(p.id,p.variants[0]);}
   if(b.dataset.favorite){const id=b.dataset.favorite;if(state.favorites.includes(id))state.favorites=state.favorites.filter(x=>x!==id);else state.favorites.push(id);persist();renderProducts();$(`[data-favorite="${id}"]`)?.focus({preventScroll:true});return;}
-  if(b.hasAttribute('data-quantity')){const i=Number(b.dataset.quantity),item=state.cart[i];if(item){item.qty=Math.max(1,Math.min(99,item.qty+Number(b.dataset.delta)));persist();showCart();}return;}
-  if(b.hasAttribute('data-remove')){state.cart.splice(Number(b.dataset.remove),1);persist();showCart();return;}
+  if(b.hasAttribute('data-quantity')){const i=Number(b.dataset.quantity),item=state.cart[i];if(item){item.qty=Math.max(1,Math.min(99,item.qty+Number(b.dataset.delta)));persist();window.dispatchEvent(new Event('gostore-cart-changed'));}return;}
+  if(b.hasAttribute('data-remove')){state.cart.splice(Number(b.dataset.remove),1);persist();window.dispatchEvent(new Event('gostore-cart-changed'));return;}
   if(b.dataset.download)return downloadDraft(b.dataset.download);
-  if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="orders">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
-  if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showOrders();return;}
+  if(b.dataset.viewDraft){const d=state.drafts.find(x=>x.id===b.dataset.viewDraft);if(d)openModal(d.title,`<p class="modal-intro">Ноорог · Серверт илгээгээгүй</p><div class="info-box" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(d.text)}</div><div class="form-actions"><button class="button outline" data-action="drafts">Буцах</button><button class="button blue" data-download="${esc(d.id)}">Ноорог татах</button></div>`);return;}
+  if(b.dataset.deleteDraft){state.drafts=state.drafts.filter(d=>d.id!==b.dataset.deleteDraft);persist();showDrafts();return;}
 });
 $('#search-form').addEventListener('submit',e=>{e.preventDefault();if(matchMedia('(max-width:760px)').matches)$('#search').blur();const value=$('#search').value.trim();if(/^https?:\/\//i.test(value))return toast('Барааны нэрээр хайж, каталогоос сонгоно уу.');if(window.supplierBrowse){window.supplierBrowse(value||'__all__');scrollCatalog();return;}filters.query=value;filters.type='all';filters.category='all';renderCategories();renderProducts();scrollCatalog();});
 $('#search').addEventListener('search',()=>{if(!$('#search').value){if(window.supplierBrowse)window.supplierBrowse('__all__',false,'all');else{filters.query='';renderProducts();}}});
@@ -237,12 +237,12 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
  const nav=document.querySelector('.mobile-nav'),modal=document.querySelector('#modal'),menu=document.querySelector('#category-menu');let scheduled=false;
  window.syncMobileNav=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;
    let tab='home';
-   if(location.pathname==='/cart')tab='cart';
+   if(/^\/cart\/?$/.test(location.pathname))tab='cart';
    if(location.pathname.startsWith('/c/'))tab='categories';
-   if(location.pathname.startsWith('/account'))tab=location.pathname.replace(/\/$/,'')==='/account'?'orders':'account';
+   if(location.pathname.startsWith('/account'))tab=/^\/account(?:\/orders(?:\/|$)|\/?$)/.test(location.pathname)?'orders':'account';
    if(document.documentElement.classList.contains('auth-view-open'))tab='account';
    if(menu?.open)tab='categories';
-   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('#cargo-search,.cargo-detail'))tab='orders';else if(modal.querySelector('.account-form'))tab='account';}
+   else if(modal.open){if(modal.querySelector('.cart-row,.checkout-totals'))tab='cart';else if(modal.querySelector('.account-form'))tab='account';}
    nav.querySelectorAll('[data-mobile-tab]').forEach(el=>{if(el.dataset.mobileTab===tab)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  });};
  addEventListener('hashchange',syncMobileNav);addEventListener('popstate',syncMobileNav);

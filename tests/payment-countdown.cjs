@@ -1,11 +1,11 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('store-server.js','utf8');
-const code=source.slice(source.indexOf('function watchOrderPayment'),source.indexOf('async function viewServerOrder'));
+const code=source.slice(source.indexOf('function watchOrderPayment'),source.indexOf("document.addEventListener('click',async e=>",source.indexOf('function watchOrderPayment')));
 (async()=>{
  let now=1000000,tick,removed=0,calls=0,refreshed=0,cleared=false;
  class Clock extends Date {static now(){return now;}}
  const label={isConnected:true,textContent:''};
- const context={Date:Clock,document:{querySelector:s=>s==='[data-payment-countdown]'?label:{},querySelectorAll:()=>[{remove(){removed++;}}]},setInterval:fn=>(tick=fn,1),clearInterval:()=>{cleared=true;},savedRequests:()=>[],shopApi:async(action,b)=>{assert.equal(action,'order-get');assert.equal(b.id,'GS-TEST');calls++;return {order:{paid:false,status:'cancelled'}};},viewServerOrder:()=>{refreshed++;}};
+ const context={Date:Clock,document:{querySelector:()=>({id:'modal',open:true,querySelector:()=>label,querySelectorAll:()=>[{remove(){removed++;}}]})},setInterval:fn=>(tick=fn,1),clearInterval:()=>{cleared=true;},savedRequests:()=>[],shopApi:async(action,b)=>{assert.equal(action,'order-get');assert.equal(b.id,'GS-TEST');calls++;return {order:{paid:false,status:'cancelled'}};},viewServerOrder:()=>{refreshed++;}};
  vm.createContext(context);vm.runInContext(code,context);
  context.watchOrderPayment({id:'GS-TEST',payment_due:new Date(now+900000).toISOString()});
  assert.match(label.textContent,/15:00/);assert.equal(calls,0);

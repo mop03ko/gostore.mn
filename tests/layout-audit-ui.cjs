@@ -74,11 +74,11 @@ function audit(){
  await check('checkout modal');
  await page.locator('#taobao-checkout-form [name=family_name]').fill('Тестийнхэн');await page.locator('#taobao-checkout-form [name=pickup_location]').selectOption({index:1});
  const created=page.waitForResponse(r=>r.url().includes('action=order-create'));await page.locator('#taobao-checkout-form [type=submit]').click();const order=(await(await created).json()).order;
- await page.locator('#cargo-search').waitFor();await check('order list modal');
+ await page.locator('#account-order-search').waitFor();await check('order list page');
  await page.route(/action=order-get/,async route=>{const response=await route.fetch(),body=await response.json();body.order.paid=false;body.order.invoice={state:'ready',qr_image:QR,qr_text:'x',urls:BANKS};await route.fulfill({response,json:body});});
- await page.evaluate(id=>viewServerOrder(id),order.id);await page.locator('#modal .cargo-payment').waitFor();
- await check('QPay invoice modal');
- await page.evaluate(()=>document.querySelector('#modal .cargo-payment').scrollIntoView());await check('QPay invoice modal (banks in view)');
+ await page.evaluate(id=>viewServerOrder(id),order.id);await page.locator('#cargo-page .cargo-payment').waitFor();
+ await check('Order details page with QPay');
+ await page.evaluate(()=>document.querySelector('#cargo-page .cargo-payment').scrollIntoView());await check('QPay invoice on cargo page (banks in view)');
  await page.unroute(/action=order-get/);
  await page.evaluate(o=>cargoPaymentSuccess({...o,paid:true,status:'confirmed',amount:1234567},'initial'),order);await page.locator('#modal .payment-success').waitFor();await check('payment success modal');
  await page.locator('#close-modal').click();

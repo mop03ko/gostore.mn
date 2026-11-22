@@ -107,7 +107,7 @@ const HOME='/help',STATE=base+'/api/index.php?action=customer-state&sync=2';
  await b.route(/action=order-get/,async route=>{const response=await route.fetch(),body=await response.json();
   if(paid){body.order.paid=true;body.order.status='confirmed';delete body.order.invoice;}else{body.order.paid=false;body.order.invoice={state:'ready',qr_image:'',urls:[]};}
   await route.fulfill({response,json:body});});
- await b.evaluate(id=>viewServerOrder(id),order.id);await b.locator('#modal .cargo-detail').waitFor();
+ await b.evaluate(id=>viewServerOrder(id),order.id);await b.locator('#cargo-page .cargo-detail').waitFor();
  paid=true;const success=b.locator('#modal .payment-success');await success.waitFor({timeout:12000});
  assert.ok((await success.innerText()).includes(order.id),'Confirmation names the order');
  await success.locator('[data-payment-done]').click();await b.waitForFunction(()=>!document.querySelector('#modal').open);

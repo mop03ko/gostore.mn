@@ -27,8 +27,9 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.locator('.store-cart-line [data-compare-toggle]').first().click();await page.waitForFunction(()=>document.querySelector('[data-compare-open] .count')?.textContent==='1');
  await page.locator('[data-cart-save="1"]').click();await page.waitForFunction(()=>document.querySelectorAll('.store-cart-line').length===1);
  assert.equal(await page.locator('#favorite-count').innerText(),'1','Saved for later moves the item to favorites');assert.equal(await page.locator('#cart-count').innerText(),'1');
- // The modal cart links to the full page; checkout from the page uses the same priced flow.
- await page.locator('.header-actions [data-action=cart]').click();await page.locator('#modal a[href="/cart"]').waitFor();await page.locator('#close-modal').click();
+ // The header opens the same full cart page as the add-to-cart flyout.
+ await page.goto(base+'/v/tb-711111111');await page.locator('.header-actions [data-action=cart]').click();await page.waitForURL(u=>u.pathname==='/cart');
+ await page.locator('.store-cart-line').waitFor();assert.equal(await page.locator('#modal').isVisible(),false);
  await page.locator('.store-cart-checkout').click();await page.locator('#taobao-checkout-form').waitFor();assert.ok((await page.locator('.checkout-totals').innerText()).includes('Одоо төлөх'));await page.locator('#close-modal').click();
  page.once('dialog',d=>d.accept());await page.locator('[data-cart-clear]').click();await page.locator('#store-page .account-empty').waitFor();assert.equal(await page.locator('#cart-count').innerText(),'0');
  // Help page: header link, FAQ search, delivery section with live tariff, no floating button on itself.
@@ -56,5 +57,5 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.goto(base+'/help#delivery');await page.waitForFunction(()=>{const top=document.querySelector('#delivery')?.getBoundingClientRect().top;return top>=0&&top<innerHeight;});
  for(const url of ['/cart','/help']){await page.setViewportSize({width:390,height:844});await page.goto(base+url);await page.locator('#store-page h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile fit '+url);await page.screenshot({path:'tmp/store-page'+url.replace('/','-')+'-390.png',fullPage:true});}
  for(const width of [320,760,1440]){await page.setViewportSize({width,height:960});await page.goto(base+'/help');await page.locator('.help-hero h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Help fits '+width);await page.screenshot({path:'tmp/help-'+width+'.png',fullPage:true});}
- assert.deepEqual(errors,[]);console.log('PASS store pages: non-blocking add-to-cart flyout, cart page quantity/summary/compare/save for later/checkout/clear, modal link, help FAQ search, delivery tariff and anchor, floating help, mobile.');
+ assert.deepEqual(errors,[]);console.log('PASS store pages: non-blocking add-to-cart flyout, cart page quantity/summary/compare/save for later/checkout/clear, header page link, help FAQ search, delivery tariff and anchor, floating help, mobile.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

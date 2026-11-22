@@ -29,15 +29,6 @@ window.taobaoCart=(()=>{
     el.classList.add('visible');clearTimeout(flyTimer); // Keep the cart action available until dismissed or navigation.
   }
   const hideFlyout=()=>document.querySelector('#cart-flyout')?.classList.remove('visible');
-  function row(i,index){
-    const mnt=lineMnt(i);
-    return `<div class="cart-row">${/^https:\/\//i.test(i.image||'')?`<img src="${esc(i.image)}" alt="" referrerpolicy="no-referrer">`:'<span></span>'}<div><h3><a href="/v/${esc(i.id.replace(/^abb-/,''))}">${esc(i.name)}</a></h3><small>${esc(i.variant)}</small><div class="quantity-controls"><button data-tb-qty="${index}" data-delta="-1" aria-label="${esc(i.name)} тоог бууруулах" ${i.qty-i.step<i.min_qty?'disabled':''}>−</button><span>${i.qty}</span><button data-tb-qty="${index}" data-delta="1" aria-label="${esc(i.name)} тоог нэмэх" ${i.qty+i.step>Math.min(9999,i.stock??9999)?'disabled':''}>+</button></div></div><div><strong>${mnt===null?'Үнэ тооцоолно':money(mnt)}</strong><button class="remove-item" data-tb-remove="${index}">Хасах</button></div></div>`;
-  }
-  function show(){
-    const items=read();
-    if(!items.length){openModal('Миний сагс',`<div class="empty-state">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><button class="button blue" data-action="browse">Бараа үзэх</button></div>`);return;}
-    openModal('Миний сагс',items.map(row).join('')+commerceUI.estimateHtml(items)+`<div class="cart-footer"><a class="button outline" href="/cart">Сагс харах</a><button class="button blue" data-tb-checkout>Төлбөр тооцох ${icon('arrow')}</button></div>`);
-  }
   function breakdown(q){return `<div class="checkout-totals">${commerceUI.calculationHtml(q,quoteItems)}</div>`;}
   // «Худалдан авах» orders only the shown item; the cart button orders the saved cart.
   const ordering=()=>selected||read();
@@ -45,11 +36,17 @@ window.taobaoCart=(()=>{
   async function checkout(message='',only){
     if(only!==undefined){selected=only;checkoutToken='';}
     if(!customerAccount.user){await customerAccount.forCheckout(()=>checkout());return;}
-    if(!ordering().length)return show();
+    if(!ordering().length)return showCart();
+    document.querySelector('[data-cart-error]')?.remove();
     try{
       await window.catalogReady;await window.warehousePreference?.ready;if(window.warehousePreference)pickupLocation=window.warehousePreference.selected()?.location||'';if(!storeServer.ready)throw Error('Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.');
       const priced=await shopApi('checkout-quote',{items:payload()});quote=priced.quote;quoteItems=priced.items;
-    }catch(e){if(selected){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}show();const footer=$('.cart-footer');if(footer)footer.insertAdjacentHTML('beforebegin',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
+    }catch(e){
+      const summary=document.querySelector('.store-cart-summary');
+      if(!summary){openModal('Захиалга',`<p class="form-error" role="alert">${esc(e.message)}</p>`);return;}
+      summary.querySelector('.store-cart-checkout').insertAdjacentHTML('afterend',`<p class="form-error" role="alert" data-cart-error>${esc(e.message)}</p>`);
+      toast(e.message);return;
+    }
     checkoutToken||=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
     if(!pickupProfile())pickupLocation=window.warehousePreference?'':(pickupLocations()[0]?.location||'ulaanbaatar');
     openModal('Захиалга баталгаажуулах',`<p class="checkout-step">Сагс ✓ <span>→ Мэдээлэл ба төлбөр → QPay</span></p><form id="taobao-checkout-form"><div class="form-grid">${requestFields(true)}<fieldset class="field full fulfillment-choice"><legend>Хүлээн авах хэлбэр</legend><label><input type="radio" name="fulfillment" value="pickup" checked> Салбараас авах</label><label><input type="radio" name="fulfillment" value="delivery"> Улаанбаатарт хүргүүлэх · төлбөрийг эцсийн тооцоонд нэмнэ</label></fieldset><label class="field full" data-pickup-choice>Авах салбар<select name="pickup_location" required><option value="" disabled ${!pickupLocation?'selected':''}>Авах агуулахаа сонгоно уу</option>${pickupLocations().map(p=>`<option value="${esc(p.location)}" ${p.location===pickupLocation?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label class="field full" data-delivery-address hidden>Хүргэлтийн хаяг<textarea name="address" maxlength="500" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(customerAccount.user?.address||'')}</textarea></label><label class="field full">Нэмэлт хүсэлт<textarea name="notes" maxlength="1000"></textarea></label></div>${breakdown(quote)}<div data-pickup-info>${(pickupProfile()?pickupHtml(pickupProfile()):'<p>Авах агуулахаа сонгоно уу.</p>')}</div><div class="info-box">Захиалсны дараа QPay нэхэмжлэл гарна. Нэхэмжлэл гарснаас хойш 15 минутын дотор төлөөгүй захиалга автоматаар цуцлагдана. ${quote.domestic_later?'Хятад доторх хүргэлт болон олон улсын каргог':'Олон улсын каргог'} сонгосон салбарт ирэхэд бодит дүнгээр тооцож тусад нь төлнө.</div><p id="request-error" class="form-error" role="alert">${esc(message)}</p><div class="form-actions">${selected?'':'<button type="button" class="button outline" data-action="cart">Сагс руу буцах</button>'}<button class="button blue" type="submit">Төлөх · ${money(quote.total)}</button></div></form>`);
@@ -86,10 +83,8 @@ window.taobaoCart=(()=>{
     if(b.hasAttribute('data-flyout-close')){hideFlyout();return;}
     if(b.hasAttribute('data-flyout-checkout')){hideFlyout();checkout('',null);return;}
     if(b.hasAttribute('data-tb-checkout')){hideFlyout();checkout('',null);return;}
-    if(b.dataset.tbRemove!==undefined){const items=read();items.splice(Number(b.dataset.tbRemove),1);write(items);show();return;}
-    if(b.dataset.tbQty!==undefined){const items=read(),i=items[Number(b.dataset.tbQty)];if(!i)return;const qty=i.qty+Number(b.dataset.delta)*i.step;if(qty<i.min_qty||qty>Math.min(9999,i.stock??9999))return;i.qty=qty;write(items);show();}
   });
   window.addEventListener('storage',e=>{if(e.key===KEY)updateCounts();});
-  return {add,show,checkout,buyNow:(p,variant,qty)=>checkout('',[item(p,variant,qty)]),count:()=>read().length,items:read,save:write,unitMnt:i=>rate()&&Number(i.cny)>0?Math.ceil(i.cny*rate()):null,key:KEY};
+  return {add,checkout,buyNow:(p,variant,qty)=>checkout('',[item(p,variant,qty)]),count:()=>read().length,items:read,save:write,unitMnt:i=>rate()&&Number(i.cny)>0?Math.ceil(i.cny*rate()):null,key:KEY};
 })();
 updateCounts();

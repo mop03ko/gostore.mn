@@ -6,6 +6,8 @@ const item={Id:'611111111',ProviderType:'Taobao',Title:'Аяллын цүнх',M
 fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/product/611111111?language=mn').digest('hex')+'.json'),JSON.stringify({data:{Item:item},fetched:new Date().toISOString(),expires:Math.floor(Date.now()/1000)+3600,stale:false}));
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await page.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await page.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:[],page:1,more:false,total:0,pages:1,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}}));
  // Guests see a sign-in prompt instead of private data.
@@ -16,7 +18,7 @@ fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/
  const items=[{id:'tb-611111111',sku:'black',qty:2}],quote=(await (await page.request.post(base+'/api/index.php?action=checkout-quote',{headers,data:{items}})).json()).quote;
  const created=await page.request.post(base+'/api/index.php?action=order-create',{headers,data:{type:'checkout',title:'Taobao сагс',items,expected_total:quote.total,token:crypto.randomBytes(32).toString('hex'),family_name:'Тест',customer:'Хэрэглэгч',phone:'99112233',fulfillment:'pickup'}});assert.equal(created.status(),201);
  const orderId=(await created.json()).order.id;
- await page.goto(base+'/account');await page.locator('.account-menu').waitFor();
+ await page.goto(base+'/');await page.locator('.header-actions [data-action=orders]').click();await page.waitForURL(u=>u.pathname==='/account/orders');await page.locator('.account-menu').waitFor();
  assert.equal(await page.locator('.header-actions [data-account-label]').innerText(),customer.name.split(' ')[0],'Header shows the customer name');
  await page.locator('.account-tabs-row').waitFor();
  assert.ok((await page.locator('.account-stats').innerText()).replace(/\s+/g,' ').includes('1 Захиалга 1 Төлбөр хүлээж буй'));
@@ -24,7 +26,11 @@ fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/
  await page.locator('[data-account-filter=done]').click();assert.ok((await page.locator('.account-orders').innerText()).includes('Тохирох захиалга алга'));
  await page.locator('[data-account-filter=payment]').click();assert.ok((await page.locator('.account-order').innerText()).includes(orderId));
  await page.locator('#account-order-search').fill('GS-NOPE');assert.equal(await page.locator('.account-order').count(),0);await page.locator('#account-order-search').fill('');
- await page.locator('.account-order [data-server-order]').click();await page.locator('.cargo-detail').waitFor();await page.locator('#close-modal').click();
+ await page.locator('.account-order a[data-server-order]').click();await page.waitForURL(u=>u.pathname==='/account/orders/'+orderId);
+ await page.locator('#cargo-page .cargo-detail').waitFor();assert.equal(await page.locator('#modal').isVisible(),false);
+ await page.reload();await page.locator('#cargo-page .cargo-detail').waitFor();
+ const guest=await browser.newPage();await guest.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));await guest.goto(page.url());await guest.locator('#cargo-page a[href^="/login?next="]').waitFor();assert.equal(await guest.locator('.cargo-detail').count(),0);await guest.close();
+ await page.goBack();await page.waitForURL(u=>u.pathname==='/account/orders');
  await page.locator('[data-account-section=products]').click();await page.waitForURL(u=>u.pathname==='/account/products');await page.locator('.account-product').waitFor();
  assert.ok((await page.locator('.account-product').innerText()).includes('Аяллын цүнх'));assert.equal(await page.locator('.account-product a.button').getAttribute('href'),'/v/tb-611111111');
  // Address book: add, second address as default, edit, delete.

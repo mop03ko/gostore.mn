@@ -26,7 +26,7 @@
   // discovery (home-route) and, 1–11 November in Ulaanbaatar time, the 11.11 banner and section.
   (()=>{try{const d=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ulaanbaatar",month:"2-digit",day:"2-digit"}).formatToParts(new Date()),m=d.find(p=>p.type==="month").value,day=Number(d.find(p=>p.type==="day").value);const home=/^\/(?:index\.html)?$/.test(location.pathname);document.documentElement.classList.toggle("home-route",home);document.documentElement.classList.toggle("eleven-active",home&&m==="11"&&day<=11);}catch{}})();
   </script>
-  <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("listing-view", /^\/(?:search|products|saved|c\/[a-z0-9-]{1,40}(?:\/[a-z0-9-]{1,60})?)\/?$/.test(location.pathname)||(/^\/(?:index\.html)?$/.test(location.pathname)&&/[?&](?:q|category|image)=|[?&]filter=saved/.test(location.search)));document.documentElement.classList.toggle("eleven-sale-view", /^\/11-11\/?$/.test(location.pathname)||/[?&]sale=11\.11(?:&|$)/.test(location.search));document.documentElement.classList.toggle("auth-view-open", /^\/(?:login(?:\/(?:reset|email|link))?|register)\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help)\/?$/.test(location.pathname));</script>
+  <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("listing-view", /^\/(?:search|products|saved|c\/[a-z0-9-]{1,40}(?:\/[a-z0-9-]{1,60})?)\/?$/.test(location.pathname)||(/^\/(?:index\.html)?$/.test(location.pathname)&&/[?&](?:q|category|image)=|[?&]filter=saved/.test(location.search)));document.documentElement.classList.toggle("eleven-sale-view", /^\/11-11\/?$/.test(location.pathname)||/[?&]sale=11\.11(?:&|$)/.test(location.search));document.documentElement.classList.toggle("auth-view-open", /^\/(?:login(?:\/(?:reset|email|link))?|register)\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help|account\/orders\/GS-[a-z0-9-]{3,45})\/?$/i.test(location.pathname));</script>
   <meta charset="utf-8">
   <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
   <meta property="og:type" content="website">
@@ -114,15 +114,15 @@
   <meta name="theme-color" content="#132344">
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
-  <link rel="stylesheet" href="/app.css?v=9a161689f55f">
-  <script src="/app.js?v=69d6e35bb609" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app.css?v=a7911f81f607">
+  <script src="/app.js?v=82fcefa6a294" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261109-six">
   <script src="/eleven-sale.js?v=20261109-campaign" defer></script>
   <script>document.documentElement.classList.toggle('home-refresh', /^\/(?:index\.html)?$/.test(location.pathname) && !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search));</script>
   <link rel="stylesheet" href="/warehouse-preference.css?v=20261115-2">
   <script src="/warehouse-preference.js?v=20261115-1" defer></script>
-  <link rel="stylesheet" href="/home-refresh.css?v=20261119-touch">
+  <link rel="stylesheet" href="/home-refresh.css?v=20261122-pages">
   <script src="/home-refresh.js?v=20261119-footer2" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1d2aae82ae"></head>
 <body>
@@ -157,12 +157,12 @@
       <form id="search-form" class="search-form" role="search"><span class="search-provider" aria-label="GOStore дэлгүүр">GOStore</span><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" enterkeyhint="search" placeholder="Бүтээгдэхүүний нэрээр хайх…" autocomplete="off"><button type="button" class="image-search-button" data-image-search hidden aria-label="Зургаар хайх" title="Зургаар хайх"><svg class="icon"><use href="#i-camera"/></svg></button><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
       <div class="header-actions">
         <button type="button" class="header-action theme-toggle" data-theme-toggle aria-label="Dark Mode" aria-pressed="false" title="Бараан горимд шилжих"><svg class="icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
-        <button class="header-action mobile-notifications" data-notifications aria-label="Мэдэгдэл"><span class="icon-wrap"><svg class="icon"><use href="#i-bell"/></svg><span data-notification-count></span></span></button>
+        <a href="/account/notifications" class="header-action mobile-notifications" data-notifications aria-label="Мэдэгдэл"><span class="icon-wrap"><svg class="icon"><use href="#i-bell"/></svg><span data-notification-count></span></span></a>
         <button class="header-action" data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button>
-        <button class="header-action" data-action="orders" aria-label="Миний ачаа"><svg class="icon"><use href="#i-box"/></svg><span>Миний ачаа</span></button>
+        <a href="/account/orders" class="header-action" data-action="orders" aria-label="Миний ачаа"><svg class="icon"><use href="#i-box"/></svg><span>Миний ачаа</span></a>
         <button class="header-action" data-compare-open aria-label="Бараа харьцуулах" hidden><span class="icon-wrap"><svg class="icon"><use href="#i-compare"/></svg><b class="count">0</b></span><span>Харьцуулах</span></button>
-        <button class="header-action" data-action="favorites" aria-label="Хадгалсан бараа"><span class="icon-wrap"><svg class="icon"><use href="#i-heart"/></svg><b class="count" id="favorite-count" hidden>0</b></span><span>Хадгалсан</span></button>
-        <button class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></button>
+        <a href="/saved" class="header-action" data-action="favorites" aria-label="Хадгалсан бараа"><span class="icon-wrap"><svg class="icon"><use href="#i-heart"/></svg><b class="count" id="favorite-count" hidden>0</b></span><span>Хадгалсан</span></a>
+        <a href="/cart" class="header-action" data-action="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b class="count" id="cart-count">0</b></span><span>Сагс</span></a>
       </div>
     </div>
     
@@ -181,8 +181,8 @@
       <aside class="hub-user" aria-label="Миний GOStore">
         <div class="hub-user-head"><span class="hub-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span><div><small>Сайн байна уу</small><strong data-account-label>Нэвтрэх</strong></div></div>
         <div class="hub-user-guest"><button class="button blue" data-action="account">Нэвтрэх</button><button type="button" class="button outline" data-hub-register>Бүртгүүлэх</button></div>
-        <nav class="hub-orders" aria-label="Миний захиалга"><a href="/account?status=payment"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>Төлөх</a><a href="/account?status=transit"><svg class="icon" aria-hidden="true"><use href="#i-truck"/></svg>Замд</a><a href="/account?status=ready"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg>Авах</a><a href="/account"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Бүгд</a></nav>
-        <div class="hub-shortcuts"><button data-action="cart"><svg class="icon" aria-hidden="true"><use href="#i-bag"/></svg>Сагс<b data-hub-count="cart"></b></button><button data-action="favorites"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg>Хадгалсан<b data-hub-count="favorites"></b></button><button data-action="orders"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Ачаа хянах</button></div>
+        <nav class="hub-orders" aria-label="Миний захиалга"><a href="/account/orders?status=payment"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>Төлөх</a><a href="/account/orders?status=transit"><svg class="icon" aria-hidden="true"><use href="#i-truck"/></svg>Замд</a><a href="/account/orders?status=ready"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg>Авах</a><a href="/account/orders"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Бүгд</a></nav>
+        <div class="hub-shortcuts"><a href="/cart" data-action="cart"><svg class="icon" aria-hidden="true"><use href="#i-bag"/></svg>Сагс<b data-hub-count="cart"></b></a><a href="/saved" data-action="favorites"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg>Хадгалсан<b data-hub-count="favorites"></b></a><a href="/account/orders" data-action="orders"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Ачаа хянах</a></div>
         <p class="hub-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>QPay-ээр төлнө. Каргог бараа сонгосон салбарт ирэхэд бодит жингээр тооцно.</p>
       </aside>
     </section>
@@ -190,7 +190,7 @@
     <section class="container home-services" aria-label="Шууд нээх">
       <button type="button" class="home-service service-deals" data-home-discovery="deals"><span class="home-service-icon" aria-hidden="true">%</span><span><strong>Хямдралыг алдалгүй</strong><small>Баталгаажсан үнийн бууралт</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
       <button type="button" class="home-service service-free" data-home-discovery="free"><span class="home-service-icon"><svg class="icon" aria-hidden="true"><use href="#i-truck"/></svg></span><span><strong>Хятад дотор 0¥ хүргэлт</strong><small>Эрээн хүртэл · Монголын тээвэр тусдаа</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-      <a href="/account" class="home-service service-orders"><span class="home-service-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span><span><strong>Миний захиалга хаана явна?</strong><small>Захиалга, ачаагаа нэг дор хянах</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      <a href="/account/orders" class="home-service service-orders"><span class="home-service-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span><span><strong>Миний захиалга хаана явна?</strong><small>Захиалга, ачаагаа нэг дор хянах</small></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
     </section>
     <section id="eleven-sale" class="eleven-sale page-width" aria-labelledby="eleven-sale-title"></section>
     <section id="discovery-home" class="discovery-home page-width" aria-label="Барааны сонголтууд"></section>
@@ -213,7 +213,7 @@
         <a href="/products">Бүх бараа</a>
         <a href="/official-stores">Албан ёсны дэлгүүрүүд</a>
         <a href="/self-cargo.html">Өөрөө захиалах · Эрээн карго</a>
-        <a href="/account">Миний захиалга</a>
+        <a href="/account/orders">Миний захиалга</a>
       </nav>
       <nav class="sf-links sf-help" aria-labelledby="sf-help-title">
         <h3 id="sf-help-title">Тусламж</h3>
@@ -250,7 +250,7 @@
     </div>
     <div class="container footer-bottom"><span>© <span id="year"></span> GOStore. Сонголт нэг дор.</span><span>Монгол хэл <span aria-hidden="true">·</span> MNT ₮</span></div>
   </footer>
-  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="/" data-mobile-tab="home" aria-current="page"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><button type="button" data-open-categories data-mobile-tab="categories"><svg class="icon"><use href="#i-grid"/></svg>Ангилал</button><a href="/account" data-mobile-tab="orders"><svg class="icon"><use href="#i-box"/></svg>Захиалга</a><button data-action="cart" data-mobile-tab="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b id="mobile-cart-count" class="count" hidden>0</b></span>Сагс</button><button data-action="account" data-mobile-tab="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button></nav>
+  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="/" data-mobile-tab="home" aria-current="page"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><button type="button" data-open-categories data-mobile-tab="categories"><svg class="icon"><use href="#i-grid"/></svg>Ангилал</button><a href="/account/orders" data-mobile-tab="orders"><svg class="icon"><use href="#i-box"/></svg>Миний ачаа</a><a href="/cart" data-action="cart" data-mobile-tab="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b id="mobile-cart-count" class="count" hidden>0</b></span>Сагс</a><button data-action="account" data-mobile-tab="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button></nav>
   <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="Цонх хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="modal-body"></div></dialog>
   <input type="file" id="image-search-input" accept="image/jpeg,image/png,image/webp" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

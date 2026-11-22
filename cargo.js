@@ -13,35 +13,37 @@ function cargoPhotosHtml(photos=[]){
   }).join('')+'</section>';
 }
 function cargoPickupWarehouse(o){const w=o.pickup_warehouse;if(!w?.address)return '';return `<section class="info-box"><h3>${esc(w.name)}</h3><p style="white-space:pre-line">${esc(w.address)}</p><p>Утас: ${esc(w.phone)}${w.contact_phone?' · '+esc(w.contact_phone):''}</p>${w.hours?`<p>Ажиллах цаг: ${esc(w.hours)}</p>`:''}</section>`;}
-let cargoList=[],cargoFilter='all',cargoQuery='',cargoRequest=0,cargoUserSwitches=0,cargoNoticeThrough=0,cargoMessageThrough=0;
+let cargoRequest=0;
+const cargoPageId=location.pathname.match(/^\/account\/orders\/(GS-[a-z0-9-]{3,45})\/?$/i)?.[1].toUpperCase();
+const cargoOrderHref=id=>'/account/orders/'+encodeURIComponent(id);
+const cargoPage=cargoPageId?document.createElement('section'):null;
+function renderCargoPage(body){
+  cargoPage.innerHTML=`<nav class="pd-breadcrumb" aria-label="Байршил"><a href="/">Нүүр</a><span>/</span><a href="/account/orders">Миний ачаа</a><span>/</span><span>${esc(cargoPageId)}</span></nav><h1 class="store-title">Ачааны дэлгэрэнгүй</h1>${body}`;
+}
+function cargoSignInHtml(){
+  const next=encodeURIComponent(cargoOrderHref(cargoPageId));
+  return `<div class="account-empty"><h2>Нэвтэрч орно уу</h2><a class="button blue" href="/login?next=${next}">Нэвтрэх</a></div>`;
+}
+if(cargoPage){
+  cargoPage.id='cargo-page';cargoPage.className='container store-page';
+  document.querySelector('#main').prepend(cargoPage);
+  document.title='Ачааны дэлгэрэнгүй · gostore.mn';
+  renderCargoPage('<p class="account-loading" role="status">Ачаалж байна…</p>');
+}
 const cargoNext=o=>o.cancel_reason==='payment_timeout'?'Төлбөрийн хугацаа дууссан тул автоматаар цуцлагдсан. Сагсаа дахин захиална уу.':o.payment_due&&o.status==='quoted'&&!o.paid?'Төлөх хугацаа: '+cargoDate(o.payment_due)+' хүртэл. Төлбөр орсны дараа нийлүүлэгчээс захиална.':o.status==='cancelled'?'Захиалга цуцлагдсан. Асуух зүйл байвал GOStore-той холбогдоно уу.':o.cargo?.issue_count?'Агуулах зөрчлийг шалгаж байна.':o.cargo?.billing?.due&&o.cargo?.billing?.finalized?'Үлдэгдэл төлбөрөө төлөөд авах кодоо харна уу.':o.status==='ready_pickup'?'Авах кодоо агуулахын ажилтанд үзүүлнэ үү.':o.status==='out_for_delivery'?'Бараагаа авах үедээ хүргэгчид авах кодоо хэлнэ үү.':o.status==='erenhot_ready'?'Барааг багцалж дууссан. Агуулахаас илгээхийг хүлээж байна.':o.status==='erenhot_dispatched'?(o.warehouse_names?.erenhot||'Эрээн агуулах')+'-аас гарсан. Замын-Үүдээр дамжин '+(o.warehouse_names?.ulaanbaatar||'Улаанбаатар агуулах')+' руу хүргэгдэнэ.':o.status==='quoted'?'Үнийн саналаа шалгаж төлбөрөө төлнө үү.':o.status==='completed'?'Барааг хүлээлгэн өгсөн.':'Дараагийн төлөв шинэчлэгдэхэд сайтын мэдэгдэлд харагдана.';
 const cargoGroup=o=>o.status==='cancelled'?'cancelled':o.status==='quoted'&&!o.paid?'payment':o.status==='completed'?'done':o.cargo?.billing?.finalized&&o.cargo.billing.due>0?'payment':['ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)?'ready':'transit';
 
 
-function cargoCards(){
-  const rows=cargoList.filter(o=>(cargoFilter==='all'||cargoGroup(o)===cargoFilter)&&(!cargoQuery||(o.id+' '+o.title).toLowerCase().includes(cargoQuery.toLowerCase())));
-  return rows.length?rows.map(o=>`<article class="cargo-card"><div><span class="cargo-code">${esc(o.id)}</span><span class="cargo-status">${esc(orderStatusLabel(o))}</span></div><h3>${esc(o.title)}</h3><p class="tracking-list-location">${esc(OrderTracking.state(o).location)}</p><p>${esc(cargoNext(o))}</p><div class="cargo-card-footer"><small>${cargoDate(o.created,true)}</small><strong>${o.cargo?.billing?.finalized?'Үлдэгдэл '+money(o.cargo.billing.due):'Эцсийн тооцоо хүлээгдэж байна'}</strong></div><button class="button outline" data-server-order="${esc(o.id)}">Дэлгэрэнгүй →</button></article>`).join(''):`<div class="empty-state">${icon('box')}<h3>${cargoQuery||cargoFilter!=='all'?'Тохирох ачаа алга':'Энд таны захиалга харагдана'}</h3><p>${cargoQuery||cargoFilter!=='all'?'Код, барааны нэр эсвэл төлөвийн шүүлтүүрээ шалгаарай.':'Бараагаа сонгон захиалсны дараа явцыг эндээс хянана.'}</p>${cargoQuery||cargoFilter!=='all'?'<button class="button outline" data-cargo-reset>Шүүлтүүр цэвэрлэх</button>':'<button class="button blue" data-action="browse">Бараа үзэх</button>'}</div>`;
-}
-storeServer.orders=async(offset=0)=>{
-  let request=++cargoRequest;const switches=cargoUserSwitches;
-  try{
-    await customerAccount.refresh();
-    // refresh() can sign the customer in right after page load, and setUser() then bumps the
-    // counter. Bumps from that sign-in alone must not cancel this list; a newer request still does.
-    if(cargoRequest-request===cargoUserSwitches-switches)request=cargoRequest;else return;
-    const user=customerAccount.user;if(!user)return accountForm();
-    const r=user?await shopApi('customer-orders&offset='+offset):{orders:[],more:false};
-    const own=new Set(r.orders.map(o=>o.id)),guest=savedRequests().filter(g=>!own.has(g.id));
-    const fetched=offset===0?await Promise.allSettled(guest.map(g=>shopApi('order-get',g))):[];
-    if(request!==cargoRequest)return;cargoList=[...r.orders,...fetched.filter(x=>x.status==='fulfilled').map(x=>x.value.order)];
-    openModal('Миний ачаа',`<p class="modal-intro">Захиалгын кодоороо явц, төлбөр, авах мэдээллээ нэг дороос хараарай.</p>${!user?'<button class="button blue" data-action="account">Нэвтрэх / Бүртгүүлэх</button><p>Энэ хөтөчид хадгалсан захиалгууд харагдана.</p>':''}<div class="cargo-toolbar"><label class="field">Код / барааны нэр<input id="cargo-search" value="${esc(cargoQuery)}" placeholder="GS-A1B2C3"></label><label class="field">Төлөв<select id="cargo-filter">${Object.entries({all:'Бүгд',transit:'Замд / Бэлтгэж байна',payment:'Төлбөр хүлээж байна',ready:'Авах / Хүргүүлэх',done:'Хүлээн авсан',cancelled:'Цуцлагдсан'}).map(([k,v])=>`<option value="${k}" ${k===cargoFilter?'selected':''}>${v}</option>`).join('')}</select></label></div><p class="account-hint">Энэ хуудсанд ${cargoList.length} захиалга · Код эсвэл нэрээр хайна.</p><div id="cargo-cards">${cargoCards()}</div>${user&&(offset>0||r.more)?`<div class="form-actions">${offset>0?`<button class="button outline" data-orders-offset="${Math.max(0,offset-20)}">Өмнөх</button>`:''}${r.more?`<button class="button outline" data-orders-offset="${offset+20}">Дараах</button>`:''}</div>`:''}${user&&guest.length?`<details><summary>Энэ хөтчийн хүсэлтийг бүртгэлдээ холбох</summary>${guest.map(g=>`<p>${esc(g.id)} <button class="text-button" data-claim-order="${esc(g.id)}">Холбох</button></p>`).join('')}</details>`:''}`);
-    refreshCargoNotifications().catch(()=>{});
-  }catch(e){toast(e.message);}
-};
-viewServerOrder=async(id,requestInvoice=false,action=null)=>{
+async function viewServerOrder(id,requestInvoice=false,action=null){
+  const onPage=cargoPageId===id;
+  if(!requestInvoice&&!action&&!onPage){location.assign(cargoOrderHref(id));return;}
+  if(!requestInvoice&&!action&&onPage)closeModal();
+  if(!customerAccount.user){
+    if(onPage)renderCargoPage(cargoSignInHtml());else accountForm();
+    return;
+  }
   const request=++cargoRequest,r=savedRequests().find(x=>x.id===id)||{id,token:''};
   try{
-    if(!await customerAccount.refresh())return accountForm();
     const {order:o}=await shopApi(action||(requestInvoice?'invoice':'order-get'),r);if(request!==cargoRequest)return;
     const c=o.cargo||{},bill=c.billing||{finalized:false,total:o.amount,paid:o.paid?o.amount:0,due:o.paid?0:o.amount,breakdown:o.quote?.breakdown||{}},m=c.measurement;
     const activeInitial=o.invoice?.state==='ready'&&!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now());
@@ -54,31 +56,39 @@ viewServerOrder=async(id,requestInvoice=false,action=null)=>{
       watchCargoPayment(r,o,request);
       return;
     }
+    if(!onPage){location.assign(cargoOrderHref(id));return;}
+    closeModal();
     const labels={goods_mnt:'Бараа',domestic_mnt:'Хятад доторх хүргэлт',service_mnt:'Үйлчилгээ',cargo_mnt:'Карго',delivery_mnt:'УБ хүргэлт'};
     const history=[{status:'new',at:o.created},...(o.history||[])];
-    openModal('Ачааны дэлгэрэнгүй',`<div class="cargo-detail"><div class="cargo-detail-code"><strong>${esc(o.id)}</strong><button class="text-button" data-copy-cargo="${esc(o.id)}">Код хуулах</button></div><span class="cargo-status">${esc(orderStatusLabel(o))}</span><h3>${esc(o.title)}</h3><p class="cargo-next-step">${esc(cargoNext(o))}</p>${OrderTracking.html(o,{history:false})}${o.supplier?.image?`<img class="cargo-product" src="${esc(o.supplier.image)}" alt="${esc(o.title)}" referrerpolicy="no-referrer">`:''}${(o.type==='checkout'||o.shipment_parent)&&o.items?.length?`<ul class="cargo-items">${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty}</li>`).join('')}</ul>`:`<p>${esc(o.supplier?.variant||o.variant||'')} ${o.supplier?.qty?'× '+o.supplier.qty:''}</p>`}${c.issue_count?'<div class="info-box">Агуулахад зөрчил бүртгэгдсэн. Шалгалт дуусмагц явц шинэчлэгдэнэ.</div>':''}${cargoPickupWarehouse(o)}${!o.fulfillment&&o.fulfillment_request?.method==='delivery'?`<div class="info-box"><strong>Хүргэлтээр авна</strong><p>${esc(o.delivery_address||'')}</p><p>УБ хүргэлтийн төлбөрийг эцсийн тооцоонд нэмнэ.</p></div>`:''}${c.pickup_code?`<section class="pickup-pass"><h3>${(o.remaining_status||o.status)==='ready_pickup'?'Агуулахаас авах код':'Хүргэлт хүлээн авах код'}</h3><strong>${esc(c.pickup_code)}</strong>${code39(c.pickup_code)}<p>Бараагаа авах үедээ ажилтанд үзүүлнэ үү. Нэг удаа ашиглана.</p></section>`:''}<details ${["ready_pickup","out_for_delivery","completed"].includes(o.status)?"":"open"}><summary>Явцын түүх</summary><ol class="cargo-timeline">${history.map(h=>`<li><strong>${esc(orderStatusLabel(o,h.status))}</strong><small>${cargoDate(h.at)}</small></li>`).join('')}</ol></details>${cargoPhotosHtml(c.photos)}${o.type==='checkout'&&o.quote?`<details class="order-calculation" ${bill.finalized?'':'open'}><summary>${esc(commerceUI.calculationTitle)}</summary>${commerceUI.calculationHtml(o.quote,o.items||[],commerceUI.calculationTitle,'Захиалгын эхний төлбөр')}</details>`:''}<section class="cargo-bill">${bill.finalized&&o.quote?`<p>Урьдчилсан тооцоо: ${money(o.quote.total)} · Зөрүү: ${money(bill.total-o.quote.total)}</p>`:''}<h3>${bill.finalized?'Эцсийн тооцоо':o.type==='checkout'?'Урьдчилан төлөх дүн':'Урьдчилсан үнийн санал'}</h3>${Object.entries(labels).filter(([k])=>k in bill.breakdown).map(([k,v])=>`<div><span>${v}</span><strong>${k==='cargo_mnt'&&!bill.finalized&&o.quote?.cargo_later?'Салбарт ирэхэд бодит жингээр':k==='domestic_mnt'&&!bill.finalized&&o.quote?.domestic_later?'Салбарт ирэхэд бодит дүнгээр':money(bill.breakdown[k])}</strong></div>`).join('')}<div><span>Нийт</span><strong>${money(bill.total)}</strong></div><div><span>Төлсөн</span><strong>${money(bill.paid)}</strong></div><div class="cargo-total"><span>Үлдэгдэл</span><strong>${money(bill.due)}</strong></div>${bill.refund_due?`<p class="form-error">Илүү төлөлт ${money(bill.refund_due)}. Админ буцаалтыг тулгаж шалгана.</p>`:''}</section>${m?`<section><h3>Агуулахын хэмжилт</h3><p>${m.weight_kg} кг · ${m.length_cm?`${m.length_cm} × ${m.width_cm} × ${m.height_cm} см · `:''}${m.volume_m3} м³ · ${m.pieces} ширхэг</p></section>`:''}${o.fulfillment?`<p>Хүлээн авах: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.payment_due&&o.invoice&&!o.paid&&o.status==='quoted'?'<p class="info-box" data-payment-countdown></p>':''}${!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?qpayPanel(o.invoice,o.id,o.amount):''}${bill.due>0?qpayPanel(c.freight_invoice,o.id,bill.due,true):''}<div class="form-actions"><button class="button outline" data-server-order="${esc(o.id)}">Төлөв шинэчлэх</button>${qpayEnabled&&!o.demo&&o.status==='quoted'&&!o.paid&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?`<button class="button blue" data-invoice="${esc(o.id)}">Эхний төлбөр · QPay</button>`:''}${qpayEnabled&&!o.demo&&bill.finalized&&bill.due>0?`<button class="button blue" data-freight-invoice="${esc(o.id)}">Үлдэгдэл төлөх · QPay</button>`:''}${qpayEnabled&&(o.invoice||c.freight_invoice)?`<button class="button outline" data-payment-check="${esc(o.id)}">Төлбөр шалгах</button>`:''}</div><button class="text-button" data-action="orders">← Миний ачаа</button></div>`);
-    document.querySelectorAll('[data-cargo-photo]').forEach(async img=>{try{const res=await fetch('/api/index.php?action=order-photo',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':shopCsrf},body:JSON.stringify({...r,photo:img.dataset.cargoPhoto})});if(!res.ok)throw Error();const blob=await res.blob();if(!img.isConnected)return;const url=URL.createObjectURL(blob);img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);img.src=url;}catch{img.alt='Зураг ачаалсангүй. Төлөв шинэчилж дахин оролдоно уу.';}});
-    watchOrderPayment(o);
-    watchCargoPayment(r,o,request);
-  }catch(e){toast(e.message);}
-};
+    renderCargoPage(`<div class="cargo-detail"><div class="cargo-detail-code"><strong>${esc(o.id)}</strong><button class="text-button" data-copy-cargo="${esc(o.id)}">Код хуулах</button></div><span class="cargo-status">${esc(orderStatusLabel(o))}</span><h3>${esc(o.title)}</h3><p class="cargo-next-step">${esc(cargoNext(o))}</p>${OrderTracking.html(o,{history:false})}${o.supplier?.image?`<img class="cargo-product" src="${esc(o.supplier.image)}" alt="${esc(o.title)}" referrerpolicy="no-referrer">`:''}${(o.type==='checkout'||o.shipment_parent)&&o.items?.length?`<ul class="cargo-items">${o.items.map(i=>`<li>${esc(i.name)} · ${esc(i.variant)} × ${i.qty}</li>`).join('')}</ul>`:`<p>${esc(o.supplier?.variant||o.variant||'')} ${o.supplier?.qty?'× '+o.supplier.qty:''}</p>`}${c.issue_count?'<div class="info-box">Агуулахад зөрчил бүртгэгдсэн. Шалгалт дуусмагц явц шинэчлэгдэнэ.</div>':''}${cargoPickupWarehouse(o)}${!o.fulfillment&&o.fulfillment_request?.method==='delivery'?`<div class="info-box"><strong>Хүргэлтээр авна</strong><p>${esc(o.delivery_address||'')}</p><p>УБ хүргэлтийн төлбөрийг эцсийн тооцоонд нэмнэ.</p></div>`:''}${c.pickup_code?`<section class="pickup-pass"><h3>${(o.remaining_status||o.status)==='ready_pickup'?'Агуулахаас авах код':'Хүргэлт хүлээн авах код'}</h3><strong>${esc(c.pickup_code)}</strong>${code39(c.pickup_code)}<p>Бараагаа авах үедээ ажилтанд үзүүлнэ үү. Нэг удаа ашиглана.</p></section>`:''}<details ${["ready_pickup","out_for_delivery","completed"].includes(o.status)?"":"open"}><summary>Явцын түүх</summary><ol class="cargo-timeline">${history.map(h=>`<li><strong>${esc(orderStatusLabel(o,h.status))}</strong><small>${cargoDate(h.at)}</small></li>`).join('')}</ol></details>${cargoPhotosHtml(c.photos)}${o.type==='checkout'&&o.quote?`<details class="order-calculation" ${bill.finalized?'':'open'}><summary>${esc(commerceUI.calculationTitle)}</summary>${commerceUI.calculationHtml(o.quote,o.items||[],commerceUI.calculationTitle,'Захиалгын эхний төлбөр')}</details>`:''}<section class="cargo-bill">${bill.finalized&&o.quote?`<p>Урьдчилсан тооцоо: ${money(o.quote.total)} · Зөрүү: ${money(bill.total-o.quote.total)}</p>`:''}<h3>${bill.finalized?'Эцсийн тооцоо':o.type==='checkout'?'Урьдчилан төлөх дүн':'Урьдчилсан үнийн санал'}</h3>${Object.entries(labels).filter(([k])=>k in bill.breakdown).map(([k,v])=>`<div><span>${v}</span><strong>${k==='cargo_mnt'&&!bill.finalized&&o.quote?.cargo_later?'Салбарт ирэхэд бодит жингээр':k==='domestic_mnt'&&!bill.finalized&&o.quote?.domestic_later?'Салбарт ирэхэд бодит дүнгээр':money(bill.breakdown[k])}</strong></div>`).join('')}<div><span>Нийт</span><strong>${money(bill.total)}</strong></div><div><span>Төлсөн</span><strong>${money(bill.paid)}</strong></div><div class="cargo-total"><span>Үлдэгдэл</span><strong>${money(bill.due)}</strong></div>${bill.refund_due?`<p class="form-error">Илүү төлөлт ${money(bill.refund_due)}. Админ буцаалтыг тулгаж шалгана.</p>`:''}</section>${m?`<section><h3>Агуулахын хэмжилт</h3><p>${m.weight_kg} кг · ${m.length_cm?`${m.length_cm} × ${m.width_cm} × ${m.height_cm} см · `:''}${m.volume_m3} м³ · ${m.pieces} ширхэг</p></section>`:''}${o.fulfillment?`<p>Хүлээн авах: ${o.fulfillment.method==='pickup'?'Агуулахаас авах':'Хүргэлтээр авах'}</p>`:''}${o.payment_due&&o.invoice&&!o.paid&&o.status==='quoted'?'<p class="info-box" data-payment-countdown></p>':''}${!o.paid&&o.status==='quoted'&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?qpayPanel(o.invoice,o.id,o.amount):''}${bill.due>0?qpayPanel(c.freight_invoice,o.id,bill.due,true):''}<div class="form-actions"><button class="button outline" data-server-order="${esc(o.id)}">Төлөв шинэчлэх</button>${qpayEnabled&&!o.demo&&o.status==='quoted'&&!o.paid&&(!o.payment_due||Date.parse(o.payment_due)>Date.now())?`<button class="button blue" data-invoice="${esc(o.id)}">Эхний төлбөр · QPay</button>`:''}${qpayEnabled&&!o.demo&&bill.finalized&&bill.due>0?`<button class="button blue" data-freight-invoice="${esc(o.id)}">Үлдэгдэл төлөх · QPay</button>`:''}${qpayEnabled&&(o.invoice||c.freight_invoice)?`<button class="button outline" data-payment-check="${esc(o.id)}">Төлбөр шалгах</button>`:''}</div><a class="text-button" href="/account/orders">← Миний ачаа</a></div>`);
+    cargoPage.querySelectorAll('[data-cargo-photo]').forEach(async img=>{try{const res=await fetch('/api/index.php?action=order-photo',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':shopCsrf},body:JSON.stringify({...r,photo:img.dataset.cargoPhoto})});if(!res.ok)throw Error();const blob=await res.blob();if(!img.isConnected)return;const url=URL.createObjectURL(blob);img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);img.src=url;}catch{img.alt='Зураг ачаалсангүй. Төлөв шинэчилж дахин оролдоно уу.';}});
+    watchOrderPayment(o,cargoPage);
+    watchCargoPayment(r,o,request,cargoPage.querySelector('.cargo-detail'));
+  }catch(e){
+    if(request!==cargoRequest)return;
+    if(onPage&&!requestInvoice&&!action){
+      renderCargoPage(`<p class="form-error" role="alert">${esc(e.message)}</p><div class="form-actions"><button class="button outline" data-server-order="${esc(id)}">Дахин оролдох</button><a class="button outline" href="/account/orders">Миний ачаа</a></div>`);
+    }else toast(e.message);
+  }
+}
 // While an unpaid QPay invoice is open, follow the server-side callback so the customer
 // does not need to press "Төлбөр шалгах" after returning from the bank app.
 let cargoPaymentWatch=null;
 const cargoDue=o=>!o.paid&&o.status==='quoted'&&o.invoice?.state==='ready'?'initial':o.cargo?.freight_invoice&&o.cargo?.billing?.due>0?'freight':null;
 function stopCargoPaymentWatch(){cargoPaymentWatch?.();cargoPaymentWatch=null;}
-function watchCargoPayment(r,o,request){
+function watchCargoPayment(r,o,request,detail=null){
   stopCargoPaymentWatch();const kind=cargoDue(o);if(!kind)return;
   const modal=document.querySelector('#modal'),started=Date.now();let ticks=0,busy=false;
+  const active=()=>detail?detail.isConnected:modal.open;
   const check=async full=>{
-    if(request!==cargoRequest||!modal.open||Date.now()-started>15*60*1000){stopCargoPaymentWatch();return;}
+    if(request!==cargoRequest||!active()||Date.now()-started>15*60*1000){stopCargoPaymentWatch();return;}
     if(busy)return;busy=true;
     // order-get reads the stored order; payment-check also asks QPay in case its callback was missed.
-    try{const {order:next}=await shopApi(full?'payment-check':'order-get',r);if(request===cargoRequest&&modal.open&&!cargoDue(next)){stopCargoPaymentWatch();if(cargoPaymentSettled(next,kind))cargoPaymentSuccess(next,kind);else void viewServerOrder(next.id);}}catch{}finally{busy=false;}
+    try{const {order:next}=await shopApi(full?'payment-check':'order-get',r);if(request===cargoRequest&&active()&&!cargoDue(next)){stopCargoPaymentWatch();if(cargoPaymentSettled(next,kind)){if(detail){await viewServerOrder(next.id);if(cargoRequest===request+1&&cargoPage.querySelector('.cargo-detail'))cargoPaymentSuccess(next,kind);}else cargoPaymentSuccess(next,kind);}else void viewServerOrder(next.id);}}catch{}finally{busy=false;}
   };
   const timer=setInterval(()=>check(++ticks%8===0),4000);
   const returned=()=>{if(document.visibilityState==='visible')check(true);};
-  document.addEventListener('visibilitychange',returned);modal.addEventListener('close',stopCargoPaymentWatch,{once:true});
+  document.addEventListener('visibilitychange',returned);if(!detail)modal.addEventListener('close',stopCargoPaymentWatch,{once:true});
   cargoPaymentWatch=()=>{clearInterval(timer);document.removeEventListener('visibilitychange',returned);modal.removeEventListener('close',stopCargoPaymentWatch);};
 }
 const cargoPaymentSettled=(o,kind)=>kind==='initial'?o.paid===true:!!o.cargo?.billing?.finalized&&o.cargo.billing.due===0;
@@ -91,15 +101,39 @@ function cargoPaymentSuccess(o,kind){
 }
 document.addEventListener('click',e=>{if(e.target.closest('[data-payment-done]'))document.querySelector('#close-modal').click();});
 async function refreshCargoNotifications(){if(!window.customerAccount?.user){document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent='');return null;}const userId=customerAccount.user.id,d=await shopApi('customer-notifications');if(customerAccount.user?.id!==userId)return null;const unread=(d.unread||0)+(d.messages_unread||0);document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent=unread?String(unread):'');return d;}
-// GOStore messages (service notices, promotions) come first; their links always stay on gostore.mn.
-function customerMessageCards(messages){return (messages||[]).map(m=>`<article class="cargo-notice customer-message ${m.read_at?'':'unread'}"><strong>${esc(m.title)}</strong><p class="customer-message-body">${esc(m.body)}</p><p>${m.kind==='promo'?'Урамшуулал':'GOStore мэдээлэл'} · ${cargoDate(m.created)}</p>${/^\/(?!\/)/.test(m.link||'')?`<a class="text-button" href="${esc(m.link)}">Дэлгэрэнгүй →</a>`:''}</article>`).join('');}
-async function showCargoNotifications(){if(!window.customerAccount?.user){await customerAccount.open();return;}const d=await refreshCargoNotifications();if(!d)return;cargoNoticeThrough=d.notifications[0]?.id||0;cargoMessageThrough=d.messages?.[0]?.id||0;openModal('Мэдэгдэл',`<p class="modal-intro">Захиалгын явц, төлбөрийн шинэчлэлт болон GOStore-ийн мэдээлэл.</p>${d.notifications.length||d.messages?.length?`<button class="button outline" data-read-notifications>Бүгдийг уншсан болгох</button>${customerMessageCards(d.messages)}${d.notifications.map(n=>`<article class="cargo-notice ${n.read_at?'':'unread'}"><strong>${n.kind==='status'?esc(orderLabels[n.message]||n.message):esc(n.message)}</strong><p>${esc(n.order_id)} · ${cargoDate(n.created)}</p><button class="text-button" data-server-order="${esc(n.order_id)}">Ачаа харах →</button></article>`).join('')}`:'<div class="empty-state">Шинэ мэдэгдэл алга.</div>'}`);}
-document.addEventListener('input',e=>{if(e.target.id==='cargo-search'){cargoQuery=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
-document.addEventListener('change',e=>{if(e.target.id==='cargo-filter'){cargoFilter=e.target.value;$('#cargo-cards').innerHTML=cargoCards();}});
-document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||!b.matches('[data-cargo-reset],[data-copy-cargo],[data-notifications],[data-read-notifications],[data-freight-invoice],[data-payment-check]'))return;try{if(b.hasAttribute('data-cargo-reset')){cargoFilter='all';cargoQuery='';$('#cargo-search').value='';$('#cargo-filter').value='all';$('#cargo-cards').innerHTML=cargoCards();$('#cargo-search').focus();}if(b.dataset.copyCargo){try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}}if(b.hasAttribute('data-notifications'))await showCargoNotifications();if(b.hasAttribute('data-read-notifications')){await shopApi('customer-notifications-read',{through_id:Number(cargoNoticeThrough),messages_through_id:Number(cargoMessageThrough)});await showCargoNotifications();}if(b.dataset.freightInvoice||b.dataset.paymentCheck){b.disabled=true;await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}}catch(err){toast(err.message);}finally{b.disabled=false;}});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('button');
+  if(b?.dataset.copyCargo){
+    try{await navigator.clipboard.writeText(b.dataset.copyCargo);toast('Захиалгын кодыг хууллаа');}
+    catch{toast('Кодыг сонгож гараар хуулна уу: '+b.dataset.copyCargo);}
+  }
+  if(b?.dataset.freightInvoice||b?.dataset.paymentCheck){
+    b.disabled=true;
+    try{await viewServerOrder(b.dataset.freightInvoice||b.dataset.paymentCheck,false,b.dataset.freightInvoice?'freight-invoice':'payment-check');}
+    finally{b.disabled=false;}
+  }
+});
 setInterval(()=>{if(!document.hidden&&window.customerAccount?.user)refreshCargoNotifications().catch(()=>{});},60000);
 setTimeout(()=>refreshCargoNotifications().catch(()=>{}),2000);
 
-const cargoSetUser=customerAccount.setUser;customerAccount.setUser=user=>{if(customerAccount.user?.id!==user?.id){++cargoRequest;++cargoUserSwitches;}cargoSetUser(user);if(!user){cargoList=[];document.querySelectorAll("[data-notification-count]").forEach(n=>n.textContent="");}else refreshCargoNotifications().catch(()=>{});};
+let cargoPageReady=false;
+const cargoSetUser=customerAccount.setUser;
+customerAccount.setUser=user=>{
+  const changed=customerAccount.user?.id!==user?.id;
+  if(changed){++cargoRequest;stopCargoPaymentWatch();}
+  cargoSetUser(user);
+  if(!user)document.querySelectorAll('[data-notification-count]').forEach(n=>n.textContent='');
+  else refreshCargoNotifications().catch(()=>{});
+  if(changed&&cargoPageReady){
+    closeModal();
+    renderCargoPage('<p class="account-loading" role="status">Ачаалж байна…</p>');
+    void viewServerOrder(cargoPageId);
+  }
+};
+if(cargoPage)window.catalogReady.then(async()=>{
+  try{await customerAccount.refresh();}catch{}
+  cargoPageReady=true;
+  void viewServerOrder(cargoPageId);
+});
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cargo-photo-toggle]');if(!b)return;const expanded=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',expanded?'Зургийг хураах':'Зургийг томруулах');b.closest('figure').classList.toggle('expanded',expanded);});
