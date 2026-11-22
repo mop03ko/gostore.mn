@@ -60,7 +60,7 @@ assert.equal((await cn('warehouse-settlement',settlement)).status,403);
 const reduced=await ub('warehouse-settlement',{...settlement,goods_mnt:1});assert.equal(reduced.status,200,JSON.stringify(reduced));assert.ok(reduced.order.billing.refund_due>0,'Refund due shown');
 assert.equal((await ub('warehouse-fulfillment-update',{id,operation:'complete',expected_status:'ready_pickup',received_by:'Tester',pickup_code:'00000000'})).status,409,'Refund due blocks handover');
 o=(await ub('warehouse-settlement',{...settlement,expected_version:reduced.order.logistics.version})).order;assert.equal(o.billing.due,0);assert.equal(o.billing.total,99000);assert.equal(o.billing.breakdown.cargo_mnt,1000);assert.equal(o.pickup_code,undefined);
-let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{8}$/);
+let own=(await owner('order-get',{id})).order;const code=own.cargo.pickup_code;assert.match(code,/^\d{4}$/);
 assert.deepEqual([...new Set(own.cargo.photos.map(p=>p.location))],['erenhot','ulaanbaatar']);
 assert.ok(own.cargo.photos.every(p=>Object.keys(p).sort().join(',')==='at,id,location,warehouse_name'));
 assert.equal(own.logistics,undefined);assert.equal(own.freight,undefined);assert.equal(own.batch_id,undefined);assert.ok(!JSON.stringify(own).includes('PRIVATE damage'));assert.equal(own.internal_note,undefined);assert.equal(own.callback_token,undefined);assert.ok(!JSON.stringify(own).includes(b.id));assert.ok(!JSON.stringify(own).includes('A-03-02'));

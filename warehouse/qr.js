@@ -80,7 +80,10 @@ function decodeWarehouseBarcode(source,width,height,maxSide=1280){
 }
 async function startBatchCamera(forceWeb=false){
   stopBatchScanner();const request=batchScanSequence,video=$('#qr-video');qrError('');
-  if(window.gostoreWarehouseNativeScanner&&forceWeb!==true){nativeScanMessage('open');return;}
+  // The installed iOS scanner only accepts GS/GB labels. The counter reads numeric barcodes.
+  const native=window.gostoreWarehouseNativeScanner;
+  const numericAtCounter=native==='ios'&&$('#editor').open&&$('#editor').dataset.handover==='1';
+  if(native&&forceWeb!==true&&!numericAtCounter){nativeScanMessage('open');return;}
   if(!navigator.mediaDevices?.getUserMedia){qrError('qrCameraUnavailable');return;}
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});

@@ -217,7 +217,9 @@ function warehouse_fulfillment(array $b,string $location): never {
         }elseif($action==='complete'){
             if(!in_array($o['status'],['ready_pickup','out_for_delivery'],true))fail('Захиалгыг хүлээлгэн өгөх боломжгүй.',409);
             logistics_ready($o);
-            if(empty($o['pickup_code'])||!hash_equals($o['pickup_code'],str_field($b,'pickup_code',8)))fail('Авах код буруу байна.',403);
+            $code=str_field($b,'pickup_code',8);
+            if(!warehouse_pickup_code_valid($code))fail('Авах кодын орон буруу байна.');
+            if(empty($o['pickup_code'])||!hash_equals($o['pickup_code'],$code))fail('Авах код буруу байна.',403);
             unset($o['pickup_code']);
             $o['fulfillment']['received_by']=str_field($b,'received_by',100);$o['fulfillment']['completed_at']=gmdate('c');warehouse_change_order($o,'completed');
         }else fail('Үйлдэл олдсонгүй.',404);

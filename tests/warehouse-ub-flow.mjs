@@ -42,7 +42,8 @@ assert.equal((await cn('warehouse-sort',{id:A})).status,403);
 let before=(await notices()).length;r=await sort(A);assert.equal(r.status,200,JSON.stringify(r));let o=r.order;
 assert.equal(o.status,'ready_pickup');assert.equal(o.logistics.shelf,'A-01');assert.equal(o.settlement.early,true,'Early bill kept');assert.equal(o.billing.due,0);
 let list=await notices();assert.equal(list.length,before+1,'One customer message for sorting');assert.match(list[0].message,/авахад бэлэн\. Авах код/);
-a=await mine(A);assert.match(a.cargo.pickup_code,/^\d{8}$/);const codeA=a.cargo.pickup_code;
+a=await mine(A);assert.match(a.cargo.pickup_code,/^\d{4}$/);const issuedA=a.cargo.pickup_code;
+const codeA='0042';
 await uploadReceipt(ub,B);before=(await notices()).length;o=(await sort(B,{shelf:'A-02'})).order;assert.equal(o.status,'ready_pickup');assert.equal(o.billing.due,cargo);assert.deepEqual(o.flags,{unpaid:cargo});
 list=await notices();assert.equal(list.length,before+1);assert.match(list[0].message,new RegExp('Үлдэгдэл '+cargo.toLocaleString('en-US')+'₮ төлөөд'));
 await uploadReceipt(ub,C);assert.equal((await sort(C,{method:'delivery',address:''})).status,400,'Delivery needs an address');
@@ -62,6 +63,9 @@ assert.equal((await cn('warehouse-handover-lookup&q=99115050')).status,403);
 assert.equal((await ub('warehouse-handover-lookup&q=123')).status,400);
 assert.equal((await ub('warehouse-handover-lookup&q=70000000')).status,404);
 let look=(await ub('warehouse-handover-lookup&q=99115050')).orders;assert.deepEqual(look.map(x=>[x.id,x.reason,x.verified,x.shelf]).sort(),[[A,'',false,'A-01'],[B,'unpaid',false,'A-02']]);
+fixture('pickup-code',A,codeA);
+assert.equal((await mine(A)).cargo.pickup_code,codeA,'Customer display preserves leading zeros');
+assert.equal((await ub('warehouse-handover-lookup&q=90000')).status,400);
 look=(await ub('warehouse-handover-lookup&q='+codeA)).orders;assert.deepEqual(look.map(x=>[x.id,x.verified]).sort(),[[A,true],[B,false]]);
 assert.equal((await ub('warehouse-handover-lookup&q='+C)).orders[0].reason,'delivery');
 
@@ -70,7 +74,9 @@ assert.equal((await ub('warehouse-handover',{items:[{id:A,code:'00000000'}],rece
 assert.equal((await ub('warehouse-handover',{items:[{id:A,code:codeA},{id:B,code:'00000000'}],received_by:'Ану'})).status,409,'Unpaid order blocks the whole handover');
 assert.equal((await order(ub,A)).status,'ready_pickup','Nothing handed over');
 assert.equal((await ub('warehouse-handover',{items:[],received_by:'Ану'})).status,400);
-fixture('pay',B);const codeB=(await mine(B)).cargo.pickup_code;assert.match(codeB,/^\d{8}$/);
+fixture('pay',B);const issuedB=(await mine(B)).cargo.pickup_code;assert.match(issuedB,/^\d{4}$/);assert.notEqual(issuedB,issuedA,'Active codes in one branch are unique');
+const codeB='00001234';fixture('pickup-code',B,codeB);
+assert.equal((await ub('warehouse-handover-lookup&q='+codeB)).orders.find(o=>o.id===B).verified,true,'Old 8-digit codes still scan');
 r=await ub('warehouse-handover',{items:[{id:A,code:codeA},{id:B,code:codeB}],received_by:'Ану'});assert.equal(r.status,200,JSON.stringify(r));
 assert.deepEqual(r.orders.map(x=>x.status),['completed','completed']);assert.equal((await mine(A)).cargo.pickup_code,undefined,'Codes are single use');
 assert.equal((await ub('warehouse-handover',{items:[{id:A,code:codeA}],received_by:'Ану'})).status,409);
@@ -83,6 +89,8 @@ assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C,C],courier_name:'Б
 r=await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'95001122'});assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.orders[0].status,'out_for_delivery');assert.equal(r.orders[0].fulfillment.courier_name,'Бат');
 run=await ub('warehouse-delivery-list');assert.deepEqual(run.orders,[]);assert.deepEqual(run.couriers,[{name:'Бат',phone:'95001122'}]);
 assert.equal((await cn('warehouse-delivery-list')).status,403);
+const courierCode='0017';fixture('pickup-code',C,courierCode);
+assert.equal((await ub('warehouse-fulfillment-update',{id:C,operation:'complete',expected_status:'out_for_delivery',received_by:'Ану',pickup_code:courierCode})).status,200,'A four-digit code with leading zeros completes delivery');
 
 // Daily reminders: once at 2 days and once at 5 days after sorting (D waits for payment and collection).
 const now=Math.floor(Date.now()/1000);assert.equal(fixture('remind',now),'1');assert.equal(fixture('remind',now),'0','No repeat');assert.equal(fixture('remind',now+2*86400),'1','Second reminder at 5 days');

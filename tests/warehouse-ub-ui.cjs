@@ -52,8 +52,11 @@ const receipt=()=>{const f=new FormData();f.set('image',new Blob([fs.readFileSyn
   await page.locator('#handover-open').click();await page.waitForFunction(()=>document.querySelector('#editor-title').textContent==='Хүлээлгэн өгөх');
   await page.locator('[data-ub-find] [name=q]').fill('9911 5050');await page.locator('[data-ub-find] button').click();await page.waitForFunction(()=>document.querySelectorAll('.ub-handover-list li').length===2);
   assert.match(await page.locator('.ub-handover-list').innerText(),/A-01[\s\S]*GS-TEST-050[\s\S]*A-02[\s\S]*GS-TEST-051[\s\S]*Үлдэгдэл .* төлөөгүй/);assert.equal(await page.locator('[data-ub-handover]').isDisabled(),true);
-  const code=(await owner('order-get',{id:A})).order.cargo.pickup_code;assert.match(code,/^\d{8}$/);
+  const code=(await owner('order-get',{id:A})).order.cargo.pickup_code;assert.match(code,/^\d{4}$/);
   await page.locator(`[data-ub-code="${A}"]`).fill(code);assert.equal(await page.locator('[data-ub-handover]').innerText(),'Хүлээлгэн өгөх (1)');
+  await page.locator('[data-ub-code]').first().fill('');
+  await page.evaluate(value=>acceptBatchQr(value),code);
+  assert.equal(await page.locator('[data-ub-code]').first().inputValue(),code,'Numeric four-digit barcode selects its order');
   await page.locator('[data-ub-handover]').click();await page.waitForFunction(()=>/хүлээн авсан хүний нэр/i.test(document.querySelector('#editor-body .error').textContent));
   await page.locator('[data-ub-received]').fill('Ану');await page.setViewportSize({width:390,height:1400});await page.locator('#editor').screenshot({path:'tmp/warehouse-ub-handover.png'});await page.setViewportSize({width:390,height:844});
   d=await post('warehouse-handover',()=>page.locator('[data-ub-handover]').click());assert.deepEqual(d.orders.map(x=>[x.id,x.status]),[[A,'completed']]);await page.waitForFunction(()=>document.querySelectorAll('.ub-handover-list li').length===0);

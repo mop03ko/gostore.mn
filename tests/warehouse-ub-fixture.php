@@ -29,6 +29,7 @@ if($mode==='pay'){
     });
     echo "ok\n";exit;
 }
+if($mode==='pickup-code'){$save($arg,function(&$o)use($extra){$o['pickup_code']=$extra;});echo "ok\n";exit;}
 if($mode==='age'){$save($arg,function(&$o)use($extra){$o['fulfillment']['sorted_at']=gmdate('c',time()-(int)$extra*86400-60);});echo "ok\n";exit;}
 if($mode==='remind'){
     // Same files as server/daily-worker.php loads.

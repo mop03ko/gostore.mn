@@ -60,13 +60,14 @@ document.addEventListener('submit',async e=>{
 
 // Counter handover: find by phone, pickup code (customer's barcode) or order code; several orders at once.
 let ubHandover=null;
-const ubHandoverReady=()=>ubHandover.orders.filter(o=>!o.reason&&/^\d{8}$/.test(ubHandover.codes[o.id]||''));
+const ubValidPickupCode=code=>/^(?:[0-9]{4}|[0-9]{8})$/.test(code||'');
+const ubHandoverReady=()=>ubHandover.orders.filter(o=>!o.reason&&ubValidPickupCode(ubHandover.codes[o.id]));
 function ubHandoverHtml(){
   const h=ubHandover,ready=h.orders.filter(o=>!o.reason),count=ubHandoverReady().length;
   return `<p class="note">Утасны дугаар, авах код (хэрэглэгчийн утсан дээрх баркод) эсвэл захиалгын кодоор хайна. Авах кодыг уншуулахад тухайн захиалга баталгаажна.</p>
 <form data-ub-find class="outbound-scan"><label>Утас / авах код / GS код<input name="q" autocomplete="off" maxlength="50" required placeholder="99112233"></label><button class="primary">Хайх</button></form>
 <button type="button" class="quiet" data-scan-camera>Утсаар уншуулах</button>
-${h.orders.length?`<ul class="outbound-list ub-handover-list">${h.orders.map(o=>{const code=h.codes[o.id]||'';return `<li class="${o.reason?'incomplete':''}"><div><strong class="ub-shelf-big">${esc(o.shelf||'—')}</strong> <strong>${esc(o.id)}</strong> · ${esc(o.customer)} · ${o.pieces} ширхэг<small>${esc(o.phone)} · ${o.reason?esc(ubReasonText(o)):/^\d{8}$/.test(code)?'Авах код ✓':'Авах кодоо оруулна уу'}</small></div>${o.reason?'':`<label class="ub-code">Авах код<input data-ub-code="${esc(o.id)}" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" autocomplete="off" value="${esc(code)}"></label>`}</li>`;}).join('')}</ul>`:'<p class="empty">Хайлтын үр дүн энд гарна.</p>'}
+${h.orders.length?`<ul class="outbound-list ub-handover-list">${h.orders.map(o=>{const code=h.codes[o.id]||'';return `<li class="${o.reason?'incomplete':''}"><div><strong class="ub-shelf-big">${esc(o.shelf||'—')}</strong> <strong>${esc(o.id)}</strong> · ${esc(o.customer)} · ${o.pieces} ширхэг<small>${esc(o.phone)} · ${o.reason?esc(ubReasonText(o)):ubValidPickupCode(code)?'Авах код оруулсан':'Авах кодоо оруулна уу'}</small></div>${o.reason?'':`<label class="ub-code">Авах код<input data-ub-code="${esc(o.id)}" inputmode="numeric" pattern="[0-9]{4}|[0-9]{8}" maxlength="8" autocomplete="off" value="${esc(code)}"></label>`}</li>`;}).join('')}</ul>`:'<p class="empty">Хайлтын үр дүн энд гарна.</p>'}
 ${ready.length?`<label>Хүлээн авсан хүний нэр<input data-ub-received maxlength="100" value="${esc(h.receivedBy||'')}" autocomplete="off"></label>`:''}
 ${errorBox()}<div class="outbound-actions"><button type="button" class="primary" data-ub-handover ${count?'':'disabled'}>Хүлээлгэн өгөх (${count})</button>${h.orders.length?'<button type="button" class="quiet" data-ub-clear>Цэвэрлэх</button>':''}</div>`;
 }
@@ -85,7 +86,7 @@ document.addEventListener('input',e=>{
   if(!ubHandover)return;
   if(e.target.dataset.ubCode){
     const id=e.target.dataset.ubCode,code=e.target.value.replace(/\D/g,'').slice(0,8),o=ubHandover.orders.find(x=>x.id===id);ubHandover.codes[id]=code;ubHandoverButton();
-    const note=e.target.closest('li')?.querySelector('small');if(note&&o)note.textContent=o.phone+' · '+(code.length===8?'Авах код ✓':'Авах кодоо оруулна уу');
+    const note=e.target.closest('li')?.querySelector('small');if(note&&o)note.textContent=o.phone+' · '+(ubValidPickupCode(code)?'Авах код оруулсан':'Авах кодоо оруулна уу');
   }
   if(e.target.hasAttribute('data-ub-received'))ubHandover.receivedBy=e.target.value;
 });

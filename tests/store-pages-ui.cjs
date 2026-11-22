@@ -50,7 +50,7 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  assert.equal(await page.locator('.store-faq details:not([hidden])').count(),12);
  await page.locator('.help-nav a[href="#pickup"]').click();
  await page.waitForFunction(()=>document.querySelector('#pickup').getBoundingClientRect().top<innerHeight);
- assert.ok((await page.locator('#pickup').innerText()).includes('8 оронтой'));
+ assert.ok((await page.locator('#pickup').innerText()).includes('4 оронтой'));
  assert.ok((await page.locator('#delivery .help-delivery-grid .help-panel').first().innerText()).includes('эхэлсэн 0.5 кг тутамд 1,000 ₮'),'Help shows the current cargo tariff');{const help=await page.locator('#delivery .help-delivery-grid .help-panel').first().innerText();assert.ok(help.includes('Жижиг илгээмжийн жинг 0.5 кг-ын алхмаар дээш бүхэлчилнэ'),'Help explains the 0.5 kg rounding');assert.ok(!help.includes('Жинг кг руу дээш бүхэлчлэхгүй'),'No contradicting rounding note');}assert.equal(await page.locator('#delivery .store-route li').count(),4);
  await page.setViewportSize({width:390,height:844});
  await page.goto(base+'/help#delivery');await page.waitForFunction(()=>{const top=document.querySelector('#delivery')?.getBoundingClientRect().top;return top>=0&&top<innerHeight;});

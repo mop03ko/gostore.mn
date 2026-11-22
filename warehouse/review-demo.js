@@ -38,15 +38,16 @@
       if(!batch.scanned.includes(orders[2].id))fail('GS-DEMO03 кодыг эхлээд тулгана уу.');
       batch.status='received';batch.version++;batch.history.push({event:'received',at:now()});transition(orders[2],'ulaanbaatar_unsorted');orders[2].contact={phone:'00000000',address:'Демо хаяг'};return {batch:batchView()};
     }
-    // Ulaanbaatar counter handover and courier runs (one-step flow); the demo pickup code is 12345678.
+    // Ulaanbaatar counter handover and courier runs (one-step flow); the demo pickup code is 1234.
+    const demoPickupCode=o=>String(1231+Number(o.id.slice(-1)));
     const card=o=>({id:o.id,customer:o.customer,phone:o.contact?.phone||'',status:o.status,shelf:o.logistics.shelf||'',pieces:1,address:o.contact?.address||'',due:0,refund_due:0,reason:o.status==='ready_pickup'?'':o.status==='ready_delivery'?'delivery':o.status==='out_for_delivery'?'out_for_delivery':'not_sorted'});
     if(action==='warehouse-handover-lookup'){
       const q=(params.get('q')||'').trim().toUpperCase(),digits=q.replace(/\D/g,'');
-      const found=orders.filter(o=>['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)&&(o.id===q||digits==='12345678'||(digits.length>=6&&(o.contact?.phone||'').replace(/\D/g,'').endsWith(digits))));
-      if(!found.length)fail('Энэ агуулахад тохирох захиалга олдсонгүй.');return {orders:found.map(o=>({...card(o),verified:digits==='12345678'&&o.status==='ready_pickup'}))};
+      const found=orders.filter(o=>['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)&&(o.id===q||digits===demoPickupCode(o)||(digits.length>=6&&(o.contact?.phone||'').replace(/\D/g,'').endsWith(digits))));
+      if(!found.length)fail('Энэ агуулахад тохирох захиалга олдсонгүй.');return {orders:found.map(o=>({...card(o),verified:digits===demoPickupCode(o)&&o.status==='ready_pickup'}))};
     }
     if(action==='warehouse-handover'){
-      for(const i of b.items||[]){if(get(i.id).status!=='ready_pickup')fail('Захиалгыг хүлээлгэн өгөх боломжгүй.');if(i.code!=='12345678')fail('Демо авах код: 12345678');}
+      for(const i of b.items||[]){if(get(i.id).status!=='ready_pickup')fail('Захиалгыг хүлээлгэн өгөх боломжгүй.');if(i.code!==demoPickupCode(get(i.id)))fail('Демо авах код: '+demoPickupCode(get(i.id)));}
       return {orders:(b.items||[]).map(i=>{const o=get(i.id);o.fulfillment={...o.fulfillment,received_by:b.received_by};transition(o,'completed');return o;})};
     }
     if(action==='warehouse-delivery-list')return {orders:orders.filter(o=>o.status==='ready_delivery').map(o=>({...card(o),ready:true,reason:''})),couriers:[{name:'Демо хүргэгч',phone:'00000000'}]};
@@ -75,7 +76,7 @@
         if(o.batch_id&&batchView().unsorted_count===0)batch.status='sorted';
       }else if(b.operation==='dispatch_delivery'&&o.status==='ready_delivery'){o.fulfillment={...o.fulfillment,courier_name:b.courier_name,courier_phone:b.courier_phone};transition(o,'out_for_delivery');
       }else if(b.operation==='complete'&&['ready_pickup','out_for_delivery'].includes(o.status)){
-        if(b.pickup_code!=='12345678')fail('Демо авах код: 12345678');o.fulfillment={...o.fulfillment,received_by:b.received_by};transition(o,'completed');
+        if(b.pickup_code!==demoPickupCode(o))fail('Демо авах код: '+demoPickupCode(o));o.fulfillment={...o.fulfillment,received_by:b.received_by};transition(o,'completed');
       }else fail('Энэ төлөвт уг үйлдэл боломжгүй.');
     }else fail('Энэ үйлдэл демо горимд идэвхгүй. / Unavailable in demo mode.');
     o.logistics.version++;return {order:o};
@@ -92,7 +93,7 @@
   window.GOStoreWarehouseDemo={photoUrl:id=>photos.get(id)||''};
   document.addEventListener('DOMContentLoaded',()=>{
     const banner=document.createElement('section');banner.className='receipt-info';banner.id='demo-banner';banner.setAttribute('role','status');
-    banner.innerHTML='<strong>ДЕМО / DEMO — зөвхөн жишээ өгөгдөл</strong><p>All changes and photos stay on this device until reload. No real orders or payments.</p><p>Багц / Batch: <b>GB-DEMO01</b> · Доторх захиалга / Order: <b>GS-DEMO03</b> · Авах код / Pickup code: <b>12345678</b></p><p>Scan → receive → sort (photo, shelf) → hand over. Reload to reset.</p><a href="/warehouse/ulaanbaatar/">Демо горимоос гарах / Exit demo</a>';
+    banner.innerHTML='<strong>ДЕМО / DEMO — зөвхөн жишээ өгөгдөл</strong><p>All changes and photos stay on this device until reload. No real orders or payments.</p><p>Багц / Batch: <b>GB-DEMO01</b> · Доторх захиалга / Order: <b>GS-DEMO03</b> · Авах код / Pickup code: <b>1234</b></p><p>Scan → receive → sort (photo, shelf) → hand over. Reload to reset.</p><a href="/warehouse/ulaanbaatar/">Демо горимоос гарах / Exit demo</a>';
     document.body.prepend(banner);
   });
 })();

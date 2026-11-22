@@ -13,7 +13,23 @@ function warehouse_ub_role(string $location): void {
     if(warehouse_role($location)!=='ulaanbaatar')fail('Энэ үйлдлийг хийх эрхгүй.',403);
 }
 function warehouse_phone_digits(?string $phone): string {return (string)preg_replace('/\D/','',(string)$phone);}
-function warehouse_new_pickup_code(): string {return str_pad((string)random_int(0,99999999),8,'0',STR_PAD_LEFT);}
+// Called inside the order write transaction. Codes stay unique among open orders at the pickup branch.
+function warehouse_new_pickup_code(string $location): string {
+    $used=[];
+    $rows=db()->query("SELECT data FROM orders WHERE data LIKE '%\"pickup_code\"%'");
+    foreach($rows as $row){
+        $o=json_decode($row['data'],true);
+        $code=$o['pickup_code']??'';
+        if(!preg_match('/^[0-9]{4}$/D',(string)$code)||in_array($o['status']??'',['completed','cancelled'],true))continue;
+        if(warehouse_order_location($o,'ulaanbaatar')===$location)$used[(int)$code]=true;
+    }
+    $available=array_values(array_diff(range(0,9999),array_keys($used)));
+    if(!$available)fail('Энэ агуулахын авах кодын бүх дугаар ашиглагдаж байна.',409);
+    return str_pad((string)$available[random_int(0,count($available)-1)],4,'0',STR_PAD_LEFT);
+}
+function warehouse_pickup_code_valid(string $code): bool {
+    return preg_match('/^(?:[0-9]{4}|[0-9]{8})$/D',$code)===1;
+}
 
 // Pickup checkout orders whose Erenhot freight is approved get their final bill when they leave Erenhot,
 // so the customer can pay while the goods travel. Delivery orders and orders whose Taobao domestic cost is
@@ -26,7 +42,7 @@ function warehouse_early_settlement(array &$o): bool {
     $parts=['goods_mnt'=>(int)($q['breakdown']['goods_mnt']??0),'domestic_mnt'=>(int)($q['breakdown']['domestic_mnt']??0),'service_mnt'=>(int)($q['breakdown']['service_mnt']??0),'delivery_mnt'=>0,'cargo_mnt'=>(int)ceil($t['amount_mnt'])];
     $total=array_sum($parts);if($total<settlement_summary($o)['paid'])return false;
     $o['settlement']=['total'=>$total,'breakdown'=>$parts,'cargo_method'=>$t['method'],'measure'=>$t['measure'],'rates'=>$t['rates'],'transport'=>$t,'confirmed_at'=>gmdate('c'),'note'=>'','early'=>true];
-    $o['pickup_code']??=warehouse_new_pickup_code();
+    $o['pickup_code']??=warehouse_new_pickup_code(warehouse_order_location($o,'ulaanbaatar'));
     return true;
 }
 // One customer message when an order becomes ready (or leaves Erenhot with its bill), stating what is due.
@@ -84,7 +100,7 @@ function warehouse_ub_sort(array $b,string $location): array {
                 $parts['cargo_mnt']=(int)ceil($q['amount_mnt']);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');
                 if(($o['settlement']['breakdown']??null)!==$parts||($o['settlement']['total']??null)!==$total)
                     $o['settlement']=['total'=>$total,'breakdown'=>$parts,'cargo_method'=>$cargoMethod,'measure'=>$q['measure'],'rates'=>$rates,'transport'=>$q,'confirmed_at'=>gmdate('c'),'note'=>''];
-                $o['pickup_code']??=warehouse_new_pickup_code();
+                $o['pickup_code']??=warehouse_new_pickup_code($location);
             }
         }
         $l['shelf']=$shelf;$l['version']++;$l['audit'][]=warehouse_event('sort');$o['logistics']=$l;
@@ -121,16 +137,19 @@ function warehouse_ub_orders(string $location,array $statuses): array {
     }
     return $rows;
 }
-// Counter lookup by phone (any 6+ digits, matched at the end), order code or the customer's 8-digit pickup
+// Counter lookup by phone (six or more digits, matched at the end), order ID or a pickup
 // code. A pickup code also brings the same customer's other orders and marks its own order as verified.
 function warehouse_handover_lookup(string $query,string $location): array {
     warehouse_ub_role($location);
     $query=trim($query);$digits=warehouse_phone_digits($query);$code=strtoupper($query);
-    if(strlen($digits)<6&&!preg_match('/^GS-[A-Z0-9-]{3,45}$/D',$code))fail('Утасны дугаар, авах код эсвэл захиалгын кодоо оруулна уу.');
+    $shortCode=preg_match('/^[0-9]{4}$/D',$query)===1;
+    if(!$shortCode&&strlen($digits)<6&&!preg_match('/^GS-[A-Z0-9-]{3,45}$/D',$code))fail('Утасны дугаар, авах код эсвэл захиалгын кодоо оруулна уу.');
     limit_attempts('handover-lookup:'.$location,120,900);
+    if($shortCode)limit_attempts('handover-short-lookup:'.$location,60,900);
     $orders=warehouse_ub_orders($location,WAREHOUSE_UB_ACTIVE);$phones=[];$verified=[];
     foreach($orders as $o){
-        $byCode=strlen($digits)===8&&!empty($o['pickup_code'])&&hash_equals((string)$o['pickup_code'],$digits);
+        $byCode=($shortCode||strlen($digits)===8)&&!empty($o['pickup_code'])&&hash_equals((string)$o['pickup_code'],$digits);
+        if($shortCode&&$byCode&&warehouse_ub_card($o)['reason']!=='')$byCode=false;
         if($byCode)$verified[$o['id']]=true;
         if($byCode||$o['id']===$code)foreach([$o['phone']??'',$o['fulfillment']['contact_phone']??''] as $p)if(strlen(warehouse_phone_digits($p))>=6)$phones[]=warehouse_phone_digits($p);
     }
@@ -154,6 +173,7 @@ function warehouse_handover(array $b,string $location): array {
     foreach($items as $item){
         if(!is_array($item))fail('Хүлээлгэн өгөх захиалгаа сонгоно уу.');
         $id=str_field($item,'id',50);if(isset($codes[$id]))fail('Захиалга давхардсан байна.');$codes[$id]=str_field($item,'code',8);
+        if(!warehouse_pickup_code_valid($codes[$id]))fail('Авах кодын орон буруу байна.');
     }
     $by=str_field($b,'received_by',100);
     foreach(array_keys($codes) as $id)limit_attempts('pickup:'.$id,10,900);

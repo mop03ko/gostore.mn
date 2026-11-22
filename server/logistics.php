@@ -143,7 +143,7 @@ function logistics_post(string $action,array $b,string $location): never {
             $parts['cargo_mnt']=(int)ceil($cargo);$total=array_sum($parts);if($total>100000000)fail('Нийт дүн хэтэрсэн.');
             if($freightPaid&&$total>($o['settlement']['total']??0))fail('Төлбөр төлөгдсөн тул дүнг нэмэхгүй. Нэмэлт төлбөрийг админтай шийднэ үү.',409);
             $o['settlement']=['total'=>$total,'breakdown'=>$parts,'cargo_method'=>$method,'measure'=>$measure,'rates'=>$rates,'transport'=>$q,'confirmed_at'=>gmdate('c'),'note'=>str_field($b,'note',500)];
-            $o['pickup_code']=str_pad((string)random_int(0,99999999),8,'0',STR_PAD_LEFT);
+            $o['pickup_code']??=warehouse_new_pickup_code($location);
         }else fail('Үйлдэл олдсонгүй.',404);
         $o['logistics']=$l;logistics_touch($o,$action);$db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
