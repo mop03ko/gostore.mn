@@ -4,31 +4,60 @@ import * as Clipboard from "expo-clipboard";
 import { usePalette } from "@/lib/palette";
 import { Icon } from "@/components/shop-ui";
 import { Card, Title } from "@/components/ui";
-
 import type { CargoAddress } from "@/lib/self-cargo";
 
 export function CargoAddressCard({ address }: { address: CargoAddress }) {
-  const c = usePalette(), [message, setMessage] = useState("");
+  const c = usePalette();
+  const [message, setMessage] = useState("");
+
   async function copy(value: string, label: string) {
-    try { if (!await Clipboard.setStringAsync(value)) throw Error("Clipboard unavailable"); setMessage(label + " хууллаа ✓"); }
-    catch { setMessage("Хуулж чадсангүй. Текстийг удаан дарж хуулна уу."); }
+    try {
+      if (!await Clipboard.setStringAsync(value)) throw Error("Clipboard unavailable");
+      setMessage(label + " хууллаа ✓");
+    } catch {
+      setMessage("Хуулж чадсангүй. Текстийг удаан дарж хуулна уу.");
+    }
   }
-  const rows = [["Таны карго ID", address.cargo_id], ["Хүлээн авагч", address.recipient], ["Утасны дугаар", address.phone], ["Хаяг", address.address]];
-  return <Card style={{ borderRadius: 20, padding: 14, gap: 8 }}>
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-      <Title>Эрээн агуулахын хаяг</Title>
-      <Pressable accessibilityRole="button" onPress={() => void copy(address.label, "Бүх мэдээллийг")} style={{ backgroundColor: c.accentSurface, borderRadius: 10, paddingHorizontal: 10, minHeight: 44, flexDirection: "row", alignItems: "center", gap: 5 }}>
-        <Icon name="copy" color={c.accentText} size={16} />
-        <Text style={{ color: c.accentText, fontSize: 13, fontWeight: "700" }}>Бүгдийг хуулах</Text>
+
+  const rows = [
+    { label: "Таны карго ID", value: address.cargo_id, identity: true },
+    { label: "Хүлээн авагч", value: address.recipient },
+    { label: "Утасны дугаар", value: address.phone },
+    { label: "Хаяг", value: address.address },
+  ];
+
+  return <Card style={{ borderRadius: 18, padding: 12, gap: 6 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+      <Title>Эрээн агуулах</Title>
+      <Pressable accessibilityRole="button" onPress={() => void copy(address.label, "Бүх мэдээллийг")}
+        style={({ pressed }) => ({
+          backgroundColor: c.orange, borderRadius: 10, paddingHorizontal: 9, minHeight: 44,
+          flexDirection: "row", alignItems: "center", gap: 5, opacity: pressed ? 0.68 : 1,
+        })}>
+        <Icon name="copy" color={c.onPrimary} size={15} />
+        <Text style={{ color: c.onPrimary, fontSize: 12, fontWeight: "800" }}>Бүгдийг хуулах</Text>
       </Pressable>
     </View>
-    {rows.map(([label, value]) => <View key={label} style={{ borderTopWidth: 1, borderColor: c.line, flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 6 }}>
-      <View style={{ flex: 1, minWidth: 0, gap: 2, paddingVertical: 3 }}>
-        <Text style={{ color: c.muted, fontSize: 12 }}>{label}</Text>
-        <Text selectable style={{ color: c.navy, fontWeight: label === "Таны карго ID" ? "800" : "500", fontSize: label === "Таны карго ID" ? 20 : 15, lineHeight: 22 }}>{value}</Text>
-      </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={label + " хуулах"} onPress={() => void copy(value, label)} style={{ minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c.subtle }}><Icon name="copy" size={19} color={c.navy} /></Pressable>
+
+    {rows.map(({ label, value, identity }) => <View key={label}
+      style={{
+        flexDirection: "row", alignItems: "center", gap: 5, minHeight: 44, paddingLeft: 7,
+        borderRadius: identity ? 10 : 0, backgroundColor: identity ? c.accentSurface : c.surface,
+        borderBottomWidth: identity ? 0 : 1, borderColor: c.line,
+      }}>
+      <Text style={{ color: identity ? c.accentText : c.muted, width: 86, fontSize: 11 }}>{label}</Text>
+      <Text selectable style={{
+        flex: 1, minWidth: 0, textAlign: "right", color: c.navy, paddingVertical: 5,
+        fontWeight: identity ? "800" : "500", fontSize: identity ? 18 : 13, lineHeight: 19,
+      }}>{value}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={label + " хуулах"} onPress={() => void copy(value, label)}
+        style={({ pressed }) => ({ minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.55 : 1 })}>
+        <Icon name="copy" size={17} color={identity ? c.accentText : c.navy} />
+      </Pressable>
     </View>)}
-    <Text accessibilityLiveRegion="polite" style={{ color: c.navy, fontSize: 13 }}>{message || "Энэ ID таны бүх ачаанд тогтмол ашиглагдана."}</Text>
+
+    <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 12 }}>
+      {message || "Карго ID таны бүх ачаанд ашиглагдана."}
+    </Text>
   </Card>;
 }

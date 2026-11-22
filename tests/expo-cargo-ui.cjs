@@ -70,6 +70,13 @@ assert.equal(estimateCargo(1, 0, tariff, 550), null);
     const field = label => page.getByLabel(label, { exact: true });
     await button("Нэвтрэх / Бүртгүүлэх").waitFor();
     assert.ok(!calls.includes("customer-self-cargo"));
+    const nearTop = title => page.waitForFunction(label => [...document.querySelectorAll('[dir="auto"]')]
+      .some(el => { const y = el.getBoundingClientRect().top; return el.textContent === label && y >= 0 && y < 220; }), title);
+    await button("Хэрхэн эхлэх вэ?").click();
+    await nearTop("Захиалах заавар");
+    for (const shop of ["Taobao", "1688", "Pinduoduo", "JD.com", "Tmall"]) await button(shop + " нээх").waitFor();
+    await page.getByRole("button", { name: /^Тээврийн үнэ тооцох/ }).click();
+    await nearTop("Карго тооцоолуур");
     await field("Нийт жин (кг)").fill("1,2");
     for (const label of ["Урт (см)", "Өргөн (см)", "Өндөр (см)"]) await field(label).fill("10");
     await page.getByText("≈ 3,000 ₮", { exact: true }).waitFor();
@@ -109,7 +116,12 @@ assert.equal(estimateCargo(1, 0, tariff, 550), null);
     await button("Ачаа бүртгэх").click();
     await page.waitForURL("**/self-cargo?view=shipments");
     await page.getByText("GS-TEST123 · Test parcel", { exact: true }).waitFor();
+    await page.goto(base + "/cargo", { waitUntil: "domcontentloaded" });
+    await page.getByText(delivery.cargo_id, { exact: true }).waitFor();
+    await page.route("https://m.taobao.com/**", route => route.fulfill({ body: "Store link target" }));
+    await button("Taobao нээх").click();
+    await page.waitForURL("https://m.taobao.com/");
     assert.deepEqual(errors, []);
-    console.log("PASS Cargo: six compact tabs, guest privacy, tariff parity, login return, address retry, five clipboard actions, pickup selection, registration and shipment list.");
+    console.log("PASS Cargo: six compact tabs, guest privacy, tariff parity, login return, address retry, five clipboard actions, pickup selection, registration shipment list, guide/calculator scroll and marketplace shortcut.");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
