@@ -157,7 +157,9 @@ function warehouse_order_public(array $o,string $location='erenhot',bool $detail
     if(warehouse_role($location)==='erenhot'){$result['parcels']=warehouse_parcels($o);$result['parcels']['can_undo']=!$result['read_only']&&warehouse_parcel_undo_allowed($o);$result['alerts']=warehouse_alerts($o);$result['expected_pieces']=warehouse_expected_pieces($o);}
     if(warehouse_role($location)==='ulaanbaatar')$result['inbound']=array_intersect_key($o['inbound']??[],array_flip(['status','checked_at']));
     if(warehouse_role($location)==='ulaanbaatar'&&!$result['read_only']){$result['service_rates']=settlement_service_rates($o);$result['billing']=settlement_summary($o);$result['quote']=$o['quote']??null;$result['cargo_rates']=warehouse_cargo_rates($o);$result['settlement']=$o['settlement']??null;$result['freight_locked']=isset($o['freight']['invoice']);}
-    if(warehouse_role($location)==='ulaanbaatar'&&in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true)){
+    $afterArrival=in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery','out_for_delivery','completed'],true);
+    $transitDetail=$details&&in_array($o['status'],['erenhot_dispatched','zamyn_uud'],true);
+    if(warehouse_role($location)==='ulaanbaatar'&&warehouse_order_location($o,'ulaanbaatar')===$location&&($afterArrival||$transitDetail)){
         $result['requested_method']=$o['fulfillment_request']['method']??null;
         $result['contact']=['phone'=>$o['fulfillment']['contact_phone']??$o['phone'],'address'=>$o['fulfillment']['address']??warehouse_delivery_address($o)];
         if(isset($o['fulfillment']))$result['fulfillment']=$o['fulfillment'];

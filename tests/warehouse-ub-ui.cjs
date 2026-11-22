@@ -21,6 +21,16 @@ const receipt=()=>{const f=new FormData();f.set('image',new Blob([fs.readFileSyn
   await page.goto(base+'/warehouse/?location=ulaanbaatar');await page.locator('[name=email]').fill(ubLogin.email);await page.locator('[name=password]').fill(ubLogin.password);await page.locator('#login-form button').click();await page.locator('#app').waitFor({state:'visible'});
   const post=async(name,fn)=>{const pending=page.waitForResponse(r=>r.url().includes('action='+name+'&')&&r.request().method()==='POST');await fn();const r=await pending;assert.equal(r.status(),200,await r.text());return r.json();};
   for(const id of ['#handover-open','#delivery-open','#unpaid-stat','#stale-stat'])assert.equal(await page.locator(id).isVisible(),true,id);assert.equal(await page.locator('#create-batch').isVisible(),false);
+  // The receiving warehouse can plan delivery while the order is still travelling.
+  await page.locator('.warehouse-stats [data-status=waiting]').click();
+  await page.locator('#records [data-order="'+C+'"]').first().click();
+  await page.waitForFunction(id=>document.querySelector('#editor-title')?.textContent===id,C);
+  const transit=page.locator('#editor-body');
+  assert.match(await transit.innerText(),/88001122/);
+  assert.match(await transit.innerText(),/Хан-Уул, 3-р хороо/);
+  assert.match(await transit.innerText(),/Хүргэлтээр авах/);
+  assert.equal(await transit.locator('[data-ub-sort],[data-ub-handover-open],[data-ub-delivery-open]').count(),0);
+  await page.locator('#close-editor').click();
   // Batch check-in: one label by camera (the scanner stays open), two by the scanner gun; the fourth is missing.
   await page.locator('#scan-code').fill(batch.id);await page.locator('#scan-form button').click();await page.waitForFunction(b=>document.querySelector('#editor-title')?.textContent===b,batch.id);
   await page.locator('#editor-body [data-scan-camera]').click();await page.locator('#qr-scanner[open]').waitFor();

@@ -42,6 +42,14 @@ assert.equal((await oldCn('warehouse-batch&id='+b.id)).status,404);
 for(const action of ['scan','ready','dispatch']){const r=await cn('warehouse-batch-'+action,{id:b.id,expected_version:b.version,order_id:id,checked:true});assert.equal(r.status,200,JSON.stringify(r));b=r.batch;}
 assert.equal((await oldUb('warehouse-batch&id='+b.id)).status,404);assert.equal((await oldUb('warehouse-order&id='+id)).status,404);
 assert.equal((await oldUb('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,404);
+
+const transit=(await ub('warehouse-order&id='+id)).order;
+assert.equal(transit.status,'erenhot_dispatched');
+assert.equal(transit.contact.phone,'99112233');
+assert.equal(transit.contact.address,'Legacy appended address');
+assert.equal((await ub('warehouse-orders&status=waiting')).orders.find(o=>o.id===id).contact,undefined,'Transit contact only appears in detail');
+assert.equal((await cn('warehouse-order&id='+id)).order.contact,undefined,'Origin warehouse cannot see customer contact');
+assert.equal((await anon('warehouse-order&id='+id)).status,401);
 assert.equal((await ub('warehouse-batch&id='+b.id)).status,200);
 b=(await ub('warehouse-batch-scan',{id:b.id,expected_version:b.version,order_id:id})).batch;
 await uploadReceipt(ub,id);assert.equal((await ub('warehouse-batch-receive',{id:b.id,expected_version:b.version})).status,200);

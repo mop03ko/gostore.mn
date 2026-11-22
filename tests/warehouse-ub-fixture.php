@@ -15,6 +15,7 @@ if($mode==='setup'){
         $parts=['goods_mnt'=>90000,'domestic_mnt'=>$later?0:4000,'service_mnt'=>$later?9000:5000,'cargo_mnt'=>0];
         $o['quote']=['breakdown'=>$parts,'total'=>99000,'auto'=>true,'cargo_later'=>true,'domestic_later'=>$later];$o['amount']=99000;$o['paid']=true;
         if($method==='delivery'){
+            $o['delivery_address']='Хан-Уул, 3-р хороо';
             $o['quote']['rates']=['service_basis'=>'non_cargo','service_percent'=>3,'service_fee_mnt'=>0,'cny_rate'=>550];
             $o['quote']['breakdown']['service_mnt']=2820;
             $o['amount']=$o['quote']['total']=96820;
