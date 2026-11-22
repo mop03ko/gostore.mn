@@ -2,6 +2,8 @@ const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=requir
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await page.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));
  const expiry=Math.floor(Date.now()/1000)+3600,p={id:'tb-123456789',name:'Verified discount product',image:'https://img.alicdn.com/card-test.jpg',sellable:true,mnt:15500,approx_mnt:15500,price_status:'available',price_expires:expiry,sold_count:3000,card_discount:{current_mnt:15500,was_mnt:31000,percent:50,expires:expiry}};
  // Older cached responses may still carry coupon fields; they must never show.
  const coupon={...p,id:'tb-123456790',card_discount:null,offers:{expires:expiry,promotions:[],coupon_mnt:12400,coupon_base_mnt:15500,coupon_percent:20}};
