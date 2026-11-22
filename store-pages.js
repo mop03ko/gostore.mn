@@ -134,13 +134,18 @@
     const target=[...root.querySelectorAll('[id]')].find(el=>'#'+el.id===location.hash);
     if(!target)return;
     if(target.tagName==='DETAILS'){helpTopic='all';root.querySelector('#help-search').value='';filterHelp();target.open=true;}
-    requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+    requestAnimationFrame(()=>{if(target.isConnected)target.scrollIntoView({block:'start',behavior:'instant'});});
   }
   window.addEventListener('hashchange',revealHelpAnchor);
   const render=()=>page==='cart'?renderCart():renderHelp();
   document.title=(page==='cart'?'Миний сагс':'Тусламж')+' · gostore.mn';
   root.innerHTML='<p class="account-loading">Ачаалж байна…</p>';
-  (async()=>{try{await window.catalogReady;}catch{}render();})();
+  (async()=>{
+    try{await window.catalogReady;}catch{}
+    render();
+    // A late initial browser scroll restoration can run after the dynamic target is mounted.
+    if(page==='help'&&document.readyState!=='complete')window.addEventListener('load',revealHelpAnchor,{once:true});
+  })();
   root.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
     if(page==='help'){

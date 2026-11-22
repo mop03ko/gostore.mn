@@ -34,7 +34,7 @@ try {
     if (!$local && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) fail('HTTPS холболт шаардлагатай.',403);
     $action=$_GET['action']??'catalog'; $method=$_SERVER['REQUEST_METHOD'];
     // Uptime probe: no session; database reachable and the age of the newest daily backup (hours).
-    if($action==='health'&&$method==='GET'){db()->query('SELECT 1')->fetchColumn();$b=glob(config()['data_dir'].'/backups/daily/gostore-*.sqlite.gz')?:[];$age=$b?round((time()-max(array_map('filemtime',$b)))/3600,1):null;header('Cache-Control: no-store');ini_set('serialize_precision','-1');json_out(['ok'=>true,'time'=>gmdate('c'),'backup_age_hours'=>$age]);}
+    if($action==='health'&&$method==='GET'){require_once __DIR__.'/../server/operations-health.php';db()->query('SELECT 1')->fetchColumn();$b=glob(config()['data_dir'].'/backups/daily/gostore-*.sqlite.gz')?:[];$age=$b?round((time()-max(array_map('filemtime',$b)))/3600,1):null;header('Cache-Control: no-store');ini_set('serialize_precision','-1');json_out(['ok'=>true,'time'=>gmdate('c'),'backup_age_hours'=>$age,'workers'=>operations_workers(db())]);}
     if($action==='warehouse-push-delivery'&&$method==='GET')json_out(warehouse_push_delivery());
     if($action==='warehouse-push-revoke'&&$method==='POST')json_out(warehouse_push_revoke_token());
     if($action==='warehouse-fcm-rotate'&&$method==='POST')json_out(warehouse_fcm_rotate(body()));
@@ -63,6 +63,10 @@ try {
         $found=supplier_search(['q'=>$_GET['q']??'bag','brand'=>$_GET['brand']??'','shop'=>$_GET['shop']??'','page'=>$page,'limit'=>$_GET['limit']??12,'sort'=>$_GET['sort']??'default','price_min'=>$_GET['price_min']??'','price_max'=>$_GET['price_max']??'']+$flags,true);
         // Search insights count each finished first page once (a partial preview is completed by a follow-up request).
         if($page===1&&empty($flags['refresh'])&&empty($found['partial'])&&isset($_GET['q'])&&is_string($_GET['q'])&&($_GET['brand']??'')===''&&($_GET['shop']??'')==='')search_log_record($_GET['q'],count($found['products']??[]));
+        if($page===1&&tw_catalog_enabled()){
+            require_once __DIR__.'/../server/catalog-card-prices.php';
+            catalog_queue_card_prices(array_slice($found['products']??[],0,4));
+        }
         supplier_public_json($found);
     }
     // Promotional popup (website home page, app launch): public and session-free.

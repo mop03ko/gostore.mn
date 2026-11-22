@@ -5,7 +5,9 @@ const cache=path.join(process.env.GOSTORE_DATA_DIR,'supplier-cache');assert.ok(p
 const product=(id,cny)=>({Item:{Id:id,ProviderType:'Taobao',Title:'Бараа '+id,MainPictureUrl:'https://img.alicdn.com/'+id+'.jpg',VendorId:'s'+id,IsSellAllowed:true,Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'},FirstLotQuantity:1,NextLotQuantity:1,Attributes:[{Pid:'c',Vid:'a',PropertyName:'Өнгө',Value:'Хар'},...[38,39,40,41,42,43,44,45].map(n=>({PropertyName:'Хэмжээ',Value:String(n)})),...Array.from({length:12},(_,i)=>({PropertyName:'Үзүүлэлт '+(i+1),Value:'Утга '+(i+1)}))],ConfiguredItems:[{Id:'a',Quantity:9,Configurators:[{Pid:'c',Vid:'a'}],Price:{OriginalPrice:cny,OriginalCurrencyCode:'CNY'}}]}});
 for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/product/'+id+'?language=mn').digest('hex')+'.json'),JSON.stringify({data:product(id,cny),fetched:new Date().toISOString(),expires:Math.floor(Date.now()/1000)+3600,stale:false}));
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
- const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
+ await page.addInitScript(()=>sessionStorage.setItem('gostore-warehouse-reminded-v1','1'));
+ await page.route('**/api/index.php?action=promo-popup*',r=>r.fulfill({json:{popup:null}}));page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await page.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:[],page:1,more:false,total:0,pages:1,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}}));
  await require('./customer-ui-helper.cjs')(page,base);
@@ -50,7 +52,8 @@ for(const [id,cny] of [['711111111',10],['722222222',30]])fs.writeFileSync(path.
  await page.waitForFunction(()=>document.querySelector('#pickup').getBoundingClientRect().top<innerHeight);
  assert.ok((await page.locator('#pickup').innerText()).includes('8 оронтой'));
  assert.ok((await page.locator('#delivery .help-delivery-grid .help-panel').first().innerText()).includes('эхэлсэн 0.5 кг тутамд 1,000 ₮'),'Help shows the current cargo tariff');{const help=await page.locator('#delivery .help-delivery-grid .help-panel').first().innerText();assert.ok(help.includes('Жижиг илгээмжийн жинг 0.5 кг-ын алхмаар дээш бүхэлчилнэ'),'Help explains the 0.5 kg rounding');assert.ok(!help.includes('Жинг кг руу дээш бүхэлчлэхгүй'),'No contradicting rounding note');}assert.equal(await page.locator('#delivery .store-route li').count(),4);
- await page.goto(base+'/help#delivery');await page.waitForFunction(()=>document.querySelector('#delivery').getBoundingClientRect().top<innerHeight);
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(base+'/help#delivery');await page.waitForFunction(()=>{const top=document.querySelector('#delivery')?.getBoundingClientRect().top;return top>=0&&top<innerHeight;});
  for(const url of ['/cart','/help']){await page.setViewportSize({width:390,height:844});await page.goto(base+url);await page.locator('#store-page h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile fit '+url);await page.screenshot({path:'tmp/store-page'+url.replace('/','-')+'-390.png',fullPage:true});}
  for(const width of [320,760,1440]){await page.setViewportSize({width,height:960});await page.goto(base+'/help');await page.locator('.help-hero h1').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Help fits '+width);await page.screenshot({path:'tmp/help-'+width+'.png',fullPage:true});}
  assert.deepEqual(errors,[]);console.log('PASS store pages: non-blocking add-to-cart flyout, cart page quantity/summary/compare/save for later/checkout/clear, modal link, help FAQ search, delivery tariff and anchor, floating help, mobile.');

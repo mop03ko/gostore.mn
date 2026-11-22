@@ -937,7 +937,7 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
         ${p.brand_id&&p.shop_rating?`<p class="supplier-delivery-note">Дэлгүүрийн үнэлгээ ${esc(String(p.shop_rating))}/5</p>`:''}<p class="supplier-delivery-note">Карго тусдаа</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount" data-discount-expires="${discount.expires}"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${!soldOut?supplierPromotionHtml(p,Number(priced?p.mnt:approx),null):''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?'? '+money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount" data-discount-expires="${discount.expires}"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${!soldOut?supplierPromotionHtml(p,Number(priced?p.mnt:approx),null):''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');
@@ -1059,7 +1059,7 @@ async function loadSupplier(page=1,append=false){
   };
   try{
     let r;
-    if(homeDeals){const response=await fetch('/api/index.php?action=supplier-deals&page='+page,{credentials:'omit'});r=await response.json();if(!response.ok)throw Error(r.error||'Хямдралын мэдээллийг ачаалж чадсангүй.');}
+    if(homeDeals){const pending=page===1?window.gostoreFirstDeals:null;window.gostoreFirstDeals=null;const response=(await pending)||await fetch('/api/index.php?action=supplier-deals&page='+page,{credentials:'omit'});r=await response.json();if(!response.ok)throw Error(r.error||'Хямдралын мэдээллийг ачаалж чадсангүй.');}
     else r=await supplierApi('supplier-search',payload,{preview:page===1&&!append&&!resume&&!image});
     if(request!==supplierLoadSequence)return;paint(r);
     if(!homeDeals&&r.partial){
@@ -1902,13 +1902,18 @@ window.productCompare=(()=>{
     const target=[...root.querySelectorAll('[id]')].find(el=>'#'+el.id===location.hash);
     if(!target)return;
     if(target.tagName==='DETAILS'){helpTopic='all';root.querySelector('#help-search').value='';filterHelp();target.open=true;}
-    requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+    requestAnimationFrame(()=>{if(target.isConnected)target.scrollIntoView({block:'start',behavior:'instant'});});
   }
   window.addEventListener('hashchange',revealHelpAnchor);
   const render=()=>page==='cart'?renderCart():renderHelp();
   document.title=(page==='cart'?'Миний сагс':'Тусламж')+' · gostore.mn';
   root.innerHTML='<p class="account-loading">Ачаалж байна…</p>';
-  (async()=>{try{await window.catalogReady;}catch{}render();})();
+  (async()=>{
+    try{await window.catalogReady;}catch{}
+    render();
+    // A late initial browser scroll restoration can run after the dynamic target is mounted.
+    if(page==='help'&&document.readyState!=='complete')window.addEventListener('load',revealHelpAnchor,{once:true});
+  })();
   root.addEventListener('click',e=>{
     const b=e.target.closest('button');if(!b)return;
     if(page==='help'){

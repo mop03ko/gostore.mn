@@ -3,7 +3,8 @@
 | Signal | Where | Who is told |
 |---|---|---|
 | Site down, admin unreachable, database unavailable | `.github/workflows/uptime.yml` every 15 min: storefront HTML, `/admin/`, `api/index.php?action=health` (3 retries) | GitHub e-mails the account that owns the repository when a scheduled run fails |
-| Daily backup missing (> 36 h) | same workflow, `backup_age_hours` from the health endpoint | same |
+| Daily backup missing or older than 36 h | same workflow, `backup_age_hours` from the health endpoint | same |
+| SMS delivery queue, QPay expiry sweep, TaoWorld procurement worker | same workflow checks each enabled job's heartbeat and watches for overdue SMS and TaoWorld work | same |
 | Backup/Drive failure, API budget spent, many PHP errors, low disk | `server/daily-worker.php` report (07:30 Ulaanbaatar) | `report_email` (`shop@gostore.mn`) |
 | Unexpected API exceptions | PHP error log: `GOStore API: <class> action=<action> at <file>:<line>` plus the SQLite message for `PDOException` | daily report groups them |
 

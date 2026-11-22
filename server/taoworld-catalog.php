@@ -232,15 +232,19 @@ function tw_catalog_brand_matches(array $item,array $brand,bool $detail=false): 
 function tw_catalog_cards(array $rows,?int $fetched=null): array {
     $cards=[];foreach($rows as $p){if(!is_array($p))continue;try{
         $card=tw_catalog_product($p,false,$fetched);
-        $cached=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$card['id'],'language'=>'en']).'.json');
-        if(tw_catalog_fresh($cached,TW_CATALOG_DETAIL_REFRESH)&&'tb-'.($cached['data']['item_id']??'')===$card['id']){
-            $detail=tw_catalog_product($cached['data'],true,$cached['time']);
-            foreach(['cny','mnt','approx_cny','approx_mnt','price_status','sellable','card_discount','offers'] as $key)$card[$key]=$detail[$key];
-            $card['price_expires']=$cached['time']+TW_CATALOG_DETAIL_REFRESH;
-        }
-        $cards[]=$card;
+        $cards[]=tw_catalog_verified_card($card);
     }catch(ApiError){}}
     return $cards;
+}
+// Quotes derived from search stay approximate until an in-stock SKU is verified in item detail.
+function tw_catalog_verified_card(array $card): array {
+    $key=['id'=>$card['id'],'language'=>'en'];
+    $cached=supplier_snapshot_read(tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',$key).'.json');
+    if(!tw_catalog_fresh($cached,TW_CATALOG_DETAIL_REFRESH)||'tb-'.($cached['data']['item_id']??'')!==$card['id'])return $card;
+    $detail=tw_catalog_product($cached['data'],true,$cached['time']);
+    foreach(['cny','mnt','approx_cny','approx_mnt','price_status','sellable','card_discount','offers'] as $field)$card[$field]=$detail[$field];
+    $card['price_expires']=$cached['time']+TW_CATALOG_DETAIL_REFRESH;
+    return $card;
 }
 // Deals: real price cuts from saved product details (server/taoworld-deals.php); never calls TaoWorld.
 function tw_catalog_deals(array $params): array {
@@ -345,6 +349,10 @@ function tw_catalog_recommend(string $id,int $limit=24,int $page=1): array {
         $price=$p['mnt']??$p['approx_mnt']??null;
         return ($p['sellable']??true)&&is_numeric($price)&&$price>0;
     }));
+    if($page===1){
+        require_once __DIR__.'/catalog-card-prices.php';
+        catalog_queue_card_prices(array_slice($products,0,6));
+    }
     return tw_catalog_response(['products'=>$products,'page'=>$page,'total'=>null,'pages'=>$page+($more?1:0),'more'=>$more],$fetched,TW_CATALOG_SEARCH_TTL);
 }
 function tw_catalog_search(array $b,bool $display=false): array {

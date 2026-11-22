@@ -27,4 +27,9 @@ jobs:
           jq -e '.ok == true' health.json > /dev/null || { echo '::error::Health check failed'; cat health.json; exit 1; }
           age=$(jq -r '.backup_age_hours // "none"' health.json)
           echo "Newest database backup: ${age} h"
-          if [ "$age" != "none" ] && awk "BEGIN{exit !($age > 36)}"; then echo "::error::Database backup is ${age} hours old"; exit 1; fi
+          if [ "$age" = "none" ] || awk "BEGIN{exit !($age > 36)}"; then echo "::error::Database backup is missing or older than 36 hours"; exit 1; fi
+          if ! jq -e '.workers | length == 3 and all(.[]; . == "ok" or . == "disabled")' health.json >/dev/null; then
+            echo "::error::One or more order workers are unhealthy"
+            jq '.workers' health.json
+            exit 1
+          fi

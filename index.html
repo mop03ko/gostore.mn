@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="mn">
 <head>
+  <script>
+    const homeQuery = new URLSearchParams(location.search);
+    if (location.pathname === "/" && !["q","category","image","filter","brand","shop"].some(key => homeQuery.has(key)) && Number(homeQuery.get("page") || 1) === 1) {
+      window.gostoreFirstDeals = fetch("/api/index.php?action=supplier-deals&page=1", {credentials:"omit"}).catch(() => null);
+    }
+  </script>
   <!-- Google Tag Manager: initialize the shared queue once before async loading. -->
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -109,7 +115,7 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=9a161689f55f">
-  <script src="/app.js?v=270c814071a2" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=97d96c1f8dc9" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261109-six">
   <script src="/eleven-sale.js?v=20261109-campaign" defer></script>

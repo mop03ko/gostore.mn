@@ -11,7 +11,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  assert.equal(await page.locator('#supplier-grid .supplier-card').count(),1,'Only fresh real discounts');assert.match(await page.locator('#supplier-grid').innerText(),/−30%/);
  await page.evaluate(()=>loadSupplier(2,true));await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Deal 123456790'));assert.equal(await page.locator('#supplier-grid .supplier-card').count(),2,'Paging deduplicates');
  assert.ok(!requests.some(([type,q])=>type==='search'&&q==='__all__'),'Homepage never requests mixed all-products feed');
- await page.evaluate(()=>supplierBrowse('shoes'));await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Search result'));
+ await page.evaluate(()=>window.supplierBrowse('shoes'));await page.waitForFunction(()=>document.querySelector('#supplier-grid')?.textContent.includes('Search result'));
  assert.equal(new URL(page.url()).pathname,'/search');assert.equal(await page.locator('#supplier-grid .supplier-card').count(),1,'Non-sale search works');
  await page.goBack();await page.waitForFunction(()=>document.querySelector('#catalog-title')?.textContent==='Хямдралтай бараа');
  mode='empty';await page.goto(base+'/');await page.waitForFunction(()=>document.querySelector('#supplier-status')?.textContent.includes('баталгаажсан хямдралтай бараа алга'));assert.equal(await page.locator('#supplier-grid .supplier-card').count(),0);

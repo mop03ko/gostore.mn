@@ -30,6 +30,11 @@ try{
         $status['warmed_on']=$today;
     }
     $status['deals']=tw_deals_index_build();
+    require_once __DIR__.'/discovery.php';
+    require_once __DIR__.'/catalog-card-prices.php';
+    try{$status['free_shipping']=discovery_free_shipping(true)['status'];}
+    catch(Throwable $e){$status['free_shipping']='deferred';}
+    $status['card_prices']=catalog_warm_card_prices();
     file_put_contents($statusFile,json_encode($status,JSON_UNESCAPED_SLASHES),LOCK_EX);
     echo json_encode($status,JSON_UNESCAPED_SLASHES).PHP_EOL;
 }finally{flock($lock,LOCK_UN);fclose($lock);}

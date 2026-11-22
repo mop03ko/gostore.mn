@@ -206,7 +206,14 @@ function tw_worker(int $limit=3): array {
         try{$updated=tw_run_order($o['id']);$p=$updated['purchase'];if($settings['enabled']&&$settings['auto_pay']&&!empty($p['auto_pay'])&&$p['state']==='awaiting_payment'&&empty($p['pay_submitted_at']))tw_run_order($o['id'],true);$done[]=$o['id'];}catch(Throwable $e){/* Busy jobs remain durable. */}
         if(count($done)>=$limit)break;
     }
-    db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['taoworld_worker',tw_json(['last_run'=>gmdate('c'),'processed'=>count($done)])]);return $done;
+    $oldest=null;
+    foreach($rows as $o){
+        $p=$o['purchase']??[];
+        if(($p['provider']??'')!=='taoworld'||in_array($o['id'],$done,true)||empty($p['next_at'])||$p['next_at']>time())continue;
+        if(empty($p['submitted_at'])&&!empty($p['auto'])&&!$settings['enabled'])continue;
+        $oldest=min($oldest??PHP_INT_MAX,(int)$p['next_at']);
+    }
+    db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['taoworld_worker',tw_json(['last_run'=>gmdate('c'),'processed'=>count($done),'oldest_due'=>$oldest])]);return $done;
 }
 function tw_admin_post(string $action,array $b): never {
     admin_required();limit_attempts('taoworld-procurement:'.($_SERVER['REMOTE_ADDR']??'cli'),60,900);
