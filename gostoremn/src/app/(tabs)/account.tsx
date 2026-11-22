@@ -40,7 +40,7 @@ function Account() {
   }
   if (!ready) return <Page><Busy /></Page>;
   const login = () => router.push({ pathname: "/login", params: { next: "/account" } });
-  const protectedRoute = (path: "/orders" | "/addresses" | "/notifications" | "/self-cargo") =>
+  const protectedRoute = (path: "/orders" | "/addresses" | "/notifications") =>
     customer ? router.push(path) : router.push({ pathname: "/login", params: { next: path } });
   return <Page>
     <View style={{ height: inset.top }} />
@@ -76,7 +76,7 @@ function Account() {
     </Card>
     <Text style={styles.section}>Захиалга ба хүргэлт</Text>
     <Card style={{ gap: 0, paddingVertical: 4 }}>
-      <MenuRow icon="truck" title="Өөрөө захиалах · Эрээн карго" subtitle="Агуулахын хаяг авах, ачаагаа бүртгэх" onPress={() => router.push("/self-cargo")} />
+      <MenuRow icon="truck" title="Өөрөө захиалах · Эрээн карго" subtitle="Агуулахын хаяг авах, ачаагаа бүртгэх" onPress={() => router.navigate("/cargo")} />
       <View style={styles.divider} />
       <MenuRow icon="box" title="Миний захиалгууд" subtitle="Төлбөр, тээврийн явцаа хянах" onPress={() => protectedRoute("/orders")} />
       <View style={styles.divider} />

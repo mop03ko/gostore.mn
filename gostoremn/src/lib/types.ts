@@ -1,3 +1,5 @@
+import type { CargoTariff } from "./cargo-tariff";
+
 export type Customer = {
   cargo_id?: string;
   pin_enabled?: boolean;
@@ -60,6 +62,7 @@ export type CartLine = {
 export type PickupLocation = { location: string; city: string; name: string; address: string; phone: string; hours: string };
 export type Shipping = {
   pickup_locations?: PickupLocation[];
+  cargo_tariff?: CargoTariff;
   cny_rate: number;
   service_percent: number;
   service_fee_mnt: number;

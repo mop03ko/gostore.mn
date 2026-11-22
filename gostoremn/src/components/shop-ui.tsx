@@ -45,6 +45,8 @@ const paths = {
   bell: "M5 17V9a7 7 0 0 1 14 0v8l2 2H3Zm4 5h6",
   logout: "M9 3H3v18h6m6-14 5 5-5 5m-7-5h12",
   refresh: "M20 9a8 8 0 0 0-14-4L3 8m0-5v5h5m-4 7a8 8 0 0 0 14 4l3-3m0 5v-5h-5",
+  copy: "M9 8h12v13H9ZM6 16H3V3h12v2",
+  calculator: "M5 2h14v20H5ZM8 5h8v4H8ZM9 13h.01m6 0h.01m-6 4h.01m6 0h.01",
   clock: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M12 6v6l4 2",
   card: "M2 5h20v14H2ZM2 9h20M6 15h4",
 };

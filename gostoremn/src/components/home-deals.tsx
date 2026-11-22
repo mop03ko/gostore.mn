@@ -87,6 +87,6 @@ export function HomeWarehouseLinks() {
     <Pressable testID="warehouse-preference" accessibilityRole="button" accessibilityLabel={"Авах агуулах: " + (selected?.name ?? "Сонгоогүй") + ". Солих"} disabled={!loaded} onPress={open} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36 }}>
       <Icon name="pin" size={16} color={c.accentText} /><Text numberOfLines={1} style={{ flex: 1, color: c.ink, fontSize: 12 }}>{selected?.name ?? "Агуулахаа сонгох"} ›</Text>
     </Pressable>
-    <Pressable testID="self-cargo-home" accessibilityRole="button" accessibilityLabel="Өөрөө захиалах. Агуулахын хаяг авах, ачаа бүртгэх" onPress={() => router.push("/self-cargo")} style={{ minHeight: 36, justifyContent: "center" }}><Text style={{ fontWeight: "700", fontSize: 12, color: c.accentText }}>Өөрөө захиалах ↗</Text></Pressable>
+    <Pressable testID="self-cargo-home" accessibilityRole="button" accessibilityLabel="Өөрөө захиалах. Агуулахын хаяг авах, ачаа бүртгэх" onPress={() => router.navigate("/cargo")} style={{ minHeight: 36, justifyContent: "center" }}><Text style={{ fontWeight: "700", fontSize: 12, color: c.accentText }}>Өөрөө захиалах ↗</Text></Pressable>
   </View>;
 }

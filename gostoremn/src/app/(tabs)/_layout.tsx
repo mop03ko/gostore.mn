@@ -60,6 +60,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="cargo"
+        options={{
+          title: "Карго",
+          headerShown: false,
+          tabBarIcon: ({ color }) => <Icon name="truck" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="account"
         options={{
           title: "Миний",

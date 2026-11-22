@@ -1,6 +1,6 @@
 // Never send route IDs, query strings, search terms or customer data to Analytics.
 const screens: Record<string, string> = {
-  index: "home", categories: "categories", search: "search", cart: "cart", account: "account",
+  index: "home", categories: "categories", search: "search", cart: "cart", cargo: "cargo", account: "account",
   "product/[id]": "product", "brand/[id]": "brand", "reviews/[id]": "reviews",
   "order/[id]": "order", orders: "orders", checkout: "checkout", addresses: "addresses",
   notifications: "notifications", login: "login", "email-login": "login",
