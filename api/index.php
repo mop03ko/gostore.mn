@@ -248,6 +248,10 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
+    if($action==='admin-order-transport-sms'){
+        $result=sms_transport_reminder(str_field($b,'id',50));
+        json_out($result,$result['state']==='queued'?201:200);
+    }
     if($action==='admin-customer-save')json_out(admin_customer_save($b));
     if ($action==='product-delete') {
         $id=str_field($b,'id',60);

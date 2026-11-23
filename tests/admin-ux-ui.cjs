@@ -103,6 +103,24 @@ assert.match(await page.locator('[data-row-order=GS-BILL-PICKUP] .order-transpor
 assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Transport view fits a phone');
 await deliveryRow.locator('[data-order]').click();
 assert.match(await page.locator('#editor-summary .order-transport-due').innerText(),/4,500 ₮/);
+let smsRequests=0;
+await page.route('**/api/index.php?action=admin-order-transport-sms',route=>{
+  smsRequests++;
+  assert.deepEqual(route.request().postDataJSON(),{id:'GS-BILL-DELIVERY'});
+  return route.fulfill({status:smsRequests===1?201:200,json:{state:smsRequests===1?'queued':'already_queued'}});
+});
+const smsButton=page.locator('[data-transport-sms]');
+await smsButton.click();
+assert.match(await page.locator('#ui-confirm').innerText(),/99000000/);
+await page.locator('#ui-confirm button[value=cancel]').click();
+assert.equal(smsRequests,0);
+await smsButton.click();
+await page.locator('#ui-confirm button[value=ok]').click();
+await page.waitForFunction(()=>document.querySelector('#toast')?.textContent.includes('илгээх дараалалд нэмэгдлээ'));
+await smsButton.click();
+await page.locator('#ui-confirm button[value=ok]').click();
+await page.waitForFunction(()=>document.querySelector('#toast')?.textContent.includes('илгээх дараалалд байна'));
+assert.equal(smsRequests,2);
 await page.locator('#close-editor').click();
 
 await page.setViewportSize({width:1440,height:1000});
@@ -118,5 +136,8 @@ assert.deepEqual(await transportIds(),['GS-BILL-PICKUP','GS-BILL-TRANSIT']);
 await page.locator('#pay-filter').selectOption('all');
 assert.equal(await deliveryRow.locator('.order-payment').innerText(),'Төлөгдсөн');
 assert.equal(await deliveryRow.locator('.order-transport-due').count(),0);
+await deliveryRow.locator('[data-order]').click();
+assert.equal(await page.locator('[data-transport-sms]').count(),0,'No reminder for a paid balance');
+await page.locator('#close-editor').click();
 assert.deepEqual(errors,[]);console.log('admin-ux-ui ok');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

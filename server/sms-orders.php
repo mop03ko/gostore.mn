@@ -32,6 +32,9 @@ function sms_order_event(array $o,array $old): void {
     foreach($events as $event){
         if($event==='paid')$text='GOStore '.$o['id'].': төлбөр баталгаажлаа. gostore.mn';
         elseif($event==='transport_balance'){
+            $reminder=db()->prepare("SELECT 1 FROM sms_order_queue WHERE order_id=? AND event GLOB 'transport_reminder:*' AND state IN ('pending','sending') LIMIT 1");
+            $reminder->execute([$o['id']]);$pending=$reminder->fetchColumn();$reminder->closeCursor();
+            if($pending)continue;
             $text=sms_transport_balance_text($o['id'],$due);
             // A stale item cancelled before sending can be queued again when a payable balance returns.
             db()->prepare('UPDATE sms_order_queue SET state=?,phone=?,message=?,created=?,updated=? WHERE order_id=? AND event=? AND state=?')
@@ -48,6 +51,31 @@ function sms_order_event(array $o,array $old): void {
         db()->prepare('INSERT OR IGNORE INTO sms_order_queue(order_id,event,phone,message,state,created,updated) VALUES (?,?,?,?,?,?,?)')->execute([$o['id'],$event,$phone,$text,'pending',time(),time()]);
     }
 }
+function sms_transport_reminder(string $id): array {
+    if(!preg_match('/^GS-[A-Z0-9-]{3,45}$/D',$id))fail('Захиалгын код буруу.');
+    if(!sendsms_enabled('orders'))fail('Захиалгын SMS үйлчилгээ түр боломжгүй.',503);
+    sms_orders_schema();$db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $o=order_row($id)['order'];
+        $due=sms_transport_balance_due($o);
+        if($due<1)fail('Төлөх үлдэгдэлтэй, авах эсвэл хүргэлтэд бэлэн захиалгад SMS илгээнэ.',409);
+        $phone=sendsms_phone((string)($o['phone']??''));
+        $now=time();
+        $recent=$db->prepare("SELECT state FROM sms_order_queue
+            WHERE order_id=? AND (event='transport_balance' OR event GLOB 'transport_reminder:*')
+            AND (state IN ('pending','sending') OR (state IN ('accepted','uncertain','failed') AND updated>?))
+            ORDER BY CASE WHEN state IN ('pending','sending') THEN 0 ELSE 1 END LIMIT 1");
+        $recent->execute([$id,$now-300]);$state=$recent->fetchColumn();$recent->closeCursor();
+        if(in_array($state,['pending','sending'],true)){
+            $db->exec('COMMIT');return ['state'=>'already_queued'];
+        }
+        if($state!==false)fail('Сүүлийн 5 минутад SMS илгээх оролдлого бүртгэгдсэн. Түр хүлээгээд дахин оролдоно уу.',429);
+        $event='transport_reminder:'.bin2hex(random_bytes(8));
+        $db->prepare('INSERT INTO sms_order_queue(order_id,event,phone,message,state,created,updated) VALUES (?,?,?,?,?,?,?)')
+            ->execute([$id,$event,$phone,sms_transport_balance_text($id,$due),'pending',$now,$now]);
+        $db->exec('COMMIT');return ['state'=>'queued'];
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
 function sms_orders_drain(int $limit=20): int {
     if(!sendsms_enabled('orders'))return 0;sms_orders_schema();$db=db();$sent=0;
     // Crashed/uncertain attempts are never automatically sent again: this API has no idempotency key.
@@ -57,7 +85,8 @@ function sms_orders_drain(int $limit=20): int {
         try{$q=$db->query('SELECT * FROM sms_order_queue WHERE state="pending" ORDER BY id LIMIT 1');$row=$q->fetch();$q->closeCursor();if(!$row){$db->exec('COMMIT');break;}
             $o=order_row($row['order_id'])['order'];
             $due=sms_transport_balance_due($o);
-            $message=match($row['event']){
+            $event=str_starts_with($row['event'],'transport_reminder:')?'transport_balance':$row['event'];
+            $message=match($event){
                 'paid'=>!empty($o['paid'])?$row['message']:null,
                 'pickup'=>sms_pickup_notice_ready($o,$due)?$row['message']:null,
                 'transport_balance'=>$due>0?sms_transport_balance_text($o['id'],$due):null,

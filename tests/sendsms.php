@@ -72,6 +72,29 @@ check(queue_state($o['id'],'transport_balance')===null,'Missing valid customer p
 $o=order_seed('GS-SMS013');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);
 putenv('SENDSMS_ORDER_EVENTS=0');save_order($o);putenv('SENDSMS_ORDER_EVENTS=1');save_order($o);
 check(queue_state($o['id'],'transport_balance')===null,'Existing qualifying orders are not backfilled on ordinary saves');
+function reminder_rejected(string $id,int $status): void {
+    try{sms_transport_reminder($id);}catch(ApiError $e){check($e->getCode()===$status,'Unexpected reminder rejection code');return;}
+    throw new RuntimeException('Expected reminder rejection');
+}
+$o=order_row('GS-SMS013')['order'];
+check(sms_transport_reminder($o['id'])['state']==='queued','Administrator can queue for an existing payable balance');
+check(sms_transport_reminder($o['id'])['state']==='already_queued','Repeated clicks reuse the pending request');
+$o['settlement']=transport_bill(6200);$o['freight']=['paid_amount'=>1200];save_order($o);
+check(sms_orders_drain()===1&&str_contains(end($calls)['message'],'5,000₮'),'Reminder uses the latest due and shares delivery worker');
+reminder_rejected($o['id'],429);
+db()->prepare("UPDATE sms_order_queue SET updated=0 WHERE order_id=?")->execute([$o['id']]);
+check(sms_transport_reminder($o['id'])['state']==='queued','A new reminder can be queued after cooldown');
+$o['freight']=['paid_amount'=>6200];save_order($o);
+check(sms_orders_drain()===0,'Worker skips a reminder paid while pending');
+reminder_rejected($o['id'],409);
+
+$o=order_seed('GS-SMS014');$o['status']='ready_delivery';$o['settlement']=transport_bill(4200);save_order($o);
+check(sms_transport_reminder($o['id'])['state']==='already_queued','Manual action does not duplicate a pending automatic send');
+check(sms_orders_drain()===1,'Automatic SMS still sends exactly once');
+reminder_rejected($o['id'],429);
+reminder_rejected('GS-SMS010',409);
+reminder_rejected('GS-SMS011',409);
+reminder_rejected('GS-SMS012',400);
 $longId='GS-'.str_repeat('A',45);
 $longText=sms_transport_balance_text($longId,100000000);
 check(str_contains($longText,'100,000,000 tugrug')&&str_ends_with($longText,$longId),'Long order IDs use the single-segment ASCII template');

@@ -84,6 +84,12 @@ assert.equal((await ub('warehouse-handover',{items:[{id:A,code:codeA}],received_
 // Courier runs: only paid, issue-free delivery orders; recent couriers are offered next time.
 let run=await ub('warehouse-delivery-list');assert.deepEqual(run.orders.map(x=>[x.id,x.ready,x.reason,x.address]),[[C,false,'unpaid','Хан-Уул, 3-р хороо']]);
 assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'95001122'})).status,409,'Unpaid delivery cannot leave');
+if(process.env.SENDSMS_ORDER_EVENTS==='1'){
+  const sms=await admin('admin-order-transport-sms',{id:C});
+  assert.equal(sms.status,200,JSON.stringify(sms));
+  assert.equal(sms.state,'already_queued','Arrival queued an SMS automatically');
+  assert.ok([401,403].includes((await ub('admin-order-transport-sms',{id:C})).status),'Warehouse has no admin SMS permission');
+}
 fixture('pay',C);assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'abc'})).status,400);
 assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C,C],courier_name:'Бат',courier_phone:'95001122'})).status,400);
 r=await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'95001122'});assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.orders[0].status,'out_for_delivery');assert.equal(r.orders[0].fulfillment.courier_name,'Бат');

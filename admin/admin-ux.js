@@ -131,8 +131,10 @@ editOrder=function(id){
   const body=$('#editor-body'),sections=[['.order-tracking','Явц'],['.details','Мэдээлэл'],['#order-form','Төлөв, дүн'],['#quote-form','Үнийн санал'],['.order-warehouse-assignment','Агуулах'],['#tw-purchase,.purchase-panel','TaoWorld'],['.aftersale','Буцаалт']].filter(([s])=>body.querySelector(s));
   const head=document.createElement('div');head.id='editor-summary';
   const [payment,paymentTone]=uxPaymentLabel(o);
+  const canSendSms=uxCan('operator')&&!o.demo&&o.billing?.finalized&&o.billing.due>0
+    &&['ready_pickup','ready_delivery'].includes(o.status)&&/^(?:\+?976)?\d{8}$/.test(String(o.phone||'').replace(/[ ()-]/g,''));
   head.innerHTML=`<div class="sum-line">${tag(o.status)}<span class="sum-amount">${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</span><span class="tag ${paymentTone||'st-wait'}">${payment}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
-    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
+    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
     `<nav class="sum-links" aria-label="Захиалгын хэсгүүд">${sections.map(([s,l])=>`<button type="button" data-jump="${esc(s)}">${l}</button>`).join('')}</nav>`;
   $('.dialog-header').append(head);
 };
@@ -192,7 +194,7 @@ function paletteRun(i){const it=paletteItems[i];if(!it)return;$('#cmdk').close()
 // Events.
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#app').hidden){e.preventDefault();paletteOpen();}});
 addEventListener('click',async e=>{
-  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
+  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-transport-sms],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
   if(!b){
     // A click anywhere on an order row opens it (checkbox, links and buttons keep their own action).
     const row=e.target.closest('tr[data-row-order]');if(row&&!e.target.closest('button,a,input,label,select'))editOrder(row.dataset.rowOrder);
@@ -206,6 +208,18 @@ addEventListener('click',async e=>{
   if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';payFilter='all';dateFilter='all';render();$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
   if(b.hasAttribute('data-cmdk-open')){paletteOpen();return;}
   if(b.hasAttribute('data-menu-open')){const s=$('#mobile-admin-page');try{s.showPicker();}catch{s.focus();s.click();}return;}
+  if(b.dataset.transportSms){
+    const order=data.orders.find(o=>o.id===b.dataset.transportSms);
+    if(!order)return;
+    b.disabled=true;
+    try{
+      const confirmed=await uiConfirm({title:'Төлбөрийн SMS илгээх үү?',text:order.id+' захиалгын төлөх дүн, QPay холбоосыг '+order.phone+' дугаарт илгээнэ.',confirmLabel:'SMS илгээх'});
+      if(!confirmed)return;
+      const result=await api('admin-order-transport-sms',{id:order.id});
+      toast(result.state==='already_queued'?'Энэ захиалгын SMS илгээх дараалалд байна.':'Төлбөрийн SMS илгээх дараалалд нэмэгдлээ.');
+    }catch(error){toast(error.message);}finally{b.disabled=false;}
+    return;
+  }
   if(b.hasAttribute('data-save-order')){$('#order-form')?.requestSubmit();return;}
   if(b.dataset.jump){$('#editor-body').querySelector(b.dataset.jump)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return;}
   if(b.dataset.copyPhone){try{await navigator.clipboard.writeText(b.dataset.copyPhone);toast('Утасны дугаар хуулагдлаа');}catch{toast(b.dataset.copyPhone);}return;}
