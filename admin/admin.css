@@ -51,7 +51,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .order-date{display:block;color:#788397;font-size:12px;line-height:18px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .orders-table small{font-size:12px;line-height:18px;margin-top:5px}
 .order-customer>span{display:block;overflow-wrap:anywhere}.order-customer small{font-variant-numeric:tabular-nums}
-.order-amount>strong{font-size:14px;font-variant-numeric:tabular-nums}.order-payment.is-paid{color:#17634e}
+.order-amount>strong{font-size:14px;font-variant-numeric:tabular-nums}.order-amount .order-payment.tag{display:table;margin-top:5px}.order-transport-due{font-weight:700;font-variant-numeric:tabular-nums}
 .orders-table .tag{white-space:normal;font-size:12px;line-height:18px;padding:5px 8px;overflow-wrap:anywhere;max-width:100%;text-align:left}
 .orders-table .order-action{text-align:right}.order-action .quiet{padding:8px 10px;min-height:44px;font-size:13px;white-space:nowrap}
 @media(min-width:761px){

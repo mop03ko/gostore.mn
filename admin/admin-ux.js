@@ -20,12 +20,27 @@ function uxAge(o){
   return `<small class="order-age${['new','reviewing'].includes(o.status)&&h>=24?' late':''}" title="Захиалснаас хойш">${text}</small>`;
 }
 
+const uxInitialPaymentPending=o=>!o.paid&&!o.demo&&o.amount>0&&uxWaiting(o);
+function uxHasTransportBalance(o){
+  const bill=o.billing;
+  return !o.demo&&uxWaiting(o)&&!uxInitialPaymentPending(o)&&bill?.finalized&&bill.due>0
+    &&(bill.breakdown?.cargo_mnt>0||bill.breakdown?.delivery_mnt>0);
+}
+function uxPaymentLabel(o){
+  if(uxHasTransportBalance(o))return ['Тээврийн үлдэгдэл · '+money(o.billing.due),'st-wait order-transport-due'];
+  if(o.billing?.finalized&&o.billing.due===0)return ['Төлөгдсөн','st-paid'];
+  if(o.paid)return [o.billing?.finalized?'Эхний төлбөр төлсөн':'Төлөгдсөн','st-paid'];
+  return ['Төлбөр хүлээгдэж байна',''];
+}
+const uxOrderAmount=o=>o.amount||((o.billing?.finalized&&o.billing.total>0)?o.billing.total:0);
+
 // Order views. A tab is a saved view over the same list; counts follow the other filters.
 const ORDER_TABS=[
   ['all','Бүгд',()=>true],
   ['new','Шинэ',o=>['new','reviewing'].includes(o.status)],
   ['quoted','Үнийн санал',o=>o.status==='quoted'],
-  ['unpaid','Төлбөр хүлээж',o=>!o.paid&&!o.demo&&o.amount>0&&!['cancelled','completed'].includes(o.status)],
+  ['unpaid','Эхний төлбөр хүлээж',uxInitialPaymentPending],
+  ['transport-due','Тээврийн үлдэгдэл',uxHasTransportBalance],
   ['paid','Баталгаажсан',o=>['confirmed','shipping'].includes(o.status)],
   ['transit','Эрээн, замд',o=>['erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud'].includes(o.status)],
   ['ub','Улаанбаатарт',o=>['ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'].includes(o.status)],
@@ -42,12 +57,16 @@ function ordersBase(){
   const q=query.toLowerCase().trim(),qDigits=q.replace(/\D/g,'');
   const since=dateFilter==='all'?0:dateFilter==='today'?uxDayStart(uxDay(Date.now())):Date.now()-Number(dateFilter)*UX_DAY;
   return data.orders.filter(o=>(page!=='links'||['link','supplier','checkout'].includes(o.type))&&(statusFilter==='all'||o.status===statusFilter)
-    &&(payFilter==='all'||(payFilter==='paid')===!!o.paid)&&(!since||Date.parse(o.created)>=since)
+    &&(payFilter==='all'||(payFilter==='paid'?o.paid:uxTabFn(payFilter)(o)))&&(!since||Date.parse(o.created)>=since)
     &&(!q||(o.id+' '+o.title+' '+o.customer+' '+o.phone).toLowerCase().includes(q)||(qDigits.length>=4&&String(o.phone||'').replace(/\D/g,'').includes(qDigits))));
+}
+function uxOrderPayment(o){
+  const [label,tone]=uxPaymentLabel(o);
+  return `<small class="order-payment ${tone?`tag ${tone}`:''}">${label}${o.demo?' · Жишээ':''}</small>`;
 }
 function orderTable(rows,opts={}){
   if(!rows.length)return opts.emptyHtml||`<div class="empty"><h3>Захиалга хараахан алга</h3>Дэлгүүрээс илгээсэн хүсэлтүүд энд харагдана.</div>`;
-  return `<div class="table-wrap orders-table-wrap"><table class="orders-table${opts.select?' selectable':''}" aria-label="Захиалгын жагсаалт"><colgroup><col class="order-col-main"><col class="order-col-customer"><col class="order-col-amount"><col class="order-col-status"><col class="order-col-action"></colgroup><thead><tr><th scope="col">Захиалга</th><th scope="col">Хэрэглэгч</th><th scope="col">Дүн</th><th scope="col">Төлөв</th><th scope="col"><span class="admin-sr-only">Үйлдэл</span></th></tr></thead><tbody>${rows.map(o=>`<tr data-row-order="${esc(o.id)}" class="${pickedOrders.has(o.id)?'is-picked':''}"><td class="order-main"><div class="order-heading">${opts.select?`<input type="checkbox" class="order-pick" data-pick="${esc(o.id)}" ${pickedOrders.has(o.id)?'checked':''} aria-label="${esc(o.id)} сонгох">`:''}<strong class="order-code">${esc(o.id)}</strong><time class="order-date" datetime="${esc(o.created)}">${esc(new Date(o.created).toLocaleDateString('sv-SE',{timeZone:'Asia/Ulaanbaatar'}))}</time></div><span class="order-title" title="${esc(o.title)}">${esc(o.title)}</span></td><td class="order-customer" data-label="Хэрэглэгч"><span>${esc(o.customer)}</span><small>${esc(o.phone)}</small></td><td class="order-amount" data-label="Дүн"><strong>${o.amount?money(o.amount):'Үнэ хүлээгдэж байна'}</strong><small class="order-payment ${o.paid?'is-paid':''}">${o.paid?'Төлөгдсөн':'Төлбөр хүлээгдэж байна'}${o.demo?' · Жишээ':''}</small></td><td class="order-status" data-label="Төлөв"><button class="order-track-trigger" type="button" data-admin-track="${esc(o.id)}" aria-label="${esc(o.id)} ачааны явц харах">${tag(o.status)}<span aria-hidden="true">↗</span></button>${uxAge(o)}</td><td class="order-action"><button class="quiet" data-order="${esc(o.id)}" aria-label="${esc(o.id)} захиалгын дэлгэрэнгүй">Харах →</button></td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="table-wrap orders-table-wrap"><table class="orders-table${opts.select?' selectable':''}" aria-label="Захиалгын жагсаалт"><colgroup><col class="order-col-main"><col class="order-col-customer"><col class="order-col-amount"><col class="order-col-status"><col class="order-col-action"></colgroup><thead><tr><th scope="col">Захиалга</th><th scope="col">Хэрэглэгч</th><th scope="col">Дүн</th><th scope="col">Төлөв</th><th scope="col"><span class="admin-sr-only">Үйлдэл</span></th></tr></thead><tbody>${rows.map(o=>`<tr data-row-order="${esc(o.id)}" class="${pickedOrders.has(o.id)?'is-picked':''}"><td class="order-main"><div class="order-heading">${opts.select?`<input type="checkbox" class="order-pick" data-pick="${esc(o.id)}" ${pickedOrders.has(o.id)?'checked':''} aria-label="${esc(o.id)} сонгох">`:''}<strong class="order-code">${esc(o.id)}</strong><time class="order-date" datetime="${esc(o.created)}">${esc(new Date(o.created).toLocaleDateString('sv-SE',{timeZone:'Asia/Ulaanbaatar'}))}</time></div><span class="order-title" title="${esc(o.title)}">${esc(o.title)}</span></td><td class="order-customer" data-label="Хэрэглэгч"><span>${esc(o.customer)}</span><small>${esc(o.phone)}</small></td><td class="order-amount" data-label="Дүн"><strong>${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</strong>${uxOrderPayment(o)}</td><td class="order-status" data-label="Төлөв"><button class="order-track-trigger" type="button" data-admin-track="${esc(o.id)}" aria-label="${esc(o.id)} ачааны явц харах">${tag(o.status)}<span aria-hidden="true">↗</span></button>${uxAge(o)}</td><td class="order-action"><button class="quiet" data-order="${esc(o.id)}" aria-label="${esc(o.id)} захиалгын дэлгэрэнгүй">Харах →</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function ordersList(){
   const base=ordersBase(),tabs=ORDER_TABS.map(([id,label,fn])=>({id,label,count:base.filter(fn).length})).filter(t=>t.id!=='review'||t.count||orderTab==='review');
@@ -65,7 +84,7 @@ function ordersList(){
   return `<div class="orders-tabs" role="tablist" aria-label="Захиалгын төлөв">${tabs.map(t=>`<button type="button" role="tab" class="otab${t.id===orderTab?' on':''}" aria-selected="${t.id===orderTab}" data-otab="${t.id}">${esc(t.label)}<b>${t.count}</b></button>`).join('')}</div>`+
     `<div class="toolbar orders-toolbar"><input id="list-search" type="search" aria-label="Захиалга хайх" placeholder="Нэр, утас, захиалгын дугаар…" value="${esc(query)}">`+
     `<select id="status-filter" aria-label="Нарийвчилсан төлөв"><option value="all">Бүх төлөв</option>${Object.entries(statuses).map(([k,v])=>`<option value="${k}" ${statusFilter===k?'selected':''}>${v}</option>`).join('')}</select>`+
-    opt('pay-filter',payFilter,[['all','Төлбөр: бүгд'],['paid','Төлөгдсөн'],['unpaid','Төлөгдөөгүй']],'Төлбөрөөр шүүх')+
+    opt('pay-filter',payFilter,[['all','Төлбөр: бүгд'],['paid','Эхний төлбөр төлсөн'],['unpaid','Эхний төлбөр хүлээж'],['transport-due','Тээврийн үлдэгдэлтэй']],'Төлбөрөөр шүүх')+
     opt('date-filter',dateFilter,[['all','Хугацаа: бүгд'],['today','Өнөөдөр'],['7','Сүүлийн 7 хоног'],['30','Сүүлийн 30 хоног']],'Хугацаагаар шүүх')+
     opt('sort-filter',orderSort,[['new','Шинэ нь эхэндээ'],['old','Хуучин нь эхэндээ'],['amount','Дүнгээр']],'Эрэмбэ')+
     `<button class="quiet" data-refresh>↻ Шинэчлэх</button></div>`+
@@ -85,11 +104,11 @@ function overview(){
   const count=id=>real.filter(uxTabFn(id)).length,oldest=real.filter(uxTabFn('new')).reduce((m,o)=>Math.min(m,Date.parse(o.created)),Infinity);
   const ready=real.filter(o=>['ready_pickup','ready_delivery'].includes(o.status)).length;
   const tasks=[['new',count('new'),'Шинэ захиалга хариу хүлээж байна',Number.isFinite(oldest)?'Хамгийн удаан нь '+uxAge({created:new Date(oldest).toISOString(),status:'new'}).replace(/<[^>]+>/g,''):'Хүлээгдэж буй захиалга алга','or'],
-    ['review',count('review'),'TaoWorld захиалга шалгах','Үнэ, төлөв зөрсөн','a'],['unpaid',count('unpaid'),'Төлбөр хүлээж буй','Үнийн санал илгээсэн, төлөгдөөгүй','bl'],['ub',ready,'Улаанбаатарт олгоход бэлэн','Агуулахаас авах эсвэл хүргэх','g']];
+    ['review',count('review'),'TaoWorld захиалга шалгах','Үнэ, төлөв зөрсөн','a'],['unpaid',count('unpaid'),'Эхний төлбөр хүлээж буй','Захиалгын эхний төлбөр','bl'],['transport-due',count('transport-due'),'Тээврийн үлдэгдэлтэй','Баталгаажсан карго, хүргэлтийн тооцоо','a'],['ub',ready,'Улаанбаатарт олгоход бэлэн','Агуулахаас авах эсвэл хүргэх','g']];
   const top=Math.max(1,...revenue),low=data.products.filter(p=>p.active&&p.type==='local'&&!p.demo&&p.stock<5);
   return `<div class="stats ux-kpis"><div class="stat"><span>Өнөөдрийн захиалга</span><strong>${madeOn(today)}</strong>${diff(madeOn(today),madeOn(yesterday))}</div>`+
     `<div class="stat"><span>Өнөөдрийн орлого</span><strong>${money(paidOn(today))}</strong><small class="${paidOn(today)>=avg?'up':'down'}">7 хоногийн дундаж ${money(avg)}</small></div>`+
-    `<div class="stat"><span>Төлбөр хүлээж буй</span><strong>${count('unpaid')}</strong><small class="flat">захиалга</small></div>`+
+    `<div class="stat"><span>Эхний төлбөр хүлээж буй</span><strong>${count('unpaid')}</strong><small class="flat">захиалга</small></div>`+
     `<div class="stat"><span>TaoWorld API өнөөдөр</span><strong id="kpi-api">—</strong><small class="flat" id="kpi-api-note">ачаалж байна</small></div></div>`+
     `<div class="two-col ux-dash"><section class="panel"><div class="panel-heading"><h3>Хийх ажил</h3><button class="quiet" data-page="orders">Бүх захиалга →</button></div><div class="tasks">${tasks.map(([tab,n,title,note,tone])=>`<button type="button" class="task-row" data-task-tab="${tab}" ${n?'':'data-zero'}><b class="task-n ${tone}">${n}</b><span><strong>${title}</strong><small>${esc(note)}</small></span><span aria-hidden="true">→</span></button>`).join('')}</div></section>`+
     `<section class="panel"><div class="panel-heading"><h3>7 хоногийн орлого</h3><button class="quiet" data-page="reports">Тайлан →</button></div><div class="xchart"><div class="xbars" role="img" aria-label="Сүүлийн 7 хоногийн төлбөр орсон орлого">${week.map((d,i)=>`<div class="xbar" tabindex="0" data-tip="${d}: ${money(revenue[i])}">${revenue[i]?`<span class="xseg" style="height:${(revenue[i]/top*100).toFixed(1)}%;background:${d===today?'#f16522':'#2a78d6'}"></span>`:''}</div>`).join('')}</div><div class="xaxis"><span>${week[0].slice(5)}</span><span>Өнөөдөр улбар шараар</span><span>${today.slice(5)}</span></div></div></section></div>`+
@@ -111,7 +130,8 @@ editOrder=function(id){
   baseEditOrder(id);const o=data.orders.find(x=>x.id===id);if(!o||!$('#editor').open)return;
   const body=$('#editor-body'),sections=[['.order-tracking','Явц'],['.details','Мэдээлэл'],['#order-form','Төлөв, дүн'],['#quote-form','Үнийн санал'],['.order-warehouse-assignment','Агуулах'],['#tw-purchase,.purchase-panel','TaoWorld'],['.aftersale','Буцаалт']].filter(([s])=>body.querySelector(s));
   const head=document.createElement('div');head.id='editor-summary';
-  head.innerHTML=`<div class="sum-line">${tag(o.status)}<span class="sum-amount">${o.amount?money(o.amount):'Үнэ хүлээгдэж байна'}</span><span class="tag ${o.paid?'st-paid':'st-wait'}">${o.paid?'Төлөгдсөн':'Төлбөр хүлээгдэж байна'}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
+  const [payment,paymentTone]=uxPaymentLabel(o);
+  head.innerHTML=`<div class="sum-line">${tag(o.status)}<span class="sum-amount">${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</span><span class="tag ${paymentTone||'st-wait'}">${payment}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
     `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
     `<nav class="sum-links" aria-label="Захиалгын хэсгүүд">${sections.map(([s,l])=>`<button type="button" data-jump="${esc(s)}">${l}</button>`).join('')}</nav>`;
   $('.dialog-header').append(head);
@@ -183,7 +203,7 @@ addEventListener('click',async e=>{
   if(b.dataset.opage){orderPage=Number(b.dataset.opage);render();$('.orders-panel')?.scrollIntoView({block:'start'});return;}
   if(b.hasAttribute('data-orders-reset')){query='';statusFilter='all';payFilter='all';dateFilter='all';orderTab='all';orderPage=1;render();return;}
   if(b.hasAttribute('data-bulk-clear')){pickedOrders.clear();render();return;}
-  if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';render();return;}
+  if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';payFilter='all';dateFilter='all';render();$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
   if(b.hasAttribute('data-cmdk-open')){paletteOpen();return;}
   if(b.hasAttribute('data-menu-open')){const s=$('#mobile-admin-page');try{s.showPicker();}catch{s.focus();s.click();}return;}
   if(b.hasAttribute('data-save-order')){$('#order-form')?.requestSubmit();return;}

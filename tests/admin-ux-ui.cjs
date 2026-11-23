@@ -9,7 +9,7 @@ await page.goto(base+'/admin/');await page.locator('[name=email]').fill(auth.ema
 
 // Dashboard: four figures, the task list, the week chart; menu groups.
 assert.equal(await page.locator('.ux-kpis .stat').count(),4);await page.waitForFunction(()=>/\d+ \/ \d+/.test(document.querySelector('#kpi-api')?.textContent||''));
-assert.equal(await page.locator('.task-row').count(),4);assert.equal(await page.locator('.ux-dash .xbar').count(),7);
+assert.equal(await page.locator('.task-row').count(),5);assert.equal(await page.locator('.ux-dash .xbar').count(),7);
 assert.equal(await page.locator('nav .nav-group').count(),4,'Grouped menu');assert.equal(await page.locator('.welcome').count(),0,'The greeting banner is gone');
 await page.locator('.task-row[data-task-tab=new]').click();await page.waitForFunction(()=>location.hash==='#orders');
 assert.equal(await page.locator('.otab.on').getAttribute('data-otab'),'new','The task opens its tab');
@@ -64,5 +64,59 @@ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWid
 await page.locator('.tabbar [data-page=overview]').click();await page.waitForFunction(()=>location.hash==='#overview');assert.equal(await page.locator('.tabbar [data-page=overview]').getAttribute('aria-current'),'page');
 await page.locator('.tabbar [data-page=orders]').click();await page.locator('.orders-table tbody tr').first().locator('.order-customer').click();await page.locator('#editor').waitFor({state:'visible'});
 const pbox=await page.locator('#editor').boundingBox();assert.ok(pbox.width>=389,'Full-width drawer on phones: '+JSON.stringify(pbox)+' '+await page.locator('#editor').evaluate(e=>{const c=getComputedStyle(e);return [c.width,c.maxWidth,c.marginLeft,c.marginRight,innerWidth].join(',');}));
+await page.locator('#close-editor').click();
+const fixtureOrder={title:'Тээврийн төлбөрийн тест',customer:'Тест хэрэглэгч',phone:'99000000',type:'checkout',items:[],amount:30000,paid:true,created:'2026-01-02T00:00:00Z'};
+const bill=(due,cargo_mnt,delivery_mnt,finalized=true)=>({finalized,total:30000+cargo_mnt+delivery_mnt,due,breakdown:{cargo_mnt,delivery_mnt}});
+let deliveryPaid=false;
+await page.route('**/api/index.php?action=dashboard',async route=>{
+  const response=await route.fetch();
+  const body=await response.json();
+  const cases=[
+    ['DELIVERY','ready_delivery',{billing:bill(deliveryPaid?0:4500,3000,2500)}],
+    ['PICKUP','ready_pickup',{type:'forwarding',amount:0,paid:false,billing:{...bill(2000,2000,0),total:2000}}],
+    ['TRANSIT','erenhot_dispatched',{billing:bill(3000,3000,0)}],
+    ['PAID','ready_pickup',{billing:bill(0,3000,0)}],
+    ['UNPRICED','ulaanbaatar',{billing:bill(3000,3000,0,false)}],
+    ['NONTRANSPORT','ready_delivery',{billing:bill(1000,0,0)}],
+    ['CANCELLED','cancelled',{billing:bill(3000,3000,0)}],
+    ['COMPLETED','completed',{billing:bill(3000,3000,0)}],
+    ['DEMO','ready_pickup',{demo:true,billing:bill(3000,3000,0)}],
+    ['INITIAL','quoted',{paid:false,billing:bill(30000,0,0,false)}],
+  ];
+  const orders=cases.map(([key,status,fields])=>({...fixtureOrder,...fields,id:'GS-BILL-'+key,status}));
+  await route.fulfill({response,json:{...body,orders:[...orders,...body.orders]}});
+});
+await page.goto(base+'/admin/#overview');
+await page.reload();
+await page.locator('.task-row[data-task-tab=transport-due]').waitFor();
+assert.equal(await page.locator('.task-row[data-task-tab=transport-due] b').innerText(),'3');
+await page.locator('.task-row[data-task-tab=transport-due]').click();
+const transportTab=page.locator('[data-otab=transport-due]');
+assert.equal(await transportTab.getAttribute('aria-selected'),'true');
+assert.equal(await transportTab.locator('b').innerText(),'3');
+const transportRows=page.locator('.orders-table tbody tr');
+const transportIds=()=>transportRows.evaluateAll(rows=>rows.map(row=>row.dataset.rowOrder));
+assert.deepEqual(await transportIds(),['GS-BILL-DELIVERY','GS-BILL-PICKUP','GS-BILL-TRANSIT']);
+const deliveryRow=page.locator('[data-row-order=GS-BILL-DELIVERY]');
+assert.match(await deliveryRow.locator('.order-transport-due').innerText(),/4,500 ₮/);
+assert.match(await page.locator('[data-row-order=GS-BILL-PICKUP] .order-transport-due').innerText(),/2,000 ₮/);
+assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Transport view fits a phone');
+await deliveryRow.locator('[data-order]').click();
+assert.match(await page.locator('#editor-summary .order-transport-due').innerText(),/4,500 ₮/);
+await page.locator('#close-editor').click();
+
+await page.setViewportSize({width:1440,height:1000});
+await page.locator('[data-otab=unpaid]').click();
+assert.deepEqual(await transportIds(),['GS-BILL-INITIAL']);
+await page.locator('[data-otab=all]').click();
+await page.locator('#pay-filter').selectOption('transport-due');
+assert.deepEqual(await transportIds(),['GS-BILL-DELIVERY','GS-BILL-PICKUP','GS-BILL-TRANSIT']);
+deliveryPaid=true;
+await page.locator('.orders-toolbar [data-refresh]').click();
+await page.locator('[data-row-order=GS-BILL-DELIVERY]').waitFor({state:'detached'});
+assert.deepEqual(await transportIds(),['GS-BILL-PICKUP','GS-BILL-TRANSIT']);
+await page.locator('#pay-filter').selectOption('all');
+assert.equal(await deliveryRow.locator('.order-payment').innerText(),'Төлөгдсөн');
+assert.equal(await deliveryRow.locator('.order-transport-due').count(),0);
 assert.deepEqual(errors,[]);console.log('admin-ux-ui ok');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
