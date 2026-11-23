@@ -2,7 +2,7 @@
 
 The customer receives a six-digit SMS code for phone verification / PIN reset. The login PIN remains four digits. SendSMS.mn is the sole provider; there is no verify.mn fallback. Web/Expo clients request `delivery: otp`; older clients without a code-entry screen receive HTTP 426 with an update/reload instruction before any billable SMS. Codes expire after five minutes and allow five guesses; only a correct SendSMS code creates the session-bound proof used by PIN setup. Resetting the PIN revokes previous logins.
 
-Order notices are queued when payment first becomes confirmed and when the order becomes `ready_pickup`. Pickup notices use the assigned warehouse's city (including dynamically created branches). No historical notifications are backfilled. Cancellation and promotional messages are not enabled.
+Order notices are queued when the initial payment is confirmed, when the receiving warehouse has made a finalized balance payable, and when a pickup order is ready with no balance due. A transport balance notice requires a finalized bill and a positive balance in `ready_pickup` or `ready_delivery`. It sends the ordering customer an SMS with a link to the authenticated order page to pay with QPay. The worker rechecks the balance and refreshes the requested amount before sending. One notice is accepted per order, and orders paid or cancelled before sending are skipped. Pickup notices use the assigned branch's city. Historical notifications are not backfilled.
 
 ## Server configuration
 

@@ -25,4 +25,57 @@ $o=order_seed('GS-SMS003');$o['paid']=true;save_order($o);$mode='rejected';sms_o
 $o=order_seed('GS-SMS004');$o['status']='ready_pickup';save_order($o);$o['status']='cancelled';save_order($o);$mode='ok';sms_orders_drain();check(count($calls)===4,'Stale pickup notice cancelled');
 $o=order_seed('GS-SMS005');$o['paid']=true;db()->exec('BEGIN IMMEDIATE');save_order($o);db()->exec('ROLLBACK');sms_orders_drain();check(count($calls)===4,'Rolled back order must not queue SMS');
 $o=order_seed('GS-SMS006');$o['paid']=true;save_order($o);db()->exec('UPDATE sms_order_queue SET state="sending",updated=0 WHERE order_id="GS-SMS006"');sms_orders_drain();check(count($calls)===4,'Interrupted send is not resent');
+function queue_state(string $id,string $event): ?string {
+    $q=db()->prepare('SELECT state FROM sms_order_queue WHERE order_id=? AND event=?');
+    $q->execute([$id,$event]);return $q->fetchColumn()?:null;
+}
+function transport_bill(int $total): array {
+    return ['total'=>$total,'breakdown'=>['cargo_mnt'=>2000,'delivery_mnt'=>2500],'confirmed_at'=>gmdate('c')];
+}
+$o=order_seed('GS-SMS007');$o['status']='erenhot_dispatched';$o['settlement']=transport_bill(4500);save_order($o);
+check(sms_orders_drain()===0,'Early settlement does not notify until arrival');
+$o['status']='ulaanbaatar';save_order($o);
+check(sms_orders_drain()===0,'Receipt alone does not notify');
+$o['status']='ready_delivery';save_order($o);save_order($o);
+check(queue_state($o['id'],'transport_balance')==='pending','Ready delivery queues final balance');
+$o['settlement']=transport_bill(5700);$o['freight']=['paid_amount'=>1200];save_order($o);
+check(sms_orders_drain()===1&&sms_orders_drain()===0&&count($calls)===5,'Exactly one delivery balance SMS');
+check($calls[4]['type']==='standard'&&$calls[4]['phone']==='99112233','Balance SMS uses customer phone and standard tariff');
+check(str_contains($calls[4]['message'],'4,500₮ төлөх')&&str_contains($calls[4]['message'],'QPay https://gostore.mn/account/orders/GS-SMS007'),'Current outstanding amount and the order payment link');
+
+$o=order_seed('GS-261013-ABCDEF12');$o['amount']=10000;$o['paid']=true;$o['status']='ulaanbaatar';save_order($o);sms_orders_drain();
+$o['status']='ready_pickup';$o['fulfillment']=['method'=>'pickup','contact_phone'=>'88112233'];save_order($o);
+check(sms_orders_drain()===0,'Pickup still awaiting manual settlement is not ready for collection SMS');
+$o['settlement']=transport_bill(14500);save_order($o);
+check(sms_orders_drain()===1&&queue_state($o['id'],'pickup')===null,'Manual settlement queues only the balance notice');
+check(str_contains(end($calls)['message'],'4,500₮')&&str_contains(end($calls)['message'],$o['id'])&&end($calls)['phone']==='99112233','Legacy ID and ordering customer, independent of handover contact');
+$o['freight']=['paid_amount'=>4500];save_order($o);
+check(sms_orders_drain()===1&&queue_state($o['id'],'pickup')==='accepted','Pickup notice after the full balance clears');
+
+$o=order_seed('GS-SMS008');$o['status']='ready_delivery';$o['settlement']=transport_bill(1000);save_order($o);
+$o['settlement']=transport_bill(2300);save_order($o);
+check(sms_orders_drain()===1&&str_contains(end($calls)['message'],'2,300₮'),'Superseded balance is updated before sending');
+$o=order_seed('GS-SMS009');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);save_order($o);
+$o['freight']=['paid_amount'=>4500];save_order($o);
+check(sms_orders_drain()===0&&queue_state($o['id'],'transport_balance')==='cancelled','Paying before the worker cancels the notice');
+$o['settlement']=transport_bill(5000);save_order($o);
+check(sms_orders_drain()===1&&str_contains(end($calls)['message'],'500₮'),'A new balance can revive a notice cancelled before sending');
+$o=order_seed('GS-SMS010');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);
+db()->exec('BEGIN IMMEDIATE');save_order($o);db()->exec('ROLLBACK');
+check(queue_state($o['id'],'transport_balance')===null,'Rolled-back confirmation cancels queue insertion');
+save_order($o);$o['status']='cancelled';save_order($o);
+check(sms_orders_drain()===0&&queue_state($o['id'],'transport_balance')==='cancelled','Cancelled order is not messaged');
+$o=order_seed('GS-SMS011');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);$o['demo']=true;save_order($o);
+check(queue_state($o['id'],'transport_balance')===null,'Demo order is not messaged');
+$o=order_seed('GS-SMS012');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);$o['phone']='invalid';save_order($o);
+check(queue_state($o['id'],'transport_balance')===null,'Missing valid customer phone does not block settlement');
+$o=order_seed('GS-SMS013');$o['status']='ready_delivery';$o['settlement']=transport_bill(4500);
+putenv('SENDSMS_ORDER_EVENTS=0');save_order($o);putenv('SENDSMS_ORDER_EVENTS=1');save_order($o);
+check(queue_state($o['id'],'transport_balance')===null,'Existing qualifying orders are not backfilled on ordinary saves');
+$longId='GS-'.str_repeat('A',45);
+$longText=sms_transport_balance_text($longId,100000000);
+check(str_contains($longText,'100,000,000 tugrug')&&str_ends_with($longText,$longId),'Long order IDs use the single-segment ASCII template');
+sendsms_payload('99112233',$longText);
+
+echo "PASS Transport SMS: post-arrival final balance, payment link, latest amount, deduplication, pending cancellation, standard tariff, and customer phone.\n";
 echo "PASS SendSMS: validation, text limits, standard tariff, atomic queue, deduplication, branch text, stale cancellation, rejected/uncertain/crashed sends retained without retries.\n";

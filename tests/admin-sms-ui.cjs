@@ -10,10 +10,11 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   assert.match(await page.locator('#sms-result').innerText(),/Энэ хугацаанд бүртгэгдсэн SMS алга/);
   const response=await page.request.get(base+'/api/index.php?action=admin-sms-usage');assert.equal(response.status(),200);const fixture=await response.json();
   fixture.summary={total:51,known_cost:20,unknown_cost:1,verified:1};fixture.states={pending:48,sending:0,accepted:2,failed:1,uncertain:0,cancelled:0};fixture.pages=2;
-  fixture.rows=[{kind:'otp',event:'register',phone_mask:'99****33',order_id:'',created:new Date().toISOString(),state:'accepted',cost:20,verified_at:new Date().toISOString()},{kind:'order',event:'pickup',phone_mask:'88****44',order_id:'<img src=x onerror=alert(1)>',created:new Date().toISOString(),state:'accepted',cost:null,verified_at:null}];
+  fixture.rows=[{kind:'otp',event:'register',phone_mask:'99****33',order_id:'',created:new Date().toISOString(),state:'accepted',cost:20,verified_at:new Date().toISOString()},{kind:'order',event:'transport_balance',phone_mask:'88****44',order_id:'<img src=x onerror=alert(1)>',created:new Date().toISOString(),state:'accepted',cost:null,verified_at:null}];
   let mode='ok',requests=[];
   await page.route('**/api/index.php?action=admin-sms-usage*',route=>{const q=new URL(route.request().url()).searchParams;requests.push(Object.fromEntries(q));return route.fulfill({status:mode==='fail'?503:200,contentType:'application/json',body:JSON.stringify(mode==='fail'?{error:'Туршилтын алдаа'}:{...fixture,page:Number(q.get('page')||1)})});});
   await page.locator('#sms-range button').click();await page.waitForFunction(()=>document.querySelector('.sms-table')?.textContent.includes('99****33'));
+  assert.match(await page.locator('.sms-table').innerText(),/Тээврийн үлдэгдэл төлөх/);
   assert.match(await page.locator('#sms-result').innerText(),/Тодорхойгүй/);assert.equal(await page.locator('.sms-table img').count(),0,'Escaped server fields');
   await page.locator('[data-sms-page="2"]').click();await page.waitForFunction(()=>document.querySelector('.sms-pagination')?.textContent.includes('2 / 2'));assert.equal(requests.at(-1).page,'2');
   await page.locator('#sms-range [name=kind]').selectOption('otp');await page.locator('#sms-range button').click();await page.waitForFunction(()=>document.querySelector('.sms-pagination')?.textContent.includes('1 / 2'));assert.equal(requests.at(-1).kind,'otp');

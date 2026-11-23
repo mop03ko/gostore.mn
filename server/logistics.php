@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/warehouse-cargo.php';
+require_once __DIR__.'/settlement.php';
 require_once __DIR__.'/customer-push.php';
 
 function logistics_state(array $o): array {
@@ -15,14 +16,6 @@ function logistics_receipt_photo_required(array $o,string $location): void {
 }
 function logistics_open_issues(array $o): bool {
     return (bool)array_filter(logistics_state($o)['issues'],fn($i)=>$i['state']==='open');
-}
-function settlement_summary(array $o): array {
-    $s=$o['settlement']??null;
-    // Refunds the admin has sent back (order-refund) reduce what counts as paid.
-    $refunded=array_sum(array_map(fn($r)=>(int)($r['amount']??0),$o['refunds']??[]));
-    $paid=(($o['paid']??false)?(int)($o['amount']??0):0)+(int)($o['freight']['paid_amount']??0)-$refunded;
-    $total=$s['total']??(int)($o['amount']??0);
-    return ['finalized'=>$s!==null,'total'=>$total,'paid'=>$paid,'refunded'=>$refunded,'due'=>max(0,$total-$paid),'refund_due'=>max(0,$paid-$total),'breakdown'=>$s['breakdown']??($o['quote']['breakdown']??[]),'confirmed_at'=>$s['confirmed_at']??null];
 }
 function logistics_ready(array $o): void {
     if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
