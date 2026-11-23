@@ -16,8 +16,8 @@ function sms_pickup_notice_ready(array $o,int $due): bool {
 function sms_transport_balance_text(string $id,int $due): string {
     $link='https://gostore.mn/account/orders/'.$id;
     $amount=number_format($due);
-    $text=$amount.'₮ төлөх QPay '.$link;
-    return mb_strlen($text,'UTF-8')<=70?$text:'GOStore: '.$amount.' tugrug uldegdel. QPay: '.$link;
+    $text='Ачаа ирлээ. Төлөх '.$amount.'₮. '.$link;
+    return mb_strlen($text,'UTF-8')<=70?$text:'Tanii achaa irlee. Tanii uldegdel tulbur '.$amount.' tugrug. '.$link;
 }
 function sms_order_event(array $o,array $old): void {
     if(!sendsms_enabled('orders'))return;

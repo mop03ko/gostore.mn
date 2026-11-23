@@ -41,14 +41,14 @@ check(queue_state($o['id'],'transport_balance')==='pending','Ready delivery queu
 $o['settlement']=transport_bill(5700);$o['freight']=['paid_amount'=>1200];save_order($o);
 check(sms_orders_drain()===1&&sms_orders_drain()===0&&count($calls)===5,'Exactly one delivery balance SMS');
 check($calls[4]['type']==='standard'&&$calls[4]['phone']==='99112233','Balance SMS uses customer phone and standard tariff');
-check(str_contains($calls[4]['message'],'4,500₮ төлөх')&&str_contains($calls[4]['message'],'QPay https://gostore.mn/account/orders/GS-SMS007'),'Current outstanding amount and the order payment link');
+check($calls[4]['message']==='Ачаа ирлээ. Төлөх 4,500₮. https://gostore.mn/account/orders/GS-SMS007','Arrival, current outstanding amount and the order payment link');
 
 $o=order_seed('GS-261013-ABCDEF12');$o['amount']=10000;$o['paid']=true;$o['status']='ulaanbaatar';save_order($o);sms_orders_drain();
 $o['status']='ready_pickup';$o['fulfillment']=['method'=>'pickup','contact_phone'=>'88112233'];save_order($o);
 check(sms_orders_drain()===0,'Pickup still awaiting manual settlement is not ready for collection SMS');
 $o['settlement']=transport_bill(14500);save_order($o);
 check(sms_orders_drain()===1&&queue_state($o['id'],'pickup')===null,'Manual settlement queues only the balance notice');
-check(str_contains(end($calls)['message'],'4,500₮')&&str_contains(end($calls)['message'],$o['id'])&&end($calls)['phone']==='99112233','Legacy ID and ordering customer, independent of handover contact');
+check(str_contains(end($calls)['message'],'Tanii achaa irlee. Tanii uldegdel tulbur 4,500 tugrug.')&&str_ends_with(end($calls)['message'],$o['id'])&&end($calls)['phone']==='99112233','Legacy ID and ordering customer, independent of handover contact');
 $o['freight']=['paid_amount'=>4500];save_order($o);
 check(sms_orders_drain()===1&&queue_state($o['id'],'pickup')==='accepted','Pickup notice after the full balance clears');
 
@@ -97,7 +97,7 @@ reminder_rejected('GS-SMS011',409);
 reminder_rejected('GS-SMS012',400);
 $longId='GS-'.str_repeat('A',45);
 $longText=sms_transport_balance_text($longId,100000000);
-check(str_contains($longText,'100,000,000 tugrug')&&str_ends_with($longText,$longId),'Long order IDs use the single-segment ASCII template');
+check(str_contains($longText,'Tanii achaa irlee. Tanii uldegdel tulbur 100,000,000 tugrug.')&&str_ends_with($longText,$longId),'Long order IDs use the single-segment ASCII template');
 sendsms_payload('99112233',$longText);
 
 echo "PASS Transport SMS: post-arrival final balance, payment link, latest amount, deduplication, pending cancellation, standard tariff, and customer phone.\n";
