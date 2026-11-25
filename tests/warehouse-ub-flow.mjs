@@ -33,6 +33,10 @@ assert.equal(batch.status,'received');assert.ok(batch.orders.every(o=>o.status==
 let e=await order(ub,E);const missing=e.logistics.issues.find(i=>i.state==='open');assert.equal(missing.kind,'missing');assert.match(missing.note,new RegExp(batch.id));
 
 // One-step sorting: photo, version, shelf and checks; an issued freight invoice fixes the pickup method and the bill.
+const adminStatus=async(id,status,extra={})=>{
+  const previous=await order(ub,id);
+  return admin('order-update',{id,status,status_only:true,warehouse_operation:true,expected_status:previous.status,expected_version:previous.logistics.version,...extra});
+};
 const sort=async(id,extra={})=>{const o=await order(ub,id);return ub('warehouse-sort',{id,expected_status:o.status,expected_version:o.logistics.version,shelf:'A-01',method:'pickup',contact_phone:o.contact.phone,address:'',checked:true,...extra});};
 assert.equal((await sort(A)).status,409,'Receipt photo required');await uploadReceipt(ub,A);
 assert.equal((await sort(A,{checked:false})).status,400);assert.equal((await sort(A,{shelf:''})).status,400);
@@ -47,7 +51,10 @@ const codeA='0042';
 await uploadReceipt(ub,B);before=(await notices()).length;o=(await sort(B,{shelf:'A-02'})).order;assert.equal(o.status,'ready_pickup');assert.equal(o.billing.due,cargo);assert.deepEqual(o.flags,{unpaid:cargo});
 list=await notices();assert.equal(list.length,before+1);assert.match(list[0].message,new RegExp('Үлдэгдэл '+cargo.toLocaleString('en-US')+'₮ төлөөд'));
 await uploadReceipt(ub,C);assert.equal((await sort(C,{method:'delivery',address:''})).status,400,'Delivery needs an address');
-o=(await sort(C,{method:'delivery',address:'Хан-Уул, 3-р хороо',delivery_mnt:5000,shelf:'D-01'})).order;assert.equal(o.status,'ready_delivery');assert.equal(o.settlement.breakdown.delivery_mnt,5000);assert.equal(o.settlement.breakdown.service_mnt,2970);assert.equal(o.billing.due,cargo+5150);
+const sorting={address:'Хан-Уул, 3-р хороо',delivery_mnt:5000,shelf:'D-01',contact_phone:'99112233',checked:true};
+assert.equal((await adminStatus(C,'ready_delivery',{...sorting,expected_version:0})).status,409,'Admin cannot save stale warehouse details');
+r=await adminStatus(C,'ready_delivery',sorting);assert.equal(r.status,200,JSON.stringify(r));o=r.order;
+assert.equal(o.history.at(-1).actor,'admin');assert.equal(o.status,'ready_delivery');assert.equal(o.settlement.breakdown.delivery_mnt,5000);assert.equal(o.settlement.breakdown.service_mnt,2970);assert.equal(o.billing.due,cargo+5150);
 await uploadReceipt(ub,D);assert.equal((await sort(D)).status,400,'Unknown domestic cost must be entered');
 o=(await sort(D,{domestic_mnt:3000,shelf:'B-07'})).order;assert.equal(o.settlement.breakdown.domestic_mnt,3000);assert.equal(o.billing.due,cargo+3000);
 await uploadReceipt(ub,E);assert.equal((await sort(E)).status,409,'Open missing issue blocks sorting');
@@ -90,13 +97,18 @@ if(process.env.SENDSMS_ORDER_EVENTS==='1'){
   assert.equal(sms.state,'already_queued','Arrival queued an SMS automatically');
   assert.ok([401,403].includes((await ub('admin-order-transport-sms',{id:C})).status),'Warehouse has no admin SMS permission');
 }
+const courier={courier_name:'Бат',courier_phone:'95001122'};
+assert.equal((await adminStatus(C,'out_for_delivery',courier)).status,409,'Admin cannot dispatch while unpaid');
 fixture('pay',C);assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'abc'})).status,400);
 assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C,C],courier_name:'Бат',courier_phone:'95001122'})).status,400);
-r=await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'95001122'});assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.orders[0].status,'out_for_delivery');assert.equal(r.orders[0].fulfillment.courier_name,'Бат');
+r=await adminStatus(C,'out_for_delivery',courier);assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.order.status,'out_for_delivery');assert.equal(r.order.fulfillment.courier_name,'Бат');
 run=await ub('warehouse-delivery-list');assert.deepEqual(run.orders,[]);assert.deepEqual(run.couriers,[{name:'Бат',phone:'95001122'}]);
 assert.equal((await cn('warehouse-delivery-list')).status,403);
 const courierCode='0017';fixture('pickup-code',C,courierCode);
-assert.equal((await ub('warehouse-fulfillment-update',{id:C,operation:'complete',expected_status:'out_for_delivery',received_by:'Ану',pickup_code:courierCode})).status,200,'A four-digit code with leading zeros completes delivery');
+assert.equal((await adminStatus(C,'completed',{received_by:'Ану',pickup_code:'0000'})).status,403,'Wrong pickup code is rejected');
+r=await adminStatus(C,'completed',{received_by:'Ану',pickup_code:courierCode});assert.equal(r.status,200,JSON.stringify(r));
+assert.equal(r.order.status,'completed');assert.equal(r.order.pickup_code,undefined,'Valid code is used only once');
+assert.equal(r.order.history.at(-1).actor,'admin');
 
 // Daily reminders: once at 2 days and once at 5 days after sorting (D waits for payment and collection).
 const now=Math.floor(Date.now()/1000);assert.equal(fixture('remind',now),'1');assert.equal(fixture('remind',now),'0','No repeat');assert.equal(fixture('remind',now+2*86400),'1','Second reminder at 5 days');

@@ -122,6 +122,66 @@ async function uxApiKpi(){
   catch{if($('#kpi-api-note'))$('#kpi-api-note').textContent='Мэдээлэл авах боломжгүй';}
 }
 
+// Warehouse transitions use the same receipt, billing and handover operations as the warehouse screen.
+function uxStatusOptions(o){
+  const edits=[...document.querySelectorAll('#order-form select[name="status"] option')].map(option=>option.value).filter(status=>status!==o.status);
+  if(['completed','cancelled','erenhot_ready'].includes(o.status))return [];
+  if(['ulaanbaatar_unsorted','ulaanbaatar'].includes(o.status)&&o.route?.includes('Улаанбаатар')){
+    const method=o.fulfillment?.method||'pickup';
+    return o.freight?.invoice?[method==='pickup'?'ready_pickup':'ready_delivery']:['ready_pickup','ready_delivery'];
+  }
+  if(o.status==='ready_delivery')return ['out_for_delivery'];
+  if(['ready_pickup','out_for_delivery'].includes(o.status))return ['completed'];
+  if(o.batch_id||o.fulfillment)return [];
+  return edits.filter(status=>status!=='cancelled'||!o.invoice);
+}
+function uxChangeOrderStatus(o){
+  const choices=uxStatusOptions(o);
+  if(!choices.length)return;
+  const modal=document.createElement('dialog');
+  modal.className='ui-confirm';
+  modal.id='order-status-dialog';
+  modal.innerHTML=`<form method="dialog"><h2>Захиалгын төлөв солих</h2><p><strong>${esc(o.id)}</strong> · ${esc(statuses[o.status]||o.status)}</p>
+    <label>Шинэ төлөв<select name="status" required><option value="">Сонгох</option>${choices.map(status=>`<option value="${esc(status)}">${esc(statuses[status])}</option>`).join('')}</select></label>
+    <div class="form-grid" data-status-fields></div><p class="error" role="alert"></p>
+    <div class="form-actions"><button type="button" class="quiet">Болих</button><button type="submit" class="primary">Төлөв солих</button></div></form>`;
+  const form=modal.querySelector('form'),select=form.elements.status,fields=modal.querySelector('[data-status-fields]'),error=modal.querySelector('.error');
+  const control=(name,label,attributes='required',value='')=>`<label class="full">${label}<input name="${name}" value="${esc(value)}" ${attributes}></label>`;
+  select.addEventListener('change',()=>{
+    error.textContent='';
+    const target=select.value;
+    if(['ready_pickup','ready_delivery'].includes(target)){
+      const f=o.fulfillment||{},address=f.address||o.delivery_address||'';
+      fields.innerHTML=control('shelf','Тавиур','required maxlength="50"',o.logistics?.shelf||'')+
+        control('contact_phone','Холбоо барих утас','required type="tel" maxlength="30"',f.contact_phone||o.phone)+
+        (target==='ready_delivery'?control('address','Хүргэх хаяг','required maxlength="500"',address)+control('delivery_mnt','Хүргэлтийн төлбөр (₮)','required type="number" min="0" max="10000000" step="1"',o.settlement?.breakdown?.delivery_mnt??''):'')+
+        (o.quote?.domestic_later&&!o.settlement?control('domestic_mnt','Хятад доторх хүргэлт (₮)','required type="number" min="0" max="10000000" step="1"'):'')+
+        '<label class="check full"><input type="checkbox" name="checked" required>Бараа, хувилбар, тоо ширхэгийг тулгасан</label>';
+    }else if(target==='out_for_delivery'){
+      fields.innerHTML=control('courier_name','Хүргэгчийн нэр','required maxlength="100"')+control('courier_phone','Хүргэгчийн утас','required type="tel" maxlength="30"');
+    }else if(target==='completed'&&['ready_pickup','out_for_delivery'].includes(o.status)){
+      fields.innerHTML=control('received_by','Хүлээн авсан хүний нэр','required maxlength="100"')+control('pickup_code','Авах код','required inputmode="numeric" autocomplete="off" maxlength="8" pattern="[0-9]{4}|[0-9]{8}"');
+    }else fields.innerHTML='';
+  });
+  modal.querySelector('.quiet').addEventListener('click',()=>modal.close());
+  modal.addEventListener('close',()=>modal.remove(),{once:true});
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();e.stopPropagation();
+    const button=e.submitter,body=Object.fromEntries(new FormData(form));
+    for(const key of ['domestic_mnt','delivery_mnt'])if(key in body)body[key]=Number(body[key]);
+    if(body.checked==='on')body.checked=true;
+    button.disabled=true;error.textContent='';
+    try{
+      const {order}=await api('order-update',{...body,id:o.id,status_only:true,warehouse_operation:true,expected_status:o.status,expected_version:o.logistics?.version??0});
+      data.orders=data.orders.map(current=>current.id===o.id?order:current);
+      modal.close();
+      render();editOrder(o.id);
+      toast('Захиалгын төлөв шинэчлэгдлээ');
+    }catch(err){error.textContent=err.message;}finally{button.disabled=false;}
+  });
+  document.body.append(modal);modal.showModal();select.focus();
+}
+
 // Order drawer: a sticky summary with the next actions and links to each section.
 const baseModal=modal;
 modal=function(title,html){baseModal(title,html);$('#editor-summary')?.remove();};
@@ -131,10 +191,13 @@ editOrder=function(id){
   const body=$('#editor-body'),sections=[['.order-tracking','Явц'],['.details','Мэдээлэл'],['#order-form','Төлөв, дүн'],['#quote-form','Үнийн санал'],['.order-warehouse-assignment','Агуулах'],['#tw-purchase,.purchase-panel','TaoWorld'],['.aftersale','Буцаалт']].filter(([s])=>body.querySelector(s));
   const head=document.createElement('div');head.id='editor-summary';
   const [payment,paymentTone]=uxPaymentLabel(o);
+  const canChangeStatus=uxCan('operator')&&uxStatusOptions(o).length>0;
+  const batchInTransit=o.batch_id&&['erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud'].includes(o.status);
   const canSendSms=uxCan('operator')&&!o.demo&&o.billing?.finalized&&o.billing.due>0
     &&['ready_pickup','ready_delivery'].includes(o.status)&&/^(?:\+?976)?\d{8}$/.test(String(o.phone||'').replace(/[ ()-]/g,''));
   head.innerHTML=`<div class="sum-line">${tag(o.status)}<span class="sum-amount">${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</span><span class="tag ${paymentTone||'st-wait'}">${payment}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
-    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
+    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canChangeStatus?`<button type="button" class="quiet" data-change-order-status="${esc(o.id)}">Төлөв солих</button>`:''}${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
+    (batchInTransit?'<small class="muted">Энэ шатны хөдөлгөөнийг агуулахад багцаар нь бүртгэнэ.</small>':'')+
     `<nav class="sum-links" aria-label="Захиалгын хэсгүүд">${sections.map(([s,l])=>`<button type="button" data-jump="${esc(s)}">${l}</button>`).join('')}</nav>`;
   $('.dialog-header').append(head);
 };
@@ -194,7 +257,7 @@ function paletteRun(i){const it=paletteItems[i];if(!it)return;$('#cmdk').close()
 // Events.
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#app').hidden){e.preventDefault();paletteOpen();}});
 addEventListener('click',async e=>{
-  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-transport-sms],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
+  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-change-order-status],[data-transport-sms],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
   if(!b){
     // A click anywhere on an order row opens it (checkbox, links and buttons keep their own action).
     const row=e.target.closest('tr[data-row-order]');if(row&&!e.target.closest('button,a,input,label,select'))editOrder(row.dataset.rowOrder);
@@ -208,6 +271,11 @@ addEventListener('click',async e=>{
   if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';payFilter='all';dateFilter='all';render();$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
   if(b.hasAttribute('data-cmdk-open')){paletteOpen();return;}
   if(b.hasAttribute('data-menu-open')){const s=$('#mobile-admin-page');try{s.showPicker();}catch{s.focus();s.click();}return;}
+  if(b.dataset.changeOrderStatus){
+    const o=data.orders.find(order=>order.id===b.dataset.changeOrderStatus);
+    if(o)uxChangeOrderStatus(o);
+    return;
+  }
   if(b.dataset.transportSms){
     const order=data.orders.find(o=>o.id===b.dataset.transportSms);
     if(!order)return;
@@ -228,7 +296,7 @@ addEventListener('click',async e=>{
     if(!await uiConfirm({title:`${ids.length} захиалгын төлөвийг өөрчлөх үү?`,text:`Шинэ төлөв: ${statuses[status]}. Үнэ, тэмдэглэл өөрчлөгдөхгүй. Агуулахын багцтай захиалгын явцыг агуулахаас удирдана.`,confirmLabel:'Төлөв солих'}))return;
     b.disabled=true;let ok=0;const failed=[];
     for(const id of ids){const o=data.orders.find(x=>x.id===id);if(!o)continue;if(o.status===status){ok++;continue;}
-      try{await api('order-update',{id,status,amount:o.amount,internal_note:o.internal_note||''});ok++;}catch(err){failed.push(id+': '+err.message);}}
+      try{await api('order-update',{id,status,status_only:true,expected_status:o.status});ok++;}catch(err){failed.push(id+': '+err.message);}}
     pickedOrders.clear();await refresh();
     toast(failed.length?`${ok} захиалга шинэчлэгдлээ, ${failed.length} нь өөрчлөгдсөнгүй (${failed[0]}${failed.length>1?' …':''})`:`${ok} захиалгын төлөв шинэчлэгдлээ`);
   }

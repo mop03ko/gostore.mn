@@ -37,6 +37,12 @@ const box=await page.locator('#editor').boundingBox();assert.ok(box.x+box.width>
 await page.locator('#editor-summary [data-jump="#order-form"]').click();
 // Smooth scrolling takes a moment; the form must come into view below the sticky summary.
 await page.waitForFunction(()=>{const r=document.querySelector('#order-form').getBoundingClientRect(),h=document.querySelector('#editor .dialog-header').getBoundingClientRect();return r.top<innerHeight&&r.top>=h.bottom-2;},null,{timeout:5000});
+await page.locator('[data-change-order-status]').click();
+const statusDialog=page.locator('#order-status-dialog');
+await statusDialog.locator('[name=status]').selectOption('shipping');
+await statusDialog.getByRole('button',{name:'Төлөв солих'}).click();
+await statusDialog.waitFor({state:'detached'});
+assert.match(await page.locator('#editor-summary .status-tag').innerText(),/Хүргэлтэд/);
 await page.locator('#close-editor').click();
 
 // Bulk status change through the in-app confirmation.
@@ -103,6 +109,11 @@ assert.match(await page.locator('[data-row-order=GS-BILL-PICKUP] .order-transpor
 assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Transport view fits a phone');
 await deliveryRow.locator('[data-order]').click();
 assert.match(await page.locator('#editor-summary .order-transport-due').innerText(),/4,500 ₮/);
+await page.locator('[data-change-order-status]').click();
+await statusDialog.locator('[name=status]').selectOption('out_for_delivery');
+assert.equal(await statusDialog.locator('[name=courier_name]').isVisible(),true);
+assert.equal(await statusDialog.locator('[name=courier_phone]').isVisible(),true);
+await statusDialog.getByRole('button',{name:'Болих'}).click();
 let smsRequests=0;
 await page.route('**/api/index.php?action=admin-order-transport-sms',route=>{
   smsRequests++;

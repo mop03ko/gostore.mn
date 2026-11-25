@@ -296,21 +296,54 @@ try {
         $o['billing']=settlement_summary($o);json_out(['order'=>$o]);
     }
     if ($action==='order-update') {
+        $id=str_field($b,'id',50);$status=str_field($b,'status',30);
+        $statusOnly=($b['status_only']??false)===true;
+        $expected=str_field($b,'expected_status',30,$statusOnly);
+        $operational=in_array($status,['ready_pickup','ready_delivery','out_for_delivery','completed'],true);
+        if($statusOnly&&($b['warehouse_operation']??false)===true&&$operational&&$status!==$expected){
+            $current=order_row($id)['order'];
+            $from=$current['status'];
+            if($from!==$expected)fail('Захиалгын төлөв өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
+            $sort=in_array($status,['ready_pickup','ready_delivery'],true);
+            $managed=$sort||$status==='out_for_delivery'||isset($current['batch_id'])||isset($current['fulfillment'])
+                ||in_array($from,['ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true);
+            if($managed){
+                $location=warehouse_order_location($current,'ulaanbaatar');
+                $actor=['actor'=>'admin','actor_location'=>$location,'actor_email'=>admin_current()['email']];
+                if($sort){
+                    if(!in_array($from,['ulaanbaatar_unsorted','ulaanbaatar'],true))fail('Эхлээд барааг хүлээн авна уу.',409);
+                    $b['method']=$status==='ready_pickup'?'pickup':'delivery';
+                    if($b['method']==='pickup')$b['delivery_mnt']=0;
+                    $o=warehouse_ub_sort($b,$location,$actor);
+                }else{
+                    $b['operation']=$status==='completed'?'complete':'dispatch_delivery';
+                    $o=warehouse_fulfillment_order($b,$location,$actor);
+                }
+                $o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);
+                json_out(['order'=>$o]);
+            }
+        }
         $db=db();$db->exec('BEGIN IMMEDIATE');
         try {
-            $o=order_row(str_field($b,'id',50))['order'];$status=str_field($b,'status',30);
-            if((isset($o['batch_id'])||isset($o['fulfillment'])||in_array($status,['erenhot_ready','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true))&&$status!==$o['status'])fail('Багцтай болон ангилсан захиалгын явцыг агуулахын панелаас шинэчилнэ.',409);
+            $o=order_row($id)['order'];
+            if($expected!==''&&$expected!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
+            if((isset($o['batch_id'])||isset($o['fulfillment'])||in_array($o['status'],['erenhot_ready','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true)||in_array($status,['erenhot_ready','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true))&&$status!==$o['status'])fail('Багцтай болон ангилсан захиалгын явцыг агуулахын панелаас шинэчилнэ.',409);
             if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud','ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled'],true)) fail('Төлөв буруу.');
-            $amount=int_field($b,'amount',0,100000000);
+            if($status==='completed'&&$status!==$o['status']&&isset($o['settlement']))logistics_ready($o);
+            $amount=$statusOnly?$o['amount']:int_field($b,'amount',0,100000000);
             if(isset($o['settlement'])&&($amount!==$o['amount']||isset($b['quote_inputs'])))fail('Эцсийн тооцоотой захиалгын эхний дүнг өөрчлөхгүй.',409);
-            if (isset($o['invoice']) && ($amount!==$o['amount']||$status==='cancelled')) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
+            if (isset($o['invoice']) && ($amount!==$o['amount']||($status==='cancelled'&&$status!==$o['status']))) fail('Нэхэмжлэлтэй захиалгын дүн/цуцлалтыг QPay-тай тулган шийднэ.',409);
 
-            if(isset($b['quote_inputs'])){if(isset($o['invoice']))fail('Нэхэмжлэлтэй захиалгын тооцоог өөрчлөхгүй.',409);if(!is_array($b['quote_inputs']))fail('Тооцоо буруу.');$o['quote']=shipping_calculate($b['quote_inputs']);$amount=$o['quote']['total'];}
+            if(!$statusOnly&&isset($b['quote_inputs'])){if(isset($o['invoice']))fail('Нэхэмжлэлтэй захиалгын тооцоог өөрчлөхгүй.',409);if(!is_array($b['quote_inputs']))fail('Тооцоо буруу.');$o['quote']=shipping_calculate($b['quote_inputs']);$amount=$o['quote']['total'];}
             if ($status==='quoted'&&$amount<1) fail('Хүргэлт орсон нийт үнийн санал оруулна уу.');
-            if(isset($o['quote'])&&$amount!==$o['quote']['total'])unset($o['quote']);
-            if($o['status']!==$status){$o['history'][]=['status'=>$status,'at'=>gmdate('c')];}
-            $o['status']=$status;$o['amount']=$amount;$o['internal_note']=str_field($b,'internal_note',2000,false);save_order($o);$db->exec('COMMIT');
-        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}json_out(['order'=>$o]);
+            if(!$statusOnly&&isset($o['quote'])&&$amount!==$o['quote']['total'])unset($o['quote']);
+            if($o['status']!==$status){$o['history'][]=['status'=>$status,'at'=>gmdate('c'),'actor'=>'admin'];}
+            $o['status']=$status;$o['amount']=$amount;
+            if(!$statusOnly)$o['internal_note']=str_field($b,'internal_note',2000,false);
+            save_order($o);$db->exec('COMMIT');
+        } catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        $o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);
+        json_out(['order'=>$o]);
     }
     fail('Үйлдэл олдсонгүй.',404);
 } catch(SupplierBusy $e) { header('Retry-After: 2');json_out(['error'=>$e->getMessage(),'code'=>'supplier_busy','retry_after'=>2],503); }

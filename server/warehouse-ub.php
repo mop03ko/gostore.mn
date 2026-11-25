@@ -67,7 +67,7 @@ function warehouse_ub_flags(array $o,?int $now=null): array {
 }
 
 // One step: receipt photo (uploaded first), shelf, method/contact and the final bill; the order becomes ready.
-function warehouse_ub_sort(array $b,string $location): array {
+function warehouse_ub_sort(array $b,string $location,?array $actor=null): array {
     warehouse_ub_role($location);
     if(($b['checked']??false)!==true)fail('Бараа, хувилбар, тоо ширхэгийг тулгаж шалгана уу.');
     $method=str_field($b,'method',20);if(!in_array($method,['pickup','delivery'],true))fail('Хүлээлгэн өгөх хэлбэр буруу.');
@@ -75,7 +75,8 @@ function warehouse_ub_sort(array $b,string $location): array {
     $address=str_field($b,'address',500,$method==='delivery');$shelf=str_field($b,'shelf',50);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
-        warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
+        if($actor===null)warehouse_required();else admin_required();
+        $o=order_row(str_field($b,'id',50))['order'];
         if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         if(str_field($b,'expected_status',30)!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
         $l=logistics_state($o);if(int_field($b,'expected_version',0,PHP_INT_MAX)!==$l['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилж дахин оролдоно уу.',409);
@@ -106,11 +107,12 @@ function warehouse_ub_sort(array $b,string $location): array {
         $l['shelf']=$shelf;$l['version']++;$l['audit'][]=warehouse_event('sort');$o['logistics']=$l;
         $o['fulfillment']=['method'=>$method,'contact_phone'=>$phone,'address'=>$method==='delivery'?$address:'','sorted_at'=>$o['fulfillment']['sorted_at']??gmdate('c')];
         $next=$method==='pickup'?'ready_pickup':'ready_delivery';
-        if($o['status']!==$next)warehouse_change_order($o,$next);else save_order($o);
+        if($o['status']!==$next)warehouse_change_order($o,$next,$actor);else save_order($o);
         if(isset($o['batch_id'])){
             $batch=warehouse_batch_row($o['batch_id']);
+            if($actor!==null&&!in_array($batch['status'],['received','sorted'],true))fail('Эхлээд багцаа хүлээн авна уу.',409);
             $remaining=array_filter(warehouse_batch_members($batch['id']),fn($member)=>$member['status']==='ulaanbaatar_unsorted');
-            if(!$remaining&&$batch['status']==='received'){$batch['status']='sorted';warehouse_batch_save($batch,'sorted');}
+            if(!$remaining&&$batch['status']==='received'){$batch['status']='sorted';warehouse_batch_save($batch,'sorted',$actor);}
         }
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}

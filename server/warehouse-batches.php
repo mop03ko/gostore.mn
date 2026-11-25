@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
 
-function warehouse_event(string $event): array {
+function warehouse_event(string $event,?array $actor=null): array {
+    if($actor!==null)return ['event'=>$event,'at'=>gmdate('c')]+$actor;
     $location=warehouse_session_location();
     return ['event'=>$event,'at'=>gmdate('c'),'actor'=>'warehouse','actor_location'=>$location,'actor_email'=>warehouse_current_account($location)['email']];
 }
-function warehouse_change_order(array &$o,string $status): void {
-    $o['status']=$status;$o['history'][]=['status'=>$status]+warehouse_event($status);save_order($o);
+function warehouse_change_order(array &$o,string $status,?array $actor=null): void {
+    $o['status']=$status;$o['history'][]=['status'=>$status]+warehouse_event($status,$actor);save_order($o);
 }
 function warehouse_batch_row(string $id): array {
     $s=db()->prepare('SELECT data FROM shipment_batches WHERE id=?');$s->execute([$id]);$data=$s->fetchColumn();
@@ -16,8 +17,8 @@ function warehouse_batch_members(string $id): array {
     $s=db()->prepare('SELECT o.data FROM orders o JOIN shipment_batch_orders m ON m.order_id=o.id WHERE m.batch_id=? ORDER BY o.id');$s->execute([$id]);
     return array_map(fn($r)=>json_decode($r['data'],true),$s->fetchAll());
 }
-function warehouse_batch_save(array &$batch,string $event): void {
-    $batch['version']++;$batch['history'][]=warehouse_event($event);
+function warehouse_batch_save(array &$batch,string $event,?array $actor=null): void {
+    $batch['version']++;$batch['history'][]=warehouse_event($event,$actor);
     db()->prepare('UPDATE shipment_batches SET data=? WHERE id=?')->execute([json_encode($batch,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$batch['id']]);
 }
 function warehouse_batch_visible(array $batch,string $location): bool {
@@ -183,14 +184,19 @@ function warehouse_delivery_address(array $o): string {
     return mb_substr($notes,$at+mb_strlen($marker),500);
 }
 function warehouse_fulfillment(array $b,string $location): never {
+    json_out(['order'=>warehouse_order_public(warehouse_fulfillment_order($b,$location),$location)]);
+}
+function warehouse_fulfillment_order(array $b,string $location,?array $actor=null): array {
     if(warehouse_role($location)!=='ulaanbaatar')fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $action=str_field($b,'operation',30);
     if($action==='complete')limit_attempts('pickup:'.str_field($b,'id',50),10,900);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
-        warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
+        if($actor===null)warehouse_required();else admin_required();
+        $o=order_row(str_field($b,'id',50))['order'];
         if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         if(str_field($b,'expected_status',30)!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
+        if($actor!==null&&int_field($b,'expected_version',0,PHP_INT_MAX)!==logistics_state($o)['version'])fail('Мэдээлэл өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
         if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
         if($action==='sort'){
             if(!in_array($o['status'],['ulaanbaatar_unsorted','ulaanbaatar','ready_pickup','ready_delivery'],true))fail('Эхлээд багцыг хүлээн авна уу.',409);
@@ -213,7 +219,7 @@ function warehouse_fulfillment(array $b,string $location): never {
             if($o['status']!=='ready_delivery'||($o['fulfillment']['method']??'')!=='delivery')fail('Захиалга хүргэлтэд бэлэн биш байна.',409);
             $o['fulfillment']['courier_name']=str_field($b,'courier_name',100);$phone=str_field($b,'courier_phone',30);
             if(!preg_match('/^[+\d ()-]{8,25}$/D',$phone))fail('Холбогдох утасны дугаараа шалгана уу.');
-            $o['fulfillment']['courier_phone']=$phone;$o['fulfillment']['dispatched_at']=gmdate('c');warehouse_change_order($o,'out_for_delivery');
+            $o['fulfillment']['courier_phone']=$phone;$o['fulfillment']['dispatched_at']=gmdate('c');warehouse_change_order($o,'out_for_delivery',$actor);
         }elseif($action==='complete'){
             if(!in_array($o['status'],['ready_pickup','out_for_delivery'],true))fail('Захиалгыг хүлээлгэн өгөх боломжгүй.',409);
             logistics_ready($o);
@@ -221,9 +227,9 @@ function warehouse_fulfillment(array $b,string $location): never {
             if(!warehouse_pickup_code_valid($code))fail('Авах кодын орон буруу байна.');
             if(empty($o['pickup_code'])||!hash_equals($o['pickup_code'],$code))fail('Авах код буруу байна.',403);
             unset($o['pickup_code']);
-            $o['fulfillment']['received_by']=str_field($b,'received_by',100);$o['fulfillment']['completed_at']=gmdate('c');warehouse_change_order($o,'completed');
+            $o['fulfillment']['received_by']=str_field($b,'received_by',100);$o['fulfillment']['completed_at']=gmdate('c');warehouse_change_order($o,'completed',$actor);
         }else fail('Үйлдэл олдсонгүй.',404);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
-    json_out(['order'=>warehouse_order_public($o,$location)]);
+    return $o;
 }
