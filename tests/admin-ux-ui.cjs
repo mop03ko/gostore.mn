@@ -168,5 +168,17 @@ assert.equal(await deliveryRow.locator('.order-transport-due').count(),0);
 await deliveryRow.locator('[data-order]').click();
 assert.equal(await page.locator('[data-transport-sms]').count(),0,'No reminder for a paid balance');
 await page.locator('#close-editor').click();
+await page.route('**/api/index.php?action=admin-order-status-save',route=>{
+  assert.deepEqual(route.request().postDataJSON(),{id:'GS-BILL-PICKUP',status:'completed',expected_status:'ready_pickup'});
+  return route.fulfill({json:{order:{...fixtureOrder,id:'GS-BILL-PICKUP',status:'ready_pickup',admin_status:'completed',billing:{...bill(2000,2000,0),total:2000},type:'forwarding',amount:0,paid:false}}});
+});
+await page.locator('[data-row-order=GS-BILL-PICKUP] [data-order]').click();
+await page.getByLabel('Төлөв шууд засах').selectOption('completed');
+await page.waitForFunction(()=>document.querySelector('#editor-summary .status-tag')?.textContent==='Хүлээлгэн өгсөн');
+assert.equal(await page.locator('#order-status-dialog').count(),0,'No approval dialog for a manual change');
+assert.match(await page.locator('#editor-summary .order-transport-due').innerText(),/2,000 ₮/);
+await page.locator('#close-editor').click();
+await page.locator('[data-otab=done]').click();
+assert.ok((await transportIds()).includes('GS-BILL-PICKUP'));
 assert.deepEqual(errors,[]);console.log('admin-ux-ui ok');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

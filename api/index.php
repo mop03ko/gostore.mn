@@ -249,6 +249,23 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
+    if($action==='admin-order-status-save'){
+        $id=str_field($b,'id',50);$status=str_field($b,'status',30);$expected=str_field($b,'expected_status',30);
+        if(!in_array($status,ORDER_STATUSES,true))fail('Төлөв буруу.');
+        $db=db();$db->exec('BEGIN IMMEDIATE');
+        try{
+            $o=order_row($id)['order'];
+            if(order_display_status($o)!==$expected)fail('Захиалгын төлөв өөрчлөгдсөн байна. Жагсаалтаа шинэчилнэ үү.',409);
+            if($status!==$expected){
+                if($status===$o['status'])unset($o['admin_status']);
+                else $o['admin_status']=$status;
+                save_order($o);
+            }
+            $db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        $o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);
+        json_out(['order'=>$o]);
+    }
     if($action==='admin-order-batch-status')json_out(['batch'=>warehouse_admin_batch_status($b,true)]);
     if($action==='admin-order-transport-sms'){
         $result=sms_transport_reminder(str_field($b,'id',50));
@@ -330,7 +347,7 @@ try {
             $o=order_row($id)['order'];
             if($expected!==''&&$expected!==$o['status'])fail('Захиалгын төлөв өөрчлөгдсөн байна. Шинэчилнэ үү.',409);
             if((isset($o['batch_id'])||isset($o['fulfillment'])||in_array($o['status'],['erenhot_ready','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true)||in_array($status,['erenhot_ready','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'],true))&&$status!==$o['status'])fail('Багцтай болон ангилсан захиалгын явцыг агуулахын панелаас шинэчилнэ.',409);
-            if (!in_array($status,['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud','ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled'],true)) fail('Төлөв буруу.');
+            if (!in_array($status,ORDER_STATUSES,true)) fail('Төлөв буруу.');
             if($status==='completed'&&$status!==$o['status']&&isset($o['settlement']))logistics_ready($o);
             $amount=$statusOnly?$o['amount']:int_field($b,'amount',0,100000000);
             if(isset($o['settlement'])&&($amount!==$o['amount']||isset($b['quote_inputs'])))fail('Эцсийн тооцоотой захиалгын эхний дүнг өөрчлөхгүй.',409);

@@ -131,6 +131,22 @@ for(const status of ['erenhot_ready','erenhot_dispatched','ulaanbaatar_unsorted'
   assert.equal(order.paid,true);assert.equal(order.amount,99000);
  }
 }
+const manualAction='admin-order-status-save',manualId=adminIds[0];
+const manual={id:manualId,status:'completed',expected_status:'ulaanbaatar_unsorted'};
+assert.ok([401,403].includes((await guest(manualAction,manual)).status),'Customer cannot edit tracking status');
+assert.equal((await admin(manualAction,{...manual,status:'invalid'})).status,400);
+const recorded=await admin(manualAction,manual);
+assert.equal(recorded.status,200,JSON.stringify(recorded));
+assert.equal(recorded.order.admin_status,'completed');
+assert.equal(recorded.order.status,'ulaanbaatar_unsorted','Batch remains available for sorting');
+assert.equal(recorded.order.billing.finalized,false);
+assert.equal(recorded.order.paid,true);
+assert.equal((await admin('admin-order&id='+adminIds[1])).order.admin_status,undefined,'Only the chosen order changes');
+const manualToken=crypto.createHash('sha256').update('warehouse-fixture-5').digest('hex');
+const displayed=(await guest('order-get',{id:manualId,token:manualToken})).order;
+assert.equal(displayed.status,'completed');assert.equal(displayed.admin_status,undefined);
+assert.equal((await admin(manualAction,manual)).status,409);
+assert.equal((await admin(manualAction,{id:manualId,status:'ulaanbaatar_unsorted',expected_status:'completed'})).order.admin_status,undefined,'Choosing the warehouse status restores automatic tracking');
 const adminReceived=(await ub('warehouse-batch&id='+adminBatchId)).batch;
 assert.equal(adminReceived.status,'received');assert.equal(adminReceived.unsorted_count,2);
 assert.ok(adminReceived.orders.every(o=>o.logistics.issues.length===0),'Admin records a full receipt');

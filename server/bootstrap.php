@@ -216,7 +216,15 @@ function save_order(array $o): void {
     db()->exec('RELEASE SAVEPOINT save_order_write');
     }catch(Throwable $e){db()->exec('ROLLBACK TO SAVEPOINT save_order_write');db()->exec('RELEASE SAVEPOINT save_order_write');throw $e;}
 }
+// The admin status is a manual order record. Fulfillment and payment decisions use the verified status.
+const ORDER_STATUSES=['new','reviewing','quoted','confirmed','shipping','erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud','ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery','completed','cancelled'];
+function order_display_status(array $o): string {
+    return $o['admin_status']??$o['status'];
+}
 function public_order(array $o): array {
+    $displayStatus=$o['admin_status']??null;
+    // Keep the initial payment action available on older clients while the actual quote awaits payment.
+    $awaitingInitialPayment=$o['status']==='quoted'&&!($o['paid']??false);
     if(function_exists('shipment_summary')){
         $o['shipment_parts']=shipment_summary($o);
     }
@@ -229,7 +237,11 @@ function public_order(array $o): array {
     if(!empty($o['shipment_parts'])&&empty($o['shipment_parent'])){$o['remaining_status']=$o['status'];$o['status']=shipment_customer_status($o['shipment_parts']);}
     if(function_exists('warehouse_profile')&&(($o['fulfillment']['method']??'')==='pickup'||(($o['type']??'')==='checkout'&&!isset($o['fulfillment'])&&($o['fulfillment_request']['method']??'pickup')==='pickup')))$o['pickup_warehouse']=warehouse_profile(function_exists('warehouse_order_location')?warehouse_order_location($o,'ulaanbaatar'):'ulaanbaatar');
     if(function_exists('warehouse_order_location'))$o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
-    unset($o['warehouse_assignment_history'],$o['warehouse_locations']);
+    if($displayStatus!==null&&!$awaitingInitialPayment){
+        $o['status']=$displayStatus;
+        if(in_array($displayStatus,['completed','cancelled'],true))unset($o['cargo']['pickup_code']);
+    }
+    unset($o['admin_status'],$o['warehouse_assignment_history'],$o['warehouse_locations']);
     unset($o['purchase'],$o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement'],$o['shipment_split'],$o['shipping_items']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
