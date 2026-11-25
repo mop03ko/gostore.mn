@@ -39,19 +39,22 @@ await page.locator('#editor-summary [data-jump="#order-form"]').click();
 await page.waitForFunction(()=>{const r=document.querySelector('#order-form').getBoundingClientRect(),h=document.querySelector('#editor .dialog-header').getBoundingClientRect();return r.top<innerHeight&&r.top>=h.bottom-2;},null,{timeout:5000});
 await page.locator('[data-change-order-status]').click();
 const statusDialog=page.locator('#order-status-dialog');
+await page.route('**/api/index.php?action=order-update',route=>route.fulfill({status:409,json:{error:'Түр зөрчил'}}),{times:1});
 await statusDialog.locator('[name=status]').selectOption('shipping');
-await statusDialog.getByRole('button',{name:'Төлөв солих'}).click();
+await statusDialog.getByRole('alert').getByText('Түр зөрчил').waitFor();
+assert.equal(await statusDialog.locator('[name=status]').inputValue(),'','Failed selection can be retried');
+await statusDialog.locator('[name=status]').selectOption('shipping');
 await statusDialog.waitFor({state:'detached'});
 assert.match(await page.locator('#editor-summary .status-tag').innerText(),/Хүргэлтэд/);
 await page.locator('#close-editor').click();
 
-// Bulk status change through the in-app confirmation.
+// Bulk status change saves without a confirmation dialog.
 await page.locator('#list-search').fill('GS-TEST-01');await page.locator('[data-pick="GS-TEST-010"]').check();await page.locator('[data-pick="GS-TEST-011"]').check();
 assert.match(await page.locator('.bulk-bar').innerText(),/2 захиалга сонгосон/);
-await page.locator('#bulk-status').selectOption('shipping');await page.locator('[data-bulk-apply]').click();
-await page.locator('#ui-confirm').waitFor({state:'visible'});assert.match(await page.locator('#ui-confirm').innerText(),/2 захиалгын төлөвийг/);
-await page.locator('#ui-confirm button[value=cancel]').click();assert.equal(await page.locator('.bulk-bar').count(),1,'Cancel keeps the selection');
-await page.locator('[data-bulk-apply]').click();await page.locator('#ui-confirm button[value=ok]').click();
+assert.equal(await page.locator('[data-bulk-apply]').isDisabled(),true,'Bulk apply requires a selected target');
+await page.locator('#bulk-status').selectOption('shipping');
+await page.locator('[data-bulk-apply]').click();
+assert.equal(await page.locator('#ui-confirm').isVisible(),false);
 await page.waitForFunction(()=>/2 захиалгын төлөв шинэчлэгдлээ/.test(document.querySelector('#toast').textContent));
 assert.equal(await page.locator('.bulk-bar').count(),0);
 await page.locator('#list-search').fill('GS-TEST-010');assert.match(await page.locator('.orders-table tbody tr').first().innerText(),/Хүргэлтэд/);await page.locator('#list-search').fill('');
@@ -113,6 +116,7 @@ await page.locator('[data-change-order-status]').click();
 await statusDialog.locator('[name=status]').selectOption('out_for_delivery');
 assert.equal(await statusDialog.locator('[name=courier_name]').isVisible(),true);
 assert.equal(await statusDialog.locator('[name=courier_phone]').isVisible(),true);
+assert.equal(await statusDialog.getByRole('button',{name:'Хадгалах'}).isVisible(),true);
 await statusDialog.getByRole('button',{name:'Болих'}).click();
 let smsRequests=0;
 await page.route('**/api/index.php?action=admin-order-transport-sms',route=>{

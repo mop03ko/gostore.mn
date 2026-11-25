@@ -51,6 +51,7 @@ const ORDER_TABS=[
 const ORDER_PAGE_SIZE=25;
 let orderTab='all',payFilter='all',dateFilter='all',orderSort='new',orderPage=1;
 const pickedOrders=new Set();
+let bulkStatusPending=false;
 const uxTabFn=id=>(ORDER_TABS.find(t=>t[0]===id)||ORDER_TABS[0])[2];
 
 function ordersBase(){
@@ -88,7 +89,7 @@ function ordersList(){
     opt('date-filter',dateFilter,[['all','Хугацаа: бүгд'],['today','Өнөөдөр'],['7','Сүүлийн 7 хоног'],['30','Сүүлийн 30 хоног']],'Хугацаагаар шүүх')+
     opt('sort-filter',orderSort,[['new','Шинэ нь эхэндээ'],['old','Хуучин нь эхэндээ'],['amount','Дүнгээр']],'Эрэмбэ')+
     `<button class="quiet" data-refresh>↻ Шинэчлэх</button></div>`+
-    (pickedOrders.size?`<div class="bulk-bar" role="region" aria-label="Сонгосон захиалга"><strong>${pickedOrders.size} захиалга сонгосон</strong><select id="bulk-status" aria-label="Шинэ төлөв">${bulkStatuses.map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><button type="button" class="primary" data-bulk-apply>Төлөв солих</button><button type="button" class="quiet" data-bulk-clear>Болих</button></div>`:'')+
+    (pickedOrders.size?`<div class="bulk-bar" role="region" aria-label="Сонгосон захиалга"><strong>${pickedOrders.size} захиалга сонгосон</strong><select id="bulk-status" aria-label="Шинэ төлөв"${bulkStatusPending?' disabled':''}><option value="">Төлөв сонгох</option>${bulkStatuses.map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><button type="button" class="primary" data-bulk-apply disabled>Төлөв солих</button><button type="button" class="quiet" data-bulk-clear>Болих</button></div>`:'')+
     `<section class="panel orders-panel"><div class="panel-heading"><div class="orders-heading">${uxCan('operator')&&shown.length?`<input type="checkbox" class="order-pick-all" data-pick-all ${allPicked?'checked':''} aria-label="Энэ хуудсын бүх захиалгыг сонгох">`:''}<h3>${page==='links'?'Хятад захиалгууд':'Захиалгууд'}</h3></div><span class="muted">${rows.length} захиалга</span></div>${orderTable(shown,{select:uxCan('operator'),emptyHtml:empty})}`+
     (pages>1?`<div class="orders-pager"><span>${(orderPage-1)*ORDER_PAGE_SIZE+1}–${Math.min(orderPage*ORDER_PAGE_SIZE,rows.length)} / ${rows.length}</span><span><button type="button" class="quiet" data-opage="${orderPage-1}" ${orderPage<=1?'disabled':''}>← Өмнөх</button><button type="button" class="quiet" data-opage="${orderPage+1}" ${orderPage>=pages?'disabled':''}>Дараах →</button></span></div>`:'')+`</section>`;
 }
@@ -144,8 +145,9 @@ function uxChangeOrderStatus(o){
   modal.innerHTML=`<form method="dialog"><h2>Захиалгын төлөв солих</h2><p><strong>${esc(o.id)}</strong> · ${esc(statuses[o.status]||o.status)}</p>
     <label>Шинэ төлөв<select name="status" required><option value="">Сонгох</option>${choices.map(status=>`<option value="${esc(status)}">${esc(statuses[status])}</option>`).join('')}</select></label>
     <div class="form-grid" data-status-fields></div><p class="error" role="alert"></p>
-    <div class="form-actions"><button type="button" class="quiet">Болих</button><button type="submit" class="primary">Төлөв солих</button></div></form>`;
+    <div class="form-actions"><button type="button" class="quiet">Болих</button><button type="submit" class="primary" hidden>Хадгалах</button></div></form>`;
   const form=modal.querySelector('form'),select=form.elements.status,fields=modal.querySelector('[data-status-fields]'),error=modal.querySelector('.error');
+  const save=form.querySelector('[type=submit]'),cancel=form.querySelector('.quiet');
   const control=(name,label,attributes='required',value='')=>`<label class="full">${label}<input name="${name}" value="${esc(value)}" ${attributes}></label>`;
   select.addEventListener('change',()=>{
     error.textContent='';
@@ -162,22 +164,29 @@ function uxChangeOrderStatus(o){
     }else if(target==='completed'&&['ready_pickup','out_for_delivery'].includes(o.status)){
       fields.innerHTML=control('received_by','Хүлээн авсан хүний нэр','required maxlength="100"')+control('pickup_code','Авах код','required inputmode="numeric" autocomplete="off" maxlength="8" pattern="[0-9]{4}|[0-9]{8}"');
     }else fields.innerHTML='';
+    save.hidden=!fields.childElementCount;
+    if(target&&save.hidden)form.requestSubmit();
   });
-  modal.querySelector('.quiet').addEventListener('click',()=>modal.close());
+  cancel.addEventListener('click',()=>modal.close());
+  modal.addEventListener('cancel',e=>{if(select.disabled)e.preventDefault();});
   modal.addEventListener('close',()=>modal.remove(),{once:true});
   form.addEventListener('submit',async e=>{
     e.preventDefault();e.stopPropagation();
-    const button=e.submitter,body=Object.fromEntries(new FormData(form));
+    if(select.disabled)return;
+    const body=Object.fromEntries(new FormData(form));
     for(const key of ['domestic_mnt','delivery_mnt'])if(key in body)body[key]=Number(body[key]);
     if(body.checked==='on')body.checked=true;
-    button.disabled=true;error.textContent='';
+    select.disabled=save.disabled=cancel.disabled=true;error.textContent='';
     try{
       const {order}=await api('order-update',{...body,id:o.id,status_only:true,warehouse_operation:true,expected_status:o.status,expected_version:o.logistics?.version??0});
       data.orders=data.orders.map(current=>current.id===o.id?order:current);
       modal.close();
       render();editOrder(o.id);
       toast('Захиалгын төлөв шинэчлэгдлээ');
-    }catch(err){error.textContent=err.message;}finally{button.disabled=false;}
+    }catch(err){
+      error.textContent=err.message;
+      if(save.hidden)select.value='';
+    }finally{select.disabled=save.disabled=cancel.disabled=false;}
   });
   document.body.append(modal);modal.showModal();select.focus();
 }
@@ -292,12 +301,15 @@ addEventListener('click',async e=>{
   if(b.dataset.jump){$('#editor-body').querySelector(b.dataset.jump)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return;}
   if(b.dataset.copyPhone){try{await navigator.clipboard.writeText(b.dataset.copyPhone);toast('Утасны дугаар хуулагдлаа');}catch{toast(b.dataset.copyPhone);}return;}
   if(b.hasAttribute('data-bulk-apply')){
-    const status=$('#bulk-status').value,ids=[...pickedOrders];
-    if(!await uiConfirm({title:`${ids.length} захиалгын төлөвийг өөрчлөх үү?`,text:`Шинэ төлөв: ${statuses[status]}. Үнэ, тэмдэглэл өөрчлөгдөхгүй. Агуулахын багцтай захиалгын явцыг агуулахаас удирдана.`,confirmLabel:'Төлөв солих'}))return;
-    b.disabled=true;let ok=0;const failed=[];
+    const select=$('#bulk-status'),status=select.value,ids=[...pickedOrders];
+    if(!status||!ids.length||bulkStatusPending)return;
+    bulkStatusPending=b.disabled=select.disabled=true;
+    let ok=0;const failed=[];
     for(const id of ids){const o=data.orders.find(x=>x.id===id);if(!o)continue;if(o.status===status){ok++;continue;}
       try{await api('order-update',{id,status,status_only:true,expected_status:o.status});ok++;}catch(err){failed.push(id+': '+err.message);}}
-    pickedOrders.clear();await refresh();
+    bulkStatusPending=false;
+    ids.forEach(id=>pickedOrders.delete(id));
+    try{await refresh();}catch(err){render();toast(err.message);return;}
     toast(failed.length?`${ok} захиалга шинэчлэгдлээ, ${failed.length} нь өөрчлөгдсөнгүй (${failed[0]}${failed.length>1?' …':''})`:`${ok} захиалгын төлөв шинэчлэгдлээ`);
   }
 },true);
@@ -305,6 +317,7 @@ addEventListener('change',e=>{
   const t=e.target;
   if(t.matches('[data-pick]')){t.checked?pickedOrders.add(t.dataset.pick):pickedOrders.delete(t.dataset.pick);render();return;}
   if(t.matches('[data-pick-all]')){const ids=[...document.querySelectorAll('[data-pick]')].map(x=>x.dataset.pick);ids.forEach(id=>t.checked?pickedOrders.add(id):pickedOrders.delete(id));render();return;}
+  if(t.id==='bulk-status')$('[data-bulk-apply]').disabled=bulkStatusPending||!t.value;
   if(t.id==='pay-filter'){payFilter=t.value;orderPage=1;render();}
   if(t.id==='date-filter'){dateFilter=t.value;orderPage=1;render();}
   if(t.id==='sort-filter'){orderSort=t.value;orderPage=1;render();}
