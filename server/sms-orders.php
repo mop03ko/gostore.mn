@@ -10,7 +10,7 @@ function sms_transport_balance_due(array $o): int {
     return settlement_summary($o)['due'];
 }
 function sms_pickup_notice_ready(array $o,int $due): bool {
-    return ($o['status']??'')==='ready_pickup'&&$due===0
+    return ($o['status']??'')==='ready_pickup'&&$due===0&&!in_array($o['admin_status']??'',['completed','cancelled'],true)
         &&(!isset($o['fulfillment'])||isset($o['settlement']));
 }
 function sms_transport_balance_text(string $id,int $due): string {

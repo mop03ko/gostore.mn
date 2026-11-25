@@ -1,6 +1,25 @@
 <?php
 declare(strict_types=1);
 
+// Record money the operator has already received. Do not create or modify a QPay payment.
+function freight_record_receipt(string $id,int $amount): array {
+    $db=db();$db->exec('BEGIN IMMEDIATE');
+    try{
+        $o=order_row($id)['order'];$bill=settlement_summary($o);
+        $initialOk=!empty($o['paid'])||(($o['type']??'')==='forwarding'&&(int)($o['amount']??0)===0);
+        if(!$initialOk||empty($bill['finalized'])||!empty($o['demo'])||$o['status']==='cancelled'
+            ||(($bill['breakdown']['cargo_mnt']??0)<=0&&($bill['breakdown']['delivery_mnt']??0)<=0))
+            fail('Энэ захиалгын тээврийн эцсийн тооцоог бүртгэх боломжгүй.',409);
+        if($bill['due']!==$amount)fail('Төлөх дүн өөрчлөгдсөн байна. Захиалгаа шинэчилнэ үү.',409);
+        $freight=$o['freight']??[];
+        if(isset($freight['invoice'])&&(int)($freight['paid_amount']??0)<(int)($freight['amount']??PHP_INT_MAX))
+            fail('Тээврийн QPay нэхэмжлэл нээлттэй байна. Төлбөр давхардахгүйн тулд эхлээд нэхэмжлэлээ тулгана уу.',409);
+        $o['freight_receipts'][]=['amount'=>$amount,'recorded_at'=>gmdate('c')];
+        save_order($o);$db->exec('COMMIT');
+        return $o;
+    }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+}
+
 // The original purchase invoice remains immutable. This invoice only collects the final balance.
 function freight_invoice(string $id): array {
     if(!qpay_ready())fail('QPay merchant тохиргоо хүлээгдэж байна.',503);

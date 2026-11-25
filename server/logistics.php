@@ -39,7 +39,7 @@ function logistics_notify(array $o,?array $old): void {
     }
     if($billed)$events[]=['settlement','Эцсийн тооцоо баталгаажлаа'];
     if(!($old['paid']??false)&&($o['paid']??false))$events[]=['payment','Төлбөр баталгаажлаа'];
-    if(($old['freight']['paid_amount']??0)!==($o['freight']['paid_amount']??0))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
+    if(settlement_freight_paid($old)!==settlement_freight_paid($o))$events[]=['payment','Үлдэгдэл төлбөр баталгаажлаа'];
     foreach(array_slice($o['refunds']??[],count($old['refunds']??[])) as $r)$events[]=['payment','Илүү төлсөн '.number_format((int)$r['amount']).'₮ буцааж шилжүүллээ'];
     $oldPhotos=array_column(logistics_state($old)['photos'],'id');
     foreach(logistics_state($o)['photos'] as $p)if(!in_array($p['id'],$oldPhotos,true))$events[]=['photo',warehouse_profile($p['location'])['name'].' · зураг нэмэгдлээ'];

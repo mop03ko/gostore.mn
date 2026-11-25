@@ -99,7 +99,22 @@ if(process.env.SENDSMS_ORDER_EVENTS==='1'){
 }
 const courier={courier_name:'Бат',courier_phone:'95001122'};
 assert.equal((await adminStatus(C,'out_for_delivery',courier)).status,409,'Admin cannot dispatch while unpaid');
-fixture('pay',C);assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'abc'})).status,400);
+const receiptAction='admin-order-freight-receipt',amountDue=(await order(ub,C)).billing.due;
+const receipt={id:C,amount:amountDue};
+assert.ok([401,403].includes((await ub(receiptAction,receipt)).status),'Warehouse cannot record an admin receipt');
+assert.equal((await admin(receiptAction,{...receipt,amount:amountDue-1})).status,409,'Stale or mismatched payment fails');
+fixture('invoice-open',C);
+assert.equal((await admin(receiptAction,receipt)).status,409,'An open QPay invoice must be reconciled first');
+fixture('invoice-clear',C);
+const received=await admin(receiptAction,receipt);
+assert.equal(received.status,201,JSON.stringify(received));
+assert.equal(received.order.billing.due,0);
+assert.equal(received.order.freight_receipts.length,1);
+assert.equal(received.order.freight_receipts[0].amount,amountDue);
+assert.equal(received.order.freight,undefined,'Receipt does not invent a QPay payment');
+assert.equal(received.order.status,'ready_delivery');
+assert.equal((await admin(receiptAction,receipt)).status,409,'Repeating a receipt cannot double-credit');
+assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C],courier_name:'Бат',courier_phone:'abc'})).status,400);
 assert.equal((await ub('warehouse-delivery-dispatch',{ids:[C,C],courier_name:'Бат',courier_phone:'95001122'})).status,400);
 r=await adminStatus(C,'out_for_delivery',courier);assert.equal(r.status,200,JSON.stringify(r));assert.equal(r.order.status,'out_for_delivery');assert.equal(r.order.fulfillment.courier_name,'Бат');
 run=await ub('warehouse-delivery-list');assert.deepEqual(run.orders,[]);assert.deepEqual(run.couriers,[{name:'Бат',phone:'95001122'}]);

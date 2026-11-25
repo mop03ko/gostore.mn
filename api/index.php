@@ -249,6 +249,11 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
+    if($action==='admin-order-freight-receipt'){
+        $o=freight_record_receipt(str_field($b,'id',50),int_field($b,'amount',1,100000000));
+        $o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);
+        json_out(['order'=>$o],201);
+    }
     if($action==='admin-order-status-save'){
         $id=str_field($b,'id',50);$status=str_field($b,'status',30);$expected=str_field($b,'expected_status',30);
         if(!in_array($status,ORDER_STATUSES,true))fail('Төлөв буруу.');

@@ -180,5 +180,17 @@ assert.match(await page.locator('#editor-summary .order-transport-due').innerTex
 await page.locator('#close-editor').click();
 await page.locator('[data-otab=done]').click();
 assert.ok((await transportIds()).includes('GS-BILL-PICKUP'));
+await page.route('**/api/index.php?action=admin-order-freight-receipt',route=>{
+  assert.deepEqual(route.request().postDataJSON(),{id:'GS-BILL-PICKUP',amount:2000});
+  return route.fulfill({status:201,json:{order:{...fixtureOrder,id:'GS-BILL-PICKUP',status:'ready_pickup',admin_status:'completed',billing:{...bill(0,2000,0),total:2000},type:'forwarding',amount:0,paid:false}}});
+});
+await page.locator('[data-row-order=GS-BILL-PICKUP] [data-order]').click();
+await page.getByRole('button',{name:'Тээврийн төлбөр бүртгэх'}).click();
+assert.match(await page.locator('#ui-confirm').innerText(),/2,000 ₮/);
+await page.locator('#ui-confirm').getByRole('button',{name:'Бүртгэх',exact:true}).click();
+await page.locator('[data-record-freight]').waitFor({state:'detached'});
+assert.match(await page.locator('#editor-summary').innerText(),/Хүлээлгэн өгсөн/);
+assert.match(await page.locator('#editor-summary').innerText(),/Төлөгдсөн/);
+await page.locator('#close-editor').click();
 assert.deepEqual(errors,[]);console.log('admin-ux-ui ok');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

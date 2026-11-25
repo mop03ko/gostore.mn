@@ -72,6 +72,7 @@ function admin_export(array $q): never {
         foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;
             if(!empty($o['paid']))$rows[]=[$o['id'],admin_report_day($o['paid_at']??$o['created']),'QPay төлбөр',(int)($o['amount']??0),''];
             if(!empty($o['freight']['paid_amount']))$rows[]=[$o['id'],admin_report_day($o['freight']['paid_at']??$o['created']),'Тээврийн төлбөр',(int)$o['freight']['paid_amount'],''];
+            foreach($o['freight_receipts']??[] as $r)$rows[]=[$o['id'],admin_report_day($r['recorded_at']),'Тээврийн төлбөр · гараар бүртгэсэн',$r['amount'],''];
             foreach($o['refunds']??[] as $r)$rows[]=[$o['id'],admin_report_day($r['at']??$o['created']),'Буцаалт',-(int)($r['amount']??0),$r['note']??''];}
     }else{
         $rows[]=['Хэрэглэгч','Нэр','Имэйл','Утас','Бүртгүүлсэн','Захиалгын тоо'];

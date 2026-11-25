@@ -22,10 +22,11 @@ function uxAge(o){
 }
 
 const uxInitialPaymentPending=o=>!o.paid&&!o.demo&&o.amount>0&&uxWaiting(o);
+const uxHasFreightCharges=bill=>bill?.breakdown?.cargo_mnt>0||bill?.breakdown?.delivery_mnt>0;
 function uxHasTransportBalance(o){
   const bill=o.billing;
   return !o.demo&&uxWaiting(o)&&!uxInitialPaymentPending(o)&&bill?.finalized&&bill.due>0
-    &&(bill.breakdown?.cargo_mnt>0||bill.breakdown?.delivery_mnt>0);
+    &&uxHasFreightCharges(bill);
 }
 function uxPaymentLabel(o){
   if(uxHasTransportBalance(o))return ['Тээврийн үлдэгдэл · '+money(o.billing.due),'st-wait order-transport-due'];
@@ -218,10 +219,12 @@ editOrder=function(id){
   const [payment,paymentTone]=uxPaymentLabel(o);
   const batchStatus=uxBatchStatus(o);
   const canChangeStatus=uxCan('operator')&&(batchStatus||uxStatusOptions(o).length>0);
+  const canRecordFreight=uxCan('operator')&&!o.demo&&o.status!=='cancelled'
+    &&(o.paid||(o.type==='forwarding'&&!o.amount))&&o.billing?.finalized&&o.billing.due>0&&uxHasFreightCharges(o.billing);
   const canSendSms=uxCan('operator')&&!o.demo&&o.billing?.finalized&&o.billing.due>0
     &&['ready_pickup','ready_delivery'].includes(o.status)&&/^(?:\+?976)?\d{8}$/.test(String(o.phone||'').replace(/[ ()-]/g,''));
   head.innerHTML=`<div class="sum-line">${tag(uxDisplayStatus(o))}<span class="sum-amount">${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</span><span class="tag ${paymentTone||'st-wait'}">${payment}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
-    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canChangeStatus?`<button type="button" class="quiet" data-change-order-status="${esc(o.id)}">${batchStatus?'Багцын төлөв солих':'Төлөв солих'}</button>`:''}${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
+    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canChangeStatus?`<button type="button" class="quiet" data-change-order-status="${esc(o.id)}">${batchStatus?'Багцын төлөв солих':'Төлөв солих'}</button>`:''}${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>` : ''}${canRecordFreight?`<button type="button" class="quiet" data-record-freight="${esc(o.id)}">Тээврийн төлбөр бүртгэх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
     (uxCan('operator')?`<div class="sum-actions"><label>Төлөв шууд засах<select data-manual-order-status="${esc(o.id)}"><option value="">Төлөв сонгох</option>${Object.entries(statuses).filter(([key])=>key!==uxDisplayStatus(o)).map(([key,label])=>`<option value="${esc(key)}">${esc(label)}</option>`).join('')}</select></label>${o.admin_status?`<small class="muted">Агуулахын бүртгэл · ${esc(statuses[o.status])}</small>`:''}</div>`:'')+
     `<nav class="sum-links" aria-label="Захиалгын хэсгүүд">${sections.map(([s,l])=>`<button type="button" data-jump="${esc(s)}">${l}</button>`).join('')}</nav>`;
   $('.dialog-header').append(head);
@@ -282,7 +285,7 @@ function paletteRun(i){const it=paletteItems[i];if(!it)return;$('#cmdk').close()
 // Events.
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#app').hidden){e.preventDefault();paletteOpen();}});
 addEventListener('click',async e=>{
-  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-change-order-status],[data-transport-sms],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
+  const b=e.target.closest('[data-otab],[data-opage],[data-orders-reset],[data-bulk-apply],[data-bulk-clear],[data-task-tab],[data-save-order],[data-change-order-status],[data-record-freight],[data-transport-sms],[data-jump],[data-copy-phone],[data-cmdk-open],[data-menu-open]');
   if(!b){
     // A click anywhere on an order row opens it (checkbox, links and buttons keep their own action).
     const row=e.target.closest('tr[data-row-order]');if(row&&!e.target.closest('button,a,input,label,select'))editOrder(row.dataset.rowOrder);
@@ -301,6 +304,22 @@ addEventListener('click',async e=>{
     if(!o)return;
     b.disabled=true;
     try{await uxChangeOrderStatus(o);}catch(err){toast(err.message);}finally{b.disabled=false;}
+    return;
+  }
+  if(b.dataset.recordFreight){
+    const order=data.orders.find(o=>o.id===b.dataset.recordFreight);
+    if(!order)return;
+    b.disabled=true;
+    try{
+      const amount=order.billing.due;
+      const confirmed=await uiConfirm({title:'Тээврийн төлбөр бүртгэх үү?',text:order.id+' захиалгын '+money(amount)+'-ийг хүлээн авснаар бүртгэнэ.',confirmLabel:'Бүртгэх'});
+      if(!confirmed)return;
+      const result=await api('admin-order-freight-receipt',{id:order.id,amount});
+      data.orders=data.orders.map(o=>o.id===order.id?result.order:o);
+      render();
+      if($('#editor').open&&$('#editor-title').textContent===order.id)editOrder(order.id);
+      toast('Тээврийн төлбөр бүртгэгдлээ');
+    }catch(err){toast(err.message);}finally{b.disabled=false;}
     return;
   }
   if(b.dataset.transportSms){

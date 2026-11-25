@@ -23,13 +23,14 @@ if($mode==='setup'){
     });
     echo "ok\n";exit;
 }
-if($mode==='pay'){
-    $save($arg,function(&$o){
+if(in_array($mode,['pay','invoice-open'],true)){
+    $save($arg,function(&$o)use($mode){
         $due=max(0,(int)$o['settlement']['total']-(int)$o['amount']-(int)($o['freight']['paid_amount']??0));
-        $o['freight']=['amount'=>$due,'paid_amount'=>$due,'paid_at'=>gmdate('c'),'callback_token'=>str_repeat('a',64),'invoice'=>['state'=>'ready','sender_invoice_no'=>$o['id'].'-F-test','id'=>'test-invoice','qr_image'=>'','urls'=>[]]];
+        $o['freight']=['amount'=>$due,'paid_amount'=>$mode==='pay'?$due:0,'paid_at'=>$mode==='pay'?gmdate('c'):null,'callback_token'=>str_repeat('a',64),'invoice'=>['state'=>'ready','sender_invoice_no'=>$o['id'].'-F-test','id'=>'test-invoice','qr_image'=>'','urls'=>[]]];
     });
     echo "ok\n";exit;
 }
+if($mode==='invoice-clear'){$save($arg,function(&$o){unset($o['freight']);});echo "ok\n";exit;}
 if($mode==='pickup-code'){$save($arg,function(&$o)use($extra){$o['pickup_code']=$extra;});echo "ok\n";exit;}
 if($mode==='age'){$save($arg,function(&$o)use($extra){$o['fulfillment']['sorted_at']=gmdate('c',time()-(int)$extra*86400-60);});echo "ok\n";exit;}
 if($mode==='remind'){

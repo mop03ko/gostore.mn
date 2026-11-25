@@ -242,7 +242,7 @@ function public_order(array $o): array {
         if(in_array($displayStatus,['completed','cancelled'],true))unset($o['cargo']['pickup_code']);
     }
     unset($o['admin_status'],$o['warehouse_assignment_history'],$o['warehouse_locations']);
-    unset($o['purchase'],$o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['settlement'],$o['shipment_split'],$o['shipping_items']);
+    unset($o['purchase'],$o['internal_note'],$o['callback_token'],$o['customer'],$o['phone'],$o['batch_id'],$o['logistics'],$o['pickup_code'],$o['freight'],$o['freight_receipts'],$o['settlement'],$o['shipment_split'],$o['shipping_items']);
     if(isset($o['history']))$o['history']=array_map(fn($h)=>array_intersect_key($h,array_flip(['status','at'])),$o['history']);
     if(isset($o['fulfillment']))$o['fulfillment']=array_intersect_key($o['fulfillment'],array_flip(['method']));
     if (isset($o['invoice'])) unset($o['invoice']['raw']); return $o;
