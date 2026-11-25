@@ -103,4 +103,37 @@ for(const [index,id] of ids.slice(0,3).entries()){
  assert.ok(notices.every(n=>n.order_id===id),'Customers only see their own notifications');
  assert.equal(notices.filter(n=>n.kind==='status'&&n.message==='erenhot_dispatched').length,index<2?1:0,'Dispatch notifies every member exactly once and no unrelated customer');
 }
+// The order editor can advance a full manifest on behalf of an administrator.
+const adminIds=['GS-TEST-005','GS-TEST-006'];
+for(const id of adminIds){
+ await uploadReceipt(cn,id);
+ assert.equal((await cn('warehouse-order-update',{id,status:'erenhot',expected_status:'confirmed'})).status,200);
+ const o=(await cn('warehouse-order&id='+id)).order;
+ assert.equal((await cn('warehouse-measure',{id,expected_version:o.logistics.version,weight_kg:1,length_cm:10,width_cm:10,height_cm:10,pieces:2})).status,200);
+ await confirmCargo(cn,id);
+}
+r=await cn('warehouse-batch-create',{token:token(),order_ids:adminIds,note:'Admin manifest'});assert.equal(r.status,201);
+const adminBatchId=r.batch.id;
+const adminAction='admin-order-batch-status',readAdminBatch=()=>admin(adminAction+'&id='+adminIds[0]);
+assert.equal((await guest(adminAction+'&id='+adminIds[0])).status,401);
+assert.ok([401,403].includes((await ub(adminAction,{id:adminIds[0]})).status));
+for(const status of ['erenhot_ready','erenhot_dispatched','ulaanbaatar_unsorted']){
+ const preview=await readAdminBatch();assert.equal(preview.status,200,JSON.stringify(preview));
+ assert.equal(preview.batch.id,adminBatchId);assert.equal(preview.batch.order_count,2);assert.equal(preview.batch.next_status,status);
+ const update={id:adminIds[0],batch_id:adminBatchId,expected_version:preview.batch.version,status};
+ assert.equal((await admin(adminAction,{...update,expected_version:update.expected_version+1})).status,409);
+ const result=await admin(adminAction,update);assert.equal(result.status,200,JSON.stringify(result));
+ assert.equal((await admin(adminAction,update)).status,409,'Stale repeat cannot advance the batch again');
+ for(const id of adminIds){
+  const order=(await admin('admin-order&id='+id)).order;
+  assert.equal(order.status,status);
+  assert.equal(order.history.at(-1).actor,'admin');
+  assert.equal(order.paid,true);assert.equal(order.amount,99000);
+ }
+}
+const adminReceived=(await ub('warehouse-batch&id='+adminBatchId)).batch;
+assert.equal(adminReceived.status,'received');assert.equal(adminReceived.unsorted_count,2);
+assert.ok(adminReceived.orders.every(o=>o.logistics.issues.length===0),'Admin records a full receipt');
+assert.deepEqual(adminReceived.scanned,[],'An admin receipt does not invent scanner records');
+assert.equal((await readAdminBatch()).status,409,'Each order is sorted individually after receiving');
 console.log('PASS: batch identity/membership, atomic rollback, locked manifests, roles, receive/sort, pickup/delivery completion, privacy, audit, idempotency, Chinese errors and CSRF.');

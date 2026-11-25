@@ -76,14 +76,14 @@ const pbox=await page.locator('#editor').boundingBox();assert.ok(pbox.width>=389
 await page.locator('#close-editor').click();
 const fixtureOrder={title:'Тээврийн төлбөрийн тест',customer:'Тест хэрэглэгч',phone:'99000000',type:'checkout',items:[],amount:30000,paid:true,created:'2026-01-02T00:00:00Z'};
 const bill=(due,cargo_mnt,delivery_mnt,finalized=true)=>({finalized,total:30000+cargo_mnt+delivery_mnt,due,breakdown:{cargo_mnt,delivery_mnt}});
-let deliveryPaid=false;
+let deliveryPaid=false,transitReceived=false;
 await page.route('**/api/index.php?action=dashboard',async route=>{
   const response=await route.fetch();
   const body=await response.json();
   const cases=[
     ['DELIVERY','ready_delivery',{billing:bill(deliveryPaid?0:4500,3000,2500)}],
     ['PICKUP','ready_pickup',{type:'forwarding',amount:0,paid:false,billing:{...bill(2000,2000,0),total:2000}}],
-    ['TRANSIT','erenhot_dispatched',{billing:bill(3000,3000,0)}],
+    ['TRANSIT',transitReceived?'ulaanbaatar_unsorted':'erenhot_dispatched',{batch_id:'GB-ABCDEF',route:['Эрээн','Улаанбаатар'],billing:bill(3000,3000,0)}],
     ['PAID','ready_pickup',{billing:bill(0,3000,0)}],
     ['UNPRICED','ulaanbaatar',{billing:bill(3000,3000,0,false)}],
     ['NONTRANSPORT','ready_delivery',{billing:bill(1000,0,0)}],
@@ -106,6 +106,20 @@ assert.equal(await transportTab.locator('b').innerText(),'3');
 const transportRows=page.locator('.orders-table tbody tr');
 const transportIds=()=>transportRows.evaluateAll(rows=>rows.map(row=>row.dataset.rowOrder));
 assert.deepEqual(await transportIds(),['GS-BILL-DELIVERY','GS-BILL-PICKUP','GS-BILL-TRANSIT']);
+await page.route('**/api/index.php?action=admin-order-batch-status*',route=>{
+  if(route.request().method()==='POST'){
+    assert.deepEqual(route.request().postDataJSON(),{id:'GS-BILL-TRANSIT',batch_id:'GB-ABCDEF',expected_version:5,status:'ulaanbaatar_unsorted'});
+    transitReceived=true;
+  }
+  return route.fulfill({json:{batch:{id:'GB-ABCDEF',version:5,order_count:2,destination:'Улаанбаатар',next_status:'ulaanbaatar_unsorted'}}});
+});
+await page.locator('[data-row-order=GS-BILL-TRANSIT] [data-order]').click();
+await page.getByRole('button',{name:'Багцын төлөв солих'}).click();
+assert.match(await statusDialog.innerText(),/Багцын бүх 2 захиалгын төлөв шинэчлэгдэнэ/);
+await statusDialog.locator('[name=status]').selectOption('ulaanbaatar_unsorted');
+await page.waitForFunction(()=>document.querySelector('#editor-summary .status-tag')?.textContent.includes('ангилаагүй'));
+assert.equal(transitReceived,true);
+await page.locator('#close-editor').click();
 const deliveryRow=page.locator('[data-row-order=GS-BILL-DELIVERY]');
 assert.match(await deliveryRow.locator('.order-transport-due').innerText(),/4,500 ₮/);
 assert.match(await page.locator('[data-row-order=GS-BILL-PICKUP] .order-transport-due').innerText(),/2,000 ₮/);

@@ -123,6 +123,8 @@ async function uxApiKpi(){
   catch{if($('#kpi-api-note'))$('#kpi-api-note').textContent='Мэдээлэл авах боломжгүй';}
 }
 
+const uxBatchStatus=o=>o.batch_id&&['erenhot','erenhot_ready','erenhot_dispatched'].includes(o.status);
+
 // Warehouse transitions use the same receipt, billing and handover operations as the warehouse screen.
 function uxStatusOptions(o){
   const edits=[...document.querySelectorAll('#order-form select[name="status"] option')].map(option=>option.value).filter(status=>status!==o.status);
@@ -136,13 +138,15 @@ function uxStatusOptions(o){
   if(o.batch_id||o.fulfillment)return [];
   return edits.filter(status=>status!=='cancelled'||!o.invoice);
 }
-function uxChangeOrderStatus(o){
-  const choices=uxStatusOptions(o);
+async function uxChangeOrderStatus(o){
+  const batch=uxBatchStatus(o)?(await api('admin-order-batch-status&'+new URLSearchParams({id:o.id}))).batch:null;
+  const choices=batch?[batch.next_status]:uxStatusOptions(o);
   if(!choices.length)return;
   const modal=document.createElement('dialog');
   modal.className='ui-confirm';
   modal.id='order-status-dialog';
   modal.innerHTML=`<form method="dialog"><h2>Захиалгын төлөв солих</h2><p><strong>${esc(o.id)}</strong> · ${esc(statuses[o.status]||o.status)}</p>
+    ${batch?`<p>${esc(batch.id)} · ${esc(batch.destination)}. Багцын бүх ${batch.order_count} захиалгын төлөв шинэчлэгдэнэ.</p>`:''}
     <label>Шинэ төлөв<select name="status" required><option value="">Сонгох</option>${choices.map(status=>`<option value="${esc(status)}">${esc(statuses[status])}</option>`).join('')}</select></label>
     <div class="form-grid" data-status-fields></div><p class="error" role="alert"></p>
     <div class="form-actions"><button type="button" class="quiet">Болих</button><button type="submit" class="primary" hidden>Хадгалах</button></div></form>`;
@@ -178,11 +182,18 @@ function uxChangeOrderStatus(o){
     if(body.checked==='on')body.checked=true;
     select.disabled=save.disabled=cancel.disabled=true;error.textContent='';
     try{
-      const {order}=await api('order-update',{...body,id:o.id,status_only:true,warehouse_operation:true,expected_status:o.status,expected_version:o.logistics?.version??0});
-      data.orders=data.orders.map(current=>current.id===o.id?order:current);
-      modal.close();
-      render();editOrder(o.id);
-      toast('Захиалгын төлөв шинэчлэгдлээ');
+      if(batch){
+        await api('admin-order-batch-status',{id:o.id,batch_id:batch.id,expected_version:batch.version,status:body.status});
+        modal.close();
+        try{await refresh();}catch(err){toast('Багцын төлөв хадгалагдсан. Жагсаалтаа шинэчилнэ үү.');return;}
+      }else{
+        const {order}=await api('order-update',{...body,id:o.id,status_only:true,warehouse_operation:true,expected_status:o.status,expected_version:o.logistics?.version??0});
+        data.orders=data.orders.map(current=>current.id===o.id?order:current);
+        modal.close();
+        render();
+      }
+      editOrder(o.id);
+      toast(batch?'Багцын төлөв шинэчлэгдлээ':'Захиалгын төлөв шинэчлэгдлээ');
     }catch(err){
       error.textContent=err.message;
       if(save.hidden)select.value='';
@@ -200,13 +211,12 @@ editOrder=function(id){
   const body=$('#editor-body'),sections=[['.order-tracking','Явц'],['.details','Мэдээлэл'],['#order-form','Төлөв, дүн'],['#quote-form','Үнийн санал'],['.order-warehouse-assignment','Агуулах'],['#tw-purchase,.purchase-panel','TaoWorld'],['.aftersale','Буцаалт']].filter(([s])=>body.querySelector(s));
   const head=document.createElement('div');head.id='editor-summary';
   const [payment,paymentTone]=uxPaymentLabel(o);
-  const canChangeStatus=uxCan('operator')&&uxStatusOptions(o).length>0;
-  const batchInTransit=o.batch_id&&['erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud'].includes(o.status);
+  const batchStatus=uxBatchStatus(o);
+  const canChangeStatus=uxCan('operator')&&(batchStatus||uxStatusOptions(o).length>0);
   const canSendSms=uxCan('operator')&&!o.demo&&o.billing?.finalized&&o.billing.due>0
     &&['ready_pickup','ready_delivery'].includes(o.status)&&/^(?:\+?976)?\d{8}$/.test(String(o.phone||'').replace(/[ ()-]/g,''));
   head.innerHTML=`<div class="sum-line">${tag(o.status)}<span class="sum-amount">${uxOrderAmount(o)?money(uxOrderAmount(o)):'Үнэ хүлээгдэж байна'}</span><span class="tag ${paymentTone||'st-wait'}">${payment}</span><span class="muted">${esc(new Date(o.created).toLocaleString('mn-MN',{timeZone:'Asia/Ulaanbaatar'}))}</span>${uxAge(o)}</div>`+
-    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canChangeStatus?`<button type="button" class="quiet" data-change-order-status="${esc(o.id)}">Төлөв солих</button>`:''}${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
-    (batchInTransit?'<small class="muted">Энэ шатны хөдөлгөөнийг агуулахад багцаар нь бүртгэнэ.</small>':'')+
+    `<div class="sum-actions">${o.phone?`<button type="button" class="quiet" data-copy-phone="${esc(o.phone)}">☎ ${esc(o.phone)} хуулах</button>`:''}<button type="button" class="quiet" data-admin-track="${esc(o.id)}">Ачааны явц</button>${canChangeStatus?`<button type="button" class="quiet" data-change-order-status="${esc(o.id)}">${batchStatus?'Багцын төлөв солих':'Төлөв солих'}</button>`:''}${canSendSms?`<button type="button" class="quiet" data-transport-sms="${esc(o.id)}">Төлбөрийн SMS илгээх</button>`:''}${uxCan('operator')?'<button type="button" class="primary" data-save-order>Хадгалах</button>':''}</div>`+
     `<nav class="sum-links" aria-label="Захиалгын хэсгүүд">${sections.map(([s,l])=>`<button type="button" data-jump="${esc(s)}">${l}</button>`).join('')}</nav>`;
   $('.dialog-header').append(head);
 };
@@ -282,7 +292,9 @@ addEventListener('click',async e=>{
   if(b.hasAttribute('data-menu-open')){const s=$('#mobile-admin-page');try{s.showPicker();}catch{s.focus();s.click();}return;}
   if(b.dataset.changeOrderStatus){
     const o=data.orders.find(order=>order.id===b.dataset.changeOrderStatus);
-    if(o)uxChangeOrderStatus(o);
+    if(!o)return;
+    b.disabled=true;
+    try{await uxChangeOrderStatus(o);}catch(err){toast(err.message);}finally{b.disabled=false;}
     return;
   }
   if(b.dataset.transportSms){

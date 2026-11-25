@@ -107,6 +107,7 @@ try {
         if($action==='admin-promo-popup'){require_once __DIR__.'/../server/promo-popup.php';json_out(promo_popup_admin());}
         if($action==='admin-customers')json_out(admin_customers($_GET));
         if($action==='admin-customer')json_out(admin_customer_detail(str_field($_GET,'id',64)));
+        if($action==='admin-order-batch-status')json_out(['batch'=>warehouse_admin_batch_status($_GET,false)]);
         if($action==='admin-order'){
             $o=order_row(str_field($_GET,'id',50))['order'];
             $o['shipment_parts']=shipment_summary($o);
@@ -248,6 +249,7 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
+    if($action==='admin-order-batch-status')json_out(['batch'=>warehouse_admin_batch_status($b,true)]);
     if($action==='admin-order-transport-sms'){
         $result=sms_transport_reminder(str_field($b,'id',50));
         json_out($result,$result['state']==='queued'?201:200);

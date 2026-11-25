@@ -93,6 +93,68 @@ function warehouse_batch_unpack(array &$batch,array $members,array $b,string $lo
     $batch['status']=count($ids)===count($members)?'cancelled':'draft';
     $batch['checks']=[];unset($batch['ready_at']);
 }
+// Called inside the warehouse or admin write transaction. Admin actions record the whole batch under
+// the operator's identity. Warehouse actions use their scan record and support partial receipt.
+function warehouse_batch_transition(array &$batch,array $members,string $action,array $b,string $location,?array $actor=null): void {
+    if($action==='warehouse-batch-receive'){
+        // Ulaanbaatar receives the scanned batch at once; receipt photos are taken while sorting. Orders not
+        // scanned need the explicit partial confirmation and get an automatic "missing" issue.
+        if(!$members)fail('Хоосон багцыг хүлээн авах боломжгүй.',409);
+        $missing=$actor===null?array_values(array_diff(array_column($members,'id'),$batch['checks'][$location]??[])):[];
+        if($missing&&($b['partial']??false)!==true)fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
+        foreach($members as $o){
+            if($o['status']!=='erenhot_dispatched')fail('Багцын захиалгын төлөв зөрсөн байна.',409);
+            if(in_array($o['id'],$missing,true)){$l=logistics_state($o);$l['issues'][]=['id'=>bin2hex(random_bytes(8)),'kind'=>'missing','note'=>$batch['id'].' багцыг хүлээн авахад уншигдаагүй.','state'=>'open','location'=>$location,'at'=>gmdate('c'),'auto'=>'batch'];$l['version']++;$o['logistics']=$l;}
+            warehouse_change_order($o,'ulaanbaatar_unsorted',$actor);
+        }
+        $batch['status']='received';$batch['received_at']=gmdate('c');if($missing)$batch['missing']=$missing;
+    }else{
+        if($actor===null&&in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true)&&($b['checked']??false)!==true)fail('Багц агуулахаас бодитоор гарсныг батална уу.');
+        if(!$members)fail('Хоосон багцыг илгээх боломжгүй.',409);
+        if($actor===null&&array_diff(array_column($members,'id'),$batch['checks'][$location]??[]))fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
+        foreach($members as $o){
+            if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
+            if(warehouse_role($location)==='erenhot')warehouse_cargo_required($o);
+            $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready','warehouse-batch-ship'=>$batch['status']==='draft'?'erenhot':'erenhot_ready',default=>'erenhot_dispatched'};
+            if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
+            // Pickup orders leave Erenhot with their final bill so the customer can pay on the way.
+            if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true))warehouse_early_settlement($o);
+            warehouse_change_order($o,match($action){'warehouse-batch-ready'=>'erenhot_ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'erenhot_dispatched',default=>'ulaanbaatar_unsorted'},$actor);
+        }
+        $batch['status']=match($action){'warehouse-batch-ready'=>'ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'dispatched',default=>'received'};$batch[$batch['status'].'_at']=gmdate('c');
+    }
+}
+function warehouse_admin_batch_status(array $b,bool $write): array {
+    $db=db();
+    if($write)$db->exec('BEGIN IMMEDIATE');
+    try {
+        $order=order_row(str_field($b,'id',50))['order'];
+        if(empty($order['batch_id']))fail('Захиалга тээврийн багцад байхгүй.',409);
+        $batch=warehouse_batch_row($order['batch_id']);
+        $members=warehouse_batch_members($batch['id']);
+        if(!in_array($order['id'],array_column($members,'id'),true))fail('Захиалгын багц өөрчлөгдсөн байна.',409);
+        [$action,$from,$next]=match($batch['status']){
+            'draft'=>['warehouse-batch-ready','erenhot','erenhot_ready'],
+            'ready'=>['warehouse-batch-dispatch','erenhot_ready','erenhot_dispatched'],
+            'dispatched'=>['warehouse-batch-receive','erenhot_dispatched','ulaanbaatar_unsorted'],
+            default=>[null,null,null],
+        };
+        if($action===null||$order['status']!==$from)fail('Багцын төлөв өөрчлөгдсөн байна. Захиалгаа шинэчилнэ үү.',409);
+        $location=$batch['destination']??'ulaanbaatar';
+        $destination=warehouse_profile($location)['name'];
+        if($write){
+            if(str_field($b,'batch_id',50)!==$batch['id']
+                ||int_field($b,'expected_version',1,PHP_INT_MAX)!==$batch['version']
+                ||str_field($b,'status',30)!==$next)fail('Багц өөрчлөгдсөн байна. Захиалгаа шинэчилнэ үү.',409);
+            $actorLocation=$action==='warehouse-batch-receive'?$location:($batch['source']??'erenhot');
+            $actor=['actor'=>'admin','actor_location'=>$actorLocation,'actor_email'=>admin_current()['email']];
+            warehouse_batch_transition($batch,$members,$action,$b,$actorLocation,$actor);
+            warehouse_batch_save($batch,substr($action,16),$actor);
+            $db->exec('COMMIT');
+        }
+        return ['id'=>$batch['id'],'version'=>$batch['version'],'order_count'=>count($members),'next_status'=>$next,'destination'=>$destination];
+    }catch(Throwable $e){if($write)$db->exec('ROLLBACK');throw $e;}
+}
 function warehouse_batch_post(string $action,array $b,string $location): never {
     $allowed=warehouse_role($location)==='erenhot'?['warehouse-batch-unpack','warehouse-batch-create','warehouse-batch-add','warehouse-batch-remove','warehouse-batch-ready','warehouse-batch-reopen','warehouse-batch-dispatch','warehouse-batch-ship','warehouse-batch-cancel','warehouse-batch-scan']:['warehouse-batch-receive','warehouse-batch-scan'];
     if(!in_array($action,$allowed,true))fail('Энэ үйлдлийг хийх эрхгүй.',403);
@@ -144,32 +206,8 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                     warehouse_change_order($o,'erenhot');
                 }
                 $batch['status']='draft';$batch['checks']['erenhot']=[];unset($batch['ready_at']);
-            }elseif($action==='warehouse-batch-receive'){
-                // Ulaanbaatar receives the scanned batch at once; receipt photos are taken while sorting. Orders not
-                // scanned need the explicit partial confirmation and get an automatic "missing" issue.
-                if(!$members)fail('Хоосон багцыг хүлээн авах боломжгүй.',409);
-                $missing=array_values(array_diff(array_column($members,'id'),$batch['checks'][$location]??[]));
-                if($missing&&($b['partial']??false)!==true)fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
-                foreach($members as $o){
-                    if($o['status']!=='erenhot_dispatched')fail('Багцын захиалгын төлөв зөрсөн байна.',409);
-                    if(in_array($o['id'],$missing,true)){$l=logistics_state($o);$l['issues'][]=['id'=>bin2hex(random_bytes(8)),'kind'=>'missing','note'=>$batch['id'].' багцыг хүлээн авахад уншигдаагүй.','state'=>'open','location'=>$location,'at'=>gmdate('c'),'auto'=>'batch'];$l['version']++;$o['logistics']=$l;}
-                    warehouse_change_order($o,'ulaanbaatar_unsorted');
-                }
-                $batch['status']='received';$batch['received_at']=gmdate('c');if($missing)$batch['missing']=$missing;
             }else{
-                if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true)&&($b['checked']??false)!==true)fail('Багц агуулахаас бодитоор гарсныг батална уу.');
-                if(!$members)fail('Хоосон багцыг илгээх боломжгүй.',409);
-                if(array_diff(array_column($members,'id'),$batch['checks'][$location]??[]))fail('Багцын захиалга бүрийг скан хийж тулгана уу.',409);
-                foreach($members as $o){
-                    if(logistics_open_issues($o))fail('Эхлээд нээлттэй зөрчлийг шийдвэрлэнэ үү.',409);
-                    if(warehouse_role($location)==='erenhot')warehouse_cargo_required($o);
-                    $orderExpected=match($action){'warehouse-batch-ready'=>'erenhot','warehouse-batch-dispatch'=>'erenhot_ready','warehouse-batch-ship'=>$batch['status']==='draft'?'erenhot':'erenhot_ready',default=>'erenhot_dispatched'};
-                    if($o['status']!==$orderExpected)fail('Багцын захиалгын төлөв зөрсөн байна.',409);
-                    // Pickup orders leave Erenhot with their final bill so the customer can pay on the way.
-                    if(in_array($action,['warehouse-batch-dispatch','warehouse-batch-ship'],true))warehouse_early_settlement($o);
-                    warehouse_change_order($o,match($action){'warehouse-batch-ready'=>'erenhot_ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'erenhot_dispatched',default=>'ulaanbaatar_unsorted'});
-                }
-                $batch['status']=match($action){'warehouse-batch-ready'=>'ready','warehouse-batch-dispatch','warehouse-batch-ship'=>'dispatched',default=>'received'};$batch[$batch['status'].'_at']=gmdate('c');
+                warehouse_batch_transition($batch,$members,$action,$b,$location);
             }
             warehouse_batch_save($batch,$action==='warehouse-batch-ship'?'dispatch':substr($action,16));
         }
