@@ -1,11 +1,18 @@
 import type { PickupLocation, Shipping } from "./types";
 
 export const warehousePreferenceKey = "gostore-pickup-warehouse-v1";
-export function readWarehousePreference(raw: string | null): string | null {
+export const warehousePreferenceDuration = 24 * 60 * 60 * 1000;
+export type WarehouseSelection = { version: 1; location: string; selectedAt: number };
+
+export function readWarehousePreference(raw: string | null, now = Date.now()): { selection: WarehouseSelection; legacy: boolean } | null {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw);
-    return value?.version === 1 && typeof value.location === "string" && /^(ulaanbaatar|wh-[a-f0-9]{12})$/.test(value.location) ? value.location : null;
+    if (value?.version !== 1 || typeof value.location !== "string" || !/^(ulaanbaatar|wh-[a-f0-9]{12})$/.test(value.location)) return null;
+    const legacy = value.selectedAt === undefined;
+    const selectedAt = legacy ? now : value.selectedAt;
+    if (!Number.isSafeInteger(selectedAt) || selectedAt <= 0 || selectedAt > now || now - selectedAt >= warehousePreferenceDuration) return null;
+    return { selection: { version: 1, location: value.location, selectedAt }, legacy };
   } catch { return null; }
 }
 export function pickupLocations(shipping: Shipping | null): PickupLocation[] {

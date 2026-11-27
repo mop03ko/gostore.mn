@@ -1,11 +1,20 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('../gostoremn/node_modules/typescript');
 function load(file,fast=false){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:()=>{throw Error('Unexpected native module load')},Date,Math,Number,JSON,Promise,Error,setTimeout:fast?(fn)=>setTimeout(fn,5):setTimeout,clearTimeout});return exports;}
-const {readWarehousePreference,pickupLocations,recommendWarehouse}=load('gostoremn/src/lib/warehouse-preference.ts');
+const {readWarehousePreference,pickupLocations,recommendWarehouse,warehousePreferenceDuration}=load('gostoremn/src/lib/warehouse-preference.ts');
 const locations=['Улаанбаатар','Замын-Үүд','Сайншанд'].map((city,i)=>({city,location:i?'wh-'+String(i).repeat(12):'ulaanbaatar',name:city,address:'fixture',phone:'99112233',hours:''}));
 for(const raw of [null,'{','null','1','{}','{"version":2,"location":"ulaanbaatar"}','{"version":1,"location":"erenhot"}'])assert.equal(readWarehousePreference(raw),null);
-assert.equal(readWarehousePreference('{"version":1,"location":"wh-111111111111"}'),'wh-111111111111');
+const now=1800000000000,location='wh-111111111111';
+const saved=selectedAt=>JSON.stringify({version:1,location,selectedAt});
+const legacy=readWarehousePreference(saved(undefined),now);
+assert.equal(legacy.selection.location,location);
+assert.equal(legacy.selection.selectedAt,now);
+assert.equal(legacy.legacy,true);
+assert.equal(warehousePreferenceDuration,86400000);
+assert.equal(readWarehousePreference(saved(now-86400000+1),now).selection.location,location);
+assert.equal(readWarehousePreference(saved(now),now).legacy,false);
+for(const selectedAt of [now-86400000,now-86400001,now+1,0,null,String(now),now-0.5])assert.equal(readWarehousePreference(saved(selectedAt),now),null);
 assert.equal(pickupLocations(null).length,0);assert.equal(pickupLocations({pickup:locations[0]}).length,1);assert.equal(pickupLocations({pickup_locations:[],pickup:locations[0]}).length,0,'Explicitly unavailable locations never fall back');
-const now=1800000000000,point=(latitude,longitude,accuracy=100)=>({coords:{latitude,longitude,accuracy},timestamp:now});
+const point=(latitude,longitude,accuracy=100)=>({coords:{latitude,longitude,accuracy},timestamp:now});
 for(const [lat,lon,index] of [[47.92,106.91,0],[43.718,111.906,1],[44.892,110.137,2]])assert.equal(recommendWarehouse(locations,point(lat,lon),now).location,locations[index].location);
 for(const p of [point(0,0),point(NaN,1),point(91,1),point(47.92,106.91,null),point(47.92,106.91,10001),{...point(47.92,106.91),timestamp:now-120001},{...point(47.92,106.91),mocked:true}])assert.equal(recommendWarehouse(locations,p,now),null);
 assert.equal(recommendWarehouse(locations.slice(1),point(47.92,106.91),now),null,'Disabled/missing UB never recommended');

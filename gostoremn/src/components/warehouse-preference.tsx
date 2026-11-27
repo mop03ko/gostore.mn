@@ -1,11 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 import { useGlobalSearchParams, usePathname } from "expo-router";
-import { Linking, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { AppState, Linking, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useStore } from "@/lib/store";
 import { usePalette } from "@/lib/palette";
 import type { PickupLocation } from "@/lib/types";
-import { pickupLocations, readWarehousePreference, recommendWarehouse, warehousePreferenceKey } from "@/lib/warehouse-preference";
+import { pickupLocations, readWarehousePreference, recommendWarehouse, warehousePreferenceDuration, warehousePreferenceKey, type WarehouseSelection } from "@/lib/warehouse-preference";
 import { locateForWarehouse, WarehouseLocationError } from "@/lib/warehouse-location";
 import { Button, Copy, ErrorBox, Title } from "./ui";
 
@@ -19,29 +19,55 @@ export function useWarehousePreference() {
 export function WarehousePreferenceProvider({ children }: { children: ReactNode }) {
   const { shipping, ready } = useStore();
   const pathname = usePathname(), params = useGlobalSearchParams();
-  const [id, setId] = useState<string | null>(null), [loaded, setLoaded] = useState(false);
+  const [selection, setSelection] = useState<WarehouseSelection | null>(null), [loaded, setLoaded] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false), [manual, setManual] = useState(false);
   const [storageError, setStorageError] = useState("");
-  const locations = pickupLocations(shipping), selected = locations.find((p) => p.location === id) ?? null;
+  const locations = pickupLocations(shipping), selected = locations.find((p) => p.location === selection?.location) ?? null;
   useEffect(() => {
     let active = true;
-    void AsyncStorage.getItem(warehousePreferenceKey).then(raw => { if (active) setId(readWarehousePreference(raw)); })
+    void AsyncStorage.getItem(warehousePreferenceKey).then(async raw => {
+      const saved = readWarehousePreference(raw);
+      if (!active || !saved) return;
+      if (saved.legacy) await AsyncStorage.setItem(warehousePreferenceKey, JSON.stringify(saved.selection));
+      if (active) setSelection(saved.selection);
+    })
       .catch(() => { if (active) setStorageError("Өмнөх сонголтыг уншиж чадсангүй. Агуулахаа дахин сонгоорой."); })
       .finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };
   }, []);
-  // Once per cold launch on home, never over a payment/auth deep link or on every resume.
+  useEffect(() => {
+    if (!selection) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = () => {
+      clearTimeout(timer);
+      const age = Date.now() - selection.selectedAt;
+      if (age < 0 || age >= warehousePreferenceDuration) {
+        setSelection(current => current === selection ? null : current);
+      } else {
+        timer = setTimeout(check, warehousePreferenceDuration - age);
+      }
+    };
+    check();
+    const listener = AppState.addEventListener("change", state => { if (state === "active") check(); });
+    return () => { clearTimeout(timer); listener.remove(); };
+  }, [selection]);
+  // Ask on home when there is no valid selection. Other routes use the manual picker.
   const home = pathname === "/" && !params.q && !params.image;
-  const visible = manual || (!acknowledged && home && loaded && ready && locations.length > 0);
-  const close = () => { setManual(false); setAcknowledged(true); };
+  const needsReminder = !selected && !acknowledged && locations.length > 0;
+  const visible = manual || (needsReminder && home && loaded && ready);
+  const close = () => { setManual(false); if (!selected) setAcknowledged(true); };
   const save = async (location: string) => {
     if (!locations.some((p) => p.location === location)) throw Error("Энэ агуулах идэвхгүй болсон. Өөр агуулах сонгоно уу.");
-    await AsyncStorage.setItem(warehousePreferenceKey, JSON.stringify({ version: 1, location }));
-    setId(location); setStorageError(""); close();
+    const next: WarehouseSelection = { version: 1, location, selectedAt: Date.now() };
+    await AsyncStorage.setItem(warehousePreferenceKey, JSON.stringify(next));
+    setSelection(next);
+    setAcknowledged(false);
+    setManual(false);
+    setStorageError("");
   };
-  return <Context value={{ selected, loaded, open: () => setManual(true), blocksPromo: visible || !loaded || !ready || (!acknowledged && locations.length > 0) }}>
+  return <Context value={{ selected, loaded, open: () => setManual(true), blocksPromo: visible || !loaded || !ready || needsReminder }}>
     {children}
-    {visible && <WarehouseSheet locations={locations} selected={selected} warning={storageError || (id && !selected ? "Өмнөх агуулах одоогоор сонгох боломжгүй байна." : "")} save={save} close={close} />}
+    {visible && <WarehouseSheet locations={locations} selected={selected} warning={storageError || (selection && !selected ? "Өмнөх агуулах одоогоор сонгох боломжгүй байна." : "")} save={save} close={close} />}
   </Context>;
 }
 
@@ -96,7 +122,7 @@ function WarehouseSheet({ locations, selected, warning, save, close }: { locatio
         <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: c.line }}>
           <Button title={saving ? "Хадгалж байна…" : "Сонголтоо хадгалах"} disabled={saving || !locations.some(p => p.location === draft)} onPress={() => void confirm()} testID="warehouse-confirm" />
           <Button title={selected ? "Өмнөх сонголтоор үргэлжлүүлэх" : "Дараа сонгох"} secondary disabled={saving} onPress={close} />
-          <Text style={{ color: c.muted, fontSize: 12, textAlign: "center" }}>Зөвхөн шинэ захиалгын авах газрыг сонгоно.</Text>
+          <Text style={{ color: c.muted, fontSize: 12, textAlign: "center" }}>Сонголтыг 24 цаг хадгалж, шинэ захиалгад ашиглана.</Text>
         </View>
       </View>
     </View>
