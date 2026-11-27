@@ -20,15 +20,15 @@ await owner.locator('.alerts .alert').first().waitFor();assert.match(await owner
 assert.match(await owner.locator('.account').innerText(),/Эзэмшигч/);
 
 // Reports: totals, one bar per day with a table view, CSV links.
-await owner.locator('nav [data-page=reports]').click();await owner.locator('#report-body .stats').waitFor();
+await owner.locator('nav [data-page=reports]').click();await owner.locator('#report-body .finance-grid').waitFor();
 assert.equal(await owner.locator('#report-body .xbar').count(),30,'Thirty days by default');
 assert.equal(await owner.locator('#report-body details.data-table').count(),1,'Table view for the chart');
-const href=await owner.locator('.export-links a').first().getAttribute('href');assert.match(href,/action=admin-export&kind=orders&from=\d{4}-\d{2}-\d{2}&to=/);
+const href=await owner.locator('.export-links a').first().getAttribute('href');assert.match(href,/action=admin-export&kind=finance&from=\d{4}-\d{2}-\d{2}&to=/);
 const csv=await owner.evaluate(async h=>{const r=await fetch(h,{credentials:'same-origin'});const b=new Uint8Array(await r.arrayBuffer());return {type:r.headers.get('content-type'),bom:[...b.slice(0,3)].join(','),text:new TextDecoder().decode(b)};},new URL(href,base+'/admin/').href);
 assert.ok(csv.type.includes('text/csv'),csv.type);assert.equal(csv.bom,'239,187,191','UTF-8 BOM for Excel');assert.ok(csv.text.startsWith('Захиалга,'),'CSV header');
 await owner.locator('#report-range [name=from]').fill('2025-12-30');await owner.locator('#report-range [name=to]').fill('2026-01-02');await owner.locator('#report-range button').click();
 await owner.waitForFunction(()=>document.querySelectorAll('#report-body .xbar').length===4);
-assert.match(await owner.locator('#report-body').innerText(),/Төлбөр орсон/);
+assert.match(await owner.locator('#report-body').innerText(),/Цэвэр ашиг \(бүртгэсэн\)/);
 await owner.locator('#search-insights #search-days').waitFor();
 await owner.locator('#report-body .xbar').first().hover();assert.equal(await owner.locator('.xtip').isVisible(),true,'Hover tooltip');
 

@@ -97,6 +97,7 @@ try {
         if($action==='admin-users')json_out(admin_users_list());
         if($action==='admin-audit')json_out(admin_audit_list($_GET));
         if($action==='admin-report')json_out(admin_report($_GET));
+        if($action==='admin-finance-entry'){$o=order_row(str_field($_GET,'id',50))['order'];json_out(admin_finance_order($o));}
         if($action==='admin-export')admin_export($_GET);
         if($action==='admin-search-insights')json_out(admin_search_insights($_GET));
         if($action==='admin-api-usage')json_out(admin_api_usage());
@@ -167,6 +168,7 @@ try {
     if(in_array($action,['admin-totp-setup','admin-totp-enable','admin-totp-disable'],true)){admin_required();json_out(admin_totp_post($action,$b));}
     if($action==='admin-user-save'){admin_required();json_out(admin_user_save($b));}
     if($action==='admin-quota-save'){admin_required();json_out(admin_quota_save($b));}
+    if($action==='admin-finance-save'){admin_required();json_out(admin_finance_save($b));}
     if($action==='catalog-controls-save'){admin_required();tw_catalog_enabled();json_out(catalog_controls_save($b));}
     if($action==='catalog-stores-save'){admin_required();tw_catalog_enabled();json_out(catalog_stores_save($b));}
     if($action==='catalog-store-test'){admin_required();if(!tw_catalog_enabled())fail('TaoWorld каталог идэвхгүй байна.',409);json_out(catalog_store_test($b));}

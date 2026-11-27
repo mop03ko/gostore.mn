@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/admin-finance.php';
 
 // Admin reports: sales and gross margin, CSV exports, search insights, TaoWorld API usage and the
 // purchase threshold that sets TaoWorld's product pool and daily quota, and dashboard alerts.
@@ -36,7 +37,8 @@ function admin_report(array $q): array {
     $days=[];for($t=strtotime($from.' UTC');$t<=strtotime($to.' UTC');$t+=86400)$days[gmdate('Y-m-d',$t)]=['day'=>gmdate('Y-m-d',$t),'orders'=>0,'paid'=>0,'revenue'=>0];
     $totals=['orders'=>0,'paid_orders'=>0,'revenue'=>0,'refunded'=>0,'cancelled'=>0,'demo_excluded'=>0];$statuses=[];$types=[];
     $profit=['orders'=>0,'revenue'=>0,'cost'=>0,'margin'=>0,'unknown_cost'=>0];$rows=[];
-    foreach(admin_report_orders($fromTs,$toTs) as $o){
+    $reportOrders=admin_report_orders($fromTs,$toTs);
+    foreach($reportOrders as $o){
         if(!empty($o['demo'])){$totals['demo_excluded']++;continue;}
         $day=admin_report_day($o['created']);$m=admin_order_money($o);
         $totals['orders']++;$days[$day]['orders']=($days[$day]['orders']??0)+1;
@@ -52,7 +54,7 @@ function admin_report(array $q): array {
     $totals['aov']=$totals['paid_orders']?(int)round($totals['revenue']/$totals['paid_orders']):0;
     $profit['margin_pct']=$profit['revenue']?round($profit['margin']*100/$profit['revenue'],1):null;
     arsort($statuses);
-    return ['from'=>$from,'to'=>$to,'totals'=>$totals,'days'=>array_values($days),'statuses'=>$statuses,'types'=>$types,'profit'=>$profit,'orders'=>array_slice(array_reverse($rows),0,100)];
+    return ['from'=>$from,'to'=>$to,'totals'=>$totals,'days'=>array_values($days),'statuses'=>$statuses,'types'=>$types,'profit'=>$profit,'finance'=>admin_finance_report($reportOrders),'orders'=>array_slice(array_reverse($rows),0,100)];
 }
 
 // CSV for spreadsheets: UTF-8 with BOM; cells that start like a formula are quoted with '.
@@ -61,9 +63,12 @@ function admin_csv_cell(mixed $v): string {
     return preg_match('/^[=+\-@\t\r]/',$v)?"'".$v:$v;
 }
 function admin_export(array $q): never {
-    $kind=(string)($q['kind']??'');if(!in_array($kind,['orders','payments','customers'],true))fail('Тайлангийн төрөл буруу.');
+    $kind=(string)($q['kind']??'');if(!in_array($kind,['orders','payments','customers','finance'],true))fail('Тайлангийн төрөл буруу.');
     [$from,$to,$fromTs,$toTs]=admin_report_range($q);$rows=[];
-    if($kind==='orders'){
+    if($kind==='finance'){
+        $rows[]=['Захиалга','Үүссэн өдөр','Төлөв','Борлуулалтын төлбөр ₮','Системийн үлдэгдэл төлбөр ₮','Нэмэлт карго төлбөр ₮','Нийт орлого ₮','Буцаалт ₮','Буцаалтын дараах орлого ₮','Карго орлого ₮','Нийлүүлэгч (буцаалт хассан) ¥','Нийлүүлэгч захиалгын ханшаар ₮','Нийлүүлэгч бодит зардал ₮','Ханшийн зөрүү ₮','Тээврийн бодит зардал ₮','Бусад зардал ₮','Цэвэр ашиг (бүртгэсэн) ₮','Дутуу мэдээлэл','Тэмдэглэл'];
+        foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;$f=admin_finance_order($o);$rows[]=[$f['id'],$f['day'],$f['status'],$f['initial'],$f['balance'],$f['extra_cargo'],$f['gross'],$f['refund'],$f['net'],$f['cargo'],$f['supplier_cny'],$f['quoted_cost'],$f['actual_cost'],$f['fx'],$f['transport_cost'],$f['other_cost'],$f['profit'],implode('; ',$f['missing']),$f['entry']['note']];}
+    }elseif($kind==='orders'){
         $rows[]=['Захиалга','Огноо','Төлөв','Төрөл','Хэрэглэгч','Утас','Гарчиг','Үнийн санал ₮','Төлсөн (цэвэр) ₮','Буцаасан ₮','TaoWorld ¥','TaoWorld ₮','Нийт ашиг ₮','TaoWorld төлөв'];
         foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;$m=admin_order_money($o);
             $rows[]=[$o['id'],admin_report_day($o['created']),$o['status'],$o['type']??'',$o['customer']??'',$o['phone']??'',$o['title']??'',(int)($o['amount']??0),$m['revenue'],$m['refunded'],$m['cost_cny'],$m['cost'],$m['margin'],$o['purchase']['state']??''];}

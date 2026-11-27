@@ -39,4 +39,5 @@ process.env.GOSTORE_ADMIN_SECURITY_ENFORCED='1';
 run(node,['tests/run-logistics.cjs','admin-security-ui'],'admin-security-ui');
 delete process.env.GOSTORE_ADMIN_SECURITY_ENFORCED;
 run(node,['tests/run-logistics.cjs','warehouse-split','warehouse-split-ui','warehouse-unpack'],'warehouse-split');
+run(node,['tests/finance-reports-ui.cjs'],'finance-reports-ui');
 console.log(failures?'FAILED: '+failures+' check(s).':'PASS: all registered suites and source syntax checks.');process.exitCode=failures?1:0;
