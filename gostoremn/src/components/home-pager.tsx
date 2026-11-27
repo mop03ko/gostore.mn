@@ -2,6 +2,7 @@ import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Animated, AppState, FlatList, Platform, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSubcategories, homeCategories } from "./home-deals";
+import { HomeNewYear } from "./home-new-year";
 import { DiscoveryCard } from "./discovery";
 import { Busy, Button, Copy, ErrorBox } from "./ui";
 import { catalog } from "@/lib/api";
@@ -71,7 +72,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     contentContainerStyle={{ padding: compact ? 6 : 8, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
     ListHeaderComponent={<View style={{ gap: compact ? 8 : 12, marginBottom: compact ? 4 : 8 }}>
-      {index === 0 && <><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
+      {index === 0 && <><HomeNewYear /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
       <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: compact ? 18 : 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />

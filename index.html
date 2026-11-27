@@ -29,6 +29,22 @@
   <script>document.documentElement.classList.toggle("official-stores-view", /^\/official-stores\/?$/.test(location.pathname));document.documentElement.classList.toggle("official-store-selected",new URLSearchParams(location.search).has("shop"));if(/^\/brands(?:\/|$)/.test(location.pathname))location.replace("/official-stores");document.documentElement.classList.toggle("product-view", /^\/(?:v|p)\//.test(location.pathname));document.documentElement.classList.toggle("account-view", /^\/account(?:\/[a-z]+)?\/?$/.test(location.pathname));document.documentElement.classList.toggle("listing-view", /^\/(?:search|products|saved|c\/[a-z0-9-]{1,40}(?:\/[a-z0-9-]{1,60})?)\/?$/.test(location.pathname)||(/^\/(?:index\.html)?$/.test(location.pathname)&&/[?&](?:q|category|image)=|[?&]filter=saved/.test(location.search)));document.documentElement.classList.toggle("eleven-sale-view", /^\/11-11\/?$/.test(location.pathname)||/[?&]sale=11\.11(?:&|$)/.test(location.search));document.documentElement.classList.toggle("auth-view-open", /^\/(?:login(?:\/(?:reset|email|link))?|register)\/?$/.test(location.pathname));document.documentElement.classList.toggle("store-page-view", /^\/(?:cart|help|account\/orders\/GS-[a-z0-9-]{3,45})\/?$/i.test(location.pathname));</script>
   <meta charset="utf-8">
   <!-- Explicit share image: crawlers read these tags without running JavaScript. -->
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const start = Date.parse("2026-11-28T00:00:00+08:00");
+      const end = Date.parse("2027-01-09T00:00:00+08:00");
+      const refresh = () => {
+        const now = Date.now();
+        root.classList.toggle("new-year-active", root.classList.contains("home-route") &&
+          !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search) &&
+          now >= start && now < end);
+      };
+      refresh();
+      addEventListener("pageshow", refresh);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+    })();
+  </script>
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="gostore.mn">
   <meta property="og:title" content="Gostore.mn — Сонголт нэг дор.">
@@ -65,7 +81,7 @@
   </script>
   <script>
   // Hero images are lazy so other routes never download them; on the homepage fetch the main one early.
-  if(!document.documentElement.matches(".product-view,.official-stores-view,.account-view,.store-page-view")){const l=document.createElement("link");l.rel="preload";l.as="image";l.href="/assets/hero-chair.webp?v=ddfc525a2a";l.fetchPriority="high";document.head.append(l);}
+  if(!document.documentElement.matches(".product-view,.official-stores-view,.account-view,.store-page-view,.new-year-active")){const l=document.createElement("link");l.rel="preload";l.as="image";l.href="/assets/hero-chair.webp?v=ddfc525a2a";l.fetchPriority="high";document.head.append(l);}
   </script>
   <meta name="facebook-domain-verification" content="ebt236r27oijorkmps2m2pz9vkr4t7" />
   <!-- Meta Pixel: public ID only; access tokens must never be placed in HTML. -->
@@ -122,7 +138,7 @@
   <script>document.documentElement.classList.toggle('home-refresh', /^\/(?:index\.html)?$/.test(location.pathname) && !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search));</script>
   <link rel="stylesheet" href="/warehouse-preference.css?v=20261115-2">
   <script src="/warehouse-preference.js?v=20261115-1" defer></script>
-  <link rel="stylesheet" href="/home-refresh.css?v=20261122-pages">
+  <link rel="stylesheet" href="/home-refresh.css?v=20261128-new-year">
   <script src="/home-refresh.js?v=20261119-footer2" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1d2aae82ae"></head>
 <body>
@@ -177,6 +193,13 @@
         <nav class="hub-channels" id="hub-channels" aria-label="Түгээмэл ангилал"></nav>
         <nav class="hub-hot" id="hub-hot" aria-label="Түгээмэл хайлт"></nav>
         <div class="hero-banner"><div class="hero-copy"><span class="eyebrow"><span></span> ТАНЫ ӨДӨР ТУТМЫН ДЭЛГҮҮР</span><h1>Сонголт их.<br><em>Захиалах амар.</em></h1><p>Бараагаа сонго. QPay-ээр төл.<br>Явцыг нь нэг дор хяна.</p><div class="hero-actions"><a class="button yellow" href="/products">Сонголтоо нээх <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="hero-help" href="/help">Хэрхэн захиалах вэ? ↗</a></div><div class="hero-signoff"><span>Taobao · Tmall</span><span>Монгол хэл · Төгрөгөөр</span></div></div><div class="hero-collection" aria-hidden="true"><span class="collection-circle"></span><span class="hero-orbit"></span><img class="collection-chair" src="/assets/hero-chair.webp?v=ddfc525a2a" alt="" width="520" height="781" loading="lazy"><img class="collection-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" alt="" width="330" height="220" loading="lazy"><img class="collection-bag" src="/assets/hero-bag.webp?v=1d3094dc10" alt="" width="300" height="450" loading="lazy"><span class="collection-stamp">Өдөр бүрийн<br><strong>шинэ сонголт.</strong></span></div></div>
+        <div class="hero-banner new-year-hero">
+          <img class="new-year-hero__art" src="/assets/new-year-gifts.webp?v=42b7b45773" alt="" width="1200" height="800" loading="lazy" decoding="async">
+          <div class="new-year-hero__copy">
+            <h1>Шинэ жилийн <span>бэлгээ сонгоорой</span></h1>
+            <a class="button new-year-hero__cta" href="/products">Бараа үзэх <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          </div>
+        </div>
       </div>
       <aside class="hub-user" aria-label="Миний GOStore">
         <div class="hub-user-head"><span class="hub-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span><div><small>Сайн байна уу</small><strong data-account-label>Нэвтрэх</strong></div></div>
