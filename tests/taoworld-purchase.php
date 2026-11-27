@@ -27,6 +27,22 @@ function taoworld_http(string $path,array $params): array {
         return ['code'=>'0','success'=>true,'data'=>['results_total'=>count($parents),'purchase_orders'=>$parents]];
     }
     if($path==='/purchase/order/batch/pay'){$paymentCalls++;throw new ApiError('fixture payment timeout',502);}
+    if($path==='/logistics/express/freight/estimate')return ['code'=>'0','success'=>true,'data'=>'"2500.25"'];
+    if($path==='/product/logisticsProperties/get')return ['code'=>'0','success'=>true,'data'=>['logistics_properties_list'=>[['key'=>'magnetic','name'=>'Magnetic']]]];
+    $mp='2048019433468296';
+    $reference=match($path){
+        '/product/spus/get'=>['results_total'=>11,'product_list'=>[['item_id'=>$mp,'title'=>'Paper labels','status'=>'NORMAL']]],
+        '/account/subaccount/query'=>['results_total'=>0,'sub_account_infos'=>[]],
+        '/product/details/query'=>['goods_info_list'=>[['mp_id'=>$mp,'title'=>'Paper labels','success'=>true,'inventory'=>6,'skus'=>[['sku_id'=>'387743580552']]]]],
+        '/batch/src/products/check'=>['mpProducts'=>[],'noMpProductItemIds'=>['538452788616'],'noMpReasonList'=>[['itemId'=>'538452788616','reason'=>'Fixture unavailable']]],
+        '/product/recommend'=>[['item_id'=>'538452788616','title'=>'Same item'],['item_id'=>'538452788617','title'=>'Alternate label','status'=>'active'],['item_id'=>'538452788617','title'=>'Duplicate']],
+        '/traffic/item/logisticPrice/get'=>['item_id'=>'538452788616','item_resource'=>'taobao','currency'=>'CNY','post_fee'=>0],
+        '/product/batchGetProductLogisticPrice'=>[['mp_id'=>$mp,'currency'=>'CNY','success'=>true,'post_fee'=>750]],
+        '/product/rebate/general/query'=>['item_commission_rates'=>[['item_id'=>$mp,'sku_id'=>'387743580552','commission_rate'=>'0.01']]],
+        '/product/sensitiveword/identification'=>['success_product_list'=>[['mp_id'=>$mp,'sensitiveword_detail_list'=>[['word'=>'demo']]]]],
+        default=>null,
+    };
+    if($reference!==null)return ['code'=>'0','result'=>['success'=>true,'data'=>$reference]]+($path==='/traffic/item/logisticPrice/get'?['data'=>$reference]:[]);
     throw new RuntimeException('Unexpected API '.$path);
 }
 function qpay_http(string $path,array $payload,string $auth): array {
@@ -111,4 +127,27 @@ check(tw_submission_result(['success'=>false,'error_code'=>'B-1','error_msg'=>'p
 check(tw_submission_result(['result'=>['success'=>false,'error_code'=>'unsafe / token']])===['success'=>false,'code'=>null],'Unsafe provider code leaked');
 tw_catalog_remember(['item_id'=>'538452788616','mi_id'=>'native-source-mi']);seed('GS-NATIVE-SOURCE');$o=order_row('GS-NATIVE-SOURCE')['order'];$o['items'][0]['catalog_provider']='taoworld';
 tw_map($o);$last=end($calls);check($last[0]==='/product/get'&&($last[1]['mi_id']??'')==='native-source-mi'&&!isset($last[1]['item_url']),'Native checkout must use persisted mi_id even after catalog setting changes');
+require_once $fixture.'/server/taoworld-insights.php';
+$input=['id'=>'GS-FLOW','line'=>0];
+$before=order_row('GS-FLOW')['order'];
+check(tw_insights(['mode'=>'distribution','page'=>1])['more']===true,'Distribution page lost pagination');
+check(tw_insights(['mode'=>'accounts'])===['total'=>0],'Empty subaccounts mishandled');
+check(tw_insights($input+['mode'=>'availability'])===['available'=>false,'reasons'=>['Fixture unavailable']],'Availability result missing');
+$p=tw_insights($input+['mode'=>'alternatives'])['alternatives'];
+check(count($p)===1&&$p[0]['id']==='538452788617','Alternative did not exclude current or duplicate');
+tw_insights($input+['mode'=>'alternatives']);check(count_calls('/product/recommend')===1,'Repeated click missed buyer-scoped cache');
+check(tw_insights($input+['mode'=>'delivery'])===['source_fee_fen'=>0,'distribution_fee_fen'=>750],'Reference fees mixed or missing');
+check(tw_insights($input+['mode'=>'freight','first_mnt'=>1000,'extra_mnt'=>2500])===['amount_mnt'=>'2500.25'],'Scalar freight estimate was not validated');
+expect(fn()=>tw_insights($input+['mode'=>'freight','first_mnt'=>1000,'extra_mnt'=>-2]),400);
+check(tw_insights($input+['mode'=>'detail'])['product']['stock']===6,'Mapped details absent');
+check(tw_insights($input+['mode'=>'properties'])===['properties'=>['Magnetic']],'Supplier shipping properties missing');
+check(tw_insight_properties_data(['success'=>false,'error_code'=>'ITEM_LOGISTICS_PROPERTY_NOT_FOUND'])===['properties'=>null],'Missing properties treated as absence of restrictions');
+check(tw_insights($input+['mode'=>'rebate'])===['rebate'=>['rate'=>'0.01']],'Wrong SKU rebate');
+check(tw_insights($input+['mode'=>'keywords','words'=>' demo ,demo,test'])===['matches'=>1],'Keyword check result missing');
+$keywordParams=end($calls)[1];check(json_decode($keywordParams['items'],true)[0]['sensitive_words']===['demo','test'],'Keyword validation or deduplication failed');
+expect(fn()=>tw_insights(['id'=>'GS-NATIVE-SOURCE','line'=>0,'mode'=>'detail']),409);
+expect(fn()=>tw_insights(['id'=>'GS-FLOW','line'=>1,'mode'=>'detail']),422);
+expect(fn()=>tw_insights($input+['mode'=>'pay']),422);
+check(order_row('GS-FLOW')['order']===$before,'Read-only insight changed order');
+echo "PASS: TaoWorld distribution, subaccounts, availability, alternatives, delivery, mapped details, rebate, keywords, cache and read-only behavior.\n";
 echo "PASS: QPay durable queue, Erenhot waiting/address, native SKU/stock/render, budget hold, stable idempotency, timeout/crash recovery, split/paginated orders, one payment attempt, all parcel deduplication, account/address/provider guards, locks, cancellation, disabled mode, token rotation, native catalog mi_id.\n";

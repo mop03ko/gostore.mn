@@ -217,6 +217,11 @@ function tw_worker(int $limit=3): array {
 }
 function tw_admin_post(string $action,array $b): never {
     admin_required();limit_attempts('taoworld-procurement:'.($_SERVER['REMOTE_ADDR']??'cli'),60,900);
+    if($action==='taoworld-insights'){
+        if(!admin_role_at_least('owner'))fail('Энэ хэсгийг үндсэн админ ашиглана.',403);
+        require_once __DIR__.'/taoworld-insights.php';
+        json_out(tw_insights($b));
+    }
     if($action==='taoworld-settings'){
         if(!is_bool($b['enabled']??null)||!is_bool($b['auto_pay']??null)||!in_array($b['channel']??'',['PANAMA_DG','PANAMA'],true))fail('TaoWorld тохиргоо буруу.');
         $s=tw_settings();if($b['enabled']){taoworld_access_token();tw_account();if((strtotime(tw_meta('taoworld_worker')['last_run']??'')?:0)<time()-300)fail('Эхлээд TaoWorld арын ажилтны 2 минутын cron хуваарийг тохируулна уу.',409);if(taobao_buyer_state()['auto_purchase']??false)fail('Эхлээд OT автомат худалдан авалтыг унтраана уу.',409);}
