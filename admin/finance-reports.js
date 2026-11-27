@@ -4,6 +4,109 @@ window.FinanceReports=(()=>{
   const yuan=v=>v==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(v)+' ¥';
   const rate=v=>v==null?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(v)+' ₮ / ¥';
   const card=(label,v,note,kind='')=>`<article class="finance-card ${kind}"><span>${esc(label)}</span><strong>${value(v)}</strong><small>${esc(note)}</small></article>`;
+  const batchStatus={draft:'Багцалж буй',ready:'Илгээхэд бэлэн',dispatched:'Илгээсэн',received:'Хүлээн авсан',sorted:'Ангилсан'};
+  let breakdownMode='orders';
+
+  function orderLink(id) {
+    return `<button type="button" class="link-button" data-open-order="${esc(id)}">${esc(id)}</button>`;
+  }
+  function batchLink(id) {
+    return `<button type="button" class="link-button" data-finance-view-batch="${esc(id)}">${esc(id)}</button>`;
+  }
+  function orderBreakdown(finance,owner) {
+    const rows=finance.rows.map(o=>`<tr>
+      <td>${orderLink(o.id)}<small>${esc(o.day)}${o.part?' · салгасан хэсэг':''}</small>${o.shipment_batch?`<small>Багц ${batchLink(o.shipment_batch)}</small>`:''}</td>
+      <td>${value(o.net)}</td><td>${value(o.actual_cost)}<small>${yuan(o.supplier_cny)}</small></td><td>${value(o.transport_cost)}</td>
+      <td>${value(o.bank_fx)}${o.sale_cny_rate!=null?`<small>Захиалга ${rate(o.sale_cny_rate)}<br>ХААН Банк ${rate(o.bank_cny_rate)}</small>`:''}</td>
+      <td>${value(o.profit)}</td>
+      <td>${owner?`<button class="quiet" type="button" data-finance-edit="${esc(o.id)}">${o.missing.length?'Дүн оруулах':'Засах'}</button>`:''}
+      <small>${esc(o.missing.join(', ')||'Тулгагдсан')}</small></td>
+    </tr>`).join('');
+    return `<div class="table-wrap"><table class="finance-table"><thead><tr><th>Захиалга</th><th>Орлого, буцаалт хассан</th><th>Нийлүүлэгч</th><th>Тээвэр</th><th>ХААН Банкны ханшийн зөрүү</th><th>Цэвэр ашиг</th><th>Тулгалт</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7">Төлбөр, зардлын бүртгэл алга.</td></tr>'}</tbody></table></div>
+      ${finance.row_count>100?'<p class="xpad muted">Сүүлийн 100 бүртгэл. Бүрэн задаргааг санхүүгийн CSV файлаар татна.</p>':''}`;
+  }
+  function breakdown(report,owner) {
+    const bundled=breakdownMode==='batches';
+    if(bundled)queueMicrotask(()=>{
+      const panel=$('[data-finance-batch-list]');
+      if(panel&&!panel.hidden)void loadBatchList(panel);
+    });
+    return `<section class="panel" data-finance-breakdown>
+      <div class="panel-heading finance-breakdown-heading">
+        <div><h3>Захиалгын санхүүгийн задаргаа</h3></div>
+        <div class="finance-view-switch" role="group" aria-label="Захиалгын харагдац">
+          <button class="quiet" type="button" data-finance-mode="orders" aria-pressed="${!bundled}" aria-controls="finance-orders-view">Захиалгаар</button>
+          <button class="quiet" type="button" data-finance-mode="batches" aria-pressed="${bundled}" aria-controls="finance-batches-view">Эрээнээс багцаар</button>
+        </div>
+      </div>
+      <div id="finance-orders-view" data-finance-order-list ${bundled?'hidden':''}>${orderBreakdown(report.finance,owner)}</div>
+      <div id="finance-batches-view" data-finance-batch-list data-from="${esc(report.from)}" data-to="${esc(report.to)}" ${bundled?'':'hidden'}></div>
+    </section>`;
+  }
+
+  async function loadBatchList(panel,offset=0) {
+    if(panel.dataset.loading)return;
+    panel.dataset.loading='1';
+    panel.innerHTML='<p class="empty" role="status">Багцуудыг ачаалж байна…</p>';
+    try {
+      const query=new URLSearchParams({from:panel.dataset.from,to:panel.dataset.to,offset});
+      const list=await api('admin-finance-batches&'+query);
+      if(!panel.isConnected)return;
+      const rows=list.batches.map(b=>`<tr><td data-label="Багц">${batchLink(b.id)}</td><td data-label="Огноо">${esc(b.day)}</td>
+        <td data-label="Очих агуулах">${esc(b.destination)}</td><td data-label="Төлөв">${esc(batchStatus[b.status]||b.status)}</td>
+        <td data-label="Захиалга">${esc(b.order_count)}</td><td data-label="Тээврийн зардал">${value(b.amount_mnt)}</td></tr>`).join('');
+      panel.innerHTML=`<p class="xpad muted finance-batch-caption">Багцыг илгээсэн, бэлэн болсон эсвэл үүсгэсэн өдрөөр шүүнэ.</p>
+        ${rows?`<div class="table-wrap"><table class="finance-batches-table"><thead><tr><th>Багц</th><th>Огноо</th><th>Очих агуулах</th><th>Төлөв</th><th>Захиалга</th><th>Тээврийн зардал</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="empty">Сонгосон хугацаанд Эрээнээс бүртгэсэн багц алга.</p>'}
+        ${list.total>25?`<div class="finance-batch-pages"><span>${list.offset+1}–${list.offset+list.batches.length} / ${list.total} багц</span>
+        <button class="quiet" type="button" data-finance-page="${Math.max(0,list.offset-25)}" ${list.offset?'':'disabled'}>Өмнөх</button>
+        <button class="quiet" type="button" data-finance-page="${list.offset+25}" ${list.more?'':'disabled'}>Дараах</button></div>`:''}`;
+      panel.dataset.loaded='1';
+    } catch(error) {
+      if(panel.isConnected)panel.innerHTML=`<p class="xpad error" role="alert">${esc(error.message)} <button class="quiet" type="button" data-finance-page="${offset}">Дахин оролдох</button></p>`;
+    } finally {
+      delete panel.dataset.loading;
+    }
+  }
+
+  async function showBatch(id) {
+    const b=await api('admin-finance-batch&view=1&id='+encodeURIComponent(id));
+    const rows=b.orders.map(o=>`<tr><td>${orderLink(o.id)}${o.part?'<small>Салгасан хэсэг</small>':''}</td><td>${esc(o.day)}</td>
+      <td>${value(o.net)}</td><td>${value(o.transport_cost)}</td><td>${value(o.bank_fx)}</td><td>${value(o.profit)}</td></tr>`).join('');
+    const canEdit=data.admin?.role==='owner'&&['dispatched','received','sorted'].includes(b.status)&&b.orders.length;
+    modal('Багц · '+b.id,`<section class="finance-batch-detail">
+      <p>${esc(b.day)} · ${esc(b.destination)} · ${esc(batchStatus[b.status]||b.status)}</p>
+      <div class="finance-batch-overview">
+        <span><b>${b.orders.length}</b> захиалга</span>
+        <span>Тээвэрлэгчид төлсөн <b>${value(b.entry.amount_mnt)}</b></span>
+        ${b.entry.paid_date?`<span>Төлсөн өдөр <b>${esc(b.entry.paid_date)}</b></span>`:''}
+        ${canEdit?`<button class="quiet" type="button" data-finance-batch="${esc(b.id)}">Тээврийн зардал ${b.entry.amount_mnt==null?'оруулах':'засах'}</button>`:''}
+      </div>
+      ${rows?`<div class="table-wrap"><table class="finance-batches-table"><thead><tr><th>Захиалга</th><th>Үүссэн өдөр</th><th>Орлого</th><th>Тээврийн зардал</th><th>Ханшийн зөрүү</th><th>Цэвэр ашиг</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="empty">Энэ багцад захиалга алга.</p>'}
+    </section>`);
+  }
+
+  addEventListener('click',async event=>{
+    const mode=event.target.closest('[data-finance-mode]');
+    if(mode){
+      breakdownMode=mode.dataset.financeMode;
+      const box=mode.closest('[data-finance-breakdown]');
+      const list=box.querySelector('[data-finance-batch-list]');
+      const bundled=breakdownMode==='batches';
+      box.querySelector('[data-finance-order-list]').hidden=bundled;
+      list.hidden=!bundled;
+      box.querySelectorAll('[data-finance-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button===mode)));
+      if(bundled&&!list.dataset.loaded)await loadBatchList(list);
+      return;
+    }
+    const page=event.target.closest('[data-finance-page]');
+    if(page){await loadBatchList(page.closest('[data-finance-batch-list]'),Number(page.dataset.financePage));return;}
+    const batch=event.target.closest('[data-finance-view-batch]');
+    if(batch){
+      batch.disabled=true;
+      try{await showBatch(batch.dataset.financeViewBatch);}catch(error){toast(error.message);}finally{batch.disabled=false;}
+    }
+  });
   function renderReport(r){
     const f=r.finance;if(!f)return '';
     const missing=(key,note)=>f.missing[key]?`${f.missing[key]} захиалгын мэдээлэл дутуу`:note;
@@ -21,7 +124,7 @@ window.FinanceReports=(()=>{
         ${card('Цэвэр ашиг (бүртгэсэн)',f.profit,missing('profit','Цэвэр орлого − нийлүүлэгч − тээвэр − бусад зардал'),f.profit==null?'pending':f.profit<0?'loss':'profit')}
       </div>
       <div class="finance-explanation"><strong>${f.complete_orders} / ${f.row_count} бүртгэлийн зардал бүрэн тулгагдсан</strong><p>Нийлүүлэгчийн өртгийг захиалгын өдрийн ХААН Банкны ханшаар тооцно. Бодит ханш бүртгэсэн захиалгад баримтын ханшаар өртгийг бодно. Ханшийн зөрүү өртгөөр дамжин цэвэр ашигт тусна. Каргоны үлдэгдэл нэхэмжлэлд үйлчилгээ, хүргэлтийн төлбөр орж болдог тул бүтнээр нь карго гэж тооцохгүй.</p><p>Системд төлөгдсөн үлдэгдэл: <b>${money(f.balance)}</b> · Нөхөж бүртгэсэн карго: <b>${money(f.extra_cargo)}</b> · ${f.paid_orders} төлбөртэй захиалга, ${f.shipment_parts} салгасан хэсэг.</p></div>
-      <section class="panel"><div class="panel-heading"><div><h3>Захиалгын санхүүгийн задаргаа</h3><p class="muted">Зардал байхгүй бол 0, тодорхойгүй бол хоосон үлдээнэ. Бүртгэл нь хэрэглэгчийн нэхэмжлэл, төлбөрийн төлөвийг өөрчлөхгүй.</p></div></div><div class="table-wrap"><table class="finance-table"><thead><tr><th>Захиалга</th><th>Орлого, буцаалт хассан</th><th>Нийлүүлэгч</th><th>Тээвэр</th><th>ХААН Банкны ханшийн зөрүү</th><th>Цэвэр ашиг</th><th>Тулгалт</th></tr></thead><tbody>${f.rows.map(o=>`<tr><td><button type="button" class="link-button" data-open-order="${esc(o.id)}">${esc(o.id)}</button><small>${esc(o.day)}${o.part?' · салгасан хэсэг':''}</small></td><td>${value(o.net)}</td><td>${value(o.actual_cost)}<small>${yuan(o.supplier_cny)}</small></td><td>${value(o.transport_cost)}${o.transport_batch?`<small>${esc(o.transport_batch)}</small>`:""}</td><td>${value(o.bank_fx)}${o.sale_cny_rate!=null?`<small>Захиалга ${rate(o.sale_cny_rate)}<br>ХААН Банк ${rate(o.bank_cny_rate)}</small>`:""}</td><td>${value(o.profit)}</td><td>${owner?`<button class="quiet" type="button" data-finance-edit="${esc(o.id)}">${o.missing.length?'Дүн оруулах':'Засах'}</button>`:''}<small>${esc(o.missing.join(', ')||'Тулгагдсан')}</small></td></tr>`).join('')||'<tr><td colspan="7">Төлбөр, зардлын бүртгэл алга.</td></tr>'}</tbody></table></div>${f.row_count>100?'<p class="xpad muted">Сүүлийн 100 бүртгэл. Бүрэн задаргааг санхүүгийн CSV файлаар татна.</p>':''}</section>
+      ${breakdown(r,owner)}
     </section>`;
   }
   let batchCurrent=null;

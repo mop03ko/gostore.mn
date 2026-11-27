@@ -4,7 +4,7 @@ declare(strict_types=1);
 // API usage by kind (including rejected calls), purchase threshold, trial and dashboard alerts.
 putenv('GOSTORE_DATA_DIR='.__DIR__.'/../tmp/admin-reports-test-'.bin2hex(random_bytes(5)));
 require __DIR__.'/../server/bootstrap.php';
-foreach(['shipping','logistics','supplier','admin-reports'] as $f)require_once __DIR__.'/../server/'.$f.'.php';
+foreach(['shipping','warehouse','logistics','supplier','admin-reports'] as $f)require_once __DIR__.'/../server/'.$f.'.php';
 $_SERVER['REMOTE_ADDR']='127.0.0.1';
 function check(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
 function denied(callable $f,int $code):void{try{$f();}catch(ApiError $e){check($e->getCode()===$code,'Wrong rejection '.$e->getCode().' '.$e->getMessage());return;}throw new RuntimeException('Expected rejection '.$code);}
@@ -133,6 +133,22 @@ $batchBody['version']=1;$batchBody['amount_mnt']=60000;$batchBody['allocations']
 check(admin_finance_report([$a,order_row('GS-B')['order']])['transport_cost']===60000,'Batch correction replaces prior cost, never accumulates');
 $batch['status']='ready';db()->prepare('UPDATE shipment_batches SET data=? WHERE id=?')->execute([json_encode($batch),$batch['id']]);$batchBody['version']=2;denied(fn()=>finance_batch_save($batchBody),409);
 check(admin_action_role('admin-finance-batch-save','POST')==='owner','Batch finance is owner-only');
+$batch['status']='dispatched';
+$batch['dispatched_at']='2026-11-26T17:00:00+00:00';
+db()->prepare('UPDATE shipment_batches SET created=?, data=? WHERE id=?')->execute(['2026-11-24T02:00:00+00:00',json_encode($batch),$batch['id']]);
+foreach([['GB-READY','ready','erenhot'],['GB-CANCELLED','cancelled','erenhot'],['GB-OTHER','dispatched','ulaanbaatar']] as [$id,$status,$source]){
+    $at='2026-11-27T02:00:00+00:00';
+    $data=array_replace($batch,['id'=>$id,'status'=>$status,'source'=>$source,'dispatched_at'=>null,'ready_at'=>$at]);
+    db()->prepare('INSERT INTO shipment_batches VALUES (?,?,?,?)')->execute([$id,$id,json_encode($data),$at]);
+}
+$batchRange=['from'=>'2026-11-27','to'=>'2026-11-27'];
+$list=finance_batch_report_list($batchRange);
+check(array_column($list['batches'],'id')===['GB-READY','GB-FINANCE'],'Dispatch/ready date follows local time; cancelled and other origins are excluded');
+check($list['batches'][0]['amount_mnt']===null&&$list['batches'][1]['amount_mnt']===60000&&$list['batches'][1]['order_count']===2,'List uses the batch ledger once and includes all member orders');
+$detail=finance_batch_get('GB-FINANCE',true);
+check(array_column($detail['orders'],'id')===['GS-A','GS-B']&&array_column($detail['orders'],'transport_cost')===[20000,40000],'Batch contains all members even outside the dispatch date range and their allocated cost');
+check(!array_key_exists('customer',$detail['orders'][0]),'Batch finance detail only returns fields the view needs');
+check(finance_batch_report_list($batchRange+['offset'=>1])['batches'][0]['id']==='GB-FINANCE','Batch pagination is stable');
 $fxInput=['bank'=>'KhanBank','date'=>'2026-01-23'];
 $khanRates=fn($url)=>[['currency'=>'USD','sellRate'=>3500],['currency'=>'CNY','buyRate'=>500,'cashSellRate'=>515,'sellRate'=>510.25]];
 $login('operator');denied(fn()=>admin_fx_reference($fxInput,$khanRates),403);$login('owner');
