@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/admin-batch-finance.php';
 
 // Reporting-only ledger. Never changes customer invoices, paid flags or warehouse balances.
 function admin_finance_entry(string $id): array {
@@ -22,6 +23,7 @@ function admin_finance_save(array $b): array {
     $version=int_field($b,'version',0,PHP_INT_MAX);$db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $o=order_row($id)['order'];if(!empty($o['demo']))fail('Жишээ захиалгад бодит дүн оруулахгүй.',409);
+        if(finance_batch_share($id)&&($entry['transport_cost_mnt']??0)>0)fail('Багцын зардал бүртгэгдсэн. Тээврийн дүнг багцаар засна уу.',409);
         if($entry['supplier_refund_cny']>(int)($o['purchase']['supplier_total_fen']??0)/100)fail('Нийлүүлэгчийн буцаалт худалдан авсан дүнгээс их байна.');
         $old=admin_finance_entry($id);if($old['version']!==$version)fail('Өөр админ шинэчилсэн байна. Дахин нээгээд шалгана уу.',409);
         $entry['version']=$version+1;$entry['updated_at']=gmdate('c');
@@ -33,6 +35,7 @@ function admin_finance_save(array $b): array {
 }
 function admin_finance_order(array $o): array {
     $e=admin_finance_entry($o['id']);$part=!empty($o['shipment_parent']);
+    $batchShare=finance_batch_share($o['id']);$transport=$batchShare['amount_mnt']??$e['transport_cost_mnt'];
     $initial=(!$part&&!empty($o['paid']))?(int)($o['amount']??0):0;
     $manual=array_sum(array_map(fn($r)=>max(0,(int)($r['amount']??0)),$o['freight_receipts']??[]));
     $balance=max(0,(int)($o['freight']['paid_amount']??0))+$manual;
@@ -55,11 +58,11 @@ function admin_finance_order(array $o): array {
     }
     $missing=[];
     if($actual===null)$missing[]=$supplier===null?'Нийлүүлэгчийн төлсөн дүн':'Юань авсан бодит ханш';
-    if($e['transport_cost_mnt']===null)$missing[]='Бодит тээврийн зардал';
+    if($transport===null)$missing[]='Бодит тээврийн зардал';
     if($e['other_cost_mnt']===null)$missing[]='Бусад зардал';
     if(!$e['complete'])$missing[]='Зардал, буцаалтын тулгалт';
-    $profit=$missing?null:$net-$actual-$e['transport_cost_mnt']-$e['other_cost_mnt'];
-    return ['id'=>$o['id'],'day'=>admin_report_day($o['created']),'status'=>$o['status'],'part'=>$part,'initial'=>$initial,'balance'=>$balance,'extra_cargo'=>$e['extra_cargo_mnt'],'gross'=>$gross,'refund'=>$refund,'net'=>$net,'cargo'=>$cargo,'supplier_cny'=>$supplier,'quoted_cost'=>$quoted,'actual_cost'=>$actual,'fx'=>$fx,'transport_cost'=>$e['transport_cost_mnt'],'other_cost'=>$e['other_cost_mnt'],'profit'=>$profit,'missing'=>$missing,'entry'=>$e];
+    $profit=$missing?null:$net-$actual-$transport-$e['other_cost_mnt'];
+    return ['id'=>$o['id'],'day'=>admin_report_day($o['created']),'status'=>$o['status'],'part'=>$part,'initial'=>$initial,'balance'=>$balance,'extra_cargo'=>$e['extra_cargo_mnt'],'gross'=>$gross,'refund'=>$refund,'net'=>$net,'cargo'=>$cargo,'supplier_cny'=>$supplier,'quoted_cost'=>$quoted,'actual_cost'=>$actual,'fx'=>$fx,'transport_cost'=>$transport,'transport_batch'=>$batchShare['batch_id']??null,'other_cost'=>$e['other_cost_mnt'],'profit'=>$profit,'missing'=>$missing,'entry'=>$e];
 }
 function admin_finance_report(array $orders): array {
     $f=['gross'=>0,'initial'=>0,'balance'=>0,'extra_cargo'=>0,'refund'=>0,'net'=>0,'cargo'=>0,'supplier_cny'=>0,'quoted_cost'=>0,'actual_cost'=>0,'fx'=>0,'transport_cost'=>0,'other_cost'=>0,'profit'=>0,'paid_orders'=>0,'complete_orders'=>0,'shipment_parts'=>0,'missing'=>[],'rows'=>[]];

@@ -113,5 +113,25 @@ $e=admin_finance_entry('GS-A');admin_finance_save(array_replace($body,['version'
 check((int)db()->query("SELECT COUNT(*) FROM admin_audit WHERE action='admin-finance-save'")->fetchColumn()===4,'Finance changes are audited');
 check(admin_finance_report([array_replace($a,['demo'=>true])])['gross']===0,'Demo revenue excluded');
 // Browser fixture uses synthetic data only.
+$batch=['id'=>'GB-FINANCE','status'=>'dispatched','version'=>3];
+db()->prepare('INSERT INTO shipment_batches VALUES (?,?,?,?)')->execute([$batch['id'],'finance-batch-key',json_encode($batch),gmdate('c')]);
+foreach(['GS-A','GS-B'] as $id)db()->prepare('INSERT INTO shipment_batch_orders VALUES (?,?)')->execute([$id,$batch['id']]);
+$batchBody=['id'=>$batch['id'],'version'=>0,'batch_version'=>3,'amount_mnt'=>100001,'paid_date'=>'2026-11-28','note'=>'Carrier transfer 001','confirmed'=>true,'allocations'=>['GS-A'=>33334,'GS-B'=>66667]];
+$login('operator');denied(fn()=>finance_batch_save($batchBody),403);$login('owner');
+denied(fn()=>finance_batch_save(array_replace($batchBody,['allocations'=>['GS-A'=>33333,'GS-B'=>66667]])),400);
+denied(fn()=>finance_batch_save(array_replace($batchBody,['allocations'=>['GS-A'=>33334,'GS-X'=>66667]])),409);
+denied(fn()=>finance_batch_save($batchBody),409); // Existing per-order cost would double count.
+$e=admin_finance_entry('GS-A');admin_finance_save(array_replace($body,['version'=>$e['version'],'transport_cost_mnt'=>null,'extra_cargo_mnt'=>0]));
+$beforeA=order_row('GS-A')['data'];finance_batch_save($batchBody);
+check(order_row('GS-A')['data']===$beforeA,'Batch accounting never changes customer orders');
+check(admin_finance_order($a)['transport_cost']===33334&&admin_finance_order(order_row('GS-B')['order'])['transport_cost']===66667,'Batch cost allocated exactly, with no rounding loss');
+check(admin_finance_report([$a,order_row('GS-B')['order']])['transport_cost']===100001,'Batch total appears once across its orders');
+check(admin_finance_report([$a])['transport_cost']===33334,'Date-filtered subset includes only its allocated share');
+denied(fn()=>finance_batch_save($batchBody),409);
+$e=admin_finance_entry('GS-A');denied(fn()=>admin_finance_save(array_replace($body,['version'=>$e['version'],'transport_cost_mnt'=>1000])),409);
+$batchBody['version']=1;$batchBody['amount_mnt']=60000;$batchBody['allocations']=['GS-A'=>20000,'GS-B'=>40000];finance_batch_save($batchBody);
+check(admin_finance_report([$a,order_row('GS-B')['order']])['transport_cost']===60000,'Batch correction replaces prior cost, never accumulates');
+$batch['status']='ready';db()->prepare('UPDATE shipment_batches SET data=? WHERE id=?')->execute([json_encode($batch),$batch['id']]);$batchBody['version']=2;denied(fn()=>finance_batch_save($batchBody),409);
+check(admin_action_role('admin-finance-batch-save','POST')==='owner','Batch finance is owner-only');
 file_put_contents(__DIR__.'/../tmp/finance-ui-fixture.json',json_encode(['finance'=>admin_finance_report([$a,$part])],JSON_UNESCAPED_UNICODE));
 echo "admin-reports ok: actual FX, cargo, refunds, split isolation, missing costs, loss, owner authorization, concurrency and audit\n";
