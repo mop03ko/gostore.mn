@@ -52,6 +52,7 @@ const ORDER_TABS=[
 ];
 const ORDER_PAGE_SIZE=25;
 let orderTab='all',payFilter='all',dateFilter='all',orderSort='new',orderPage=1;
+let orderFiltersOpen=false;
 const pickedOrders=new Set();
 let bulkStatusPending=false;
 const uxTabFn=id=>(ORDER_TABS.find(t=>t[0]===id)||ORDER_TABS[0])[2];
@@ -81,15 +82,17 @@ function ordersList(){
   for(const id of [...pickedOrders])if(!data.orders.some(o=>o.id===id))pickedOrders.delete(id);
   const opt=(id,value,list,label)=>`<select id="${id}" aria-label="${label}">${list.map(([v,t])=>`<option value="${v}" ${v===value?'selected':''}>${t}</option>`).join('')}</select>`;
   const filtered=query||statusFilter!=='all'||payFilter!=='all'||dateFilter!=='all';
+  const filterCount=[statusFilter!=='all',payFilter!=='all',dateFilter!=='all',orderSort!=='new'].filter(Boolean).length;
   const empty=`<div class="empty"><h3>${filtered?'Тохирох захиалга алга':'Энэ хэсэгт захиалга алга'}</h3>${filtered?'<p>Хайлт эсвэл шүүлтүүрээ өөрчилнө үү.</p><button type="button" class="quiet" data-orders-reset>Шүүлтүүр цэвэрлэх</button>':'Шинэ захиалга ирэхэд энд харагдана.'}</div>`;
   const allPicked=shown.length&&shown.every(o=>pickedOrders.has(o.id));
   return `<div class="orders-tabs" role="tablist" aria-label="Захиалгын төлөв">${tabs.map(t=>`<button type="button" role="tab" class="otab${t.id===orderTab?' on':''}" aria-selected="${t.id===orderTab}" data-otab="${t.id}">${esc(t.label)}<b>${t.count}</b></button>`).join('')}</div>`+
-    `<div class="toolbar orders-toolbar"><input id="list-search" type="search" aria-label="Захиалга хайх" placeholder="Нэр, утас, захиалгын дугаар…" value="${esc(query)}">`+
+    `<div class="toolbar orders-toolbar"><input id="list-search" type="search" aria-label="Нэр, утас, захиалгын дугаараар хайх" placeholder="Захиалга хайх…" value="${esc(query)}">`+
+    `<button type="button" class="quiet order-filter-toggle" data-order-filters aria-controls="order-filter-fields" aria-expanded="${orderFiltersOpen}">Шүүлтүүр${filterCount?` <b>${filterCount}</b>`:''}</button><div id="order-filter-fields" class="order-filter-fields" data-open="${orderFiltersOpen}">`+
     `<select id="status-filter" aria-label="Нарийвчилсан төлөв"><option value="all">Бүх төлөв</option>${Object.entries(statuses).map(([k,v])=>`<option value="${k}" ${statusFilter===k?'selected':''}>${v}</option>`).join('')}</select>`+
     opt('pay-filter',payFilter,[['all','Төлбөр: бүгд'],['paid','Эхний төлбөр төлсөн'],['unpaid','Эхний төлбөр хүлээж'],['transport-due','Тээврийн үлдэгдэлтэй']],'Төлбөрөөр шүүх')+
     opt('date-filter',dateFilter,[['all','Хугацаа: бүгд'],['today','Өнөөдөр'],['7','Сүүлийн 7 хоног'],['30','Сүүлийн 30 хоног']],'Хугацаагаар шүүх')+
     opt('sort-filter',orderSort,[['new','Шинэ нь эхэндээ'],['old','Хуучин нь эхэндээ'],['amount','Дүнгээр']],'Эрэмбэ')+
-    `<button class="quiet" data-refresh>↻ Шинэчлэх</button></div>`+
+    `</div><button type="button" class="quiet order-refresh" data-refresh aria-label="Захиалга шинэчлэх"><span aria-hidden="true">↻</span><span class="order-refresh-label">Шинэчлэх</span></button></div>`+
     (pickedOrders.size?`<div class="bulk-bar" role="region" aria-label="Сонгосон захиалга"><strong>${pickedOrders.size} захиалга сонгосон</strong><select id="bulk-status" aria-label="Шинэ төлөв"${bulkStatusPending?' disabled':''}><option value="">Төлөв сонгох</option>${Object.entries(statuses).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><button type="button" class="primary" data-bulk-apply disabled>Төлөв солих</button><button type="button" class="quiet" data-bulk-clear>Болих</button></div>`:'')+
     `<section class="panel orders-panel"><div class="panel-heading"><div class="orders-heading">${uxCan('operator')&&shown.length?`<input type="checkbox" class="order-pick-all" data-pick-all ${allPicked?'checked':''} aria-label="Энэ хуудсын бүх захиалгыг сонгох">`:''}<h3>${page==='links'?'Хятад захиалгууд':'Захиалгууд'}</h3></div><span class="muted">${rows.length} захиалга</span></div>${orderTable(shown,{select:uxCan('operator'),emptyHtml:empty})}`+
     (pages>1?`<div class="orders-pager"><span>${(orderPage-1)*ORDER_PAGE_SIZE+1}–${Math.min(orderPage*ORDER_PAGE_SIZE,rows.length)} / ${rows.length}</span><span><button type="button" class="quiet" data-opage="${orderPage-1}" ${orderPage<=1?'disabled':''}>← Өмнөх</button><button type="button" class="quiet" data-opage="${orderPage+1}" ${orderPage>=pages?'disabled':''}>Дараах →</button></span></div>`:'')+`</section>`;
@@ -300,6 +303,14 @@ adminMenu.addEventListener('click',event=>{
   if(event.target===adminMenu||event.target.closest('[data-menu-close], [data-page]'))adminMenu.close();
 });
 adminMenu.addEventListener('close',()=>{$('[data-menu-open]').setAttribute('aria-expanded','false');});
+
+addEventListener('click',event=>{
+  const toggle=event.target.closest('[data-order-filters]');
+  if(!toggle)return;
+  orderFiltersOpen=!orderFiltersOpen;
+  toggle.setAttribute('aria-expanded',String(orderFiltersOpen));
+  $('#order-filter-fields').dataset.open=String(orderFiltersOpen);
+});
 
 // Events.
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#app').hidden){e.preventDefault();paletteOpen();}});

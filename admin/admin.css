@@ -393,3 +393,103 @@ dialog.admin-menu {
   .admin-menu .nav-group { display: block; }
   .tabbar:has([data-page][hidden]) { grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); }
 }
+
+.admin-mobile-logo, .orders-toolbar .order-filter-toggle { display: none; }
+.order-filter-fields { display: contents; }
+.order-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+@media (max-width: 760px) {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { font-size: 14px; line-height: 1.45; }
+  .app > .admin-sidebar { display: none; }
+  .app > .main > header { min-height: 56px; margin: 0; padding: 6px 12px; gap: 8px; align-items: center; }
+  .app > .main > header > div:first-child { display: flex; align-items: center; gap: 8px; }
+  .admin-mobile-logo { display: inline-flex; align-items: center; flex: 0 0 auto; min-height: 44px; }
+  .admin-mobile-logo img { width: clamp(76px, 24vw, 110px); height: auto; display: block; }
+  .app > .main > header h1 { font-size: clamp(15px, 4.3vw, 19px); line-height: 1.2; overflow-wrap: anywhere; }
+  .app > .main > header #logout { min-height: 44px; padding: 5px 10px; font-size: 13px; }
+  .app > .main > main { padding: 10px 10px 14px; }
+  .main { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar { padding-top: 3px; padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar button { align-content: center; gap: 1px; min-height: 44px; line-height: 1.2; font-size: 11px; }
+  .tabbar button span { font-size: 17px; }
+  .admin-menu-header { padding: 6px 12px; }
+  .admin-menu-header h2 { font-size: 17px; }
+  #admin-menu-items { padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .admin-menu .admin-nav-section + .admin-nav-section { margin-top: 8px; }
+  .admin-menu .nav-group { margin-bottom: 0; padding-inline: 6px; }
+  .admin-menu [data-page] { margin: 0; padding: 5px 6px; }
+  .admin-menu [data-page] > span { flex-basis: 24px; height: 24px; font-size: 14px; }
+
+  .login-brand { padding: 12px 16px; }
+  .login-brand img { width: 120px; padding: 8px; }
+  .login-wrap { place-items: start center; padding: 24px 16px; }
+  .login-card h2 { margin-top: 6px; font-size: 22px; line-height: 1.3; }
+  .login-card p { margin: 6px 0 16px; font-size: 14px; line-height: 1.4; }
+  .login-card label { margin-bottom: 12px; }
+  .login-card input { font-size: 16px; }
+  .login-card .primary { margin-top: 10px; min-height: 44px; }
+  .login-card > a { margin: 12px 0; }
+  .login-card small { padding: 8px 10px; }
+
+  .orders-tabs { margin-bottom: 8px; }
+  .otab { min-height: 44px; padding: 6px 9px; font-size: 13px; }
+  .toolbar.orders-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 44px;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .toolbar.orders-toolbar #list-search { grid-column: 1; min-width: 0; min-height: 44px; padding-inline: 9px; font-size: 16px; }
+  .toolbar.orders-toolbar .order-filter-toggle { display: inline-flex; align-items: center; gap: 4px; grid-column: 2; min-height: 44px; padding: 4px 8px; }
+  .order-filter-toggle b { font-size: 11px; background: #fff1e8; border-radius: 5px; padding: 1px 4px; }
+  .toolbar.orders-toolbar .order-refresh { grid-column: 3; grid-row: 1; min-width: 44px; min-height: 44px; padding: 0; font-size: 19px; }
+  .order-refresh-label { display: none; }
+  .order-filter-fields { display: none; }
+  .order-filter-fields[data-open="true"] {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .toolbar.orders-toolbar :is(input, select, button) { min-height: 44px; font-size: 13px; margin: 0; }
+  .toolbar.orders-toolbar select { min-width: 0; width: 100%; padding: 5px 6px; }
+  .orders-panel .panel-heading, .panel-heading { padding: 9px 11px; gap: 7px; }
+  .orders-panel .panel-heading h3, .panel-heading h3 { font-size: 16px; line-height: 1.3; }
+  .orders-panel .panel-heading > .muted { font-size: 12px; padding: 2px 6px; }
+  .orders-table tbody { padding: 6px; gap: 6px; }
+  .orders-table tbody tr { padding: 9px; gap: 4px 10px; border-radius: 10px; }
+  .orders-table tbody td { padding: 0; font-size: 13px; line-height: 1.35; }
+  .orders-table tbody td[data-label]::before { display: none; }
+  .orders-table .order-main { padding-bottom: 5px; }
+  .orders-table .order-heading { margin-bottom: 2px; gap: 6px; }
+  .orders-table .order-title { -webkit-line-clamp: 1; font-size: 12px; line-height: 1.45; }
+  .orders-table .order-date { font-size: 11px; line-height: 1.35; }
+  .orders-table .order-amount { text-align: right; }
+  .orders-table .order-payment { margin: 2px 0 0 auto; }
+  .orders-table .order-customer small, .orders-table .order-transport-due { margin-top: 2px; }
+  .orders-table .order-track-trigger { display: inline-flex; min-height: 44px; align-items: center; }
+  .orders-table .order-status .tag { font-size: 12px; padding: 3px 6px; line-height: 1.35; }
+  .orders-table .order-status .order-age:not(.late) { display: none; }
+  .orders-table .order-status .order-age.late { margin: 0; line-height: 1.3; }
+  .orders-table .order-action .quiet { min-height: 44px; min-width: 66px; padding: 4px 8px; font-size: 12px; }
+  .orders-pager { padding: 8px 10px; gap: 5px; font-size: 13px; }
+
+  .stats.ux-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .ux-kpis .stat { min-width: 0; padding: 10px; border-radius: 10px; }
+  .ux-kpis .stat > span { font-size: 12px; line-height: 1.35; }
+  .ux-kpis .stat strong { font-size: 19px; line-height: 1.2; overflow-wrap: anywhere; }
+  .ux-kpis .stat small { font-size: 11px; line-height: 1.35; }
+  .task-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 48px; padding: 7px 10px; gap: 8px; }
+  .task-row small { font-size: 12px; }
+  .task-n { padding: 4px 0; font-size: 17px; }
+  #editor .dialog-header { padding: 6px 12px; gap: 4px; }
+  #editor #editor-title { font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+  #editor #close-editor { min-width: 44px; min-height: 44px; }
+  #editor-body { padding: 10px 12px; }
+  #editor-body label { margin-bottom: 12px; gap: 4px; }
+  #editor-body :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { padding: 8px 10px; min-height: 44px; }
+  #editor-body :is(input[type="text"], input[type="email"], input[type="tel"], textarea) { font-size: 16px; }
+  #editor-summary button[data-jump] { min-height: 44px; padding: 5px 9px; }
+  #editor .order-items { padding: 8px 10px; line-height: 1.5; margin-bottom: 12px; }
+}

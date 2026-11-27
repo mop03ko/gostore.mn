@@ -1,6 +1,6 @@
 // Admin UX layer: dashboard tasks, order tabs/filters/paging, row-click drawer with summary and section
 // links, bulk status change through the in-app confirmation, Ctrl+K search, phone tab bar, no "undefined".
-const {chromium}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {chromium,devices}=require('../tmp/tooling/node_modules/playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/);
 (async()=>{const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});try{
 const auth=JSON.parse(fs.readFileSync('tmp/admin-preview.json','utf8')),errors=[];
@@ -192,5 +192,37 @@ await page.locator('[data-record-freight]').waitFor({state:'detached'});
 assert.match(await page.locator('#editor-summary').innerText(),/Хүлээлгэн өгсөн/);
 assert.match(await page.locator('#editor-summary').innerText(),/Төлөгдсөн/);
 await page.locator('#close-editor').click();
+
+// Android Chrome layout, including narrow screens and the on-demand filters.
+const android=await browser.newPage({...devices['Pixel 7'],storageState:await page.context().storageState(),reducedMotion:'reduce'});
+android.on('pageerror',e=>errors.push(e.message));
+await android.goto(base+'/admin/#orders');
+await android.locator('#app').waitFor({state:'visible'});
+const filters=android.locator('[data-order-filters]');
+assert.equal(await filters.getAttribute('aria-expanded'),'false');
+assert.equal(await android.locator('#status-filter').isHidden(),true);
+await filters.tap();
+await android.locator('#sort-filter').selectOption('amount');
+assert.equal(await filters.getAttribute('aria-expanded'),'true','Changing a filter preserves the expanded controls');
+assert.equal(await filters.locator('b').innerText(),'1');
+await filters.tap();
+const row=android.locator('.orders-table tbody tr').first();
+for(const width of [320,360,412]){
+  await android.setViewportSize({width,height:740});
+  assert.ok(await android.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Android horizontal overflow at '+width);
+  const height=(await row.boundingBox()).height;assert.ok(height<=190,'Order card fits a compact height: '+width+' x '+height);
+  for(const control of [filters,android.locator('.order-refresh'),row.locator('[data-order]')]){
+    const bounds=await control.boundingBox();
+    assert.ok(bounds.height>=44 && bounds.width>=44,'Tap target: '+await control.getAttribute('class')+' '+JSON.stringify(bounds));
+  }
+}
+await android.setViewportSize({width:360,height:740});
+await android.screenshot({path:'tmp/admin-android-orders.png'});
+await android.locator('.tabbar [data-page=reports]').tap();
+await android.locator('.finance-grid').waitFor();
+assert.equal(await android.locator('.finance-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),2);
+assert.ok(await android.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Finance cards fit Android');
+await android.screenshot({path:'tmp/admin-android-reports.png'});
+await android.close();
 assert.deepEqual(errors,[]);console.log('admin-ux-ui ok');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
