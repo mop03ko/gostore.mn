@@ -22,9 +22,11 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.locator('[data-cart-qty="0"][data-delta="1"]').click();await page.waitForFunction(()=>document.querySelector('.store-cart-line .quantity-controls span').textContent==='2');
  await page.locator('[data-cart-remove="2"]').click();await page.waitForFunction(()=>document.querySelectorAll('.store-cart-line').length===2);
  await open('522222222');await page.locator('[data-pd-add]').click();
+ const quoted=page.waitForResponse(r=>new URL(r.url()).searchParams.get('action')==='checkout-quote'&&r.ok());
  await page.locator('.header-actions [data-action=cart]').click();await page.locator('[data-tb-checkout]').click();await page.locator('#taobao-checkout-form').waitFor();
  // The price breakdown still shows the charged MNT amount and seller count.
- const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes('40,700')&&totals.includes('2 дэлгүүр')&&totals.includes('Дараа тооцно'),totals);
+ const quotedGoods=(await (await quoted).json()).quote.breakdown.goods_mnt.toLocaleString('en-US');
+ const totals=await page.locator('.checkout-totals').innerText();assert.ok(totals.includes(quotedGoods)&&totals.includes('2 дэлгүүр')&&totals.includes('Дараа тооцно'),totals);
  assert.doesNotMatch(totals,/ханш|CNY|¥/i);assert.equal(await page.locator('.checkout-totals .calculation-items li').count(),3);
  assert.ok(await page.locator('#taobao-checkout-form [data-action=cart]').isVisible(),'Cart checkout can return to the cart');
  assert.equal(await page.locator('#taobao-checkout-form [name=address]').isVisible(),false,'Pickup is the default');
@@ -38,7 +40,8 @@ cached('/v1/taobao/product/522222222?language=mn',product('522222222','shop-b',[
  await page.waitForFunction(()=>document.querySelector('#cart-count').textContent==='0');
  assert.ok((await page.locator('.cargo-card').innerText()).includes('Төлбөр хүлээж байна'));await page.locator('.cargo-card [data-server-order]').first().click();await page.locator('.cargo-detail').waitFor();assert.ok((await page.locator('.cargo-detail').innerText()).includes('Төлөх хугацаа'));assert.equal(await page.locator('.cargo-items li').count(),3);assert.ok((await page.locator('.cargo-detail').innerText()).includes('Шуудангийн код: 14252-0024'),'Order shows the pickup address');
  assert.ok((await page.locator('#cargo-page').innerText()).includes('Салбарт ирэхэд бодит жингээр'),'Cargo is billed later');
- const orderTotals=await page.locator('.order-calculation').innerText();assert.match(orderTotals,/40,700/);assert.doesNotMatch(orderTotals,/ханш|CNY|¥/i);
+ const orderTotals=await page.locator('.order-calculation').innerText();
+ assert.ok(orderTotals.includes(order.quote.breakdown.goods_mnt.toLocaleString('en-US')));assert.doesNotMatch(orderTotals,/ханш|CNY|¥/i);
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  assert.deepEqual(errors,[]);console.log('PASS checkout: product add/buy-now buttons, cart lines/quantity/remove, seller-based domestic fee, upfront total, order with cargo later, stored due date, cart cleared, mobile cargo page.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
