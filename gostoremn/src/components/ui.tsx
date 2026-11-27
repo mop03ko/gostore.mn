@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { usePalette } from "@/lib/palette";
 import {
   ActivityIndicator,
@@ -17,6 +18,7 @@ export const money = (n: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n) + " ₮";
 export function Page({ children, refreshControl, scrollRef }: { children: ReactNode; refreshControl?: ScrollViewProps["refreshControl"]; scrollRef?: Ref<ScrollViewInstance> }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   const inset = useSafeAreaInsets();
   return (
     <ScrollView
@@ -26,9 +28,9 @@ export function Page({ children, refreshControl, scrollRef }: { children: ReactN
       contentInsetAdjustmentBehavior="automatic"
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{
-        padding: 12,
-        paddingBottom: Math.max(inset.bottom, 16) + 24,
-        gap: 12,
+        padding: compact ? 8 : 12,
+        paddingBottom: Math.max(inset.bottom, 16) + (compact ? 8 : 24),
+        gap: compact ? 8 : 12,
         width: "100%",
         maxWidth: 820,
         alignSelf: "center",
@@ -46,14 +48,15 @@ export function Card({
   style?: ViewStyle;
 }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   return (
     <View
       style={[
         {
           backgroundColor: colors.surface,
-          padding: 16,
+          padding: compact ? 12 : 16,
           borderRadius: 12,
-          gap: 12,
+          gap: compact ? 8 : 12,
           borderWidth: 1,
           borderColor: colors.line,
         },
@@ -97,6 +100,7 @@ export function Button({
   testID?: string;
 }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   return (
     <Pressable
       accessibilityRole="button"
@@ -106,8 +110,8 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => ({
         minHeight: 48,
-        paddingHorizontal: 16,
-        paddingVertical: 13,
+        paddingHorizontal: compact ? 12 : 16,
+        paddingVertical: compact ? 8 : 13,
         borderRadius: 24,
         alignItems: "center",
         justifyContent: "center",
@@ -117,7 +121,7 @@ export function Button({
     >
       <Text
         style={{
-          fontSize: 15,
+          fontSize: compact ? 14 : 15,
           fontWeight: "600",
           color: secondary ? colors.ink : colors.onPrimary,
         }}
@@ -129,8 +133,9 @@ export function Button({
 }
 export function Field({ label, ...props }: TextInputProps & { label: string }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: compact ? 4 : 6 }}>
       <Text style={{ fontSize: 13, fontWeight: "600", color: colors.ink }}>
         {label}
       </Text>
@@ -144,7 +149,8 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
             borderWidth: 1,
             borderColor: colors.line,
             borderRadius: 12,
-            padding: 12,
+            paddingHorizontal: compact ? 10 : 12,
+            paddingVertical: compact ? 8 : 12,
             fontSize: 16,
             color: colors.ink,
             backgroundColor: colors.surface,
@@ -194,11 +200,12 @@ export function Busy() {
 }
 export function Row({ label, value }: { label: string; value: string }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   return (
     <View
-      style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}
+      style={{ flexDirection: "row", justifyContent: "space-between", gap: compact ? 8 : 12 }}
     >
-      <Text style={{ flex: 1, color: colors.muted, lineHeight: 22 }}>
+      <Text style={{ flex: 1, color: colors.muted, lineHeight: compact ? 20 : 22 }}>
         {label}
       </Text>
       <Text
@@ -208,7 +215,7 @@ export function Row({ label, value }: { label: string; value: string }) {
           fontWeight: "600",
           textAlign: "right",
           color: colors.ink,
-          lineHeight: 22,
+          lineHeight: compact ? 20 : 22,
           fontVariant: ["tabular-nums"],
         }}
       >

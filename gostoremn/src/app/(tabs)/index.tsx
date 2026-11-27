@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { usePalette } from "@/lib/palette";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -33,6 +34,7 @@ type Results = {
 };
 function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initialImage?: string }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   const inset = useSafeAreaInsets();
   const [searchMode, setSearchMode] = useState(!!initialQuery || !!initialImage);
   const nextPageLock = useRef(false);
@@ -154,9 +156,9 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         style={{
           backgroundColor: colors.surface,
           paddingTop: inset.top,
-          paddingHorizontal: 12,
-          paddingBottom: 9,
-          gap: 5,
+          paddingHorizontal: compact ? 8 : 12,
+          paddingBottom: compact ? 3 : 9,
+          gap: compact ? 2 : 5,
         }}
       >
         <View
@@ -166,7 +168,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             justifyContent: "space-between",
           }}
         >
-          <BrandLogo width={156} />
+          <BrandLogo width={compact ? 126 : 156} />
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
             <IconButton
               name="help"
@@ -179,13 +181,13 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
           style={{
             flexDirection: "row",
             alignItems: "center",
-            borderWidth: 2,
+            borderWidth: compact ? 1 : 2,
             borderColor: colors.orange,
             borderRadius: 25,
-            paddingLeft: 12,
+            paddingLeft: compact ? 9 : 12,
             paddingRight: 3,
-            height: 48,
-            gap: 7,
+            minHeight: 48,
+            gap: compact ? 2 : 7,
           }}
         >
           <TextInput
@@ -199,9 +201,9 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 15,
+              fontSize: compact ? 14 : 15,
               color: colors.ink,
-              height: 44,
+              minHeight: 44,
             }}
           />
           {shipping?.image_search_enabled && (
@@ -219,12 +221,14 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             style={{
               backgroundColor: colors.orange,
               borderRadius: 22,
-              height: 38,
-              paddingHorizontal: 17,
+              minHeight: compact ? 44 : 38,
+              minWidth: 44,
+              alignItems: "center",
+              paddingHorizontal: compact ? 0 : 17,
               justifyContent: "center",
             }}
           >
-            <Icon name="search" size={22} color={colors.onPrimary} />
+            <Icon name="search" size={compact ? 19 : 22} color={colors.onPrimary} />
           </Pressable>
         </View>
       </View>
@@ -237,7 +241,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         keyExtractor={(p) => p.id}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: 8, paddingBottom: 20, gap: 8 }}
+        contentContainerStyle={{ padding: compact ? 6 : 8, paddingBottom: 20, gap: compact ? 6 : 8 }}
         columnWrapperStyle={{ gap: 8 }}
         onEndReached={() => { if (items.length) nextPage(); }}
         onEndReachedThreshold={0.5}

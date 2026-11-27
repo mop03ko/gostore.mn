@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
@@ -13,7 +14,8 @@ import { useStore } from "@/lib/store";
 import { Page, Card, Copy, Field, Button, Busy, ErrorBox } from "@/components/ui";
 function Account() {
   const colors = usePalette(), inset = useSafeAreaInsets();
-  const styles = createStyles(colors);
+  const compact = useCompactAndroid();
+  const styles = createStyles(colors, compact);
   const { customer, ready, refresh, logout, cart, error: bootError } = useStore();
   const [panel, setPanel] = useState<"profile" | "password" | null>(null);
   const [name, setName] = useState<string | null>(null), [phone, setPhone] = useState<string | null>(null);
@@ -60,15 +62,15 @@ function Account() {
       </View>
       {!customer && <Button title="Нэвтрэх / Бүртгүүлэх" onPress={login} />}
     </View>
-    <View style={[styles.shortcuts, { backgroundColor: colors.surface, borderRadius: 18, padding: 16 }]}>
+    <View style={[styles.shortcuts, { backgroundColor: colors.surface, borderRadius: 18, padding: compact ? 10 : 16 }]}>
       {([{ icon: "cart", title: "Сагс · " + cart.length, action: () => router.navigate("/cart") },
         { icon: "pin", title: "Миний хаяг", action: () => protectedRoute("/addresses") },
         { icon: "bell", title: "Мэдэгдэл", action: () => protectedRoute("/notifications") },
         { icon: "help", title: "Тусламж", action: () => router.push("/help") }] as { icon: IconName; title: string; action: () => void }[]).map(a =>
         <Pressable key={a.title} accessibilityRole="button" onPress={a.action} style={styles.shortcut}><Icon name={a.icon} color={colors.navy} size={26} /><Text style={styles.shortcutLabel}>{a.title}</Text></Pressable>)}
     </View>
-    <Card style={{ borderWidth: 0, padding: 16 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Бүх захиалга харах" onPress={() => protectedRoute("/orders")} style={{ flexDirection: "row", alignItems: "center", minHeight: 44, justifyContent: "space-between" }}><Text style={{ color: colors.navy, fontWeight: "800", fontSize: 20 }}>Миний захиалгууд</Text><Icon name="chevron" color={colors.muted} /></Pressable>
+    <Card style={{ borderWidth: 0, padding: compact ? 10 : 16 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Бүх захиалга харах" onPress={() => protectedRoute("/orders")} style={{ flexDirection: "row", alignItems: "center", minHeight: 44, justifyContent: "space-between" }}><Text style={{ color: colors.navy, fontWeight: "800", fontSize: compact ? 17 : 20 }}>Миний захиалгууд</Text><Icon name="chevron" color={colors.muted} /></Pressable>
       <View style={{ flexDirection: "row", gap: 4 }}>
         {([{ key: "unpaid", icon: "wallet", title: "Төлбөр хүлээж буй" }, { key: "active", icon: "truck", title: "Явцад байгаа" }, { key: "completed", icon: "check", title: "Дууссан" }, { key: "cancelled", icon: "box", title: "Цуцлагдсан" }] as const).map(f =>
           <Pressable key={f.key} accessibilityRole="button" accessibilityLabel={f.title + " захиалга"} onPress={() => router.push({ pathname: "/orders", params: { filter: f.key } })} style={styles.shortcut}><Icon name={f.icon} size={28} color={colors.navy} /><Text style={[styles.shortcutLabel, { textAlign: "center" }]}>{f.title}</Text></Pressable>)}
@@ -132,18 +134,18 @@ function Account() {
   </Page>;
 }
 export default function AccountRoute() { const { customer } = useStore(); return <Account key={customer?.id || "guest"} />; }
-const createStyles = (colors: Palette) => StyleSheet.create({
-  hero: { backgroundColor: "#262261", borderRadius: 24, padding: 18, gap: 18, overflow: "hidden" },
+const createStyles = (colors: Palette, compact: boolean) => StyleSheet.create({
+  hero: { backgroundColor: "#262261", borderRadius: compact ? 16 : 24, padding: compact ? 12 : 18, gap: compact ? 10 : 18, overflow: "hidden" },
   identity: { flexDirection: "row", alignItems: "center", gap: 12 },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: "#ffffff", alignItems: "center", justifyContent: "center" },
+  avatar: { width: compact ? 44 : 56, height: compact ? 44 : 56, borderRadius: 28, backgroundColor: "#ffffff", alignItems: "center", justifyContent: "center" },
   initial: { fontSize: 25, fontWeight: "800", color: "#f16522" },
-  name: { fontSize: 20, fontWeight: "700", color: "white" }, email: { fontSize: 12, color: "#ffffffcc" },
+  name: { fontSize: compact ? 17 : 20, fontWeight: "700", color: "white" }, email: { fontSize: 12, color: "#ffffffcc" },
   edit: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   shortcuts: { flexDirection: "row" },
   shortcut: { flex: 1, minHeight: 50, alignItems: "center", gap: 8 },
   shortcutLabel: { color: colors.ink, fontWeight: "600", fontSize: 12 },
   section: { color: colors.muted, fontSize: 12, fontWeight: "700", marginTop: 8, marginLeft: 6 },
-  divider: { height: 1, backgroundColor: colors.line, marginLeft: 52 },
+  divider: { height: 1, backgroundColor: colors.line, marginLeft: compact ? 42 : 52 },
   form: { paddingTop: 10, paddingBottom: 18, gap: 12 },
   success: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.successSurface, padding: 14, borderRadius: 12 },
   footer: { alignItems: "center", gap: 10, padding: 20 }, footerText: { fontSize: 11, color: colors.muted },

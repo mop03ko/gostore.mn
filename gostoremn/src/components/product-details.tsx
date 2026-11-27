@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { ProductReviews } from "./product-reviews";
 import { ProductDiscountBadge, ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
@@ -64,7 +65,8 @@ function useRecommendations(id: string) {
 
 export function ProductDetails({ product, variant, rate, onChoose }: { product: Product; variant?: Variant; rate: number; onChoose: () => void }) {
   const colors = usePalette();
-  const styles = createStyles(colors);
+  const compact = useCompactAndroid();
+  const styles = createStyles(colors, compact);
   const scroll = useRef<ComponentRef<typeof FlatList<Product>>>(null), positions = useRef<Partial<Record<Section, number>>>({ overview: 0 });
   const [active, setActive] = useState<Section>("overview"), [expanded, setExpanded] = useState(false), [fullName, setFullName] = useState(false);
   const recommendations = useRecommendations(product.id);
@@ -121,7 +123,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         <View style={{ backgroundColor: colors.surface }}>
           <ScrollView key={width} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={e => setImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))}>
-            {images.map(uri => <Image key={uri} source={uri} contentFit="contain" style={{ width, height: width }} />)}
+            {images.map(uri => <Image key={uri} source={uri} contentFit="contain" style={{ width, height: compact ? Math.round(width * 0.80) : width }} />)}
           </ScrollView>
           {!!images.length && <View style={styles.counter}><Text style={{ color: "white", fontSize: 12 }}>{Math.min(imageIndex + 1, images.length)} / {images.length}</Text></View>}
         </View>
@@ -129,7 +131,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
           <Text style={styles.price}>{variant?.cny && rate ? money(Math.ceil(variant.cny * rate)) : product.mnt ? money(product.mnt) : "Үнэ шалгах"}<Text style={{ fontSize: 12, color: colors.muted }}> / нэгж</Text></Text>
           <ProductOffers product={product} amount={variant?.cny && rate ? Math.ceil(variant.cny * rate) : product.mnt} discount={variant ? variant.card_discount ?? null : product.card_discount} details />
           <Pressable accessibilityRole="button" accessibilityLabel="Барааны нэрийг дэлгэрүүлэх" accessibilityState={{ expanded: fullName }} onPress={() => setFullName(v => !v)}>
-            <Text numberOfLines={fullName ? undefined : 2} style={{ fontSize: 17, lineHeight: 24, fontWeight: "600", color: colors.ink }}>{product.name}</Text>
+            <Text numberOfLines={fullName ? undefined : 2} style={{ fontSize: compact ? 15 : 17, lineHeight: compact ? 21 : 24, fontWeight: "600", color: colors.ink }}>{product.name}</Text>
             <Text style={styles.more}>{fullName ? "Хураах" : "Бүтэн нэрийг харах"}</Text>
           </Pressable>
           <Text style={styles.muted}>Барааны үнэ · Хүргэлт тусдаа тооцогдоно</Text>
@@ -173,11 +175,11 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
     />
   </View>;
 }
-const createStyles = (colors: Palette) => StyleSheet.create({
+const createStyles = (colors: Palette, compact: boolean) => StyleSheet.create({
   tabs: { flexDirection: "row", backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.line },
   tab: { flex: 1, minHeight: 46, alignItems: "center", justifyContent: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
-  summary: { backgroundColor: colors.surface, padding: 16, gap: 10 },
-  price: { fontSize: 30, fontWeight: "800", color: colors.accentText },
+  summary: { backgroundColor: colors.surface, padding: compact ? 10 : 16, gap: compact ? 7 : 10 },
+  price: { fontSize: compact ? 23 : 30, fontWeight: "800", color: colors.accentText },
   inset: { paddingHorizontal: 10 },
   heading: { fontSize: 17, fontWeight: "700", color: colors.ink },
   muted: { fontSize: 12, lineHeight: 19, color: colors.muted },

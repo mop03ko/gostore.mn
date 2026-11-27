@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { ProductDiscountBadge, ProductOffers } from "./product-offers";
 import { usePalette, type Palette } from "@/lib/palette";
 import { useEffect, useState } from "react";
@@ -21,11 +22,12 @@ export function CategoryPhoto({ image, size = 64 }: { image: string; size?: numb
 }
 export function DiscoveryCard({ product: p }: { product: Product }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   const s = createStyles(colors);
   return <Pressable accessibilityRole="button" accessibilityLabel={p.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, ...(p.official_shop_id ? { shop: p.official_shop_id } : p.brand_id ? { brand: p.brand_id } : {}) } })} style={s.card}>
     <Image source={p.image || undefined} contentFit="cover" recyclingKey={p.id} style={{ width: "100%", aspectRatio: 1 }} />
     <ProductDiscountBadge product={p} amount={p.mnt || p.approx_mnt} />
-    <View style={{ padding: 8, gap: 5 }}><Text numberOfLines={2} style={s.name}>{p.name}</Text><Text style={s.price}>{p.mnt ? money(p.mnt) : p.approx_mnt ? "≈ " + money(p.approx_mnt) : "Үнэ шалгах"}</Text><ProductOffers product={p} amount={p.mnt || p.approx_mnt} />{p.brand_id && p.shop_rating ? <Text style={s.note}>Дэлгүүрийн үнэлгээ {p.shop_rating}/5</Text> : null}</View>
+    <View style={{ padding: compact ? 6 : 8, gap: compact ? 3 : 5 }}><Text numberOfLines={2} style={[s.name, compact && { minHeight: 34, lineHeight: 17 }]}>{p.name}</Text><Text style={[s.price, compact && { fontSize: 16 }]}>{p.mnt ? money(p.mnt) : p.approx_mnt ? "≈ " + money(p.approx_mnt) : "Үнэ шалгах"}</Text><ProductOffers product={p} amount={p.mnt || p.approx_mnt} />{p.brand_id && p.shop_rating ? <Text style={s.note}>Дэлгүүрийн үнэлгээ {p.shop_rating}/5</Text> : null}</View>
   </Pressable>;
 }
 export function DiscoveryShelf({ query, free = false }: { query?: string; free?: boolean }) {

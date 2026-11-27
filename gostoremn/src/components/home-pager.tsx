@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Animated, AppState, FlatList, Platform, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSubcategories, homeCategories } from "./home-deals";
@@ -14,6 +15,7 @@ const empty: Snapshot = { products: [], page: 0, more: false, fetched: 0, offset
 
 function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: number; active: boolean; initial: Snapshot; onSave: (index: number, data: Snapshot) => void; onSelect: (index: number) => void }) {
   const c = usePalette(), { width } = useWindowDimensions(), columns = width >= 800 ? 4 : 2;
+  const compact = useCompactAndroid();
   const [data, setData] = useState(initial), [page, setPage] = useState(Math.max(1, initial.page));
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [retry, setRetry] = useState(0), [tick, setTick] = useState(0);
   const list = useRef<FlatList<Product>>(null), lock = useRef(false), offset = useRef(initial.offset);
@@ -66,11 +68,11 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     onContentSizeChange={(_, height) => { if (!restored.current && height > restoreOffset) { restored.current = true; list.current?.scrollToOffset({ offset: restoreOffset, animated: false }); } }}
     onScroll={e => { if (!restored.current) return; offset.current = e.nativeEvent.contentOffset.y; clearTimeout(scrollTimer.current); scrollTimer.current = setTimeout(saveScroll, 150); }} scrollEventThrottle={100}
     onScrollEndDrag={saveScroll} onMomentumScrollEnd={saveScroll}
-    contentContainerStyle={{ padding: 8, paddingBottom: 24, gap: 8 }} columnWrapperStyle={{ gap: 8 }}
+    contentContainerStyle={{ padding: compact ? 6 : 8, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
-    ListHeaderComponent={<View style={{ gap: 12, marginBottom: 8 }}>
+    ListHeaderComponent={<View style={{ gap: compact ? 8 : 12, marginBottom: compact ? 4 : 8 }}>
       {index === 0 && <><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
-      <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
+      <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: compact ? 18 : 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
     </View>}

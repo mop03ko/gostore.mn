@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { usePalette } from "@/lib/palette";
 import { Image } from "expo-image";
 import Svg, { Path } from "react-native-svg";
@@ -89,6 +90,7 @@ export function IconButton({
   onPress: () => void;
   color?: string;
 }) {
+  const compact = useCompactAndroid();
   return (
     <Pressable
       accessibilityRole="button"
@@ -101,7 +103,7 @@ export function IconButton({
         justifyContent: "center",
       }}
     >
-      <Icon name={name} color={color} />
+      <Icon name={name} size={compact ? 20 : 24} color={color} />
     </Pressable>
   );
 }
@@ -117,6 +119,7 @@ export function Choice({
   disabled?: boolean;
 }) {
   const colors = usePalette();
+  const compact = useCompactAndroid();
   return (
     <Pressable
       accessibilityRole="button"
@@ -126,7 +129,7 @@ export function Choice({
       style={{
         minHeight: 44,
         borderRadius: 8,
-        padding: 12,
+        padding: compact ? 8 : 12,
         borderWidth: 1,
         borderColor: selected ? colors.orange : "transparent",
         backgroundColor: selected ? colors.accentSurface : colors.subtle,

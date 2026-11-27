@@ -1,3 +1,4 @@
+import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { usePalette } from "@/lib/palette";
 import { useState } from "react";
 import { Text, View, ScrollView, Pressable } from "react-native";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui";
 export default function Cart() {
   const colors = usePalette(), inset = useSafeAreaInsets();
+  const compact = useCompactAndroid();
   const { cart, saveCart, shipping, cartReady, customer } = useStore();
   const [error, setError] = useState(""),
     [saving, setSaving] = useState(false);
@@ -39,17 +41,17 @@ export default function Cart() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ paddingTop: inset.top + 8, paddingHorizontal: 16, paddingBottom: 8, backgroundColor: colors.surface }}>
+      <View style={{ paddingTop: inset.top + (compact ? 3 : 8), paddingHorizontal: compact ? 10 : 16, paddingBottom: compact ? 3 : 8, backgroundColor: colors.surface }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <Text accessibilityRole="header" style={{ fontSize: 24, fontWeight: "800", color: colors.navy }}>Сагс ({cart.length})</Text>
+          <Text accessibilityRole="header" style={{ fontSize: compact ? 19 : 24, fontWeight: "800", color: colors.navy }}>Сагс ({cart.length})</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Хүргэлтийн хаяг" onPress={() => router.push(customer ? "/addresses" : { pathname: "/login", params: { next: "/addresses" } })} style={{ flexDirection: "row", alignItems: "center", gap: 5, minHeight: 44 }}><Icon name="pin" size={18} /><Text style={{ color: colors.ink, fontSize: 12 }}>Хүргэлтийн хаяг</Text><Icon name="chevron" size={14} /></Pressable>
         </View>
       </View>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{
-          padding: 10,
-          gap: 12,
+          padding: compact ? 8 : 10,
+          gap: compact ? 8 : 12,
           paddingBottom: 20,
           maxWidth: 820,
           width: "100%",
@@ -76,7 +78,7 @@ export default function Cart() {
               <View
                 key={i.id + i.sku}
                 style={{
-                  paddingVertical: 12,
+                  paddingVertical: compact ? 8 : 12,
                   borderTopWidth: 1,
                   borderColor: colors.line,
                   flexDirection: "row",
@@ -96,10 +98,10 @@ export default function Cart() {
                   <Image
                     source={i.image}
                     contentFit="cover"
-                    style={{ width: 96, height: 110, borderRadius: 12 }}
+                    style={{ width: compact ? 72 : 96, height: compact ? 82 : 110, borderRadius: 12 }}
                   />
                 </Pressable>
-                <View style={{ flex: 1, gap: 7 }}>
+                <View style={{ flex: 1, minWidth: 0, gap: compact ? 4 : 7 }}>
                   <Text
                     numberOfLines={2}
                     style={{ color: colors.ink, fontSize: 13, lineHeight: 19 }}
@@ -124,7 +126,7 @@ export default function Cart() {
                   <Text
                     selectable
                     style={{
-                      fontSize: 19,
+                      fontSize: compact ? 16 : 19,
                       color: colors.accentText,
                       fontWeight: "700",
                     }}
@@ -175,7 +177,7 @@ export default function Cart() {
           <EmptyState icon="cart" title="Сагс тань хоосон байна" description="Таалагдсан барааныхаа өнгө, хэмжээг сонгоод сагсандаа нэмээрэй."
             action="Бараа үзэх" onPress={() => router.navigate("/")} />
         )}
-        <Card style={{ borderWidth: 0, gap: 20 }}>
+        <Card style={{ borderWidth: 0, gap: compact ? 10 : 20 }}>
           {([{ icon: "wallet", title: "Төлбөрөө урьдчилж шалгана", text: "Захиалахын өмнө бараа, үйлчилгээ, хүргэлтийн тооцоог харна." }, { icon: "truck", title: "Захиалгын явцаа хянана", text: "Эрээнээс Улаанбаатар хүртэлх төлөвийг апп дотроос харна." }, { icon: "help", title: "Тусламж, үйлчилгээ", text: "Төлбөр болон хүргэлтийн талаар мэдээлэл аваарай." }] as { icon: IconName; title: string; text: string }[]).map(a => <Pressable accessibilityRole="button" key={a.title} onPress={() => router.push("/help")} style={{ flexDirection: "row", gap: 14, alignItems: "center", minHeight: 56 }}><Icon name={a.icon} size={28} color={colors.navy} /><View style={{ flex: 1, gap: 4 }}><Text style={{ fontWeight: "700", color: colors.navy }}>{a.title}</Text><Text style={{ fontSize: 12, lineHeight: 18, color: colors.muted }}>{a.text}</Text></View></Pressable>)}
         </Card>
         {!!cart.length && (
@@ -197,7 +199,7 @@ export default function Cart() {
             backgroundColor: colors.surface,
             borderTopWidth: 1,
             borderColor: colors.line,
-            padding: 12,
+            padding: compact ? 8 : 12,
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
@@ -209,7 +211,7 @@ export default function Cart() {
             </Text>
             <Text
               selectable
-              style={{ fontSize: 20, fontWeight: "800", color: colors.accentText }}
+              style={{ fontSize: compact ? 17 : 20, fontWeight: "800", color: colors.accentText }}
             >
               {rate
                 ? money(Math.ceil((Math.round(goods * 100) / 100) * rate))
