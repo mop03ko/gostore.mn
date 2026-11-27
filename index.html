@@ -139,15 +139,15 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=0bf78ae3ae04">
-  <script src="/app.js?v=6612e312c67e" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=701d4de4832b" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261109-six">
   <script src="/eleven-sale.js?v=20261109-campaign" defer></script>
   <script>document.documentElement.classList.toggle('home-refresh', /^\/(?:index\.html)?$/.test(location.pathname) && !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search));</script>
   <link rel="stylesheet" href="/warehouse-preference.css?v=20261115-2">
   <script src="/warehouse-preference.js?v=20261115-1" defer></script>
-  <link rel="stylesheet" href="/home-refresh.css?v=20261128-new-year-loop">
-  <script src="/home-refresh.js?v=20261119-footer2" defer></script>
+  <link rel="stylesheet" href="/home-refresh.css?v=20261128-new-year-deals">
+  <script src="/home-refresh.js?v=20261128-new-year-deals" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1d2aae82ae"></head>
 <body>
   <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1649469149899328&amp;ev=PageView&amp;noscript=1"></noscript>
@@ -218,6 +218,13 @@
         <div class="hub-shortcuts"><a href="/cart" data-action="cart"><svg class="icon" aria-hidden="true"><use href="#i-bag"/></svg>Сагс<b data-hub-count="cart"></b></a><a href="/saved" data-action="favorites"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg>Хадгалсан<b data-hub-count="favorites"></b></a><a href="/account/orders" data-action="orders"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>Ачаа хянах</a></div>
         <p class="hub-note"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>QPay-ээр төлнө. Каргог бараа сонгосон салбарт ирэхэд бодит жингээр тооцно.</p>
       </aside>
+    </section>
+    <section id="new-year-deals" class="container new-year-deals" aria-labelledby="new-year-deals-title" hidden>
+      <div class="section-heading">
+        <h2 id="new-year-deals-title">Шинэ жилийн хямдрал</h2>
+        <a class="text-button" href="#catalog">Бүх хямдралыг үзэх →</a>
+      </div>
+      <div class="product-grid" id="new-year-deals-grid"></div>
     </section>
     <section class="container branch-promo" id="branch-promo" aria-label="Бараа авах агуулахууд" hidden></section>
     <section class="container home-services" aria-label="Шууд нээх">

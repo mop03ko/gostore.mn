@@ -34,6 +34,20 @@ $index['time']=time()-TW_DEALS_INDEX_FRESH-1;supplier_snapshot_write(tw_deals_in
 $rebuilt=tw_catalog_deals(['page'=>1]);check(array_column($rebuilt['products'],'id')===['tb-920000000001','tb-920000000004']&&supplier_snapshot_read(tw_deals_index_path())['time']>=time()-5,'Stale index is rebuilt');
 unlink(tw_deals_index_path());check(count(tw_catalog_deals(['page'=>1])['products'])===2,'Missing index is rebuilt');
 denied(fn()=>tw_catalog_deals(['page'=>0]),400);denied(fn()=>tw_catalog_deals(['page'=>101]),400);
+// The holiday ranking is stable and scoped to the storefront's Ulaanbaatar holiday window.
+$cards=[
+    ['id'=>'plain','name'=>'Gift box','original_name'=>'首饰盒'],
+    ['id'=>'lights','name'=>'Decorative lights','original_name'=>'圣诞树彩灯'],
+    ['id'=>'tree','name'=>'Christmas tree skirt'],
+    ['id'=>'party','name'=>'Шинэ жилийн малгай'],
+    ['id'=>'ornament','name'=>'Car mirror ornament'],
+];
+$begin=strtotime('2026-11-28T00:00:00+08:00');
+$end=strtotime('2027-01-09T00:00:00+08:00');
+[$holiday,$holidayCount]=tw_deals_new_year_first($cards,$begin);
+check($holidayCount===3&&array_column($holiday,'id')===['lights','tree','party','plain','ornament']&&!isset($holiday[3]['new_year_deal']),'Seasonal titles take priority, generic gifts and ornaments do not');
+check(tw_deals_new_year_first($cards,$begin-1)===[$cards,0]&&tw_deals_new_year_first($cards,$end)===[$cards,0],'Non-seasonal ranking comes back at the exact cutoff');
+
 // Paging over a larger index.
 for($i=0;$i<60;$i++)$save((string)(930000000000+$i),10000,3000+$i*50,120);
 tw_deals_index_build();$p1=tw_catalog_deals(['page'=>1]);$p2=tw_catalog_deals(['page'=>2]);

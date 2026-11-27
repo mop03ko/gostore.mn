@@ -481,3 +481,44 @@ html.home-refresh[data-theme=dark] .header .brand .brand-dark{display:block}
     28%, 100% { opacity: 0; transform: translateX(38%) rotate(-12deg); }
   }
 }
+
+/* Seasonal selection shares the catalog cards and their verified price labels. */
+.new-year-deals { display: none; }
+.home-refresh.new-year-active .new-year-deals:not([hidden]) {
+  display: block;
+  margin-block: 18px;
+  padding: 22px;
+  border: 1px solid var(--home-line);
+  border-radius: 22px;
+  background: var(--home-card);
+  scroll-margin-top: 18px;
+}
+.new-year-deals .section-heading {
+  padding: 0;
+  margin-bottom: 15px;
+}
+.new-year-deals .section-heading h2 { color: var(--home-ink); }
+.new-year-deals .section-heading a { flex: 0 0 auto; }
+.new-year-deals #new-year-deals-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+@media(max-width:980px) {
+  .new-year-deals #new-year-deals-grid {
+    grid-template-columns: none;
+    grid-auto-columns: minmax(150px, 25%);
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scroll-snap-type: inline mandatory;
+    padding-bottom: 5px;
+  }
+  #new-year-deals-grid > article { scroll-snap-align: start; }
+}
+@media(max-width:760px) {
+  .home-refresh.new-year-active .new-year-deals:not([hidden]) { padding: 13px; }
+  .new-year-deals .section-heading { align-items: start; margin-bottom: 12px; gap: 8px; }
+  .new-year-deals .section-heading h2 { font-size: 19px; }
+  .new-year-deals .section-heading a { font-size: 11px; }
+  .new-year-deals #new-year-deals-grid { grid-auto-columns: minmax(130px, 44%); gap: 8px; }
+}

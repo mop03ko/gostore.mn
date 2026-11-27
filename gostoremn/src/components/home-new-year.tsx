@@ -13,7 +13,7 @@ function visible() {
   return now >= start && now < end;
 }
 
-export function HomeNewYear({ visiblePage, onHeight }: { visiblePage: boolean; onHeight: (height: number) => void }) {
+export function HomeNewYear({ visiblePage, onHeight, onDeals }: { visiblePage: boolean; onHeight: (height: number) => void; onDeals?: () => void }) {
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(() => !AppState.currentState || AppState.currentState === "active");
   const [artReady, setArtReady] = useState(false);
@@ -51,10 +51,10 @@ export function HomeNewYear({ visiblePage, onHeight }: { visiblePage: boolean; o
         <Pressable
           accessibilityRole="link"
           testID="home-new-year-catalog"
-          onPress={() => router.navigate("/(tabs)/categories")}
+          onPress={onDeals ?? (() => router.navigate("/(tabs)/categories"))}
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
         >
-          <Text style={styles.ctaLabel}>Бараа үзэх <Text aria-hidden>→</Text></Text>
+          <Text style={styles.ctaLabel}>{onDeals ? "Баярын хямдрал үзэх" : "Бараа үзэх"} <Text aria-hidden>→</Text></Text>
         </Pressable>
       </View>
     </View>

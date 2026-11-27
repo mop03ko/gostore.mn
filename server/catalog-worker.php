@@ -29,6 +29,9 @@ try{
         $status['warm']=['pages'=>$done,'of'=>$pages,'errors'=>$errors,'stopped'=>$stopped,'api_calls'=>supplier_budget_status()['used']-$before];
         $status['warmed_on']=$today;
     }
+    require_once __DIR__.'/taoworld-new-year.php';
+    try{$status['new_year']=tw_deals_warm_new_year();}
+    catch(Throwable){$status['new_year']=['status'=>'deferred'];}
     $status['deals']=tw_deals_index_build();
     require_once __DIR__.'/discovery.php';
     require_once __DIR__.'/catalog-card-prices.php';

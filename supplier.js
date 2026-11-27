@@ -191,7 +191,19 @@ async function loadSupplier(page=1,append=false){
     const sourceLink=document.querySelector('[data-brand-source]');
     if(sourceLink&&r.brand?.id===brand&&/^https:\/\/[a-z0-9.-]+\.tmall\.com\/category\.htm$/.test(r.brand.source_url||'')){sourceLink.href=r.brand.source_url;sourceLink.hidden=false;}
     $('#supplier-status').textContent=(supplierResults.length?supplierResults.length+' бараа харуулж байна'+(total!==null?' · нийт '+new Intl.NumberFormat('en-US').format(total)+' үр дүн':''):'Тохирох бараа олдсонгүй.')+(range.price_min||range.price_max?' · Үнэ: '+(range.price_min?money(Number(range.price_min)):'0 ₮')+' – '+(range.price_max?money(Number(range.price_max)):'дээд хязгааргүй'):'')+(brand?' · Хямдрал, урамшууллын мэдээллийг бараа дээр дарж үзнэ.':'')+(r.stale?' · Хадгалсан мэдээлэл. Үнэ, үлдэгдлийг барааны хуудаснаас шалгана уу.':'');
-    if(homeDeals)$('#supplier-status').textContent=supplierResults.length?'Баталгаажсан хямдрал · Хямдралын хувь ихээс эхэлнэ · Эцсийн үнийг захиалах үед шалгана.':'Одоогоор баталгаажсан хямдралтай бараа алга.';
+    if(homeDeals&&page===1){
+      const shelf=$('#new-year-deals'),grid=$('#new-year-deals-grid'),hero=$('.new-year-hero__cta');
+      const seasonal=next.filter(p=>p.new_year_deal===true&&!window.productPolicyBlocked(p)).slice(0,6);
+      if(shelf&&grid){
+        shelf.hidden=!seasonal.length;
+        if(seasonal.length)renderSupplierCards(seasonal,false,grid);else grid.replaceChildren();
+      }
+      if(hero){
+        hero.href=seasonal.length?'#new-year-deals':'/products';
+        hero.firstChild.textContent=seasonal.length?'Баярын хямдрал үзэх ':'Бараа үзэх ';
+      }
+    }
+    if(homeDeals)$('#supplier-status').textContent=supplierResults.length?'Баталгаажсан хямдрал · Эцсийн үнийг захиалах үед шалгана.':'Одоогоор баталгаажсан хямдралтай бараа алга.';
     if(r.notice)$('#supplier-status').textContent=r.notice+(supplierResults.length?' · '+supplierResults.length+' бараа':'');
     $('#shipping-rates').textContent=supplierRateText(r.shipping)+' Бараа, Хятад доторх хүргэлт, үйлчилгээний шимтгэл тусдаа тооцогдоно.';
     $('#supplier-search button').disabled=false;

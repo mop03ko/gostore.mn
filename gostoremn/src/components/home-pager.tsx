@@ -67,6 +67,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
   }, [active, index, page, retry, onSave]);
   // Only the dedicated deals tab excludes full-price products.
   const products = index === 0 ? data.products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale) : data.products;
+  const hasNewYearDeals = index === 0 && products.some(p => p.new_year_deal);
   const nextPage = () => { if (active && !busy && !lock.current && data.more && !error) { lock.current = true; setPage(x => x + 1); } };
   const saveScroll = () => onSave(index, { ...snapshotRef.current, offset: offset.current });
   return <FlatList ref={list} testID={`home-feed-${index}`} key={columns} numColumns={columns} data={products} keyExtractor={p => p.id}
@@ -84,7 +85,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     contentContainerStyle={{ padding, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
     ListHeaderComponent={<View style={{ gap: compact ? 8 : 12, marginBottom: compact ? 4 : 8 }}>
-      {index === 0 && <><HomeNewYear visiblePage={active && bannerInView} onHeight={height => { bannerHeight.current = height; updateBannerVisibility(offset.current); }} /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
+      {index === 0 && <><HomeNewYear onDeals={hasNewYearDeals ? () => list.current?.scrollToOffset({ offset: bannerHeight.current + padding, animated: false }) : undefined} visiblePage={active && bannerInView} onHeight={height => { bannerHeight.current = height; updateBannerVisibility(offset.current); }} /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
       <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: compact ? 18 : 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />

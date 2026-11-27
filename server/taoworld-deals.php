@@ -12,6 +12,26 @@ const TW_DEALS_INDEX_FRESH=3600;
 const TW_DEALS_PAGE=50;
 function tw_deals_index_path(): string {return tw_catalog_dir().'/deals-index.json';}
 function tw_deals_detail_path(string $id): string {return tw_catalog_dir().'/'.supplier_cache_key('/traffic/item/get',['id'=>$id,'language'=>'en']).'.json';}
+function tw_deals_new_year_active(int $now): bool {
+    return $now>=strtotime('2026-11-28T00:00:00+08:00')&&$now<strtotime('2027-01-09T00:00:00+08:00');
+}
+function tw_deals_new_year_item(array $product): bool {
+    $title=implode(' ',[(string)($product['name']??''),(string)($product['original_name']??'')]);
+    return preg_match('~\b(?:christmas|x-?mas|new[\s-]+year|advent calendar|santa claus|tree skirt)\b|(?:圣诞|聖誕|新年|元旦|跨年|平安夜)|(?:шинэ\s+жил|гацуур|өвлийн\s+өвгөн)~iu',$title)===1;
+}
+// Preserve the regular discount ranking within both sections.
+function tw_deals_new_year_first(array $products,int $now): array {
+    if(!tw_deals_new_year_active($now))return [$products,0];
+    $seasonal=[];$standard=[];
+    foreach($products as $product){
+        if(tw_deals_new_year_item($product)){
+            $product['new_year_deal']=true;
+            $seasonal[]=$product;
+        }else $standard[]=$product;
+    }
+    return [array_merge($seasonal,$standard),count($seasonal)];
+}
+
 // A compact list card (no variants, description or gallery) when the detail shows a real price cut.
 // Its discount stays valid for 24 hours after the detail was fetched.
 function tw_deals_card(array $data,int $time): ?array {
@@ -39,6 +59,11 @@ function tw_deals_index_build(?int $now=null,bool $ifStale=false): array {
         $items=array_values($found);
         // Biggest cut first; the more recently confirmed price breaks ties.
         usort($items,static fn($a,$b)=>[$b['p']['card_discount']['percent'],$b['f']]<=>[$a['p']['card_discount']['percent'],$a['f']]);
+        if(count($items)>TW_DEALS_INDEX_MAX&&tw_deals_new_year_active($now)){
+            $seasonal=array_filter($items,static fn($item)=>tw_deals_new_year_item($item['p']));
+            $keep=array_slice($seasonal+$items,0,TW_DEALS_INDEX_MAX,true);
+            $items=array_values(array_intersect_key($items,$keep));
+        }
         $items=array_slice($items,0,TW_DEALS_INDEX_MAX);
         supplier_snapshot_write(tw_deals_index_path(),['time'=>$now,'data'=>['items'=>$items,'files'=>$files]]);
         return ['items'=>count($items),'files'=>$files];
@@ -61,6 +86,7 @@ function tw_deals_from_index(int $page): array {
         }
         if(($p['card_discount']['expires']??0)>$now)$items[]=$p;
     }
+    [$items,$seasonalCount]=tw_deals_new_year_first($items,$now);
     $products=array_slice($items,($page-1)*TW_DEALS_PAGE,TW_DEALS_PAGE);
-    return tw_catalog_response(['products'=>$products,'page'=>$page,'total'=>count($items),'more'=>count($items)>$page*TW_DEALS_PAGE,'partial'=>false,'scope'=>'deals_index','verified_within'=>TW_DEALS_MAX_AGE],(int)($c['time']??$now),600);
+    return tw_catalog_response(['products'=>$products,'page'=>$page,'total'=>count($items),'more'=>count($items)>$page*TW_DEALS_PAGE,'partial'=>false,'scope'=>'deals_index','verified_within'=>TW_DEALS_MAX_AGE,'new_year_count'=>$seasonalCount],(int)($c['time']??$now),600);
 }

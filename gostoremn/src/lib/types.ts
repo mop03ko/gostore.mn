@@ -22,6 +22,7 @@ export type Variant = {
   image?: string;
 };
 export type Product = {
+  new_year_deal?: boolean;
   card_discount?: Discount | null;
   offers?: Offers;
   price_status?: string;

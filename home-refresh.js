@@ -16,7 +16,9 @@
  const shelf=document.createElement('section');shelf.className='container market-shelf';shelf.setAttribute('aria-label','Зурагтай ангиллууд');
  shelf.innerHTML=[['women','Өөрийн хэв маяг','Өдөр тутмын хувцас'],['shoes','Алхам бүрд','Гутал, пүүз'],['beauty','Өөртөө цаг гарга','Гоо сайхан, арчилгаа'],['bags','Хаашаа ч хамт','Цүнх, үүргэвч'],['kids','Бяцхан ертөнц','Хүүхдийн хувцас'],['kitchen','Гал тогоондоо','Хэрэгтэй бүхнээ']].map(([id,title,caption])=>{const c=find(id),src=photo(c);return c?'<a class="market-tile market-tile-'+id+'" href="/c/'+id+'"><strong>'+title+'</strong><span>'+caption+'</span>'+arrow+(src?'<img src="'+esc(src)+'" width="160" height="160" alt="" loading="lazy" decoding="async">':'')+'</a>':'';}).join('');
  // Shopping comes first; forwarding and pickup remain one click away and in the same DOM.
- document.getElementById('main').prepend(hub);hub.after(shelf);
+ document.getElementById('main').prepend(hub);
+ const seasonal=document.getElementById('new-year-deals');
+ if(seasonal)hub.after(seasonal,shelf);else hub.after(shelf);
  const branch=document.getElementById('branch-promo');if(branch)document.getElementById('catalog')?.after(branch);
  document.documentElement.classList.add('marketplace-ready');
 })();
