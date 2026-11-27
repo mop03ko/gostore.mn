@@ -410,3 +410,75 @@ html.home-refresh[data-theme=dark] .header .brand .brand-dark{display:block}
   .new-year-hero__copy h1 { font-size: clamp(25px, 6.8vw, 36px); }
   .new-year-hero__cta { min-height: 44px; padding: 9px 14px; gap: 10px; }
 }
+
+.new-year-hero__snow,
+.new-year-hero__ribbon {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+.new-year-hero__snow { inset: 0 0 0 52%; }
+.new-year-hero__snow i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #fff6ee;
+  opacity: 0;
+}
+.new-year-hero__snow i:nth-child(1) { --x: 8%; --y: 8%; --size: 3px; --drift: 16px; --fall: 135px; --delay: .2s; }
+.new-year-hero__snow i:nth-child(2) { --x: 21%; --y: 22%; --size: 4px; --drift: -9px; --fall: 125px; --delay: .8s; }
+.new-year-hero__snow i:nth-child(3) { --x: 35%; --y: 6%; --size: 3px; --drift: 18px; --fall: 145px; --delay: .45s; }
+.new-year-hero__snow i:nth-child(4) { --x: 49%; --y: 35%; --size: 5px; --drift: -16px; --fall: 105px; --delay: .1s; }
+.new-year-hero__snow i:nth-child(5) { --x: 67%; --y: 17%; --size: 3px; --drift: 13px; --fall: 155px; --delay: .7s; }
+.new-year-hero__snow i:nth-child(6) { --x: 86%; --y: 11%; --size: 4px; --drift: -13px; --fall: 128px; --delay: .3s; }
+.new-year-hero__snow i:nth-child(7) { --x: 15%; --y: 42%; --size: 4px; --drift: 13px; --fall: 119px; --delay: .55s; }
+.new-year-hero__snow i:nth-child(8) { --x: 44%; --y: 18%; --size: 2px; --drift: -12px; --fall: 140px; --delay: .15s; }
+.new-year-hero__snow i:nth-child(9) { --x: 70%; --y: 46%; --size: 4px; --drift: 17px; --fall: 102px; --delay: .62s; }
+.new-year-hero__snow i:nth-child(10) { --x: 94%; --y: 37%; --size: 3px; --drift: -19px; --fall: 130px; --delay: .35s; }
+.new-year-hero__ribbon {
+  right: 22%;
+  top: 39%;
+  width: 15%;
+  height: 13%;
+  border-radius: 50%;
+}
+.new-year-hero__ribbon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #fff4d3aa, #fff4d300 68%);
+  opacity: 0;
+}
+@media (max-width: 760px) {
+  .new-year-hero__snow i:nth-child(n+7) { display: none; }
+  .new-year-hero__ribbon { right: 27%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .home-refresh.new-year-active .new-year-hero__snow i {
+    animation: new-year-snow 6.8s var(--delay) linear both;
+  }
+  @keyframes new-year-snow {
+    0% { opacity: 0; transform: translate(0, 0); }
+    20%, 65% { opacity: .65; }
+    100% { opacity: 0; transform: translate(var(--drift), var(--fall)); }
+  }
+  @keyframes new-year-ribbon {
+    0% { opacity: 0; transform: translateX(-38%) rotate(-12deg); }
+    42% { opacity: .65; }
+    100% { opacity: 0; transform: translateX(38%) rotate(-12deg); }
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .new-year-hero:hover .new-year-hero__ribbon::after {
+    animation: new-year-ribbon 1.2s ease-out both;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: none) {
+  .home-refresh.new-year-active .new-year-hero__ribbon::after {
+    animation: new-year-ribbon 1.2s .7s ease-out both;
+  }
+}

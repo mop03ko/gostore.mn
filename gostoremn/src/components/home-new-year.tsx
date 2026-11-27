@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useIsFocused } from "expo-router";
+import { NewYearMotion } from "./new-year-motion";
 
 // The New Year artwork runs from November 28 through January 8 in Ulaanbaatar.
 const start = Date.parse("2026-11-28T00:00:00+08:00");
@@ -12,7 +13,9 @@ function visible() {
   return now >= start && now < end;
 }
 
-export function HomeNewYear() {
+export function HomeNewYear({ visiblePage }: { visiblePage: boolean }) {
+  const focused = useIsFocused();
+  const [artReady, setArtReady] = useState(false);
   const [active, setActive] = useState(visible);
   useEffect(() => {
     const refresh = () => setActive(visible());
@@ -35,8 +38,10 @@ export function HomeNewYear() {
         source={require("../../assets/images/new-year-gifts.webp")}
         contentFit="cover"
         contentPosition="right"
+        onDisplay={() => setArtReady(true)}
         style={styles.art}
       />
+      <NewYearMotion active={artReady && focused && visiblePage} />
       <View style={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           Шинэ жилийн{"\n"}бэлгээ сонгоорой
