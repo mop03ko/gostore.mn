@@ -45,13 +45,13 @@ export function HomeDealHighlights({ products }: { products: Product[] }) {
   const compact = useCompactAndroid();
   const c = usePalette(), { width } = useWindowDimensions();
   // Reuse the list response: no extra recommendation, campaign or product requests.
-  const deals = products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale).slice(0, 9);
+  const deals = products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale);
   if (!deals.length) return null;
-  const festive = deals.filter(p => p.new_year_deal);
+  const festive = deals.filter(p => p.new_year_deal).slice(0, 12);
   const regular = deals.filter(p => !p.new_year_deal);
   const featured = festive.length ? festive : deals;
   const groups = (festive.length
-    ? [festive.slice(0, 3), festive.slice(3, 6), regular.slice(0, 3)]
+    ? [...Array.from({ length: Math.ceil(festive.length / 3) }, (_, index) => festive.slice(index * 3, index * 3 + 3)), regular.slice(0, 3)]
     : [deals.slice(0, 3), deals.slice(3, 6)]).filter(group => group.length);
   return <View testID="home-deal-highlights" style={{ gap: 14 }}>
     <HomeCarousel testID="home-deal-carousel" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>

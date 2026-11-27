@@ -1049,10 +1049,26 @@ async function loadSupplier(page=1,append=false){
     $('#supplier-status').textContent=(supplierResults.length?supplierResults.length+' бараа харуулж байна'+(total!==null?' · нийт '+new Intl.NumberFormat('en-US').format(total)+' үр дүн':''):'Тохирох бараа олдсонгүй.')+(range.price_min||range.price_max?' · Үнэ: '+(range.price_min?money(Number(range.price_min)):'0 ₮')+' – '+(range.price_max?money(Number(range.price_max)):'дээд хязгааргүй'):'')+(brand?' · Хямдрал, урамшууллын мэдээллийг бараа дээр дарж үзнэ.':'')+(r.stale?' · Хадгалсан мэдээлэл. Үнэ, үлдэгдлийг барааны хуудаснаас шалгана уу.':'');
     if(homeDeals&&page===1){
       const shelf=$('#new-year-deals'),grid=$('#new-year-deals-grid'),hero=$('.new-year-hero__cta');
-      const seasonal=next.filter(p=>p.new_year_deal===true&&!window.productPolicyBlocked(p)).slice(0,6);
+      const seasonal=next.filter(p=>p.new_year_deal===true&&!window.productPolicyBlocked(p));
+      const preview=seasonal.slice(0,12);
       if(shelf&&grid){
+        const more=shelf.querySelector('.new-year-deals-more');
         shelf.hidden=!seasonal.length;
-        if(seasonal.length)renderSupplierCards(seasonal,false,grid);else grid.replaceChildren();
+        shelf.removeAttribute('data-expanded');
+        if(seasonal.length)renderSupplierCards(preview,false,grid);else grid.replaceChildren();
+        if(more){
+          more.hidden=seasonal.length<=preview.length;
+          more.setAttribute('aria-expanded','false');
+          more.textContent='Баярын бараа нэмж үзэх';
+          more.onclick=()=>{
+            const expanded=more.getAttribute('aria-expanded')==='false';
+            shelf.toggleAttribute('data-expanded',expanded);
+            more.setAttribute('aria-expanded',String(expanded));
+            more.textContent=expanded?'Цөөн бараа харуулах':'Баярын бараа нэмж үзэх';
+            renderSupplierCards(expanded?seasonal:preview,false,grid);
+            if(expanded)grid.children[preview.length]?.querySelector('a')?.focus();
+          };
+        }
       }
       if(hero){
         hero.href=seasonal.length?'#new-year-deals':'/products';

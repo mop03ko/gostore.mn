@@ -3,8 +3,8 @@ declare(strict_types=1);
 require_once __DIR__.'/taoworld-deals.php';
 
 const TW_NEW_YEAR_SEARCH_TTL=43200;
-const TW_NEW_YEAR_DETAILS_PER_RUN=8;
-const TW_NEW_YEAR_DETAILS_PER_DAY=40;
+const TW_NEW_YEAR_DETAILS_PER_RUN=12;
+const TW_NEW_YEAR_DETAILS_PER_DAY=72;
 
 // Only the catalog worker calls this. Candidate search never supplies discount claims.
 function tw_deals_warm_new_year(): array {
@@ -22,7 +22,11 @@ function tw_deals_warm_new_year(): array {
         $budget=supplier_budget_status();
         $daily=min(TW_NEW_YEAR_DETAILS_PER_DAY,max(4,intdiv($budget['background_limit'],8)));
         $groups=[];$searched=0;$checked=0;$errors=0;$limited=false;
-        foreach(['圣诞树','圣诞装饰','圣诞彩灯','圣诞礼品袋','跨年派对装饰'] as $query){
+        $queries=[
+            '圣诞树挂件','圣诞花环','圣诞桌布','圣诞帽','圣诞礼品包装','元旦装饰','圣诞雪花装饰',
+            '圣诞树','圣诞装饰','圣诞彩灯','圣诞礼品袋','跨年派对装饰',
+        ];
+        foreach($queries as $query){
             $entry=$cache[$query]??[];
             if(!$limited&&($entry['next']??0)<=$now){
                 try{
