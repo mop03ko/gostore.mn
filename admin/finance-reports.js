@@ -46,17 +46,68 @@ window.FinanceReports=(()=>{
     }catch(x){err.textContent=x.message;}finally{button.disabled=false;}
   },true);
 
+  function fxReferenceFields(entry) {
+    const banks = [['KhanBank','ХААН Банк'],['XacBank','ХасБанк']];
+    return `<fieldset class="finance-fx-reference">
+      <legend>Банкны лавлах ханш</legend>
+      <div class="finance-form-grid">
+        <label>Юань авсан огноо<input name="fx_purchase_date" type="date" value="${esc(entry.fx_purchase_date||'')}"></label>
+        <label>Банк<select name="fx_bank"><option value="">Сонгох</option>${banks.map(([code,label])=>`<option value="${code}" ${entry.fx_bank===code?'selected':''}>${label}</option>`).join('')}</select></label>
+      </div>
+      <button type="button" class="quiet" data-finance-fx-lookup>Лавлах ханш харах</button>
+      <p class="muted" data-finance-fx-result role="status"></p>
+      <p class="muted">Цэвэр ашгийг тооцохдоо гүйлгээний баримтад бичсэн бодит ханшийг доор оруулна.</p>
+    </fieldset>`;
+  }
+  function clearFxResult(event) {
+    if (['fx_bank','fx_purchase_date'].includes(event.target.name)) {
+      const result = event.target.form?.querySelector('[data-finance-fx-result]');
+      if (result) result.textContent = '';
+    }
+  }
+  addEventListener('change',clearFxResult);
+  addEventListener('input',clearFxResult);
+  addEventListener('click',async event=>{
+    const button = event.target.closest('[data-finance-fx-lookup]');
+    if (!button) return;
+    const form = button.form;
+    const result = form.querySelector('[data-finance-fx-result]');
+    const {fx_bank,fx_purchase_date} = form.elements;
+    const bank = fx_bank.value, date = fx_purchase_date.value;
+    if (!bank || !date) {
+      result.textContent = 'Юань авсан огноо, банкаа сонгоно уу.';
+      return;
+    }
+    const current = ()=>fx_bank.value===bank && fx_purchase_date.value===date && form.isConnected;
+    button.disabled = true;
+    result.textContent = 'Банкны ханш авч байна…';
+    try {
+      const data = await api('admin-finance-fx-reference&'+new URLSearchParams({bank,date}));
+      if (current()) {
+        const label = `${data.bank} · ${data.date}`;
+        const amount = Number(data.rate).toLocaleString('en-US',{maximumFractionDigits:4});
+        result.textContent = data.rate==null
+          ? `${label} · Бэлэн бус зарах ханш олдсонгүй.`
+          : `${label} · Бэлэн бус зарах ханш ${amount} ₮ / ¥`;
+      }
+    } catch (error) {
+      if (current()) result.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   async function open(id){
     if(!id){modal('Санхүүгийн дүн оруулах','<form id="finance-find"><label>Захиалгын код<input name="id" placeholder="GS-…" required maxlength="50"></label><p class="error" role="alert"></p><button class="primary">Нээх</button></form>');return;}
     const o=await api('admin-finance-entry&id='+encodeURIComponent(id)),e=o.entry;
     const input=(key,label,step='1')=>`<label>${label}<input type="number" name="${key}" min="${key==='actual_cny_rate'?'0.01':'0'}" max="${key==='actual_cny_rate'?'100000':key==='supplier_refund_cny'?'1000000':'100000000'}" step="${step}" value="${e[key]??''}" placeholder="Тодорхойгүй"></label>`;
-    modal('Санхүү · '+o.id,`<form id="finance-form" data-id="${esc(o.id)}" data-version="${e.version}"><p class="muted">Системийн үлдэгдэл төлбөр: ${money(o.balance)}. Доорх нэмэлт карго нь үүнд ороогүй төлбөрийн нийт дүн байна.</p><div class="finance-form-grid">${input('actual_cny_rate','Юань авсан бодит ханш (₮ / ¥)','0.0001')}${input('supplier_refund_cny','Нийлүүлэгчээс буцааж авсан (¥)','0.01')}${o.transport_batch?`<div><p>Багцаас ногдсон зардал: <strong>${money(o.transport_cost)}</strong></p><button type="button" class="quiet" data-finance-batch="${esc(o.transport_batch)}">${esc(o.transport_batch)} · засах</button><input type="hidden" name="transport_cost_mnt" value="${e.transport_cost_mnt??''}"></div>`:input('transport_cost_mnt','Тусдаа тээврийн зардал (багцгүй үед, ₮)')}${input('other_cost_mnt','Бусад зардал (₮)')}${input('extra_cargo_mnt','Системд ороогүй карго төлбөрийн нийлбэр (₮)')}<label>Нэмэлт карго төлсөн огноо<input type="date" name="payment_date" value="${esc(e.payment_date)}"></label></div><label>Тайлбар / гүйлгээний лавлагаа<textarea name="note" maxlength="500">${esc(e.note)}</textarea></label><label class="finance-check"><input type="checkbox" name="complete" ${e.complete?'checked':''}>Бүх зардал, нийлүүлэгчийн буцаалтыг тулгасан. Бусад зардалд шаардлагатай шимтгэл, татварыг оруулсан.</label><p class="muted">Нэмэлт каргоны талбар өмнөх нийлбэрийг солино. Системийн төлбөрийг давхар бүү оруулаарай. Энэ нь зөвхөн санхүүгийн тайланд хадгалагдана.</p><p class="error" role="alert"></p><button class="primary">Хадгалах</button></form>`);
+    modal('Санхүү · '+o.id,`<form id="finance-form" data-id="${esc(o.id)}" data-version="${e.version}"><p class="muted">Системийн үлдэгдэл төлбөр: ${money(o.balance)}. Доорх нэмэлт карго нь үүнд ороогүй төлбөрийн нийт дүн байна.</p>${fxReferenceFields(e)}<div class="finance-form-grid">${input('actual_cny_rate','Юань авсан бодит ханш (₮ / ¥)','0.0001')}${input('supplier_refund_cny','Нийлүүлэгчээс буцааж авсан (¥)','0.01')}${o.transport_batch?`<div><p>Багцаас ногдсон зардал: <strong>${money(o.transport_cost)}</strong></p><button type="button" class="quiet" data-finance-batch="${esc(o.transport_batch)}">${esc(o.transport_batch)} · засах</button><input type="hidden" name="transport_cost_mnt" value="${e.transport_cost_mnt??''}"></div>`:input('transport_cost_mnt','Тусдаа тээврийн зардал (багцгүй үед, ₮)')}${input('other_cost_mnt','Бусад зардал (₮)')}${input('extra_cargo_mnt','Системд ороогүй карго төлбөрийн нийлбэр (₮)')}<label>Нэмэлт карго төлсөн огноо<input type="date" name="payment_date" value="${esc(e.payment_date)}"></label></div><label>Тайлбар / гүйлгээний лавлагаа<textarea name="note" maxlength="500">${esc(e.note)}</textarea></label><label class="finance-check"><input type="checkbox" name="complete" ${e.complete?'checked':''}>Бүх зардал, нийлүүлэгчийн буцаалтыг тулгасан. Бусад зардалд шаардлагатай шимтгэл, татварыг оруулсан.</label><p class="muted">Нэмэлт каргоны талбар өмнөх нийлбэрийг солино. Системийн төлбөрийг давхар бүү оруулаарай. Энэ нь зөвхөн санхүүгийн тайланд хадгалагдана.</p><p class="error" role="alert"></p><button class="primary" type="submit">Хадгалах</button></form>`);
   }
   addEventListener('click',async e=>{const b=e.target.closest('[data-finance-edit]');if(!b)return;b.disabled=true;try{await open(b.dataset.financeEdit);}catch(x){toast(x.message);}finally{b.disabled=false;}});
   addEventListener('submit',async e=>{
-    const f=e.target;if(!['finance-find','finance-form'].includes(f.getAttribute('id')))return;e.preventDefault();e.stopImmediatePropagation();const b=f.querySelector('button'),err=f.querySelector('.error');b.disabled=true;err.textContent='';
+    const f=e.target;if(!['finance-find','finance-form'].includes(f.getAttribute('id')))return;e.preventDefault();e.stopImmediatePropagation();const b=f.querySelector('button[type=submit]')||f.querySelector('button'),err=f.querySelector('.error');b.disabled=true;err.textContent='';
     try{const fd=new FormData(f);if(f.getAttribute('id')==='finance-find'){await open(String(fd.get('id')).trim());return;}
-      const body={id:f.dataset.id,version:Number(f.dataset.version),complete:fd.has('complete'),note:fd.get('note'),payment_date:fd.get('payment_date')};
+      const body={id:f.dataset.id,version:Number(f.dataset.version),complete:fd.has('complete'),note:fd.get('note'),payment_date:fd.get('payment_date'),fx_bank:fd.get('fx_bank'),fx_purchase_date:fd.get('fx_purchase_date')};
       for(const k of ['actual_cny_rate','supplier_refund_cny','transport_cost_mnt','other_cost_mnt','extra_cargo_mnt'])body[k]=fd.get(k)===''?null:Number(fd.get(k));
       await api('admin-finance-save',body);$('#editor').close();toast('Санхүүгийн дүн хадгалагдлаа');render();
     }catch(x){err.textContent=x.message;}finally{b.disabled=false;}

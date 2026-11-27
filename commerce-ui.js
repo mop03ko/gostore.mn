@@ -16,10 +16,10 @@ window.commerceUI = (() => {
   // Checkout calls the upfront amount «Одоо төлөх» like the cart; order history names it as the first payment.
   function calculationHtml(q, items = [], title = 'Тооцооны дэлгэрэнгүй', totalLabel = 'Одоо төлөх') {
     const b=q?.breakdown,inputs=q?.inputs||q,r=q?.rates||q;
-    if(!b||!r||!(Number(r.cny_rate)>0)||![inputs.goods_cny,inputs.domestic_cny,r.service_percent,r.service_fee_mnt].every(n=>n!==null&&n!==''&&Number.isFinite(Number(n))))return '';
+    if(!b||!r)return '';
     const row=(label,formula,amount)=>`<div class="calculation-row"><div><span>${label}</span>${formula?`<small>${formula}</small>`:''}</div><strong>${amount}</strong></div>`;
-    const lines=items.filter(i=>Number(i.unit_cny)>0&&Number(i.qty)>0).map(i=>`<li><span>${esc(i.name||i.id)}<small>${esc(i.variant||'')}</small></span><strong>¥${number(i.unit_cny)} × ${number(i.qty)} = ¥${number(i.goods_cny??Math.round(i.unit_cny*i.qty*100)/100)}</strong></li>`).join('');
-    return `<section class="customer-calculation"><h3>${esc(title)}</h3>${lines?`<ul class="calculation-items">${lines}</ul>`:''}<p class="calculation-rate">Хэрэглэсэн ханш: 1 CNY = ${money(r.cny_rate)}</p>${row('Барааны нийт үнэ',`¥${number(inputs.goods_cny)} × ${number(r.cny_rate)} ₮`,money(b.goods_mnt))}${row(`Хятад доторх хүргэлт${inputs.vendors?` · ${number(inputs.vendors)} дэлгүүр`:''}`,q.domestic_later?'Эрээн агуулах хүртэлх бодит дүнг дараа тооцно':`¥${number(inputs.domestic_cny)} × ${number(r.cny_rate)} ₮ · Эрээн агуулах хүртэл`,q.domestic_later?'Дараа тооцно':money(b.domestic_mnt))}${row('Үйлчилгээний хураамж',`${money(b.goods_mnt+(r.service_basis==='non_cargo'?b.domestic_mnt:0))} × ${number(r.service_percent)}% + ${money(r.service_fee_mnt)}`,money(b.service_mnt))}${row(esc(totalLabel),'Бараа + одоо тооцсон Хятад хүргэлт + үйлчилгээ',money(q.total))}<p class="calculation-note">Төгрөгт шилжүүлсэн дүн болон хувийн хураамжийг бүхэл төгрөг рүү дээш тоймлоно.</p><div class="commerce-later"><strong>Дараа төлөх зардал</strong><p>${q.domestic_later?'Хятад доторх хүргэлт. ':''}Олон улсын карго: агуулахын бодит жин эсвэл эзлэхүүн, тарифаар тооцно. УБ хүргэлт сонговол төлбөрийг тусад нь нэмнэ. Эдгээр дүн эхний төлбөрт ороогүй.${r.service_basis==='non_cargo'&&Number(r.service_percent)>0?` ${q.domestic_later?'Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн':'УБ хүргэлт сонговол хүргэлтийн'} дүнд ${number(r.service_percent)}% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.`:''}</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div></section>`;
+    const lines=items.filter(i=>Number(i.qty)>0).map(i=>`<li><span>${esc(i.name||i.id)}<small>${esc(i.variant||'')}</small></span><strong>${number(i.qty)} ш</strong></li>`).join('');
+    return `<section class="customer-calculation"><h3>${esc(title)}</h3>${lines?`<ul class="calculation-items">${lines}</ul>`:''}${row('Барааны нийт үнэ','',money(b.goods_mnt))}${row(`Хятад доторх хүргэлт${inputs.vendors?` · ${number(inputs.vendors)} дэлгүүр`:''}`,q.domestic_later?'Эрээн агуулах хүртэлх бодит дүнг дараа тооцно':'Эрээн агуулах хүртэл',q.domestic_later?'Дараа тооцно':money(b.domestic_mnt))}${row('Үйлчилгээний хураамж',`${money(b.goods_mnt+(r.service_basis==='non_cargo'?b.domestic_mnt:0))} × ${number(r.service_percent)}% + ${money(r.service_fee_mnt)}`,money(b.service_mnt))}${row(esc(totalLabel),'Бараа + одоо тооцсон Хятад хүргэлт + үйлчилгээ',money(q.total))}<div class="commerce-later"><strong>Дараа төлөх зардал</strong><p>${q.domestic_later?'Хятад доторх хүргэлт. ':''}Олон улсын карго: агуулахын бодит жин эсвэл эзлэхүүн, тарифаар тооцно. УБ хүргэлт сонговол төлбөрийг тусад нь нэмнэ. Эдгээр дүн эхний төлбөрт ороогүй.${r.service_basis==='non_cargo'&&Number(r.service_percent)>0?` ${q.domestic_later?'Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн':'УБ хүргэлт сонговол хүргэлтийн'} дүнд ${number(r.service_percent)}% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.`:''}</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div></section>`;
   }
   function estimate(items, s = settings()) {
     const rate = Number(s.cny_rate);
@@ -38,7 +38,7 @@ window.commerceUI = (() => {
   function estimateHtml(items, s = settings()) {
     const q = estimate(items, s);
     const value = n => n === null || n === undefined ? 'Захиалга үргэлжлүүлэхэд шалгана' : money(n);
-    const formula=q && q.service!==null?`<p class="calculation-note">Ханш: 1 CNY = ${money(s.cny_rate)}<br>Бараа: ¥${number(Math.round(items.reduce((sum,i)=>sum+Number(i.cny)*i.qty,0)*100)/100)} × ${number(s.cny_rate)} ₮ = ${money(q.goods)}<br>Үйлчилгээ: ${money(q.base)} × ${number(Number(s.service_percent)||0)}% + ${money(Number(s.service_fee_mnt)||0)} = ${money(q.service)}</p>`:'';
+    const formula=q && q.service!==null?`<p class="calculation-note">Үйлчилгээ: ${money(q.base)} × ${number(Number(s.service_percent)||0)}% + ${money(Number(s.service_fee_mnt)||0)} = ${money(q.service)}</p>`:'';
     return `<dl class="commerce-estimate"><div><dt>Барааны дүн</dt><dd>${value(q?.goods)}</dd></div><div><dt>Үйлчилгээний хураамж</dt><dd>${value(q?.service)}</dd></div><div><dt>Хятад доторх хүргэлт</dt><dd>${q?.domesticLater ? 'Дараа · бодит дүнгээр' : value(q?.domestic)}</dd></div><div class="total"><dt>Одоо төлөх · урьдчилсан</dt><dd>${value(q?.total)}</dd></div></dl>${formula}<p class="account-hint">Үнэ, үлдэгдлийг захиалгын дараагийн алхамд дахин шалгана.</p><div class="commerce-later"><strong>Дараа төлөх</strong><p>${q?.domesticLater ? 'Хятад доторх хүргэлт, ' : ''}олон улсын карго, сонгосон бол УБ хүргэлт. Эцсийн нийт зардалд эдгээр төлбөр нэмэгдэнэ.</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div>`;
   }
   function calculator(s = settings(), expanded = false) {
@@ -73,7 +73,7 @@ window.commerceUI = (() => {
       volume=dimensionVolume(values);
     }else if(method!=='volume')return null;
     const q=GOStoreCargo.calculate(values.weight,volume,s);
-    return q?{...q,measure:volume,amount:q.amount_mnt,formula:GOStoreCargo.description(q)}:null;
+    return q?{...q,measure:volume,amount:q.amount_mnt,formula:GOStoreCargo.description(q,false,false)}:null;
   }
   function updateCalculator(e) {
     const box=e.target.closest('.commerce-calculator');if(!box)return;

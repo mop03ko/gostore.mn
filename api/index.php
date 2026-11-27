@@ -99,6 +99,7 @@ try {
         if($action==='admin-report')json_out(admin_report($_GET));
         if($action==='admin-finance-entry'){$o=order_row(str_field($_GET,'id',50))['order'];json_out(admin_finance_order($o));}
         if($action==='admin-finance-batch')json_out(finance_batch_get(str_field($_GET,'id',50)));
+        if($action==='admin-finance-fx-reference')json_out(admin_fx_reference($_GET));
         if($action==='admin-export')admin_export($_GET);
         if($action==='admin-search-insights')json_out(admin_search_insights($_GET));
         if($action==='admin-api-usage')json_out(admin_api_usage());

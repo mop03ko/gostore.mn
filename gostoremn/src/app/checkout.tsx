@@ -294,26 +294,19 @@ function Checkout() {
                   <Copy key={i.id + i.sku}>
                     {i.name}
                     {"\n"}
-                    {i.variant} · {i.qty} ш × ¥{i.unit_cny.toFixed(2)} = ¥
-                    {i.goods_cny.toFixed(2)}
+                    {i.variant} · {i.qty} ш
                   </Copy>
                 ))}
               </Card>
               <Card>
                 <Title>Төлөх дүн</Title>
-                <Row
-                  label="Тооцооны ханш"
-                  value={"¥1 = " + money(preview.quote.cny_rate)}
-                />
                 {Object.entries(preview.quote.breakdown)
                   .filter(([k]) => k !== "cargo_mnt")
                   .map(([k, v]) => (
                     <Row key={k} label={partName(k)} value={money(v)} />
                   ))}
                 <Copy>
-                  Бараа ¥{preview.quote.goods_cny.toFixed(2)} · Хятад хүргэлт ¥
-                  {preview.quote.domestic_cny.toFixed(2)} ·{" "}
-                  {preview.quote.vendors} дэлгүүр
+                  Хятад доторх хүргэлт · {preview.quote.vendors} дэлгүүр
                 </Copy>
                 <Copy>
                   Үйлчилгээ: бараа, Хятад доторх хүргэлтийн нийлбэрийн {preview.quote.service_percent}% +{" "}

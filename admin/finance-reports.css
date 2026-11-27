@@ -4,3 +4,6 @@
 .finance-batch-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}#finance-batch-form td input{min-width:110px}#finance-batch-form .table-wrap{max-width:100%;overflow:auto}#finance-batch-sum{font-weight:700;padding:12px;background:#fff3e9;border-radius:10px}
 
 #editor .finance-check input{height:20px;min-height:20px;flex:0 0 20px;padding:0}
+.finance-fx-reference{border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:0 0 16px;min-width:0}
+.finance-fx-reference legend{font-weight:700;padding:0 6px}
+.finance-fx-reference [data-finance-fx-result]:empty{display:none}

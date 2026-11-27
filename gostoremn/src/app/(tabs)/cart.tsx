@@ -213,7 +213,7 @@ export default function Cart() {
             >
               {rate
                 ? money(Math.ceil((Math.round(goods * 100) / 100) * rate))
-                : "Ханш шалгаж байна"}
+                : "Үнэ шалгаж байна"}
             </Text>
           </View>
           <Button

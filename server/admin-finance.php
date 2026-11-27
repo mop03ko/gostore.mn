@@ -1,11 +1,12 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/admin-batch-finance.php';
+require_once __DIR__.'/admin-fx-reference.php';
 
 // Reporting-only ledger. Never changes customer invoices, paid flags or warehouse balances.
 function admin_finance_entry(string $id): array {
     $q=db()->prepare('SELECT value FROM meta WHERE key=?');$q->execute(['finance:'.$id]);
-    return array_replace(['version'=>0,'actual_cny_rate'=>null,'supplier_refund_cny'=>0,'transport_cost_mnt'=>null,'other_cost_mnt'=>null,'extra_cargo_mnt'=>0,'payment_date'=>'','note'=>'','complete'=>false],json_decode($q->fetchColumn()?:'{}',true)?:[]);
+    return array_replace(['version'=>0,'actual_cny_rate'=>null,'fx_bank'=>'','fx_purchase_date'=>'','supplier_refund_cny'=>0,'transport_cost_mnt'=>null,'other_cost_mnt'=>null,'extra_cargo_mnt'=>0,'payment_date'=>'','note'=>'','complete'=>false],json_decode($q->fetchColumn()?:'{}',true)?:[]);
 }
 function admin_finance_save(array $b): array {
     admin_required();if(!admin_role_at_least('owner'))fail('Зөвхөн эзэмшигч санхүүгийн дүн засна.',403);
@@ -26,6 +27,10 @@ function admin_finance_save(array $b): array {
         if(finance_batch_share($id)&&($entry['transport_cost_mnt']??0)>0)fail('Багцын зардал бүртгэгдсэн. Тээврийн дүнг багцаар засна уу.',409);
         if($entry['supplier_refund_cny']>(int)($o['purchase']['supplier_total_fen']??0)/100)fail('Нийлүүлэгчийн буцаалт худалдан авсан дүнгээс их байна.');
         $old=admin_finance_entry($id);if($old['version']!==$version)fail('Өөр админ шинэчилсэн байна. Дахин нээгээд шалгана уу.',409);
+        $entry['fx_bank']=array_key_exists('fx_bank',$b)?str_field($b,'fx_bank',20,false):$old['fx_bank'];
+        $entry['fx_purchase_date']=array_key_exists('fx_purchase_date',$b)?str_field($b,'fx_purchase_date',10,false):$old['fx_purchase_date'];
+        if($entry['fx_bank']!==''&&!isset(ADMIN_FX_BANKS[$entry['fx_bank']]))fail('Банкаа сонгоно уу.');
+        if($entry['fx_purchase_date']!=='')admin_fx_day($entry['fx_purchase_date']);
         $entry['version']=$version+1;$entry['updated_at']=gmdate('c');
         $db->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute(['finance:'.$id,json_encode($entry,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
         $db->exec('COMMIT');

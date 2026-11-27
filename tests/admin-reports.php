@@ -133,5 +133,18 @@ $batchBody['version']=1;$batchBody['amount_mnt']=60000;$batchBody['allocations']
 check(admin_finance_report([$a,order_row('GS-B')['order']])['transport_cost']===60000,'Batch correction replaces prior cost, never accumulates');
 $batch['status']='ready';db()->prepare('UPDATE shipment_batches SET data=? WHERE id=?')->execute([json_encode($batch),$batch['id']]);$batchBody['version']=2;denied(fn()=>finance_batch_save($batchBody),409);
 check(admin_action_role('admin-finance-batch-save','POST')==='owner','Batch finance is owner-only');
+$fxInput=['bank'=>'KhanBank','date'=>'2026-01-23'];
+$khanRates=fn($url)=>[['currency'=>'USD','sellRate'=>3500],['currency'=>'CNY','buyRate'=>500,'cashSellRate'=>515,'sellRate'=>510.25]];
+$login('operator');denied(fn()=>admin_fx_reference($fxInput,$khanRates),403);$login('owner');
+denied(fn()=>admin_fx_reference(array_replace($fxInput,['date'=>'2026-02-30']),$khanRates),400);
+denied(fn()=>admin_fx_reference(array_replace($fxInput,['bank'=>'unknown']),$khanRates),400);
+check(admin_fx_reference($fxInput,$khanRates)['rate']===510.25,'Select CNY noncash sell rate');
+check(admin_fx_reference($fxInput,fn()=>throw new RuntimeException('Unexpected repeated fetch'))['rate']===510.25,'Bank/date lookup cached');
+check(admin_fx_reference(['bank'=>'XacBank','date'=>'2026-01-23'],fn()=>['docs'=>[]])['rate']===null,'Missing daily rate stays unknown');
+$e=admin_finance_entry('GS-A');
+admin_finance_save(array_replace($body,['version'=>$e['version'],'transport_cost_mnt'=>null,'fx_bank'=>'KhanBank','fx_purchase_date'=>'2026-01-23']));
+$record=admin_finance_order($a);
+check($record['entry']['fx_purchase_date']==='2026-01-23'&&$record['entry']['fx_bank']==='KhanBank','Reference selection persists');
+check((float)$record['entry']['actual_cny_rate']===480.0&&$record['actual_cost']===57600,'Reference rate cannot replace the entered transaction rate');
 file_put_contents(__DIR__.'/../tmp/finance-ui-fixture.json',json_encode(['finance'=>admin_finance_report([$a,$part])],JSON_UNESCAPED_UNICODE));
 echo "admin-reports ok: actual FX, cargo, refunds, split isolation, missing costs, loss, owner authorization, concurrency and audit\n";

@@ -342,14 +342,16 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
   const cny=large?(basis==='weight'?wc:vc):null,amount=Math.ceil(Number(raw.toFixed(8)));
   return amount<=100000000?{method,category:large?'large':'small',basis,measure:basis==='volume'?v:w,steps,weight_kg:w,volume_m3:v,weight_cny:large?wc:null,volume_cny:large?vc:null,amount_cny:cny,amount_mnt:amount,rates:r}:null;
  }
- function description(q,zh=false){
+ function description(q,zh=false,showExchange=true){
   if(!q)return '';
   if(q.method!=='auto'&&!q.rates?.cargo_tariff)return (q.method==='volume'?'m³':'kg')+' · '+n(q.measure);
   const p=q.rates.cargo_tariff,kind=q.category==='large'?(zh?'大货':'Том ачаа'):(zh?'小包裹':'Жижиг илгээмж');
+  const summary=(q.method==='auto'?kind:q.method==='volume'?(zh?'按体积':'Эзэлхүүнээр'):(zh?'按重量':'Жингээр'))+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³';
+  if(q.category==='large'&&!showExchange)return summary;
   const formula=q.category==='large'?(q.method==='volume'?n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny):q.method==='weight'?n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000':'max('+n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000, '+n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny)+')')+' = ¥'+n(q.amount_cny)+' × '+n(q.rates.cny_rate)+' ₮'
    :p.version===3?n(q.steps)+' × '+n(p.small_step_kg)+' kg × '+n(p.small_step_mnt)+' ₮'
    :q.basis==='light'?'≤ '+n(p.light_limit_kg)+' kg = '+n(p.light_mnt)+' ₮':n(q.weight_kg)+' kg × '+n(p.small_per_kg_mnt)+' ₮';
-  return (q.method==='auto'?kind:q.method==='volume'?(zh?'按体积':'Эзэлхүүнээр'):(zh?'按重量':'Жингээр'))+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³ · '+formula;
+  return summary+' · '+formula;
  }
  function tariff(r,zh=false){
   const p=r?.cargo_tariff;if(!p)return '';
@@ -381,10 +383,10 @@ window.commerceUI = (() => {
   // Checkout calls the upfront amount «Одоо төлөх» like the cart; order history names it as the first payment.
   function calculationHtml(q, items = [], title = 'Тооцооны дэлгэрэнгүй', totalLabel = 'Одоо төлөх') {
     const b=q?.breakdown,inputs=q?.inputs||q,r=q?.rates||q;
-    if(!b||!r||!(Number(r.cny_rate)>0)||![inputs.goods_cny,inputs.domestic_cny,r.service_percent,r.service_fee_mnt].every(n=>n!==null&&n!==''&&Number.isFinite(Number(n))))return '';
+    if(!b||!r)return '';
     const row=(label,formula,amount)=>`<div class="calculation-row"><div><span>${label}</span>${formula?`<small>${formula}</small>`:''}</div><strong>${amount}</strong></div>`;
-    const lines=items.filter(i=>Number(i.unit_cny)>0&&Number(i.qty)>0).map(i=>`<li><span>${esc(i.name||i.id)}<small>${esc(i.variant||'')}</small></span><strong>¥${number(i.unit_cny)} × ${number(i.qty)} = ¥${number(i.goods_cny??Math.round(i.unit_cny*i.qty*100)/100)}</strong></li>`).join('');
-    return `<section class="customer-calculation"><h3>${esc(title)}</h3>${lines?`<ul class="calculation-items">${lines}</ul>`:''}<p class="calculation-rate">Хэрэглэсэн ханш: 1 CNY = ${money(r.cny_rate)}</p>${row('Барааны нийт үнэ',`¥${number(inputs.goods_cny)} × ${number(r.cny_rate)} ₮`,money(b.goods_mnt))}${row(`Хятад доторх хүргэлт${inputs.vendors?` · ${number(inputs.vendors)} дэлгүүр`:''}`,q.domestic_later?'Эрээн агуулах хүртэлх бодит дүнг дараа тооцно':`¥${number(inputs.domestic_cny)} × ${number(r.cny_rate)} ₮ · Эрээн агуулах хүртэл`,q.domestic_later?'Дараа тооцно':money(b.domestic_mnt))}${row('Үйлчилгээний хураамж',`${money(b.goods_mnt+(r.service_basis==='non_cargo'?b.domestic_mnt:0))} × ${number(r.service_percent)}% + ${money(r.service_fee_mnt)}`,money(b.service_mnt))}${row(esc(totalLabel),'Бараа + одоо тооцсон Хятад хүргэлт + үйлчилгээ',money(q.total))}<p class="calculation-note">Төгрөгт шилжүүлсэн дүн болон хувийн хураамжийг бүхэл төгрөг рүү дээш тоймлоно.</p><div class="commerce-later"><strong>Дараа төлөх зардал</strong><p>${q.domestic_later?'Хятад доторх хүргэлт. ':''}Олон улсын карго: агуулахын бодит жин эсвэл эзлэхүүн, тарифаар тооцно. УБ хүргэлт сонговол төлбөрийг тусад нь нэмнэ. Эдгээр дүн эхний төлбөрт ороогүй.${r.service_basis==='non_cargo'&&Number(r.service_percent)>0?` ${q.domestic_later?'Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн':'УБ хүргэлт сонговол хүргэлтийн'} дүнд ${number(r.service_percent)}% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.`:''}</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div></section>`;
+    const lines=items.filter(i=>Number(i.qty)>0).map(i=>`<li><span>${esc(i.name||i.id)}<small>${esc(i.variant||'')}</small></span><strong>${number(i.qty)} ш</strong></li>`).join('');
+    return `<section class="customer-calculation"><h3>${esc(title)}</h3>${lines?`<ul class="calculation-items">${lines}</ul>`:''}${row('Барааны нийт үнэ','',money(b.goods_mnt))}${row(`Хятад доторх хүргэлт${inputs.vendors?` · ${number(inputs.vendors)} дэлгүүр`:''}`,q.domestic_later?'Эрээн агуулах хүртэлх бодит дүнг дараа тооцно':'Эрээн агуулах хүртэл',q.domestic_later?'Дараа тооцно':money(b.domestic_mnt))}${row('Үйлчилгээний хураамж',`${money(b.goods_mnt+(r.service_basis==='non_cargo'?b.domestic_mnt:0))} × ${number(r.service_percent)}% + ${money(r.service_fee_mnt)}`,money(b.service_mnt))}${row(esc(totalLabel),'Бараа + одоо тооцсон Хятад хүргэлт + үйлчилгээ',money(q.total))}<div class="commerce-later"><strong>Дараа төлөх зардал</strong><p>${q.domestic_later?'Хятад доторх хүргэлт. ':''}Олон улсын карго: агуулахын бодит жин эсвэл эзлэхүүн, тарифаар тооцно. УБ хүргэлт сонговол төлбөрийг тусад нь нэмнэ. Эдгээр дүн эхний төлбөрт ороогүй.${r.service_basis==='non_cargo'&&Number(r.service_percent)>0?` ${q.domestic_later?'Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн':'УБ хүргэлт сонговол хүргэлтийн'} дүнд ${number(r.service_percent)}% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.`:''}</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div></section>`;
   }
   function estimate(items, s = settings()) {
     const rate = Number(s.cny_rate);
@@ -403,7 +405,7 @@ window.commerceUI = (() => {
   function estimateHtml(items, s = settings()) {
     const q = estimate(items, s);
     const value = n => n === null || n === undefined ? 'Захиалга үргэлжлүүлэхэд шалгана' : money(n);
-    const formula=q && q.service!==null?`<p class="calculation-note">Ханш: 1 CNY = ${money(s.cny_rate)}<br>Бараа: ¥${number(Math.round(items.reduce((sum,i)=>sum+Number(i.cny)*i.qty,0)*100)/100)} × ${number(s.cny_rate)} ₮ = ${money(q.goods)}<br>Үйлчилгээ: ${money(q.base)} × ${number(Number(s.service_percent)||0)}% + ${money(Number(s.service_fee_mnt)||0)} = ${money(q.service)}</p>`:'';
+    const formula=q && q.service!==null?`<p class="calculation-note">Үйлчилгээ: ${money(q.base)} × ${number(Number(s.service_percent)||0)}% + ${money(Number(s.service_fee_mnt)||0)} = ${money(q.service)}</p>`:'';
     return `<dl class="commerce-estimate"><div><dt>Барааны дүн</dt><dd>${value(q?.goods)}</dd></div><div><dt>Үйлчилгээний хураамж</dt><dd>${value(q?.service)}</dd></div><div><dt>Хятад доторх хүргэлт</dt><dd>${q?.domesticLater ? 'Дараа · бодит дүнгээр' : value(q?.domestic)}</dd></div><div class="total"><dt>Одоо төлөх · урьдчилсан</dt><dd>${value(q?.total)}</dd></div></dl>${formula}<p class="account-hint">Үнэ, үлдэгдлийг захиалгын дараагийн алхамд дахин шалгана.</p><div class="commerce-later"><strong>Дараа төлөх</strong><p>${q?.domesticLater ? 'Хятад доторх хүргэлт, ' : ''}олон улсын карго, сонгосон бол УБ хүргэлт. Эцсийн нийт зардалд эдгээр төлбөр нэмэгдэнэ.</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div>`;
   }
   function calculator(s = settings(), expanded = false) {
@@ -438,7 +440,7 @@ window.commerceUI = (() => {
       volume=dimensionVolume(values);
     }else if(method!=='volume')return null;
     const q=GOStoreCargo.calculate(values.weight,volume,s);
-    return q?{...q,measure:volume,amount:q.amount_mnt,formula:GOStoreCargo.description(q)}:null;
+    return q?{...q,measure:volume,amount:q.amount_mnt,formula:GOStoreCargo.description(q,false,false)}:null;
   }
   function updateCalculator(e) {
     const box=e.target.closest('.commerce-calculator');if(!box)return;
@@ -1904,7 +1906,7 @@ window.productCompare=(()=>{
             ${commerceUI.calculator(s,true)}
             <ol class="store-route"><li><strong>Нийлүүлэгч</strong><span>Барааг Эрээн агуулах руу илгээнэ.</span></li><li><strong>Эрээн агуулах</strong><span>Хүлээн авч, зураг авч, жигнэж, багцална.</span></li><li><strong>Замын-Үүд</strong><span>Хил дамжин Монголд орж ирнэ.</span></li><li><strong>Хүлээн авах салбар</strong><span>Ачааг ангилж, хүлээлгэн өгөхөд бэлдэнэ.</span></li></ol>
             <p class="help-note">${esc(commerceUI.timingText())}</p>
-            <div class="help-delivery-grid"><div class="help-panel"><h3>Каргоны тариф</h3>${s.cargo_tariff?`<p>${esc(GOStoreCargo.tariff(s))}</p><p>1 CNY = ${money(s.cny_rate)}. ${s.cargo_tariff.small_step_kg?`Жижиг илгээмжийн жинг ${Number(s.cargo_tariff.small_step_kg).toLocaleString('en-US')} кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.`:'Жинг кг руу дээш бүхэлчлэхгүй.'} Төлбөрийг бүхэл төгрөг рүү дээш тоймлоно.</p>`:'<p>Тарифын мэдээлэл ачаалагдсангүй. Бидэнтэй холбогдож лавлана уу.</p>'}</div></div>
+            <div class="help-delivery-grid"><div class="help-panel"><h3>Каргоны тариф</h3>${s.cargo_tariff?`<p>${esc(GOStoreCargo.tariff(s))}</p><p>${s.cargo_tariff.small_step_kg?`Жижиг илгээмжийн жинг ${Number(s.cargo_tariff.small_step_kg).toLocaleString('en-US')} кг-ын алхмаар дээш бүхэлчилнэ; том ачааны жин, эзлэхүүнийг бүхэлчлэхгүй.`:'Жинг кг руу дээш бүхэлчлэхгүй.'} Төлбөрийг бүхэл төгрөг рүү дээш тоймлоно.</p>`:'<p>Тарифын мэдээлэл ачаалагдсангүй. Бидэнтэй холбогдож лавлана уу.</p>'}</div></div>
           </section>
           <section id="pickup" class="help-section">
             <div class="help-section-heading"><span>04</span><div><h2>Бараагаа хүлээн авах</h2><p>Агуулахаас авах эсвэл хүргүүлэх боломжтой.</p></div></div>
