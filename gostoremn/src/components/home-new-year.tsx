@@ -13,13 +13,15 @@ function visible() {
   return now >= start && now < end;
 }
 
-export function HomeNewYear({ visiblePage }: { visiblePage: boolean }) {
+export function HomeNewYear({ visiblePage, onHeight }: { visiblePage: boolean; onHeight: (height: number) => void }) {
   const focused = useIsFocused();
+  const [foreground, setForeground] = useState(() => !AppState.currentState || AppState.currentState === "active");
   const [artReady, setArtReady] = useState(false);
   const [active, setActive] = useState(visible);
   useEffect(() => {
     const refresh = () => setActive(visible());
     const subscription = AppState.addEventListener("change", (state) => {
+      setForeground(state === "active");
       if (state === "active") refresh();
     });
     const timer = setInterval(refresh, 60_000);
@@ -32,7 +34,7 @@ export function HomeNewYear({ visiblePage }: { visiblePage: boolean }) {
   if (!active) return null;
 
   return (
-    <View style={styles.banner} testID="home-new-year">
+    <View style={styles.banner} testID="home-new-year" onLayout={({ nativeEvent }) => onHeight(nativeEvent.layout.height)}>
       <Image
         accessible={false}
         source={require("../../assets/images/new-year-gifts.webp")}
@@ -41,7 +43,7 @@ export function HomeNewYear({ visiblePage }: { visiblePage: boolean }) {
         onDisplay={() => setArtReady(true)}
         style={styles.art}
       />
-      <NewYearMotion active={artReady && focused && visiblePage} />
+      <NewYearMotion active={artReady && focused && foreground && visiblePage} />
       <View style={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           Шинэ жилийн{"\n"}бэлгээ сонгоорой

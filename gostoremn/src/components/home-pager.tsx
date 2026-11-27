@@ -21,6 +21,12 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [retry, setRetry] = useState(0), [tick, setTick] = useState(0);
   const list = useRef<FlatList<Product>>(null), lock = useRef(false), offset = useRef(initial.offset);
   const [restoreOffset] = useState(initial.offset);
+  const padding = compact ? 6 : 8;
+  const bannerHeight = useRef(144);
+  const [bannerInView, setBannerInView] = useState(initial.offset < 144 + padding);
+  const updateBannerVisibility = (scrollY: number) => {
+    if (index === 0) setBannerInView(scrollY < bannerHeight.current + padding);
+  };
   const restored = useRef(initial.offset === 0), snapshotRef = useRef(initial);
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [stale, setStale] = useState(false);
@@ -67,12 +73,18 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     nestedScrollEnabled directionalLockEnabled keyboardShouldPersistTaps="handled" initialNumToRender={6} windowSize={5}
     contentOffset={{ x: 0, y: restoreOffset }}
     onContentSizeChange={(_, height) => { if (!restored.current && height > restoreOffset) { restored.current = true; list.current?.scrollToOffset({ offset: restoreOffset, animated: false }); } }}
-    onScroll={e => { if (!restored.current) return; offset.current = e.nativeEvent.contentOffset.y; clearTimeout(scrollTimer.current); scrollTimer.current = setTimeout(saveScroll, 150); }} scrollEventThrottle={100}
+    onScroll={e => {
+      if (!restored.current) return;
+      offset.current = e.nativeEvent.contentOffset.y;
+      updateBannerVisibility(offset.current);
+      clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(saveScroll, 150);
+    }} scrollEventThrottle={100}
     onScrollEndDrag={saveScroll} onMomentumScrollEnd={saveScroll}
-    contentContainerStyle={{ padding: compact ? 6 : 8, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
+    contentContainerStyle={{ padding, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
     ListHeaderComponent={<View style={{ gap: compact ? 8 : 12, marginBottom: compact ? 4 : 8 }}>
-      {index === 0 && <><HomeNewYear visiblePage={active} /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
+      {index === 0 && <><HomeNewYear visiblePage={active && bannerInView} onHeight={height => { bannerHeight.current = height; updateBannerVisibility(offset.current); }} /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
       <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: compact ? 18 : 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
