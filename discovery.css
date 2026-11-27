@@ -8,7 +8,7 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 
 .discovery-product{position:relative}
 
-.discovery-fishing-links{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}.discovery-fishing-links a{text-decoration:none}
+.discovery-subcategory-links{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.discovery-subcategory-links .discovery-more{display:inline-flex;align-items:center;max-width:100%;margin:0;padding:0 12px;border:1px solid var(--theme-border,#eee);border-radius:22px;background:var(--theme-raised,#f7f7f7);font-size:13px;text-decoration:none}
 
 /* index.html pre-renders an empty #discovery-home on the homepage. Its usual height (it varies with
    text wrapping by width) is reserved until discovery.js fills it, so the catalog does not jump. */

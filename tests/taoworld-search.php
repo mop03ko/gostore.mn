@@ -37,4 +37,11 @@ check(!isset($n['redirect'])&&count($n['products'])>0&&str_contains($n['notice']
 $before=count($calls);supplier_search(['q'=>'  UNICLO  T-Shirt','page'=>1,'limit'=>12],true);supplier_search(['q'=>'uniqlo t-shirt','page'=>1,'limit'=>12],true);
 $search=array_values(array_filter(array_slice($calls,$before),fn($c)=>$c[0]==='/traffic/item/search'));
 check(count($search)===1&&$search[0][1]['keyword']==='uniqlo t-shirt','Equivalent searches share one normalised provider call');
+// Refined category links and their Mongolian labels resolve to the same upstream query.
+$before=count($calls);
+foreach(['phone screen protectors',' Утасны хамгаалалтын шил '] as $q)supplier_search(['q'=>$q,'page'=>1,'limit'=>12],true);
+$search=array_values(array_filter(array_slice($calls,$before),fn($c)=>$c[0]==='/traffic/item/search'));
+check(count($search)===1&&$search[0][1]['keyword']==='手机钢化膜'&&$search[0][1]['language']==='en','Subcategory and Mongolian label share a precise keyword and keep English product titles');
+check($intent('spinning reels')['q']==='纺车轮'&&$intent('PVC хоолойн булан')['q']==='PVC水管90度弯头','Fishing and plumbing subcategories use specific upstream phrases');
+check($intent('cheap spinning reels')['q']==='cheap spinning reels','Exact category aliases leave ordinary queries intact');
 echo "PASS search: Taobao/Tmall links, share texts and item numbers open products, brand aliases, normalised cache keys, Mongolian passthrough, unknown items.\n";

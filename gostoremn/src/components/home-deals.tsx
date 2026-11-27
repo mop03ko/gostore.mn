@@ -81,6 +81,22 @@ export function HomeCategoryPhotos({ onSelect }: { onSelect: (index: number) => 
   </HomeCarousel>;
 }
 
+export function HomeSubcategories({ categoryId }: { categoryId: string }) {
+  const c = usePalette();
+  const category = categories.find(item => item.id === categoryId);
+  if (!category?.children.length) return null;
+
+  return <HomeCarousel horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 5 }} testID="home-subcategories">
+    {category.children.map(item => (
+      <Pressable key={item.query} accessibilityRole="button" accessibilityLabel={item.name}
+        onPress={() => router.navigate({ pathname: "/", params: { q: item.query, image: "" } })}
+        style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: "center", borderRadius: 22, backgroundColor: c.subtle }}>
+        <Text style={{ color: c.ink, fontWeight: "600", fontSize: 13 }}>{item.name}</Text>
+      </Pressable>
+    ))}
+  </HomeCarousel>;
+}
+
 export function HomeWarehouseLinks() {
   const c = usePalette(), { selected, loaded, open } = useWarehousePreference();
   return <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surface, paddingHorizontal: 14, paddingVertical: 3, gap: 10 }}>

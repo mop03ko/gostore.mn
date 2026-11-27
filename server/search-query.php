@@ -32,7 +32,36 @@ function search_query_intent(string $raw,?callable $resolve=null): array {
         if(preg_match('~https?://(?:m|e|s)\.tb\.cn/[\w./-]+~i',$q,$m)&&($id=($resolve??'search_resolve_short_link')($m[0])))return ['type'=>'product','id'=>'tb-'.$id,'title'=>$title];
         return $title===''?['type'=>'empty']:['type'=>'search','q'=>$title];
     }
-    return ['type'=>'search','q'=>search_normalise($q)];
+    return ['type'=>'search','q'=>search_category_keyword(search_normalise($q))];
+}
+// Exact category labels share the same provider keyword and cached results.
+function search_category_keyword(string $q): string {
+    return match ($q) {
+        'kitchen counter racks', 'гал тогооны тавиур' => '厨房台面置物架',
+        'wardrobe storage boxes', 'шүүгээний хадгалах хайрцаг' => '衣柜收纳箱',
+        'under bed storage', 'орны доорх хадгалах сав' => '床底扁平收纳袋',
+
+        'women winter coats', 'эмэгтэй өвлийн гадуур хувцас' => '女士冬季外套',
+        'women plus size clothing', 'том размерын эмэгтэй хувцас' => '大码女装',
+        'knit dress', 'нэхмэл даашинз' => '针织连衣裙',
+
+        'men winter sneakers', 'дотортой эрэгтэй пүүз' => '男士加绒运动鞋',
+        'men hiking boots', 'эрэгтэй уулын гутал' => '男士户外登山鞋',
+        'men slip on shoes', 'үдээсгүй эрэгтэй гутал' => '男士一脚蹬鞋',
+
+        'phone cases', 'утасны гэр' => '手机保护壳',
+        'phone screen protectors', 'утасны хамгаалалтын шил' => '手机钢化膜',
+        'usb c cables', 'usb-c кабель' => 'USB-C数据线',
+
+        'spinning reels', 'ил дамар' => '纺车轮',
+        'baitcasting reels', 'байткаст дамар' => '路亚水滴轮',
+        'fishing soft lures', 'зөөлөн өгөөш' => '路亚软饵',
+
+        'expansion anchors', 'тэлэгч анкер' => '膨胀螺栓',
+        'pvc pipe elbows', 'pvc хоолойн булан' => 'PVC水管90度弯头',
+        'butyl waterproof tape', 'ус тусгаарлах тууз' => '自粘丁基防水胶带',
+        default => $q,
+    };
 }
 function search_normalise(string $q): string {
     $q=mb_strtolower($q);

@@ -16,6 +16,21 @@
         "image": "https://gostore.mn/assets/category-images/b7350bcb9d5d451e.webp"
       },
       {
+        "name": "Гал тогооны тавиур",
+        "query": "kitchen counter racks",
+        "image": ""
+      },
+      {
+        "name": "Шүүгээний хадгалах хайрцаг",
+        "query": "wardrobe storage boxes",
+        "image": ""
+      },
+      {
+        "name": "Орны доорх хадгалах сав",
+        "query": "under bed storage",
+        "image": ""
+      },
+      {
         "name": "Угаалгын хэрэгсэл",
         "query": "laundry accessories",
         "image": "https://gostore.mn/assets/category-images/38396b9c0b9e4add.webp"
@@ -62,6 +77,21 @@
         "name": "Утасны дагалдах",
         "query": "phone accessories",
         "image": "https://gostore.mn/assets/category-images/407044fa25a5d899.webp"
+      },
+      {
+        "name": "Утасны гэр",
+        "query": "phone cases",
+        "image": ""
+      },
+      {
+        "name": "Утасны хамгаалалтын шил",
+        "query": "phone screen protectors",
+        "image": ""
+      },
+      {
+        "name": "USB-C кабель",
+        "query": "usb c cables",
+        "image": ""
       },
       {
         "name": "Компьютерын дагалдах",
@@ -148,6 +178,21 @@
         "name": "Өдөр тутмын гутал",
         "query": "men casual shoes",
         "image": "https://gostore.mn/assets/category-images/89a1bd1654ba1697.webp"
+      },
+      {
+        "name": "Дотортой эрэгтэй пүүз",
+        "query": "men winter sneakers",
+        "image": ""
+      },
+      {
+        "name": "Эрэгтэй уулын гутал",
+        "query": "men hiking boots",
+        "image": ""
+      },
+      {
+        "name": "Үдээсгүй эрэгтэй гутал",
+        "query": "men slip on shoes",
+        "image": ""
       },
       {
         "name": "Спорт гутал",
@@ -378,6 +423,21 @@
         "name": "Цамц",
         "query": "women blouse",
         "image": "https://gostore.mn/assets/category-images/b67d666171933ac2.webp"
+      },
+      {
+        "name": "Эмэгтэй өвлийн гадуур хувцас",
+        "query": "women winter coats",
+        "image": ""
+      },
+      {
+        "name": "Том размерын эмэгтэй хувцас",
+        "query": "women plus size clothing",
+        "image": ""
+      },
+      {
+        "name": "Нэхмэл даашинз",
+        "query": "knit dress",
+        "image": ""
       },
       {
         "name": "Футболк",
@@ -855,6 +915,21 @@
         "image": ""
       },
       {
+        "name": "Ил дамар",
+        "query": "spinning reels",
+        "image": ""
+      },
+      {
+        "name": "Байткаст дамар",
+        "query": "baitcasting reels",
+        "image": ""
+      },
+      {
+        "name": "Зөөлөн өгөөш",
+        "query": "fishing soft lures",
+        "image": ""
+      },
+      {
         "name": "Загасны утас",
         "query": "fishing line",
         "image": ""
@@ -1040,6 +1115,21 @@
         "name": "Ханын хавтан",
         "query": "wall panels",
         "image": "https://gostore.mn/assets/category-images/a3743bfe4146e1d7.webp"
+      },
+      {
+        "name": "Тэлэгч анкер",
+        "query": "expansion anchors",
+        "image": ""
+      },
+      {
+        "name": "PVC хоолойн булан",
+        "query": "pvc pipe elbows",
+        "image": ""
+      },
+      {
+        "name": "Ус тусгаарлах тууз",
+        "query": "butyl waterproof tape",
+        "image": ""
       },
       {
         "name": "Шалны материал",

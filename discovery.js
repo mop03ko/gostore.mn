@@ -22,7 +22,7 @@
  const hub=document.querySelector('#home-hub');if(!hub||!(/^\/(?:index\.html)?$/.test(location.pathname)||document.documentElement.classList.contains('listing-view')))return;
  // index.html pre-renders the empty section with its usual height reserved (see discovery.css).
  const section=document.getElementById('discovery-home')||document.createElement('section');section.className='discovery-home page-width';section.setAttribute('aria-label','Барааны сонголтууд');
- const tabs=[['explore','Танд зориулсан'],['fishing','Загасчлал'],['deals','Хямдрал'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
+ const tabs=[['explore','Танд зориулсан'],['fishing','Загасчлал'],['building','Барилгын материал'],['deals','Хямдрал'],['free','0¥ хүргэлт'],['fashion','Хувцас'],['home','Гэр ахуй'],['tech','Технологи']];
  section.innerHTML=`<div class="discovery-tabs" role="tablist">${tabs.map(([id,label])=>`<button type="button" role="tab" data-discovery-tab="${id}" aria-selected="${id==='explore'}">${label}</button>`).join('')}</div><div class="discovery-panel" role="tabpanel"></div>`;
  // After the pre-rendered 11.11 section (hidden outside the campaign), keeping hub → sale → discovery.
  if(!section.isConnected)(document.getElementById('eleven-sale')||hub).after(section);
@@ -43,9 +43,13 @@
   if(tab==='explore'){
    panel.innerHTML=`<div class="discovery-collections">${[['women','Өөрийн хэв маяг'],['home','Тухтай гэр'],['tech','Өдөр тутмын технологи']].map(([id,title])=>{const c=taxonomy.find(c=>c.id===id);return `<a href="/c/${id}" data-discovery-query="${esc(c.query)}"><div><h3>${title}</h3><p>Сонголтоо нээгээрэй ›</p></div>${image(c.image)}</a>`;}).join('')}</div><div class="discovery-category-strip">${taxonomy.slice(0,12).map(c=>`<a href="/c/${c.id}" data-discovery-query="${esc(c.query)}">${image(c.image)}<span>${esc(c.name)}</span></a>`).join('')}</div><button type="button" class="discovery-free-banner" data-discovery-tab="free">${icon('truck')}<span><strong>Хятад дотор 0¥ хүргэлт</strong><small>Эрээн хүртэл · Монголын тээвэр тусдаа</small></span><b>Үзэх ›</b></button>`;return;
   }
-  const fishing=tab==='fishing',fish=taxonomy.find(c=>c.id==='fishing');
-  const free=tab==='free',title=fishing?'Загасчлалын бараа, хэрэгсэл':free?'Хятад дотор үнэгүй хүргэлт':'Танд санал болгох',q=fishing?fish.query:tab==='fashion'?'women clothing':tab==='tech'?'electronics':'home storage';
-  panel.innerHTML=`<h2>${title}</h2>${fishing?`<div class="discovery-fishing-links">${fish.children.map(c=>`<a class="discovery-more" href="${catalogHref('fishing',c.query)}" data-discovery-query="${esc(c.query)}">${esc(c.name)}</a>`).join('')}</div><a class="discovery-more" href="/c/fishing" data-discovery-query="${esc(fish.query)}" data-discovery-category="fishing">Бүгдийг үзэх →</a>`:''}${free?`<p class="discovery-note">${freeNote}</p>`:''}<div class="discovery-results" aria-live="polite"><p>Ачаалж байна…</p></div>`;
+  const groupByTab={fishing:'fishing',building:'building',fashion:'women',home:'home',tech:'tech'};
+  const free=tab==='free',category=taxonomy.find(c=>c.id===groupByTab[tab]);
+  const title=free?'Хятад дотор үнэгүй хүргэлт':category?.name||'Барааны сонголт',q=category?.query||'home storage';
+  const links=category?'<nav class="discovery-subcategory-links" aria-label="Дэд ангиллууд">'+(tab==='fishing'?category.children:category.children.slice(0,5)).map(c=>
+    '<a class="discovery-more" href="'+esc(catalogHref(category.id,c.query))+'" data-discovery-query="'+esc(c.query)+'" data-discovery-category="'+esc(category.id)+'">'+esc(c.name)+'</a>'
+  ).join('')+'</nav><a class="discovery-more" href="/c/'+esc(category.id)+'" data-discovery-query="'+esc(category.query)+'" data-discovery-category="'+esc(category.id)+'">Бүгдийг үзэх →</a>':'';
+  panel.innerHTML='<h2>'+esc(title)+'</h2>'+links+(free?'<p class="discovery-note">'+freeNote+'</p>':'')+'<div class="discovery-results" aria-live="polite"><p>Ачаалж байна…</p></div>';
   const target=panel.querySelector('.discovery-results');
   const run=()=>{target.innerHTML='<p>Ачаалж байна…</p>';load(q,free,own.signal).then(d=>{if(own.signal.aborted)return;target.innerHTML=d.products?.length?products(d.products.slice(0,8)):`<p class="discovery-empty">${free?d.status==='available'?'Одоогоор 0¥ хүргэлттэй бараа олдсонгүй.':'Үнэгүй хүргэлттэй барааны мэдээлэл түр боломжгүй байна.':'Бараа олдсонгүй.'}</p>`;}).catch(()=>{if(!own.signal.aborted){target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}});};run();
  }

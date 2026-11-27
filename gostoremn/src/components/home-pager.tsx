@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Animated, AppState, FlatList, Platform, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, homeCategories } from "./home-deals";
+import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSubcategories, homeCategories } from "./home-deals";
 import { DiscoveryCard } from "./discovery";
 import { Busy, Button, Copy, ErrorBox } from "./ui";
 import { catalog } from "@/lib/api";
@@ -71,6 +71,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     ListHeaderComponent={<View style={{ gap: 12, marginBottom: 8 }}>
       {index === 0 && <><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
       <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
+      {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />
     </View>}
     renderItem={({ item }) => <View style={{ flex: 1, maxWidth: columns === 4 ? "25%" : "50%" }}><DiscoveryCard product={item} /></View>}

@@ -159,7 +159,9 @@ $before=count($calls);supplier_search(['q'=>'Барилгын материал',
 check(isset(tw_catalog_departments()['building materials']),'Building materials missing from mixed home departments');
 $_SERVER['REMOTE_ADDR']='192.0.2.203';
 foreach(['fishing tackle'=>'渔具','fishing rod'=>'鱼竿','fishing reel'=>'渔轮','fishing line'=>'鱼线','fishing hooks'=>'鱼钩','fishing lures'=>'路亚饵','fishing float'=>'浮漂','fishing tackle box'=>'钓鱼配件盒','fishing landing net'=>'抄网'] as $query=>$keyword){
-    supplier_search(['q'=>$query,'page'=>1]);check(end($calls)[1]['keyword']===$keyword,'Fishing category keyword mismatch: '.$query);
+    $before=count($calls);supplier_search(['q'=>$query,'page'=>1]);
+    $used=count($calls)>$before?end($calls)[1]['keyword']:(in_array($keyword,array_map(fn($c)=>$c[1]['keyword']??null,$calls),true)?$keyword:null);
+    check($used===$keyword,'Fishing category keyword mismatch: '.$query);
 }
 $before=count($calls);supplier_search(['q'=>'Загасчлал','page'=>1]);check(count($calls)===$before,'Mongolian fishing alias reuses category cache');
 check(isset(tw_catalog_departments()['fishing tackle']),'Fishing missing from mixed departments');

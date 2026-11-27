@@ -153,6 +153,13 @@ const deals = Array.from({ length: 8 }, (_, i) => product(123450 + i, `Deal ${i}
     await page.getByRole('button', { name: 'Хайх', exact: true }).click();
     await page.getByRole('button', { name: 'Searched regular', exact: true }).waitFor();
     assert.equal(await tabs.count(), 0, 'Explicit search remains an unrestricted search');
+    await page.goto(base, { waitUntil: 'domcontentloaded' });
+    await activePage.getByTestId('home-deal-highlights').waitFor();
+    await page.getByTestId('home-category-tabs').getByRole('tab', { name: 'Электроник', exact: true }).click();
+    await activePage.getByTestId('home-subcategories').getByRole('button', { name: 'Утасны хамгаалалтын шил', exact: true }).click();
+    await page.getByTestId('brand-result-heading').getByText('Утасны хамгаалалтын шил', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Searched regular', exact: true }).waitFor();
+    assert.equal(requests.filter(r => r.q === 'phone screen protectors').length, 1, 'A subcategory fetches results only on selection');
     assert.deepEqual(errors, []);
     console.log('PASS home pager: finger-follow and indicator, snap-back, left/right touch swipes, nested carousel, vertical scroll, five-feed limit, evicted scroll restoration, lazy/cache/races, discounts, pagination/error, search and resized/dark layouts.');
   } finally { await browser.close(); }

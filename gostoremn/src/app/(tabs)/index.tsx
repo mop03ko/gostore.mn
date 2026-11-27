@@ -11,7 +11,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconButton, BrandLogo } from "@/components/shop-ui";
-import { DiscoveryCard } from "@/components/discovery";
+import { DiscoveryCard, categories } from "@/components/discovery";
 import { HomeWarehouseLinks } from "@/components/home-deals";
 import { HomePager } from "@/components/home-pager";
 import { catalog } from "@/lib/api";
@@ -19,6 +19,10 @@ import type { Product } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Busy, Copy, ErrorBox } from "@/components/ui";
 import { PromoPopup } from "@/components/promo-popup";
+const categoryNames = new Map(categories.flatMap(category =>
+  [category, ...category.children].map(item => [item.query, item.name] as const)
+));
+
 type Results = {
   products: Product[];
   more: boolean;
@@ -240,7 +244,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
         ListHeaderComponent={
           <View style={{ gap: 10, marginBottom: 4 }}>
             {searchMode && <View testID="brand-result-heading" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}>
-              <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query}</Text>
+              <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 16, fontWeight: "700", color: colors.ink }}>{image ? "Зургаар хайсан бараа" : query === "__all__" ? "Бүх бараа" : categoryNames.get(query) ?? query}</Text>
                 <Text style={{ fontSize: 12, color: colors.muted }}>Таалагдсан бараагаа сонгоорой</Text></View>
             </View>}
             {searchMode && <View
