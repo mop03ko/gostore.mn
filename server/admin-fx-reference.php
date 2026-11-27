@@ -106,18 +106,21 @@ function finance_khan_rate(string $day): ?float {
 
 // Runs from the existing CLI worker. Bank traffic stays outside checkout and report requests.
 function finance_khan_refresh_order_days(?callable $fetch = null): int {
-    $days = db()->query(
-        "SELECT DISTINCT date(created,'+8 hours') AS day FROM orders
-         WHERE created >= datetime('now','-401 days')
-           AND COALESCE(json_extract(data,'$.demo'),0)=0
-           AND json_extract(data,'$.purchase.provider')='taoworld'
-           AND json_array_length(data,'$.purchase.paid_child_ids')>0
-         ORDER BY day DESC"
-    )->fetchAll(PDO::FETCH_COLUMN);
     $today = gmdate('Y-m-d', time() + 8 * 3600);
+    $days = [$today => true];
+    $orders = db()->prepare('SELECT created, data FROM orders WHERE created>=? ORDER BY created DESC');
+    $orders->execute([gmdate('c', time() - 401 * 86400)]);
+    while ($row = $orders->fetch()) {
+        $order = json_decode($row['data'], true);
+        $purchase = $order['purchase'] ?? [];
+        if (!empty($order['demo']) || ($purchase['provider'] ?? '') !== 'taoworld' || empty($purchase['paid_child_ids'])) continue;
+        $created = strtotime($row['created']);
+        if ($created !== false) $days[gmdate('Y-m-d', $created + 8 * 3600)] = true;
+    }
+    $orders->closeCursor();
     $updated = 0;
-    foreach (array_unique([$today,...$days]) as $day) {
-        if (!$day || $day > $today) continue;
+    foreach (array_keys($days) as $day) {
+        if ($day > $today) continue;
         $key = 'finance-fx-reference:KhanBank:'.$day;
         $cached = finance_meta_read($key);
         if (($cached['expires'] ?? 0) > time() || finance_khan_day_final($day, $cached)) continue;
