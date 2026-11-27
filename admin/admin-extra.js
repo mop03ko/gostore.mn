@@ -183,8 +183,13 @@ window.AdminExtra=(()=>{
   const HIDDEN={operator:['admins'],viewer:['admins','customers','messages']};
   function afterRender(p){
     const hidden=HIDDEN[role()]||[];
-    document.querySelectorAll('nav [data-page]').forEach(b=>{b.hidden=hidden.includes(b.dataset.page);});
-    document.querySelectorAll('#mobile-admin-page option').forEach(o=>{if(hidden.includes(o.value))o.remove();});
+    const restricted=data.admin?.security?.restricted;
+    document.querySelectorAll('#admin-sidebar-nav [data-page], .tabbar [data-page]').forEach(button=>{
+      button.hidden=hidden.includes(button.dataset.page)||(restricted&&button.dataset.page!=='security');
+    });
+    document.querySelectorAll('#admin-sidebar-nav .admin-nav-section').forEach(section=>{
+      section.hidden=!section.querySelector('[data-page]:not([hidden])');
+    });
     if(data.admin){const strong=document.querySelector('.account strong');if(strong)strong.textContent=data.admin.name;$('#admin-email').textContent=data.admin.email+' · '+data.admin.role_label;document.querySelector('.account .avatar').textContent=(data.admin.name||'G').slice(0,1).toUpperCase();}
     if(hidden.includes(p)){page='overview';render();return;}
     if(p==='overview')loadAlerts();

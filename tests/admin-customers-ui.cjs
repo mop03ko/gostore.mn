@@ -27,7 +27,7 @@ async function register(name,email,phone){
  for(const width of [390,320]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal scroll at '+width);}
  await page.screenshot({path:'tmp/admin-customers-mobile.png',fullPage:true});
  await rows.filter({hasText:'Тэмүүлэн'}).locator('[data-customer]').click();await page.locator('#customer-form').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'tmp/admin-customers-editor-mobile.png'});await page.locator('#close-editor').click();
- await page.locator('#mobile-admin-page').selectOption('orders');assert.equal(await page.locator('#page-title').textContent(),'Захиалгууд');await page.locator('#mobile-admin-page').selectOption('customers');await rowCount(2);
+ await page.locator('[data-menu-open]').click();await page.locator('#admin-menu [data-page=orders]').click();assert.equal(await page.locator('#page-title').textContent(),'Захиалгууд');await page.locator('[data-menu-open]').click();await page.locator('#admin-menu [data-page=customers]').click();await rowCount(2);
  assert.deepEqual(errors,[]);console.log('PASS Chrome admin customers: nav and hash, stats, Cyrillic search, edit dialog save and refresh, filter empty state, 390/320 px without overflow, mobile section switch, no JS errors.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

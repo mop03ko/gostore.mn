@@ -282,6 +282,25 @@ function paletteDraw(){
 }
 function paletteRun(i){const it=paletteItems[i];if(!it)return;$('#cmdk').close();it.run();}
 
+const adminMenu=$('#admin-menu');
+function openAdminMenu(trigger) {
+  if(adminMenu.open)return;
+  const sections=[...document.querySelectorAll('#admin-sidebar-nav .admin-nav-section:not([hidden])')];
+  $('#admin-menu-items').replaceChildren(...sections.map(section=>{
+    const copy=section.cloneNode(true);
+    copy.querySelectorAll('button[hidden]').forEach(button=>button.remove());
+    copy.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
+    return copy;
+  }));
+  adminMenu.showModal();
+  trigger.setAttribute('aria-expanded','true');
+}
+adminMenu.addEventListener('click',event=>{
+  if(event.target.closest('[data-page]'))orderPage=1;
+  if(event.target===adminMenu||event.target.closest('[data-menu-close], [data-page]'))adminMenu.close();
+});
+adminMenu.addEventListener('close',()=>{$('[data-menu-open]').setAttribute('aria-expanded','false');});
+
 // Events.
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'&&!$('#app').hidden){e.preventDefault();paletteOpen();}});
 addEventListener('click',async e=>{
@@ -298,7 +317,7 @@ addEventListener('click',async e=>{
   if(b.hasAttribute('data-bulk-clear')){pickedOrders.clear();render();return;}
   if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';payFilter='all';dateFilter='all';render();$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
   if(b.hasAttribute('data-cmdk-open')){paletteOpen();return;}
-  if(b.hasAttribute('data-menu-open')){const s=$('#mobile-admin-page');try{s.showPicker();}catch{s.focus();s.click();}return;}
+  if(b.hasAttribute('data-menu-open')){openAdminMenu(b);return;}
   if(b.dataset.changeOrderStatus){
     const o=data.orders.find(order=>order.id===b.dataset.changeOrderStatus);
     if(!o)return;
@@ -370,6 +389,6 @@ addEventListener('change',async e=>{
   if(t.id==='pay-filter'){payFilter=t.value;orderPage=1;render();}
   if(t.id==='date-filter'){dateFilter=t.value;orderPage=1;render();}
   if(t.id==='sort-filter'){orderSort=t.value;orderPage=1;render();}
-  if(t.id==='status-filter'||t.id==='mobile-admin-page')orderPage=1;
+  if(t.id==='status-filter')orderPage=1;
 });
 addEventListener('input',e=>{if(e.target.id==='list-search')orderPage=1;},true);

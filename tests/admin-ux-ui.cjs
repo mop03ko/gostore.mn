@@ -68,7 +68,7 @@ await page.locator('#cmdk-input').fill('Тайлан');await page.keyboard.press
 
 // Phone: the bottom tab bar replaces the scrolling menu; no sideways scroll; full-width drawer.
 await page.setViewportSize({width:390,height:844});await page.goto(base+'/admin/#orders');await page.reload();await page.locator('#app').waitFor({state:'visible'});
-assert.equal(await page.locator('.tabbar').isVisible(),true);assert.equal(await page.locator('aside nav').isVisible(),false);assert.equal(await page.locator('#mobile-admin-page').isVisible(),true,'Page picker stays');
+assert.equal(await page.locator('.tabbar').isVisible(),true);assert.equal(await page.locator('aside nav').isVisible(),false);assert.equal(await page.locator('[data-menu-open]').isVisible(),true,'Grouped menu is available on phones');
 assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No sideways scroll');
 await page.locator('.tabbar [data-page=overview]').click();await page.waitForFunction(()=>location.hash==='#overview');assert.equal(await page.locator('.tabbar [data-page=overview]').getAttribute('aria-current'),'page');
 await page.locator('.tabbar [data-page=orders]').click();await page.locator('.orders-table tbody tr').first().locator('.order-customer').click();await page.locator('#editor').waitFor({state:'visible'});

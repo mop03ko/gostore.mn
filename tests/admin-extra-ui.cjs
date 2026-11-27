@@ -15,6 +15,35 @@ async function signIn(page,email,password){await page.goto(base+'/admin/');await
 const owner=await browser.newPage({viewport:{width:1440,height:1000}});owner.on('pageerror',e=>errors.push(e.message));
 async function post(page,name,fn){const p=page.waitForResponse(r=>new URL(r.url()).searchParams.get('action')===name&&r.request().method()==='POST');await fn();const r=await p;assert.ok(r.ok(),name+': '+await r.text());await page.waitForTimeout(150);}
 await signIn(owner,auth.email,auth.password);await owner.locator('#app').waitFor({state:'visible'});
+
+// The login form stays hidden while both the session and dashboard are loading on reload.
+let resolveSession,resolveDashboard,sessionRequests=0;
+const sessionGate=new Promise(resolve=>{resolveSession=resolve;});
+const dashboardGate=new Promise(resolve=>{resolveDashboard=resolve;});
+const holdSession=async route=>{sessionRequests++;await sessionGate;await route.continue();};
+const holdDashboard=async route=>{await dashboardGate;await route.continue();};
+await owner.route('**/api/index.php?action=session',holdSession);
+await owner.route('**/api/index.php?action=dashboard',holdDashboard);
+await owner.reload({waitUntil:'domcontentloaded'});
+await owner.locator('#admin-boot').waitFor({state:'visible'});
+assert.equal(await owner.locator('#login-screen').isHidden(),true);
+const dashboardRequested=owner.waitForRequest('**/api/index.php?action=dashboard');
+resolveSession();
+await dashboardRequested;
+assert.equal(await owner.locator('#login-screen').isHidden(),true);
+assert.equal(await owner.locator('#app').isHidden(),true);
+resolveDashboard();
+await owner.locator('#app').waitFor({state:'visible'});
+assert.equal(sessionRequests,1,'Initial session check is reused');
+await owner.unroute('**/api/index.php?action=session',holdSession);
+await owner.unroute('**/api/index.php?action=dashboard',holdDashboard);
+await owner.route('**/api/index.php?action=session',route=>route.fulfill({status:503,json:{error:'Түр алдаа'}}),{times:1});
+await owner.reload();
+await owner.locator('#admin-boot-error').getByText('Түр алдаа').waitFor();
+assert.equal(await owner.locator('#login-screen').isHidden(),true);
+await owner.locator('#admin-boot-retry').click();
+await owner.locator('#app').waitFor({state:'visible'});
+await owner.locator('.admin-sidebar').screenshot({path:'tmp/admin-menu-desktop.png'});
 for(const p of ['reports','taoworld','site','admins'])assert.equal(await owner.locator(`nav [data-page=${p}]`).isVisible(),true,p+' in the menu');
 await owner.locator('.alerts .alert').first().waitFor();assert.match(await owner.locator('.alerts').innerText(),/туршилт эхэлсэн огноог/);
 assert.match(await owner.locator('.account').innerText(),/Эзэмшигч/);
@@ -86,6 +115,13 @@ assert.equal(await ops.locator('nav [data-page=admins]').isHidden(),true,'Operat
 
 // Phone width: no sideways scrolling on the new pages.
 await owner.setViewportSize({width:390,height:844});
+await owner.locator('[data-menu-open]').click();
+await owner.locator('#admin-menu').waitFor({state:'visible'});
+assert.equal(await owner.locator('#admin-menu .nav-group').count(),4);
+await owner.screenshot({path:'tmp/admin-menu-mobile.png'});
+await owner.locator('#admin-menu [data-page=warehouse]').click();
+assert.equal(await owner.locator('#admin-menu').isHidden(),true);
+assert.equal(await owner.evaluate(()=>location.hash),'#warehouse');
 for(const p of ['reports','taoworld','site','admins']){await owner.goto(base+'/admin/#'+p);await owner.reload();await owner.locator('#app').waitFor({state:'visible'});assert.equal(await owner.evaluate(()=>location.hash),'#'+p);await owner.waitForTimeout(600);
   const over=await owner.evaluate(()=>document.documentElement.scrollWidth-innerWidth);assert.ok(over<=1,p+' overflows by '+over+'px');}
 assert.deepEqual(errors,[]);console.log('admin-extra-ui ok');
