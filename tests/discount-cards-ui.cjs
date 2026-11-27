@@ -24,14 +24,26 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await page.evaluate(rows=>{const grid=document.createElement('div');grid.id='discount-recommend-test';document.body.append(grid);renderSupplierCards(rows,false,grid);},[p,coupon]);assert.equal(await page.locator('#discount-recommend-test .supplier-discount-badge').count(),1);
  await page.evaluate(p=>{document.querySelector('#discount-recommend-test').remove();renderSupplierCards([{...p,card_discount:{...p.card_discount,expires:Date.now()/1000+.7}}]);},p);await first.locator('.supplier-discount-badge').waitFor();await first.locator('.supplier-discount-badge').waitFor({state:'detached'});assert.equal(await first.locator('.supplier-discount').count(),0);
  await page.evaluate(p=>renderSupplierCards([{...p,card_discount:{...p.card_discount,was_mnt:15510,percent:0}}]),p);assert.match(await first.locator('.supplier-discount-badge').innerText(),/<1%/,'Small genuine savings must not become zero or disappear');
- // Discovery deals shelf: only real sales get a badge; promotions are named, never priced.
- await page.route('**/api/index.php?action=supplier-deals*',r=>r.fulfill({json:{products:[p,coupon,promotion],more:false}}));
- await page.goto(base+'/');await page.locator('[data-discovery-tab="deals"]').click();
- const discovery=page.locator('.discovery-product');await discovery.first().waitFor();assert.equal(await discovery.locator('.supplier-discount-badge').count(),1);
- assert.doesNotMatch(await page.locator('.discovery-panel').innerText(),/купон/i,'Deals shelf has no coupon wording');
- assert.equal(await discovery.nth(2).locator('.supplier-promotion').innerText(),'Урамшуулалтай · нөхцөлтэй');
- await page.setViewportSize({width:320,height:900});const dc=discovery.first(),db=dc.locator('.supplier-discount-badge');assert.equal(await db.innerText(),'−50%');
- const box=await db.boundingBox(),parent=await dc.boundingBox();assert.ok(box.x>=parent.x&&box.x+box.width<=parent.x+parent.width&&box.y+box.height<parent.y+parent.width,'Discovery badge stays within product image');
- await dc.screenshot({path:'output/discount-cards/discovery-sale.png'});
+ // Named promotions still render on recommendation cards.
+ await page.evaluate(product=>{const grid=document.createElement('div');grid.id='promotion-test';document.body.append(grid);renderSupplierCards([product],false,grid);},promotion);
+ assert.equal(await page.locator('#promotion-test .supplier-promotion').innerText(),'Урамшуулалтай · нөхцөлтэй');
+ // A category tab can contain the same product as the home grid and duplicate IDs in its own response.
+ await page.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:[p,p,coupon,coupon],more:false,shipping:{cny_rate:550}}}));
+ // The Deals tab links to the verified catalog without duplicating it or fetching the same page twice.
+ let dealRequests=0;
+ await page.route('**/api/index.php?action=supplier-deals*',r=>{dealRequests++;return r.fulfill({json:{products:[p,coupon,promotion],more:false}});});
+ await page.goto(base+'/');await page.locator('#supplier-grid .supplier-card').first().waitFor();
+ await page.locator('[data-discovery-tab="fashion"]').click();
+ const fashion=page.locator('.discovery-panel .discovery-product');
+ await fashion.first().waitFor();
+ assert.deepEqual(await fashion.evaluateAll(links=>links.map(a=>a.getAttribute('href'))),['/v/'+coupon.id]);
+ await page.locator('[data-discovery-tab="deals"]').click();
+ const dealsLink=page.locator('.discovery-panel a[href="#catalog"]');
+ await dealsLink.waitFor();
+ assert.equal(await page.locator('.discovery-panel .discovery-product').count(),0);
+ await dealsLink.click();
+ assert.equal(new URL(page.url()).hash,'#catalog');
+ assert.equal(dealRequests,1);
+ assert.equal(await page.locator('#supplier-grid .supplier-discount-badge').innerText(),'−50%');
  assert.deepEqual(errors,[]);console.log('PASS discount cards: real sales only, coupon fields ignored, expiry, unavailable data, recommendations, sub-1%, named promotions and 320–1440px controls.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

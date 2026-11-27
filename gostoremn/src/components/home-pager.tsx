@@ -1,7 +1,7 @@
 import { useCompactAndroid } from "@/hooks/use-compact-android";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Animated, AppState, FlatList, Platform, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSubcategories, homeCategories } from "./home-deals";
+import { CarouselTouch, HomeCategories, HomeCategoryPhotos, HomeDealHighlights, HomeSubcategories, homeCategories, homeDealGroups } from "./home-deals";
 import { HomeNewYear } from "./home-new-year";
 import { DiscoveryCard } from "./discovery";
 import { Busy, Button, Copy, ErrorBox } from "./ui";
@@ -13,6 +13,18 @@ import type { Product } from "@/lib/types";
 type Snapshot = { products: Product[]; page: number; more: boolean; fetched: number; offset: number };
 type Results = { products: Product[]; more: boolean; revalidate?: boolean; stale?: boolean };
 const empty: Snapshot = { products: [], page: 0, more: false, fetched: 0, offset: 0 };
+
+function mergeProducts(previous: Product[], incoming: Product[]): Product[] {
+  const byId = new Map(previous.map(product => [product.id, product]));
+  const received = new Set<string>();
+  for (const product of incoming) {
+    if (received.has(product.id)) continue;
+    received.add(product.id);
+    // Updating a Map entry retains its position and uses the latest page's product data.
+    byId.set(product.id, product);
+  }
+  return [...byId.values()];
+}
 
 function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: number; active: boolean; initial: Snapshot; onSave: (index: number, data: Snapshot) => void; onSelect: (index: number) => void }) {
   const c = usePalette(), { width } = useWindowDimensions(), columns = width >= 800 ? 4 : 2;
@@ -55,7 +67,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
           if (controller.signal.aborted) return;
           setStale(!!result.stale);
         }
-        const products = page === 1 ? result.products : [...data.products.filter(p => !result.products.some(next => next.id === p.id)), ...result.products];
+        const products = mergeProducts(page === 1 ? [] : data.products, result.products);
         const next = { products, page, more: result.more, fetched: Date.now(), offset: offset.current };
         snapshotRef.current = next; setData(next); onSave(index, next);
       } catch (e) { if (!controller.signal.aborted) setError((e as Error).message); }
@@ -67,10 +79,13 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
   }, [active, index, page, retry, onSave]);
   // Only the dedicated deals tab excludes full-price products.
   const products = index === 0 ? data.products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale) : data.products;
+  const featuredGroups = index === 0 ? homeDealGroups(products) : [];
+  const featuredIds = new Set(featuredGroups.flat().map(p => p.id));
+  const gridProducts = featuredIds.size ? products.filter(p => !featuredIds.has(p.id)) : products;
   const hasNewYearDeals = index === 0 && products.some(p => p.new_year_deal);
   const nextPage = () => { if (active && !busy && !lock.current && data.more && !error) { lock.current = true; setPage(x => x + 1); } };
   const saveScroll = () => onSave(index, { ...snapshotRef.current, offset: offset.current });
-  return <FlatList ref={list} testID={`home-feed-${index}`} key={columns} numColumns={columns} data={products} keyExtractor={p => p.id}
+  return <FlatList ref={list} testID={`home-feed-${index}`} key={columns} numColumns={columns} data={gridProducts} keyExtractor={p => p.id}
     nestedScrollEnabled directionalLockEnabled keyboardShouldPersistTaps="handled" initialNumToRender={6} windowSize={5}
     contentOffset={{ x: 0, y: restoreOffset }}
     onContentSizeChange={(_, height) => { if (!restored.current && height > restoreOffset) { restored.current = true; list.current?.scrollToOffset({ offset: restoreOffset, animated: false }); } }}
@@ -85,7 +100,7 @@ function CategoryFeed({ index, active, initial, onSave, onSelect }: { index: num
     contentContainerStyle={{ padding, paddingBottom: 24, gap: compact ? 6 : 8 }} columnWrapperStyle={{ gap: compact ? 6 : 8 }}
     onEndReached={() => { if (products.length) nextPage(); }} onEndReachedThreshold={0.4}
     ListHeaderComponent={<View style={{ gap: compact ? 8 : 12, marginBottom: compact ? 4 : 8 }}>
-      {index === 0 && <><HomeNewYear onDeals={hasNewYearDeals ? () => list.current?.scrollToOffset({ offset: bannerHeight.current + padding, animated: false }) : undefined} visiblePage={active && bannerInView} onHeight={height => { bannerHeight.current = height; updateBannerVisibility(offset.current); }} /><HomeDealHighlights products={products} /><HomeCategoryPhotos onSelect={onSelect} /></>}
+      {index === 0 && <><HomeNewYear onDeals={hasNewYearDeals ? () => list.current?.scrollToOffset({ offset: bannerHeight.current + padding, animated: false }) : undefined} visiblePage={active && bannerInView} onHeight={height => { bannerHeight.current = height; updateBannerVisibility(offset.current); }} /><HomeDealHighlights groups={featuredGroups} /><HomeCategoryPhotos onSelect={onSelect} /></>}
       <View testID="home-deals-heading" style={{ padding: 5, gap: 6 }}><Text accessibilityRole="header" style={{ color: c.navy, fontSize: compact ? 18 : 21, fontWeight: "800" }}>{index ? homeCategories[index].name : "Хямдралтай бараа"}</Text><Text style={{ color: c.muted, fontSize: 12 }}>{index ? "Ангиллын бүх бараа · Ангиллыг хоёр тийш шударна уу" : "Бодит үнэ буурсан бараа · Ангиллыг хоёр тийш шударна уу"}</Text></View>
       {index > 0 && <HomeSubcategories categoryId={homeCategories[index].id} />}
       {stale && <Copy>Мэдээллийг шинэчилж байна…</Copy>}<ErrorBox message={error} retry={() => setRetry(x => x + 1)} />

@@ -35,25 +35,27 @@ function priceLabel(product: Product) { return (product.mnt ? "" : "≈ ") + mon
 
 function DealPhoto({ product, large = false }: { product: Product; large?: boolean }) {
   const c = usePalette();
+  const { sale } = productSavings(product, product.mnt || product.approx_mnt);
   return <Pressable accessibilityRole="button" accessibilityLabel={product.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.id } })} style={{ flex: 1, borderRadius: 12, overflow: "hidden", backgroundColor: c.surface }}>
     <Image source={product.image || undefined} contentFit="cover" style={{ width: "100%", height: "100%" }} />
+    {sale && <Text style={{ position: "absolute", top: 5, left: 5, borderRadius: 6, paddingHorizontal: 4, paddingVertical: 2, backgroundColor: "#b93609", color: "#fff", fontSize: 11, fontWeight: "800" }}>{percentLabel(sale.percent)}</Text>}
     <Text numberOfLines={1} style={{ position: "absolute", bottom: 0, left: 0, maxWidth: "100%", borderTopRightRadius: 8, backgroundColor: c.surface, color: c.ink, paddingHorizontal: 6, paddingVertical: 4, fontSize: large ? 17 : 12, fontWeight: "800" }}>{priceLabel(product)}</Text>
   </Pressable>;
 }
 
-export function HomeDealHighlights({ products }: { products: Product[] }) {
-  const compact = useCompactAndroid();
-  const c = usePalette(), { width } = useWindowDimensions();
-  // Reuse the list response: no extra recommendation, campaign or product requests.
-  const deals = products.filter(p => productSavings(p, p.mnt || p.approx_mnt).sale);
-  if (!deals.length) return null;
+export function homeDealGroups(deals: Product[]): Product[][] {
   const festive = deals.filter(p => p.new_year_deal).slice(0, 12);
   const regular = deals.filter(p => !p.new_year_deal);
-  const featured = festive.length ? festive : deals;
-  const groups = (festive.length
+  return (festive.length
     ? [...Array.from({ length: Math.ceil(festive.length / 3) }, (_, index) => festive.slice(index * 3, index * 3 + 3)), regular.slice(0, 3)]
     : [deals.slice(0, 3), deals.slice(3, 6)]).filter(group => group.length);
-  return <View testID="home-deal-highlights" style={{ gap: 14 }}>
+}
+
+export function HomeDealHighlights({ groups }: { groups: Product[][] }) {
+  const compact = useCompactAndroid();
+  const c = usePalette(), { width } = useWindowDimensions();
+  if (!groups.length) return null;
+  return <View testID="home-deal-highlights">
     <HomeCarousel testID="home-deal-carousel" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
       {groups.map((group, index) => <View key={group[0].id} style={{ width: Math.min(compact ? 260 : 330, width * (compact ? 0.70 : 0.79)), borderRadius: compact ? 14 : 20, padding: compact ? 8 : 12, gap: compact ? 5 : 8, backgroundColor: index % 2 ? c.accentSurface : c.subtle }}>
         <Text numberOfLines={1} style={{ fontSize: compact ? 16 : 18, fontWeight: "800", color: c.navy }}>{group[0].new_year_deal ? "Шинэ жилийн хямдрал" : index ? "Өнөөдрийн олз" : "Хямдралын сонголт"}</Text>
@@ -64,19 +66,6 @@ export function HomeDealHighlights({ products }: { products: Product[] }) {
         </View>
       </View>)}
     </HomeCarousel>
-    <View style={{ borderRadius: 18, overflow: "hidden", backgroundColor: c.accentSurface }}>
-      <View style={{ backgroundColor: c.orange, padding: compact ? 8 : 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Icon name="bag" color={c.onPrimary} size={24} />
-        <Text style={{ color: c.onPrimary, fontWeight: "800", fontSize: compact ? 16 : 20, flex: 1 }}>{festive.length ? "Шинэ жилийн хямдрал" : "Хямд үнээр аваарай"}</Text>
-      </View>
-      <View style={{ flexDirection: "row", gap: compact ? 5 : 8, padding: compact ? 6 : 10 }}>
-        {featured.slice(0, 3).map(p => { const sale = productSavings(p, p.mnt || p.approx_mnt).sale; return sale && <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={p.name} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })} style={{ flex: 1, minWidth: 0, backgroundColor: c.surface, borderRadius: 12, overflow: "hidden", paddingBottom: compact ? 6 : 10, gap: compact ? 3 : 6 }}>
-          <Image source={p.image || undefined} contentFit="cover" style={{ width: "100%", aspectRatio: 1 }} />
-          <Text numberOfLines={1} style={{ color: c.accentText, fontSize: 14, fontWeight: "800", textAlign: "center" }}>{priceLabel(p)}</Text>
-          <Text style={{ color: c.accentText, fontSize: 12, fontWeight: "700", textAlign: "center" }}>{percentLabel(sale.percent)}</Text>
-        </Pressable>; })}
-      </View>
-    </View>
   </View>;
 }
 
