@@ -40,6 +40,7 @@ function admin_finance_save(array $b): array {
 }
 function admin_finance_order(array $o): array {
     $e=admin_finance_entry($o['id']);$part=!empty($o['shipment_parent']);
+    $day=admin_report_day($o['created']);
     $batchShare=finance_batch_share($o['id']);$transport=$batchShare['amount_mnt']??$e['transport_cost_mnt'];
     $initial=(!$part&&!empty($o['paid']))?(int)($o['amount']??0):0;
     $manual=array_sum(array_map(fn($r)=>max(0,(int)($r['amount']??0)),$o['freight_receipts']??[]));
@@ -52,37 +53,45 @@ function admin_finance_order(array $o): array {
     if($s&&$initial+$balance-$refund>=(int)$s['total'])$cargo=min(max(0,$initial+$balance-$refund),max(0,(int)($s['breakdown']['cargo_mnt']??0)));
     elseif($balance===0&&empty($o['quote']['breakdown']['cargo_mnt']))$cargo=0;
     if($cargo!==null)$cargo+=$e['extra_cargo_mnt'];
-    $p=$o['purchase']??[];$supplier=null;$quoted=null;$actual=null;$fx=null;
-    if($part||($o['type']??'')==='forwarding'){$supplier=0.0;$quoted=0;$actual=0;$fx=0;}
+    $p=$o['purchase']??[];
+    $supplier=$quoted=$actual=$fx=$bankFx=$bankRate=$saleRate=$costSource=null;
+    if($part||($o['type']??'')==='forwarding'){$supplier=0.0;$quoted=$actual=$fx=$bankFx=0;}
     elseif(($p['provider']??'')==='taoworld'&&!empty($p['paid_child_ids'])&&(($p['state']??'')!=='closed'||$e['complete'])&&isset($p['supplier_total_fen'])){
         $supplier=max(0,round((int)$p['supplier_total_fen']/100-$e['supplier_refund_cny'],2));
         $rate=$o['quote']['rates']['cny_rate']??null;
-        if(is_numeric($rate)&&$rate>0)$quoted=(int)round($supplier*$rate);
-        if($e['actual_cny_rate']!==null)$actual=(int)round($supplier*$e['actual_cny_rate']);
+        $saleRate=is_numeric($rate)&&$rate>0?(float)$rate:null;
+        $bankRate=finance_khan_rate($day);
+        $costRate=$e['actual_cny_rate']??$bankRate;
+        if($costRate!==null)$costSource=$e['actual_cny_rate']!==null?'transaction':'khanbank';
+        if($saleRate!==null)$quoted=(int)round($supplier*$saleRate);
+        if($bankRate!==null&&$quoted!==null)$bankFx=$quoted-(int)round($supplier*$bankRate);
+        if($costRate!==null)$actual=(int)round($supplier*$costRate);
         if($quoted!==null&&$actual!==null)$fx=$quoted-$actual;
     }
     $missing=[];
-    if($actual===null)$missing[]=$supplier===null?'Нийлүүлэгчийн төлсөн дүн':'Юань авсан бодит ханш';
+    if($actual===null)$missing[]=$supplier===null?'Нийлүүлэгчийн төлсөн дүн':'Захиалгын өдрийн ХААН Банкны ханш';
     if($transport===null)$missing[]='Бодит тээврийн зардал';
     if($e['other_cost_mnt']===null)$missing[]='Бусад зардал';
     if(!$e['complete'])$missing[]='Зардал, буцаалтын тулгалт';
     $profit=$missing?null:$net-$actual-$transport-$e['other_cost_mnt'];
-    return ['id'=>$o['id'],'day'=>admin_report_day($o['created']),'status'=>$o['status'],'part'=>$part,'initial'=>$initial,'balance'=>$balance,'extra_cargo'=>$e['extra_cargo_mnt'],'gross'=>$gross,'refund'=>$refund,'net'=>$net,'cargo'=>$cargo,'supplier_cny'=>$supplier,'quoted_cost'=>$quoted,'actual_cost'=>$actual,'fx'=>$fx,'transport_cost'=>$transport,'transport_batch'=>$batchShare['batch_id']??null,'other_cost'=>$e['other_cost_mnt'],'profit'=>$profit,'missing'=>$missing,'entry'=>$e];
+    return ['id'=>$o['id'],'day'=>$day,'status'=>$o['status'],'part'=>$part,'initial'=>$initial,'balance'=>$balance,'extra_cargo'=>$e['extra_cargo_mnt'],'gross'=>$gross,'refund'=>$refund,'net'=>$net,'cargo'=>$cargo,'supplier_cny'=>$supplier,'quoted_cost'=>$quoted,'actual_cost'=>$actual,'fx'=>$fx,'bank_fx'=>$bankFx,'bank_cny_rate'=>$bankRate,'sale_cny_rate'=>$saleRate,'cost_source'=>$costSource,'transport_cost'=>$transport,'transport_batch'=>$batchShare['batch_id']??null,'other_cost'=>$e['other_cost_mnt'],'profit'=>$profit,'missing'=>$missing,'entry'=>$e];
 }
 function admin_finance_report(array $orders): array {
-    $f=['gross'=>0,'initial'=>0,'balance'=>0,'extra_cargo'=>0,'refund'=>0,'net'=>0,'cargo'=>0,'supplier_cny'=>0,'quoted_cost'=>0,'actual_cost'=>0,'fx'=>0,'transport_cost'=>0,'other_cost'=>0,'profit'=>0,'paid_orders'=>0,'complete_orders'=>0,'shipment_parts'=>0,'missing'=>[],'rows'=>[]];
+    $f=['gross'=>0,'initial'=>0,'balance'=>0,'extra_cargo'=>0,'refund'=>0,'net'=>0,'cargo'=>0,'supplier_cny'=>0,'quoted_cost'=>0,'actual_cost'=>0,'fx'=>0,'bank_fx'=>0,'bank_fx_orders'=>0,'bank_cost_orders'=>0,'transport_cost'=>0,'other_cost'=>0,'profit'=>0,'paid_orders'=>0,'complete_orders'=>0,'shipment_parts'=>0,'missing'=>[],'rows'=>[]];
     $f['days']=[];
-    foreach(['cargo','supplier_cny','quoted_cost','actual_cost','fx','transport_cost','other_cost','profit'] as $k)$f['missing'][$k]=0;
+    foreach(['cargo','supplier_cny','quoted_cost','actual_cost','fx','bank_fx','transport_cost','other_cost','profit'] as $k)$f['missing'][$k]=0;
     foreach($orders as $o){if(!empty($o['demo']))continue;$r=admin_finance_order($o);
         // Include paid, refunded and cost-only orders; ignore unpaid abandoned requests.
         if(!$r['gross']&&!$r['refund']&&empty($o['purchase']['paid_child_ids'])&&$r['transport_cost']===null&&$r['other_cost']===null)continue;
         if($r['part'])$f['shipment_parts']++;elseif($r['gross']>0)$f['paid_orders']++;
         if($r['profit']!==null)$f['complete_orders']++;
+        if($r['cost_source']==='khanbank')$f['bank_cost_orders']++;
+        if($r['bank_cny_rate']!==null&&$r['bank_fx']!==null)$f['bank_fx_orders']++;
         $f['days'][$r['day']]=($f['days'][$r['day']]??0)+$r['net'];
-        foreach(['gross','initial','balance','extra_cargo','refund','net','cargo','supplier_cny','quoted_cost','actual_cost','fx','transport_cost','other_cost','profit'] as $k){if($r[$k]===null)$f['missing'][$k]++;else $f[$k]+=$r[$k];}
+        foreach(['gross','initial','balance','extra_cargo','refund','net','cargo','supplier_cny','quoted_cost','actual_cost','fx','bank_fx','transport_cost','other_cost','profit'] as $k){if($r[$k]===null)$f['missing'][$k]++;else $f[$k]+=$r[$k];}
         $f['rows'][]=$r;
     }
     $f['row_count']=count($f['rows']);$f['rows']=array_slice(array_reverse($f['rows']),0,100);
-    foreach($f['missing'] as $k=>$count)if($count)$f[$k]=null;
+    foreach($f['missing'] as $k=>$count)if($count&&($k!=='bank_fx'||!$f['bank_fx_orders']))$f[$k]=null;
     return $f;
 }

@@ -12,3 +12,11 @@ try{
 }
 catch(Throwable $e){fwrite(STDERR,'TaoWorld worker failed: '.get_class($e)."\n");exit(1);}
 finally{flock($lock,LOCK_UN);fclose($lock);}
+
+require_once __DIR__.'/../server/admin-finance.php';
+try {
+    $rates = finance_khan_refresh_order_days();
+    if ($rates) echo 'Khan Bank FX refreshed for '.$rates." day(s).\n";
+} catch (Throwable $e) {
+    fwrite(STDERR,'Khan Bank FX refresh deferred: '.get_class($e)."\n");
+}

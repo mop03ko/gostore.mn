@@ -41,10 +41,15 @@ function admin_fx_reference(array $input, ?callable $fetch = null): array {
     $bank = str_field($input, 'bank', 20);
     if (!isset(ADMIN_FX_BANKS[$bank])) fail('Банкаа сонгоно уу.');
     $date = str_field($input, 'date', 10);
+    return finance_bank_reference($bank, $date, $fetch);
+}
+
+function finance_bank_reference(string $bank, string $date, ?callable $fetch = null): array {
     $day = admin_fx_day($date);
     $key = 'finance-fx-reference:'.$bank.':'.$date;
     $cached = finance_meta_read($key);
     if (($cached['expires'] ?? 0) > time()) return $cached['result'];
+    if ($bank === 'KhanBank' && finance_khan_day_final($date, $cached)) return $cached['result'];
 
     $fetch ??= 'admin_fx_bank_json';
     if ($bank === 'KhanBank') {
@@ -75,9 +80,59 @@ function admin_fx_reference(array $input, ?callable $fetch = null): array {
             break;
         }
     }
-    $result = ['bank' => ADMIN_FX_BANKS[$bank], 'date' => $date, 'rate' => $rate];
+    // Keep an earlier same-day quote if the bank stops returning a usable rate.
+    $result = $rate === null && isset($cached['result']['rate'])
+        ? $cached['result']
+        : ['bank' => ADMIN_FX_BANKS[$bank], 'date' => $date, 'rate' => $rate];
     db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute([
-        $key, json_encode(['expires' => time() + ($rate !== null ? 3600 : 300), 'result' => $result], JSON_THROW_ON_ERROR),
+        $key, json_encode([
+            'expires' => time() + ($rate !== null ? 3600 : 900),
+            'fetched_at' => $rate !== null ? time() : ($cached['fetched_at'] ?? null),
+            'result' => $result,
+        ], JSON_THROW_ON_ERROR),
     ]);
     return $result;
+}
+
+function finance_khan_day_final(string $date, array $cached): bool {
+    $fetched = $cached['fetched_at'] ?? 0;
+    return isset($cached['result']['rate']) && $fetched > 0 && gmdate('Y-m-d', $fetched + 8 * 3600) > $date;
+}
+
+function finance_khan_rate(string $day): ?float {
+    $cached = finance_meta_read('finance-fx-reference:KhanBank:'.$day);
+    return isset($cached['result']['rate']) ? (float)$cached['result']['rate'] : null;
+}
+
+// Runs from the existing CLI worker. Bank traffic stays outside checkout and report requests.
+function finance_khan_refresh_order_days(?callable $fetch = null): int {
+    $days = db()->query(
+        "SELECT DISTINCT date(created,'+8 hours') AS day FROM orders
+         WHERE created >= datetime('now','-401 days')
+           AND COALESCE(json_extract(data,'$.demo'),0)=0
+           AND json_extract(data,'$.purchase.provider')='taoworld'
+           AND json_array_length(data,'$.purchase.paid_child_ids')>0
+         ORDER BY day DESC"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    $today = gmdate('Y-m-d', time() + 8 * 3600);
+    $updated = 0;
+    foreach (array_unique([$today,...$days]) as $day) {
+        if (!$day || $day > $today) continue;
+        $key = 'finance-fx-reference:KhanBank:'.$day;
+        $cached = finance_meta_read($key);
+        if (($cached['expires'] ?? 0) > time() || finance_khan_day_final($day, $cached)) continue;
+        try {
+            finance_bank_reference('KhanBank', $day, $fetch);
+        } catch (ApiError $e) {
+            if ($e->getCode() !== 502) throw $e;
+            $cached['expires'] = time() + 900;
+            $cached['result'] ??= ['bank' => ADMIN_FX_BANKS['KhanBank'], 'date' => $day, 'rate' => null];
+            db()->prepare('INSERT OR REPLACE INTO meta VALUES (?,?)')->execute([
+                $key, json_encode($cached, JSON_THROW_ON_ERROR),
+            ]);
+            break;
+        }
+        if (++$updated >= 6) break;
+    }
+    return $updated;
 }

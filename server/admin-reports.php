@@ -22,14 +22,17 @@ function admin_report_orders(int $from,int $to): array {
     return array_map(fn($r)=>json_decode($r['data'],true),$s->fetchAll());
 }
 // Money per order (₮). Revenue is what the customer paid, net of refunds. Supplier cost is the paid
-// TaoWorld purchase (goods + domestic shipping in China) at the order's quoted rate; cargo and
+// TaoWorld purchase (goods + domestic shipping in China) at the finance report's cost rate; cargo and
 // operating costs are not included, so the margin is a gross margin before those.
 function admin_order_money(array $o): array {
     $s=function_exists('settlement_summary')?settlement_summary($o):['paid'=>($o['paid']??false)?(int)($o['amount']??0):0,'refunded'=>0];
     $p=$o['purchase']??null;$costCny=null;
-    if(($p['provider']??'')==='taoworld'&&!empty($p['paid_child_ids'])&&($p['state']??'')!=='closed')$costCny=((int)($p['supplier_total_fen']??0))/100;
-    $rate=(float)($o['quote']['rates']['cny_rate']??shipping_settings()['cny_rate']);
-    $cost=$costCny===null?null:(int)round($costCny*$rate);
+    $cost=null;
+    if(($p['provider']??'')==='taoworld'&&!empty($p['paid_child_ids'])&&($p['state']??'')!=='closed'){
+        $finance=admin_finance_order($o);
+        $costCny=$finance['supplier_cny'];
+        $cost=$finance['actual_cost'];
+    }
     return ['revenue'=>max(0,(int)$s['paid']),'refunded'=>(int)$s['refunded'],'cost_cny'=>$costCny,'cost'=>$cost,'margin'=>$cost===null?null:max(0,(int)$s['paid'])-$cost];
 }
 function admin_report(array $q): array {
@@ -66,8 +69,8 @@ function admin_export(array $q): never {
     $kind=(string)($q['kind']??'');if(!in_array($kind,['orders','payments','customers','finance'],true))fail('Тайлангийн төрөл буруу.');
     [$from,$to,$fromTs,$toTs]=admin_report_range($q);$rows=[];
     if($kind==='finance'){
-        $rows[]=['Захиалга','Үүссэн өдөр','Төлөв','Борлуулалтын төлбөр ₮','Системийн үлдэгдэл төлбөр ₮','Нэмэлт карго төлбөр ₮','Нийт орлого ₮','Буцаалт ₮','Буцаалтын дараах орлого ₮','Карго орлого ₮','Нийлүүлэгч (буцаалт хассан) ¥','Нийлүүлэгч захиалгын ханшаар ₮','Нийлүүлэгч бодит зардал ₮','Ханшийн зөрүү ₮','Тээврийн бодит зардал ₮','Бусад зардал ₮','Цэвэр ашиг (бүртгэсэн) ₮','Дутуу мэдээлэл','Тэмдэглэл'];
-        foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;$f=admin_finance_order($o);$rows[]=[$f['id'],$f['day'],$f['status'],$f['initial'],$f['balance'],$f['extra_cargo'],$f['gross'],$f['refund'],$f['net'],$f['cargo'],$f['supplier_cny'],$f['quoted_cost'],$f['actual_cost'],$f['fx'],$f['transport_cost'],$f['other_cost'],$f['profit'],implode('; ',$f['missing']),$f['entry']['note']];}
+        $rows[]=['Захиалга','Үүссэн өдөр','Төлөв','Борлуулалтын төлбөр ₮','Системийн үлдэгдэл төлбөр ₮','Нэмэлт карго төлбөр ₮','Нийт орлого ₮','Буцаалт ₮','Буцаалтын дараах орлого ₮','Карго орлого ₮','Нийлүүлэгч (буцаалт хассан) ¥','Нийлүүлэгч захиалгын ханшаар ₮','Нийлүүлэгчийн өртөг ₮','Өртөгт ашигласан ханшийн зөрүү ₮','Тээврийн бодит зардал ₮','Бусад зардал ₮','Цэвэр ашиг ₮','Дутуу мэдээлэл','Тэмдэглэл','Захиалгын ханш ₮ / ¥','ХААН Банкны зарах ханш ₮ / ¥','ХААН Банкны ханшийн зөрүү ₮','Өртгийн эх үүсвэр'];
+        foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;$f=admin_finance_order($o);$rows[]=[$f['id'],$f['day'],$f['status'],$f['initial'],$f['balance'],$f['extra_cargo'],$f['gross'],$f['refund'],$f['net'],$f['cargo'],$f['supplier_cny'],$f['quoted_cost'],$f['actual_cost'],$f['fx'],$f['transport_cost'],$f['other_cost'],$f['profit'],implode('; ',$f['missing']),$f['entry']['note'],$f['sale_cny_rate'],$f['bank_cny_rate'],$f['bank_fx'],match($f['cost_source']){'khanbank'=>'ХААН Банк','transaction'=>'Гүйлгээний баримт',default=>null}];}
     }elseif($kind==='orders'){
         $rows[]=['Захиалга','Огноо','Төлөв','Төрөл','Хэрэглэгч','Утас','Гарчиг','Үнийн санал ₮','Төлсөн (цэвэр) ₮','Буцаасан ₮','TaoWorld ¥','TaoWorld ₮','Нийт ашиг ₮','TaoWorld төлөв'];
         foreach(admin_report_orders($fromTs,$toTs) as $o){if(!empty($o['demo']))continue;$m=admin_order_money($o);
