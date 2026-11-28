@@ -46,6 +46,7 @@ const ORDER_TABS=[
   ['paid','Баталгаажсан',o=>['confirmed','shipping'].includes(uxDisplayStatus(o))],
   ['transit','Эрээн, замд',o=>['erenhot','erenhot_ready','erenhot_dispatched','zamyn_uud'].includes(uxDisplayStatus(o))],
   ['ub','Улаанбаатарт',o=>['ulaanbaatar','ulaanbaatar_unsorted','ready_pickup','ready_delivery','out_for_delivery'].includes(uxDisplayStatus(o))],
+  ['ready','Олгоход бэлэн',o=>['ready_pickup','ready_delivery'].includes(uxDisplayStatus(o))],
   ['done','Дууссан',o=>uxDisplayStatus(o)==='completed'],
   ['cancelled','Цуцалсан',o=>uxDisplayStatus(o)==='cancelled'],
   ['review','TaoWorld шалгах',o=>['review','preflight_review'].includes(o.purchase?.state)],
@@ -107,17 +108,18 @@ function overview(){
   const week=[...Array(7)].map((_,i)=>uxDay(Date.now()-(6-i)*UX_DAY)),revenue=week.map(paidOn),avg=Math.round(revenue.slice(0,6).reduce((a,b)=>a+b,0)/6);
   const diff=(now,then,unit='')=>now===then?'<small class="flat">өчигдөртэй адил</small>':`<small class="${now>then?'up':'down'}">${now>then?'▲':'▼'} ${Math.abs(now-then).toLocaleString('en-US')}${unit} өчигдрөөс</small>`;
   const count=id=>real.filter(uxTabFn(id)).length,oldest=real.filter(uxTabFn('new')).reduce((m,o)=>Math.min(m,Date.parse(o.created)),Infinity);
-  const ready=real.filter(o=>['ready_pickup','ready_delivery'].includes(uxDisplayStatus(o))).length;
   const tasks=[['new',count('new'),'Шинэ захиалга хариу хүлээж байна',Number.isFinite(oldest)?'Хамгийн удаан нь '+uxAge({created:new Date(oldest).toISOString(),status:'new'}).replace(/<[^>]+>/g,''):'Хүлээгдэж буй захиалга алга','or'],
-    ['review',count('review'),'TaoWorld захиалга шалгах','Үнэ, төлөв зөрсөн','a'],['unpaid',count('unpaid'),'Эхний төлбөр хүлээж буй','Захиалгын эхний төлбөр','bl'],['transport-due',count('transport-due'),'Тээврийн үлдэгдэлтэй','Баталгаажсан карго, хүргэлтийн тооцоо','a'],['ub',ready,'Улаанбаатарт олгоход бэлэн','Агуулахаас авах эсвэл хүргэх','g']];
+    ['review',count('review'),'TaoWorld захиалга шалгах','Үнэ, төлөв зөрсөн','a'],['unpaid',count('unpaid'),'Эхний төлбөр хүлээж буй','Захиалгын эхний төлбөр','bl'],['transport-due',count('transport-due'),'Тээврийн үлдэгдэлтэй','Баталгаажсан карго, хүргэлтийн тооцоо','a'],['ready',count('ready'),'Олгоход бэлэн','Агуулахаас авах эсвэл хүргэх','g']];
   const top=Math.max(1,...revenue),low=data.products.filter(p=>p.active&&p.type==='local'&&!p.demo&&p.stock<5);
-  return `<div class="stats ux-kpis"><div class="stat"><span>Өнөөдрийн захиалга</span><strong>${madeOn(today)}</strong>${diff(madeOn(today),madeOn(yesterday))}</div>`+
-    `<div class="stat"><span>Өнөөдрийн орлого</span><strong>${money(paidOn(today))}</strong><small class="${paidOn(today)>=avg?'up':'down'}">7 хоногийн дундаж ${money(avg)}</small></div>`+
+  const formattedDate=new Date().toLocaleDateString('mn-MN',{timeZone:'Asia/Ulaanbaatar',year:'numeric',month:'long',day:'numeric'});
+  return `<div class="dashboard-strip"><time datetime="${today}">${esc(formattedDate)}</time><div><button type="button" class="quiet" data-refresh>Шинэчлэх</button><button type="button" class="primary" data-page="orders" data-order-home>Захиалгууд →</button></div></div>`+
+    `<div class="stats ux-kpis"><div class="stat"><span>Өнөөдрийн захиалга</span><strong>${madeOn(today)}</strong>${diff(madeOn(today),madeOn(yesterday))}</div>`+
+    `<div class="stat"><span>Өнөөдөр орсон эхний төлбөр</span><strong>${money(paidOn(today))}</strong><small class="${paidOn(today)>=avg?'up':'down'}">Өмнөх 6 өдрийн дундаж ${money(avg)}</small></div>`+
     `<div class="stat"><span>Эхний төлбөр хүлээж буй</span><strong>${count('unpaid')}</strong><small class="flat">захиалга</small></div>`+
     `<div class="stat"><span>TaoWorld API өнөөдөр</span><strong id="kpi-api">—</strong><small class="flat" id="kpi-api-note">ачаалж байна</small></div></div>`+
-    `<div class="two-col ux-dash"><section class="panel"><div class="panel-heading"><h3>Хийх ажил</h3><button class="quiet" data-page="orders">Бүх захиалга →</button></div><div class="tasks">${tasks.map(([tab,n,title,note,tone])=>`<button type="button" class="task-row" data-task-tab="${tab}" ${n?'':'data-zero'}><b class="task-n ${tone}">${n}</b><span><strong>${title}</strong><small>${esc(note)}</small></span><span aria-hidden="true">→</span></button>`).join('')}</div></section>`+
-    `<section class="panel"><div class="panel-heading"><h3>7 хоногийн орлого</h3><button class="quiet" data-page="reports">Тайлан →</button></div><div class="xchart"><div class="xbars" role="img" aria-label="Сүүлийн 7 хоногийн төлбөр орсон орлого">${week.map((d,i)=>`<div class="xbar" tabindex="0" data-tip="${d}: ${money(revenue[i])}">${revenue[i]?`<span class="xseg" style="height:${(revenue[i]/top*100).toFixed(1)}%;background:${d===today?'#f16522':'#2a78d6'}"></span>`:''}</div>`).join('')}</div><div class="xaxis"><span>${week[0].slice(5)}</span><span>Өнөөдөр улбар шараар</span><span>${today.slice(5)}</span></div></div></section></div>`+
-    `<section class="panel"><div class="panel-heading"><div><h3>Сүүлийн захиалгууд</h3><p>Шинээр ирсэн захиалгуудаа шалгаарай</p></div><button class="quiet" data-page="orders">Бүгдийг харах →</button></div>${orderTable(real.slice(0,6))}</section>`+
+    `<div class="two-col ux-dash"><section class="panel"><div class="panel-heading"><h3>Хийх ажил</h3></div><div class="tasks">${tasks.map(([tab,n,title,note,tone])=>`<button type="button" class="task-row" data-task-tab="${tab}" ${n?'':'data-zero'}><b class="task-n ${tone}">${n}</b><span><strong>${title}</strong><small>${esc(note)}</small></span><span aria-hidden="true">→</span></button>`).join('')}</div></section>`+
+    `<section class="panel"><div class="panel-heading"><h3>7 хоногийн эхний төлбөр</h3><button class="quiet" data-page="reports">Тайлан →</button></div><div class="dashboard-total"><strong>${money(revenue.reduce((a,b)=>a+b,0))}</strong><span>${week[0].slice(5)} – ${today.slice(5)}</span></div><div class="xchart"><div class="xbars" aria-label="Сүүлийн 7 хоногийн эхний төлбөр">${week.map((d,i)=>`<div class="xbar" tabindex="0" aria-label="${d}: ${money(revenue[i])}" data-tip="${d}: ${money(revenue[i])}">${revenue[i]?`<span class="xseg" style="height:${(revenue[i]/top*100).toFixed(1)}%;background:${d===today?'#c44d12':'#4068ad'}"></span>`:''}</div>`).join('')}</div><div class="xaxis" aria-hidden="true">${week.map(d=>`<span>${d.slice(8)}</span>`).join('')}</div></div></section></div>`+
+    `<section class="panel"><div class="panel-heading"><h3>Сүүлийн захиалгууд</h3><button class="quiet" data-page="orders" data-order-home>Бүгдийг харах →</button></div>${orderTable(real.slice(0,6))}</section>`+
     (low.length?`<section class="panel"><div class="panel-heading"><h3>Үлдэгдлийн анхааруулга</h3><span class="tag st-wait">${low.length}</span></div>${low.map(p=>`<div class="connection"><div><h3>${esc(p.name)}</h3><p>${p.stock} ширхэг үлдсэн</p></div><button class="quiet" data-product="${esc(p.id)}">Засах</button></div>`).join('')}</section>`:'');
 }
 async function uxApiKpi(){
@@ -237,9 +239,27 @@ editOrder=function(id){
 const baseRender=render;
 render=function(){
   baseRender();
-  const review=data.orders.filter(uxTabFn('review')).length,badge=$('#review-count');if(badge){badge.textContent=review;badge.hidden=!review;}
-  document.querySelectorAll('.tabbar [data-page]').forEach(b=>{const on=b.dataset.page===page||(b.dataset.page==='orders'&&page==='links');b.classList.toggle('active',on);b.setAttribute('aria-current',on?'page':'false');});
-  const tabNew=$('#tab-new-count');if(tabNew){const n=data.orders.filter(o=>uxDisplayStatus(o)==='new').length;tabNew.textContent=n;tabNew.hidden=!n;}
+  const active=page==='work'?'orders':page;
+  const selected=$(`#admin-sidebar-nav [data-page="${active}"]`);
+  $('#page-section').textContent=selected?.closest('.admin-nav-section')?.querySelector('.nav-group')?.textContent||'';
+  $('#content').dataset.route=page;
+  const restricted=data.admin?.security?.restricted;
+  document.querySelectorAll('[data-cmdk-open]').forEach(b=>{b.hidden=!!restricted;});
+  document.querySelectorAll('#admin-sidebar-nav [data-page], .tabbar [data-page]').forEach(b=>{
+    const on=b.dataset.page===active||(b.closest('.tabbar')&&b.dataset.page==='orders'&&page==='links');
+    b.classList.toggle('active',on);
+    if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+  const real=data.orders.filter(o=>!o.demo);
+  const review=real.filter(uxTabFn('review')).length;
+  const fresh=real.filter(uxTabFn('new')).length;
+  for(const [id,count] of [['review-count',review],['new-count',fresh],['tab-new-count',fresh]]){
+    const badge=document.getElementById(id);badge.textContent=count;badge.hidden=count===0;
+  }
+  if((page==='work'||page==='orders')&&adminCanOpen('work')){
+    const main=page==='work';
+    $('#content').insertAdjacentHTML('afterbegin',`<div class="admin-view-switch"><span>${main?'Ажлын хэсэг':'Нарийвчилсан жагсаалт'}</span><button type="button" class="quiet" data-page="${main?'orders':'work'}">${main?'Нарийвчилсан жагсаалт':'Ажлын хэсэг'} →</button></div>`);
+  }
   if(page==='overview')uxApiKpi();
 };
 
@@ -257,6 +277,7 @@ window.uiConfirm=({title,text='',confirmLabel='Тийм',danger=false,input=null
 // Ctrl+K: orders, customers, products, pages and Taobao items in one place.
 let paletteItems=[],paletteIndex=0,paletteSeq=0;
 function paletteOpen(){
+  if(!adminCanOpen('overview')||$('#cmdk')?.open)return;
   let d=$('#cmdk');
   if(!d){d=document.createElement('dialog');d.id='cmdk';d.className='cmdk';d.setAttribute('aria-label','Хайх');d.innerHTML='<div class="cmdk-field"><span aria-hidden="true">⌕</span><input id="cmdk-input" type="search" placeholder="Захиалга, утас, хэрэглэгч, бараа, хуудас…" autocomplete="off" aria-controls="cmdk-results" aria-autocomplete="list"></div><div id="cmdk-results" role="listbox" aria-label="Илэрц"></div><p class="cmdk-hint">↑ ↓ сонгох · Enter нээх · Esc хаах</p>';document.body.append(d);
     d.addEventListener('click',e=>{if(e.target===d)d.close();const item=e.target.closest('[data-cmdk]');if(item)paletteRun(Number(item.dataset.cmdk));});
@@ -266,8 +287,12 @@ function paletteOpen(){
 }
 function paletteSearch(raw){
   const q=raw.trim().toLowerCase(),digits=q.replace(/\D/g,''),seq=++paletteSeq,items=[];
-  const hidden=new Set([...document.querySelectorAll('nav [data-page]')].filter(b=>b.hidden).map(b=>b.dataset.page));
-  for(const [key,title] of Object.entries(titles))if(!hidden.has(key)&&(!q||title.toLowerCase().includes(q)))items.push({group:'Хуудас',label:title,run:()=>{page=key;query='';render();}});
+  for(const b of document.querySelectorAll('#admin-sidebar-nav [data-page]:not([hidden])')){
+    const key=b.hasAttribute('data-order-home')?primaryOrdersPage():b.dataset.page;
+    const title=b.textContent.replace(/\s+\d+\s*$/,'').trim().replace(/^\S+\s+/,'');
+    const section=b.closest('.admin-nav-section').querySelector('.nav-group').textContent;
+    if(!q||`${title} ${section}`.toLowerCase().includes(q))items.push({group:'Хуудас',label:title,sub:section,run:()=>navigateAdmin(key)});
+  }
   if(q){
     const tb=raw.match(/(?:^tb-|[?&]id=|^)(\d{6,20})\b/);if(tb&&(/^tb-/.test(raw.trim())||/taobao|tmall|tb\.cn/.test(raw)||/^\d{9,20}$/.test(raw.trim())))items.unshift({group:'Taobao бараа',label:'tb-'+tb[1]+' дэлгүүрт нээх',run:()=>window.open('/v/tb-'+tb[1],'_blank','noopener')});
     for(const o of data.orders.filter(o=>(o.id+' '+o.customer+' '+o.title).toLowerCase().includes(q)||(digits.length>=4&&String(o.phone||'').replace(/\D/g,'').includes(digits))).slice(0,8))
@@ -275,6 +300,16 @@ function paletteSearch(raw){
     for(const p of data.products.filter(p=>(p.name+' '+p.id).toLowerCase().includes(q)).slice(0,4))items.push({group:'Бараа',label:p.name,sub:money(p.price),run:()=>editProduct(p.id)});
   }
   paletteItems=items.slice(0,24);paletteIndex=0;paletteDraw();
+  if(/^gs-[a-z0-9-]{6,47}$/i.test(q)&&!data.orders.some(o=>o.id.toLowerCase()===q)){
+    api('admin-order&id='+encodeURIComponent(q.toUpperCase())).then(({order})=>{
+      if(seq!==paletteSeq||!$('#cmdk')?.open||!order)return;
+      paletteItems.unshift({group:'Архивын захиалга',label:order.id+' · '+order.customer,sub:statuses[uxDisplayStatus(order)]||uxDisplayStatus(order),run:()=>{
+        if(!data.orders.some(o=>o.id===order.id))data.orders.push(order);
+        editOrder(order.id);
+      }});
+      paletteIndex=0;paletteDraw();
+    }).catch(()=>{});
+  }
   if(q.length>=2&&uxCan('operator'))api('admin-customers&q='+encodeURIComponent(q)).then(r=>{if(seq!==paletteSeq)return;const extra=(r.customers||[]).slice(0,5).map(c=>({group:'Хэрэглэгч',label:c.name||c.phone||c.email,sub:[c.phone,c.email].filter(Boolean).join(' · ')+' · '+c.orders+' захиалга',run:()=>editCustomer(c.id)}));if(extra.length){paletteItems=[...paletteItems,...extra].slice(0,28);paletteDraw();}}).catch(()=>{});
 }
 function paletteDraw(){
@@ -326,7 +361,7 @@ addEventListener('click',async e=>{
   if(b.dataset.opage){orderPage=Number(b.dataset.opage);render();$('.orders-panel')?.scrollIntoView({block:'start'});return;}
   if(b.hasAttribute('data-orders-reset')){query='';statusFilter='all';payFilter='all';dateFilter='all';orderTab='all';orderPage=1;render();return;}
   if(b.hasAttribute('data-bulk-clear')){pickedOrders.clear();render();return;}
-  if(b.dataset.taskTab){orderTab=b.dataset.taskTab;orderPage=1;page='orders';query='';statusFilter='all';payFilter='all';dateFilter='all';render();$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
+  if(b.dataset.taskTab){navigateAdmin('orders',{filter:()=>{orderTab=b.dataset.taskTab;orderPage=1;payFilter='all';dateFilter='all';}});$('[data-otab="'+orderTab+'"]')?.scrollIntoView({block:'nearest',inline:'nearest'});return;}
   if(b.hasAttribute('data-cmdk-open')){paletteOpen();return;}
   if(b.hasAttribute('data-menu-open')){openAdminMenu(b);return;}
   if(b.dataset.changeOrderStatus){

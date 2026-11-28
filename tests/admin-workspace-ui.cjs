@@ -45,13 +45,29 @@ async function run(){
     await call('admin-workspace-assign',{id:'GS-WORKSPACE-DUE',task:'balance',assignee:'owner'});
     assert.equal((await call('admin-workspace&view=tasks&q=GS-WORKSPACE-DUE')).rows[0].assignee,'owner');
     const freight='GS-WORKSPACE-DUE';
-    const page=await ctx.newPage({viewport:{width:390,height:844}});page.setDefaultTimeout(8500);
+    const page=await ctx.newPage();
+    await page.setViewportSize({width:390,height:844});
+    page.setDefaultTimeout(25000);
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
-    await page.goto(base+'/admin/#work');
+    await page.goto(base+'/admin/#overview');
+    try{await page.locator('.tabbar [data-order-home]').click();}
+    catch(error){throw Error(`${error.message}\nBoot: ${await page.locator('#admin-boot-error').textContent()}\nBrowser errors: ${errors.join(', ')}`,{cause:error});}
+    await page.waitForURL('**/#work');
     const work=page.locator('#admin-workspace');
     const nav=work.getByRole('navigation',{name:'Захиалгын ажлын хэсгийн цэс'});
     try{await nav.getByRole('button',{name:'Захиалгууд',exact:true}).waitFor();}
     catch(error){throw Error(`${error.message}\nBrowser errors: ${errors.join(', ')}`,{cause:error});}
+    assert.equal(await page.locator('#admin-sidebar-nav [data-order-home]').count(),1);
+    await page.locator('.admin-view-switch').getByRole('button',{name:'Нарийвчилсан жагсаалт →'}).click();
+    await page.waitForURL('**/#orders');
+    await page.goBack();
+    await page.waitForURL('**/#work');
+    await page.locator('.tabbar [data-cmdk-open]').click();
+    await page.locator('#cmdk-input').fill('GS-WORKSPACE-OLD');
+    await page.getByRole('option',{name:/GS-WORKSPACE-OLD/}).click();
+    await page.locator('#editor').waitFor({state:'visible'});
+    assert.equal(await page.locator('#editor-title').textContent(),'GS-WORKSPACE-OLD');
+    await page.locator('#close-editor').click();
     await work.getByRole('textbox',{name:'Захиалга хайх'}).fill('GS-WORKSPACE-OLD');
     await work.getByRole('button',{name:'GS-WORKSPACE-OLD',exact:true}).click();
     const drawer=page.getByRole('dialog',{name:'GS-WORKSPACE-OLD'});

@@ -1,7 +1,7 @@
 'use strict';
 
 // Keep native admin login, role routing and the full order editor in charge.
-window.ADMIN_EXTRA_TITLES.work='Захиалгын ажлын хэсэг';
+window.ADMIN_EXTRA_TITLES.work='Захиалгууд';
 (function(){
   let loaded, mounted;
   const base='/admin/workspace/';

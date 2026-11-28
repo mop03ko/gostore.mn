@@ -181,17 +181,18 @@ window.AdminExtra=(()=>{
 
   // Navigation by role, header identity, page hooks.
   const HIDDEN={operator:['admins'],viewer:['admins','customers','messages','work']};
+  function canOpen(route){
+    if(data.admin?.security?.restricted)return route==='security';
+    return !(HIDDEN[role()]||[]).includes(route);
+  }
   function afterRender(p){
-    const hidden=HIDDEN[role()]||[];
-    const restricted=data.admin?.security?.restricted;
     document.querySelectorAll('#admin-sidebar-nav [data-page], .tabbar [data-page]').forEach(button=>{
-      button.hidden=hidden.includes(button.dataset.page)||(restricted&&button.dataset.page!=='security');
+      button.hidden=!canOpen(button.dataset.page);
     });
     document.querySelectorAll('#admin-sidebar-nav .admin-nav-section').forEach(section=>{
       section.hidden=!section.querySelector('[data-page]:not([hidden])');
     });
     if(data.admin){const strong=document.querySelector('.account strong');if(strong)strong.textContent=data.admin.name;$('#admin-email').textContent=data.admin.email+' · '+data.admin.role_label;document.querySelector('.account .avatar').textContent=(data.admin.name||'G').slice(0,1).toUpperCase();}
-    if(hidden.includes(p)){page='overview';render();return;}
     if(p==='overview')loadAlerts();
     if(p==='security'){if(data.admin&&!data.admin.builtin){const h=document.querySelector('#content h2');if(h)h.textContent='Нууц үг солих';}$('#content').insertAdjacentHTML('afterbegin',adminSecurityNotice());$('#content').insertAdjacentHTML('beforeend',totpPanel());}
     pages[p]?.load?.();
@@ -256,5 +257,5 @@ window.AdminExtra=(()=>{
       f.password.value='';f.querySelector('.totp-step')?.remove();await refresh();
     }catch(x){err.textContent=x.message;}finally{button.disabled=false;}
   }
-  return {pages,afterRender,orderPanel,users:null};
+  return {pages,afterRender,canOpen,orderPanel,users:null};
 })();

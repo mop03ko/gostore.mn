@@ -71,7 +71,7 @@ await page.setViewportSize({width:390,height:844});await page.goto(base+'/admin/
 assert.equal(await page.locator('.tabbar').isVisible(),true);assert.equal(await page.locator('aside nav').isVisible(),false);assert.equal(await page.locator('[data-menu-open]').isVisible(),true,'Grouped menu is available on phones');
 assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No sideways scroll');
 await page.locator('.tabbar [data-page=overview]').click();await page.waitForFunction(()=>location.hash==='#overview');assert.equal(await page.locator('.tabbar [data-page=overview]').getAttribute('aria-current'),'page');
-await page.locator('.tabbar [data-page=orders]').click();await page.locator('.orders-table tbody tr').first().locator('.order-customer').click();await page.locator('#editor').waitFor({state:'visible'});
+await page.locator('.tabbar [data-page=orders]').click();await page.getByRole('button',{name:'Нарийвчилсан жагсаалт →'}).click();await page.locator('.orders-table tbody tr').first().locator('.order-customer').click();await page.locator('#editor').waitFor({state:'visible'});
 const pbox=await page.locator('#editor').boundingBox();assert.ok(pbox.width>=389,'Full-width drawer on phones: '+JSON.stringify(pbox)+' '+await page.locator('#editor').evaluate(e=>{const c=getComputedStyle(e);return [c.width,c.maxWidth,c.marginLeft,c.marginRight,innerWidth].join(',');}));
 await page.locator('#close-editor').click();
 const fixtureOrder={title:'Тээврийн төлбөрийн тест',customer:'Тест хэрэглэгч',phone:'99000000',type:'checkout',items:[],amount:30000,paid:true,created:'2026-01-02T00:00:00Z'};
