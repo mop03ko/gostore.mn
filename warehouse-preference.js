@@ -13,9 +13,15 @@
  const ready=window.catalogReady?Promise.resolve(window.catalogReady).then(()=>{shipping=window.storeServer?.shipping;user=currentUser();}):api('catalog').then(r=>{shipping=r.shipping;user=r.customer;}).catch(()=>{});
  const home=()=>/^\/(?:index\.html)?$/.test(location.pathname)&&!location.search&&!document.documentElement.matches('.listing-view,.product-view,.account-view,.auth-view-open');
  function renderSummary(){
+  const p=selected(),header=document.querySelector('.header-pickup');
+  if(header){
+   header.hidden=!locations().length;
+   header.querySelector('[data-header-pickup]').textContent=p?.city||p?.name||'Салбар сонгох';
+   header.setAttribute('aria-label',p?'Авах агуулах солих · '+p.name:'Авах агуулах сонгох');
+  }
   let host=document.getElementById('warehouse-choice-summary');
-  if(!host){const entry=document.getElementById('self-cargo-entry');if(!entry)return;host=document.createElement('section');host.id='warehouse-choice-summary';host.className='container wp-summary';entry.after(host);}
-  const p=selected();host.innerHTML='<div><span class="wp-eyebrow">ТАНЫ АВАХ АГУУЛАХ</span><strong>'+esc(p?.name||'Агуулахаа сонгоорой')+'</strong>'+(p?'<small>'+esc(p.address)+'</small>':'')+'</div><div class="wp-actions"><button type="button" data-warehouse-open>'+(p?'Агуулах солих':'Агуулах сонгох')+'</button>'+(currentUser()?'<button type="button" data-erenhot-open>Эрээн агуулахын хаяг харах</button>':'')+'</div>';
+  if(!host){const entry=document.getElementById('branch-promo');if(!entry)return;host=document.createElement('section');host.id='warehouse-choice-summary';host.className='container wp-summary';entry.before(host);}
+  host.innerHTML='<div><span class="wp-eyebrow">ТАНЫ АВАХ АГУУЛАХ</span><strong>'+esc(p?.name||'Агуулахаа сонгоорой')+'</strong>'+(p?'<small>'+esc(p.address)+'</small>':'')+'</div><div class="wp-actions"><button type="button" data-warehouse-open>'+(p?'Агуулах солих':'Агуулах сонгох')+'</button>'+(currentUser()?'<button type="button" data-erenhot-open>Эрээн агуулахын хаяг харах</button>':'')+'</div>';
  }
  function createDialog(title){
   const d=document.createElement('dialog');d.className='wp-dialog';d.setAttribute('aria-labelledby','wp-title');
@@ -65,5 +71,5 @@
  window.warehousePreference={ready,startup,selected,locations,save,open,recommend};
  document.addEventListener('click',e=>{if(e.target.closest('[data-warehouse-open]'))void open();if(e.target.closest('[data-erenhot-open]'))void erenhot();});
  addEventListener('gostore-customer-changed',()=>{if(dialog)dialog.close();renderSummary();});
- addEventListener('storage',e=>{if(e.key===key)renderSummary();if(e.key==='gostore-account-changed-v1'&&dialog)dialog.close();});
+ addEventListener('storage',e=>{if(e.key===key){renderSummary();dispatchEvent(new Event('gostore-warehouse-changed'));}if(e.key==='gostore-account-changed-v1'&&dialog)dialog.close();});
 })();

@@ -916,7 +916,7 @@ function renderSupplierNewYearDeals(){
   const shelf=supplierHomeNewYearShelf(),grid=shelf?.querySelector('#new-year-deals-grid');
   if(!grid)return;
   const products=supplierResults.filter(p=>p.new_year_deal===true&&!window.productPolicyBlocked(p)&&supplierCardDiscount(p,Number(p.mnt||p.approx_mnt)));
-  const preview=products.slice(0,12),hasMore=products.length>preview.length;
+  const preview=products.slice(0,6),hasMore=products.length>preview.length;
   const expanded=hasMore&&shelf.hasAttribute('data-expanded');
   shelf.hidden=!products.length;
   shelf.toggleAttribute('data-expanded',expanded);
@@ -965,7 +965,7 @@ function renderSupplierCards(items,append=false,grid=$('#supplier-grid')){
         <h3><a href="${productHref}" title="${esc(p.name)}">${esc(p.name)}</a></h3>
         <div class="supplier-card-meta">${sold!==null?`<span class="supplier-sales"><b>${soldLabel}</b> · нийлүүлэгч дээр</span>`:'<span>QPay-ээр төлнө</span>'}</div>
         ${p.brand_id&&p.shop_rating?`<p class="supplier-delivery-note">Дэлгүүрийн үнэлгээ ${esc(String(p.shop_rating))}/5</p>`:''}<p class="supplier-delivery-note">Карго тусдаа</p>
-        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?'≈ '+money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount" data-discount-expires="${discount.expires}"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del>${discount.percent>0?`<span>−${discount.percent}%</span>`:''}</div>`:''}${!soldOut?supplierPromotionHtml(p,Number(priced?p.mnt:approx),null):''}${priced?'<small>-аас эхлэн</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small>-аас эхлэн</small>'):''}</div></div>
+        <div class="supplier-card-bottom"><div class="supplier-card-price"><strong${discount?' aria-label="Хямдарсан үнэ"':''}>${priced?money(p.mnt):approx?'≈ '+money(approx):soldOut?'Дууссан':'Үнэ шалгах'}</strong>${discount?`<div class="supplier-discount" data-discount-expires="${discount.expires}"><del aria-label="Үндсэн үнэ">${money(discount.was_mnt)}</del></div>`:''}${!soldOut?supplierPromotionHtml(p,Number(priced?p.mnt:approx),null):''}${priced?'<small class="supplier-starting-price">Эхлэх үнэ</small>':approx?(soldOut?'<small>Одоогоор худалдаанд алга</small>':'<small class="supplier-starting-price">Эхлэх үнэ</small>'):''}</div></div>
       </div>
     </article>`;
   }).join('');
@@ -1882,6 +1882,16 @@ window.productCompare=(()=>{
   const phone=()=>settings().pickup?.phone||'';
 
   // ---------- Cart ----------
+  function updateCartPickup(){
+    const button=root.querySelector('[data-cart-pickup]');
+    if(!button)return;
+    const preference=window.warehousePreference;
+    button.disabled=!preference?.locations().length;
+    const place=preference?.selected();
+    button.textContent=place?.name||'Агуулах сонгох';
+    button.setAttribute('aria-label',place?'Авах агуулах солих · '+place.name:'Авах агуулах сонгох');
+  }
+
   const FAVORITES='gostore-taobao-favorites-v1';
   const href=id=>'/v/'+encodeURIComponent(id.replace(/^abb-/,''));
   function saveForLater(items){
@@ -1909,8 +1919,9 @@ window.productCompare=(()=>{
     // The pinned phone bar repeats the summary action under its own class; it orders the same selection.
     const barCheckout=`<button type="button" class="button blue store-cart-bar-go" data-cart-checkout-picked ${chosen.length?'':'disabled'}>Төлбөр тооцох${chosen.length?' ('+chosen.length+')':''}</button>`;
     const shop=g=>`<section class="store-cart-shop"><header><label class="cart-check">${checkbox(`data-cart-shop="${esc(g.key)}"`,g.lines,(g.name||'Дэлгүүр')+' — бүх барааг сонгох')}<span>${icon('bag')}${esc(g.name||'Нийлүүлэгчийн дэлгүүр')}</span></label><small>${g.lines.length} бараа</small></header>${g.lines.map(cartLine).join('')}</section>`;
-    root.innerHTML=crumbs('Миний сагс')+`<h1 class="store-title">Миний сагс <span>${items.length} бараа</span></h1>`+(items.length?`<div class="store-cart"><div class="store-cart-lines"><p class="account-hint">${esc(commerceUI.unitHelp)}</p><div class="store-cart-tools"><label class="cart-check cart-check-all">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгдийг сонгох</span></label><button type="button" class="text-button" data-cart-save-all>Бүх барааг хадгалах</button><button type="button" class="text-button danger" data-cart-clear>Бүгдийг хасах</button></div>${shops.map(shop).join('')}</div><aside class="store-cart-summary"><h2>Захиалгын хураангуй</h2><p class="store-cart-picked">Сонгосон: <strong>${chosen.length}</strong> / ${items.length} бараа</p>${chosen.length?commerceUI.estimateHtml(chosen,settings()):'<p class="account-hint">Тооцоо хийх бараагаа сонгоно уу.</p>'}${checkout}<p class="account-hint">QPay нэхэмжлэл гарснаас хойш 15 минутын дотор төлнө. Бараагаа Улаанбаатар агуулахаас авах эсвэл хүргүүлж болно.</p><div class="store-help-card"><strong>Тусламж хэрэгтэй юу?</strong><p>Захиалгатай холбоотой асуултаа бидэнд илгээгээрэй.</p>${phone()?`<a class="text-button" href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:''}<a class="text-button" href="mailto:shop@gostore.mn">shop@gostore.mn</a></div></aside></div><div class="store-cart-bar"><label class="cart-check">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгд</span></label><p><small>${q?.total!=null?'Одоо төлөх':'Барааны дүн'}</small><strong>${pay===null?'—':money(pay)}</strong></p>${barCheckout}</div>`:`<div class="account-empty">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><a class="button blue" href="/products">Бараа үзэх</a></div>`);
+    root.innerHTML=crumbs('Миний сагс')+`<h1 class="store-title">Миний сагс <span>${items.length} бараа</span></h1>`+(items.length?`<div class="store-cart"><div class="store-cart-lines"><p class="account-hint">${esc(commerceUI.unitHelp)}</p><div class="store-cart-tools"><label class="cart-check cart-check-all">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгдийг сонгох</span></label><button type="button" class="text-button" data-cart-save-all>Бүх барааг хадгалах</button><button type="button" class="text-button danger" data-cart-clear>Бүгдийг хасах</button></div>${shops.map(shop).join('')}</div><aside class="store-cart-summary"><h2>Захиалгын хураангуй</h2><div class="store-cart-pickup"><span>Авах агуулах</span><button type="button" data-cart-pickup data-warehouse-open>Агуулах сонгох</button></div><p class="store-cart-picked">Сонгосон: <strong>${chosen.length}</strong> / ${items.length} бараа</p>${chosen.length?commerceUI.estimateHtml(chosen,settings()):'<p class="account-hint">Тооцоо хийх бараагаа сонгоно уу.</p>'}${checkout}<p class="account-hint">QPay нэхэмжлэл гарснаас хойш 15 минутын дотор төлнө.</p><div class="store-help-card"><strong>Тусламж хэрэгтэй юу?</strong><p>Захиалгатай холбоотой асуултаа бидэнд илгээгээрэй.</p>${phone()?`<a class="text-button" href="tel:${esc(phone().replace(/[^\d+]/g,''))}">${esc(phone())}</a>`:''}<a class="text-button" href="mailto:shop@gostore.mn">shop@gostore.mn</a></div></aside></div><div class="store-cart-bar"><label class="cart-check">${checkbox('data-cart-all',items,'Бүх барааг сонгох')}<span>Бүгд</span></label><p><small>${q?.total!=null?'Одоо төлөх':'Барааны дүн'}</small><strong>${pay===null?'—':money(pay)}</strong></p>${barCheckout}</div>`:`<div class="account-empty">${icon('bag')}<h3>Сагс тань хоосон байна</h3><p>Таалагдсан бараагаа сагсандаа нэмээрэй.</p><a class="button blue" href="/products">Бараа үзэх</a></div>`);
     root.querySelectorAll('[data-mixed]').forEach(i=>i.indeterminate=true);
+    updateCartPickup();
     if(state.cart.length){
       const local='<section class="legacy-cart"><h2>Бэлэн барааны хүсэлт</h2>'+legacyCartHtml()+'</section>';
       const empty=!items.length&&root.querySelector('.account-empty');
@@ -2013,7 +2024,7 @@ window.productCompare=(()=>{
   document.title=(page==='cart'?'Миний сагс':'Тусламж')+' · gostore.mn';
   root.innerHTML='<p class="account-loading">Ачаалж байна…</p>';
   (async()=>{
-    try{await window.catalogReady;}catch{}
+    try{await window.catalogReady;if(page==='cart')await window.warehousePreference?.ready;}catch{}
     render();
     // A late initial browser scroll restoration can run after the dynamic target is mounted.
     if(page==='help'&&document.readyState!=='complete')window.addEventListener('load',revealHelpAnchor,{once:true});
@@ -2047,6 +2058,7 @@ window.productCompare=(()=>{
   // The cart page stays in sync with changes from other tabs and from a completed checkout.
   window.addEventListener('storage',e=>{if(page==='cart'&&e.key===taobaoCart.key)renderCart();});
   window.addEventListener('gostore-cart-changed',()=>{if(page==='cart')renderCart();});
+  window.addEventListener('gostore-warehouse-changed',()=>{if(page==='cart')updateCartPickup();});
 })();
 ;
 /* ==== product-reviews.js ==== */

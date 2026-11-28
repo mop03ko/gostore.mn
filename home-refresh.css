@@ -190,9 +190,6 @@ html.home-refresh[data-theme=dark]{--home-bg:#14151c;--home-ink:#f4f2ff;--home-m
 .market-promos,.market-shelf{display:none}
 .home-refresh{scroll-padding-top:160px}
 .home-refresh #main{display:flex;flex-direction:column}
-.home-refresh #home-hub{order:-3}
-.home-refresh .market-shelf{order:-2}
-.home-refresh #branch-promo{order:2}
 @media(min-width:761px){.header:not(:has(.market-nav))::after{content:'';display:block;height:48px}}
 .home-refresh .container,.home-refresh .discovery-home{width:min(1320px,calc(100% - 64px));max-width:1320px}
 .home-refresh .announcement{background:#262261}
@@ -539,4 +536,153 @@ html.home-refresh[data-theme=dark] .header .brand .brand-dark{display:block}
   .new-year-deals[data-expanded] #new-year-deals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Put the catalog immediately after the seasonal banner and cargo shortcut. */
+html.home-refresh:not([data-theme=dark]) {
+  --home-bg: #f8f7f4;
+  --home-line: #e1dfdf;
+}
+.home-refresh .announcement,
+.home-refresh .hub-channels,
+.home-refresh .home-hub:not(:has(.market-promos))::after {
+  display: none;
+}
+.home-refresh .header-main { min-height: 76px; }
+.home-refresh .market-nav { min-height: 44px; }
+.home-refresh .search-form { background: var(--home-bg); border-radius: 26px; }
+.home-refresh #search-form button[type=submit] {
+  background: #ff773b;
+  color: #25170e;
+  border-radius: 22px;
+}
+html.home-refresh[data-theme=dark] #search-form button[type=submit] { color: #25170e; }
+.home-refresh .home-hub {
+  grid-template-columns: minmax(0, 2.4fr) minmax(230px, 1fr);
+  grid-template-rows: auto;
+  gap: 16px;
+  padding-top: 22px;
+}
+.home-refresh .home-hub .hero-banner { min-height: 245px; height: 245px; border-radius: 16px; }
+.home-refresh .hero-copy { justify-content: center; padding-block: 20px; }
+.home-refresh .hero-copy .eyebrow,
+.home-refresh .hero-copy .hero-signoff { display: none; }
+.home-refresh .hero-copy h1 { margin-block: 0 10px; }
+.new-year-hero__art { width: 74%; }
+.new-year-hero__copy { gap: 15px; }
+.new-year-hero__cta { background: white; }
+.home-cargo-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  border-radius: 16px;
+  background: #f3e6d9;
+  color: #30263a;
+}
+.home-cargo-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 77%; }
+.home-cargo-card > div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(#f8eee3 0%, #f7ece1e0 22%, transparent 52%);
+}
+.home-cargo-card h2 { margin: 0; font-size: clamp(21px, 2vw, 31px); line-height: 1.18; }
+.home-cargo-card a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  min-height: 44px;
+  border-radius: 24px;
+  background: white;
+  color: #282138;
+  font-size: 13px;
+  font-weight: 700;
+}
+.home-cargo-card a .icon { width: 15px; flex: none; }
+.home-refresh .market-promos.container {
+  grid-template: auto / repeat(3,minmax(0,1fr));
+  margin-block: 14px;
+}
+.market-promos.container .market-tech { grid-column: auto; }
+.home-refresh .market-shelf { margin-block: 24px 10px; }
+.home-refresh.new-year-active .new-year-deals:not([hidden]) {
+  margin-block: 22px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.home-refresh #new-year-deals-grid {
+  grid-template-columns: repeat(6,minmax(0,1fr));
+  grid-auto-flow: row;
+  overflow: visible;
+}
+.home-refresh :is(#new-year-deals-grid,#supplier-grid) .supplier-photo { aspect-ratio: 1.13; }
+.home-refresh :is(#new-year-deals-grid,#supplier-grid) .supplier-card-copy { padding: 11px !important; }
+.home-refresh .supplier-card-copy h3 { min-height: 0; margin: 0 0 6px; }
+.home-refresh .supplier-card-copy h3 a {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  height: 2.8em;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0;
+  padding: 0;
+}
+.home-refresh .supplier-card :is(.supplier-card-meta,.supplier-delivery-note) { display: none; }
+.home-refresh .supplier-card-bottom { display: block; }
+.home-refresh .supplier-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0 7px;
+  flex-wrap: wrap;
+}
+.home-refresh .supplier-card-price strong { color: var(--home-ink); font-size: clamp(15px, 1.4vw, 21px); }
+.home-refresh .supplier-starting-price { width: 100%; }
+.home-refresh #catalog { margin-top: 24px; padding-block: 0 12px; }
+.home-refresh :is(#catalog,#new-year-deals) .section-heading { margin-bottom: 12px; }
+.mobile-nav [data-mobile-tab=cargo],
+.home-refresh .mobile-nav [data-mobile-tab=orders] { display: none; }
+@media(max-width:980px) {
+  .home-refresh #new-year-deals-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media(max-width:760px) {
+  .home-refresh .mobile-nav [data-mobile-tab=cargo] { display: flex; }
+  .home-refresh .header-main { min-height: 0; padding-block: 4px 7px; }
+  .home-refresh .header-main > .brand { width: min(100%, clamp(98px, 31vw, 130px)); }
+  .home-refresh .header-actions :is([data-action=cart],[data-action=account]) { display: none; }
+  .home-refresh .market-nav { display: flex; min-height: 38px; }
+  .home-refresh .market-nav-categories { gap: 16px; }
+  .home-refresh .market-nav a { min-height: 38px; font-size: 12px; }
+  .home-refresh .market-nav-tools { display: none; }
+  .home-refresh .home-hub { padding-top: 12px; gap: 8px; }
+  .home-refresh .home-hub .hero-banner { min-height: 166px; height: 166px; }
+  .home-refresh .hero-copy { padding: 12px 16px; }
+  .home-refresh .hero-copy h1 { font-size: 24px; }
+  .home-refresh .hero-copy p { display: none; }
+  .home-refresh .hero-actions { margin-top: 4px; }
+  .new-year-hero__copy { gap: 9px; background-image: linear-gradient(90deg,#0a1731 12%,#0a1731ef 33%,#0a173170 67%,transparent 90%); }
+  .new-year-hero__copy h1 { font-size: clamp(24px, 6.7vw, 32px); }
+  .new-year-hero__art { width: 85%; }
+  .home-cargo-card > div {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 11px;
+    background: linear-gradient(90deg,#f7e8d8 32%,#fae8d4cc 75%,#fae8d4de);
+  }
+  .home-cargo-card h2 { font-size: 16px; }
+  .home-cargo-card img { inset: 0 0 0 auto; width: 55%; }
+  .home-cargo-card a { font-size: 12px; white-space: nowrap; }
+  .home-refresh .market-promos.container { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .home-refresh #new-year-deals-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .home-refresh :is(#new-year-deals-grid,#supplier-grid) .supplier-photo { aspect-ratio: 1.23; }
+  .home-refresh.new-year-active .new-year-deals:not([hidden]),.home-refresh #catalog { margin-top: 16px; }
 }

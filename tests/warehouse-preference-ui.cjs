@@ -10,15 +10,27 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
  await dialog.locator('input[value="'+branches[1].location+'"]').check();await dialog.locator('[data-wp-save]').click();await dialog.waitFor({state:'detached'});assert.match(await p.locator('#warehouse-choice-summary').innerText(),/Сайншанд/);
  assert.deepEqual(JSON.parse(await p.evaluate(()=>localStorage.getItem('gostore-pickup-warehouse-v1'))),{version:1,location:branches[1].location});
  await p.reload();await p.waitForFunction(()=>window.warehousePreference&&window.storeServer.ready);assert.equal(await dialog.count(),0,'No reminder after each navigation in this tab');assert.equal(await p.locator('#branch-promo h2').innerText(),'Хүлээн авах боломжтой агуулах');
- await p.locator('[data-warehouse-open]').click();await dialog.locator('[data-wp-locate]').click();await dialog.locator('[data-wp-recommend]:not([hidden])').waitFor();assert.equal(await dialog.locator('input:checked').inputValue(),branches[1].location,'GPS never switches preference');
+ await p.locator('.header-pickup').click();await dialog.locator('[data-wp-locate]').click();await dialog.locator('[data-wp-recommend]:not([hidden])').waitFor();assert.equal(await dialog.locator('input:checked').inputValue(),branches[1].location,'GPS never switches preference');
  for(const width of [320,390,1280]){await p.setViewportSize({width,height:700});const b=await dialog.locator('[data-wp-save]').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=700);assert.ok(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth));}
  await p.screenshot({path:'tmp/web-warehouse-picker.png'});await dialog.locator('[data-wp-close]').click();
- await p.locator('[data-theme-toggle]').click();await p.locator('[data-warehouse-open]').click();assert.notEqual(await dialog.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 255, 255)');await p.screenshot({path:'tmp/web-warehouse-dark.png'});await dialog.locator('[data-wp-close]').click();
+ await p.locator('[data-theme-toggle]').click();await p.locator('.header-pickup').click();assert.notEqual(await dialog.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 255, 255)');await p.screenshot({path:'tmp/web-warehouse-dark.png'});await dialog.locator('[data-wp-close]').click();
  await require('./customer-ui-helper.cjs')(p,base);await p.evaluate(()=>customerAccount.refresh());await p.locator('[data-erenhot-open]').click();await dialog.locator('[data-wp-copy]').waitFor();const profile=await(await p.request.get(base+'/api/index.php?action=customer-self-cargo')).json();assert.match(await dialog.innerText(),new RegExp(profile.cargo_id));
  await dialog.locator('[data-wp-copy]').click();await dialog.getByText('Хууллаа ✓',{exact:true}).waitFor();assert.equal((await p.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n'),profile.delivery.label);
  const privateStorage=await p.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}));assert.ok(!privateStorage.includes(profile.delivery.label)&&!privateStorage.includes(profile.cargo_id),'Private cargo address not persisted by picker');
  await p.evaluate(async()=>{await shopApi('customer-logout',{});customerAccount.setUser(null);});await dialog.waitFor({state:'detached'});assert.equal(await p.locator('[data-erenhot-open]').count(),0);
- await require('./customer-ui-helper.cjs')(p,base);await p.reload();await p.waitForFunction(()=>window.storeServer?.ready);await p.evaluate(()=>{window.taobaoCart.save([{id:'tb-123456789',sku:'blue',qty:2,name:'Fixture',variant:'blue',cny:10,min_qty:2,step:2}]);return window.taobaoCart.checkout('',null);});
+ await require('./customer-ui-helper.cjs')(p,base);await p.goto(base+'/cart');await p.waitForFunction(()=>window.storeServer?.ready);
+ await p.evaluate(()=>window.taobaoCart.save([{id:'tb-123456789',sku:'blue',qty:2,name:'Fixture',variant:'blue',cny:10,min_qty:2,step:2}]));
+ const cartPickup=p.locator('[data-cart-pickup]');
+ assert.match(await cartPickup.innerText(),/Сайншанд/);
+ await cartPickup.click();await dialog.locator('input[value="'+branches[0].location+'"]').check();await dialog.locator('[data-wp-save]').click();
+ assert.match(await cartPickup.innerText(),/Замын-Үүд/);
+ await cartPickup.click();await dialog.locator('input[value="'+branches[1].location+'"]').check();await dialog.locator('[data-wp-save]').click();
+ // Keep the checkout UI test independent of the supplier network.
+ await p.route('**/api/index.php?action=checkout-quote',r=>{
+  assert.deepEqual(r.request().postDataJSON().items,[{id:'tb-123456789',sku:'blue',qty:2}]);
+  return r.fulfill({json:{quote:{total:11500,breakdown:{goods_mnt:11000,domestic_mnt:0,service_mnt:500},rates:{service_percent:0,service_fee_mnt:500}},items:[{name:'Fixture',variant:'blue',qty:2}]}});
+ });
+ await p.locator('[data-tb-checkout]').click();
  await p.locator('#taobao-checkout-form').waitFor();assert.equal(await p.locator('#taobao-checkout-form [name=pickup_location]').inputValue(),branches[1].location);await p.evaluate(()=>{localStorage.removeItem('gostore-pickup-warehouse-v1');return window.taobaoCart.checkout();});assert.equal(await p.locator('#taobao-checkout-form [name=pickup_location]').inputValue(),'','No silent UB fallback');await p.locator('#taobao-checkout-form [name=pickup_location]').selectOption(branches[0].location);
  await p.goto(base+'/self-cargo.html');await p.locator('#sc-address').waitFor();assert.equal(await p.locator('[name=pickup_location]').inputValue(),branches[0].location);await p.getByLabel('Барааны нэр',{exact:true}).fill('Preference cargo');await p.getByRole('button',{name:'Ачаа бүртгэх',exact:true}).click();await p.locator('[data-order]').waitFor();assert.match(await p.locator('[data-order]').innerText(),/Авах агуулах: Замын-Үүд/);
  // Denial remains usable, without falling back to IP location.

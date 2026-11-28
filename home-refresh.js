@@ -8,17 +8,19 @@
  const arrow='<span class="market-arrow" aria-hidden="true">↗</span>';
  const photo=c=>{try{const u=new URL(c?.image||'',location.origin);return u.hostname==='gostore.mn'&&u.pathname.startsWith('/assets/category-images/')?u.pathname:'';}catch{return '';}};
  const nav=document.createElement('nav');nav.className='container market-nav';nav.setAttribute('aria-label','Дэлгүүрийн үндсэн ангилал');
- nav.innerHTML='<div class="market-nav-categories">'+[['tech','Электроник'],['women','Эмэгтэй'],['men','Эрэгтэй'],['kids','Хүүхэд'],['shoes','Гутал'],['beauty','Гоо сайхан'],['home','Гэр ахуй'],['sports','Спорт']].filter(([id])=>find(id)).map(([id,name])=>'<a href="/c/'+id+'">'+esc(name)+'</a>').join('')+'</div><div class="market-nav-tools"><a href="/self-cargo.html">Өөрөө захиалах ↗</a><a href="/help">Тусламж</a></div>';
+ nav.innerHTML='<div class="market-nav-categories"><a href="/products">Бүх бараа</a>'+[['tech','Электроник'],['women','Эмэгтэй'],['men','Эрэгтэй'],['kids','Хүүхэд'],['shoes','Гутал'],['beauty','Гоо сайхан'],['home','Гэр ахуй'],['sports','Спорт']].filter(([id])=>find(id)).map(([id,name])=>'<a href="/c/'+id+'">'+esc(name)+'</a>').join('')+'</div><div class="market-nav-tools"><a href="/self-cargo.html">GOStore Карго</a><a href="/help">Тусламж</a></div>';
  header.after(nav);
- const promos=document.createElement('aside');promos.className='market-promos';promos.setAttribute('aria-label','Онцлох сонголтууд');
+ const promos=document.createElement('aside');promos.className='container market-promos';promos.setAttribute('aria-label','Онцлох сонголтууд');
  promos.innerHTML='<a class="market-promo market-tech" href="/c/tech"><span class="market-promo-copy"><small>ӨДӨР ТУТМЫН ТЕХНОЛОГИ</small><strong>Жижиг зүйлс.<br>Том боломж.</strong><span>Электроник, дагалдах хэрэгсэл</span></span>'+arrow+'<img src="/assets/hero-headphones.webp" width="330" height="220" alt="" decoding="async"></a><a class="market-promo market-living" href="/c/home"><span class="market-promo-copy"><strong>Гэртээ<br>өнгө нэмье.</strong><span>Гэр ахуйн сонголт</span></span>'+arrow+'<img src="/assets/hero-chair.webp" width="520" height="781" alt="" loading="lazy"></a><a class="market-promo market-forward" href="/self-cargo.html"><span class="market-promo-copy"><small>GOSTORE КАРГО</small><strong>Та захиал.<br>Бид хүргэе.</strong><span>Эрээн агуулахын хаягаа аваарай</span></span>'+arrow+'<svg class="market-forward-icon icon" aria-hidden="true"><use href="#i-box"/></svg></a>';
- hub.append(promos);
  const shelf=document.createElement('section');shelf.className='container market-shelf';shelf.setAttribute('aria-label','Зурагтай ангиллууд');
  shelf.innerHTML=[['women','Өөрийн хэв маяг','Өдөр тутмын хувцас'],['shoes','Алхам бүрд','Гутал, пүүз'],['beauty','Өөртөө цаг гарга','Гоо сайхан, арчилгаа'],['bags','Хаашаа ч хамт','Цүнх, үүргэвч'],['kids','Бяцхан ертөнц','Хүүхдийн хувцас'],['kitchen','Гал тогоондоо','Хэрэгтэй бүхнээ']].map(([id,title,caption])=>{const c=find(id),src=photo(c);return c?'<a class="market-tile market-tile-'+id+'" href="/c/'+id+'"><strong>'+title+'</strong><span>'+caption+'</span>'+arrow+(src?'<img src="'+esc(src)+'" width="160" height="160" alt="" loading="lazy" decoding="async">':'')+'</a>':'';}).join('');
  // Shopping comes first; forwarding and pickup remain one click away and in the same DOM.
  document.getElementById('main').prepend(hub);
  const seasonal=document.getElementById('new-year-deals');
- if(seasonal)hub.after(seasonal,shelf);else hub.after(shelf);
+ const catalog=document.getElementById('catalog');
+ if(seasonal)hub.after(seasonal);
+ (seasonal||hub).after(catalog);
+ catalog?.after(shelf,promos);
  const branch=document.getElementById('branch-promo');if(branch)document.getElementById('catalog')?.after(branch);
  document.documentElement.classList.add('marketplace-ready');
 })();

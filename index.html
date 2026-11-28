@@ -139,15 +139,15 @@
   <meta name="description" content="GOStore — Хятадын дэлгүүрүүдээс бараа захиалж, хүргэлтийн явцаа нэг дор хянаарай.">
   <title>Gostore.mn — Сонголт нэг дор.</title>
   <link rel="stylesheet" href="/app.css?v=52de85f8f9c6">
-  <script src="/app.js?v=b553bf771101" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/app.js?v=2379355760f0" defer></script><link rel="preload" href="/assets/fonts/arimo-variable.woff2?v=20261027-woff2" as="font" type="font/woff2" crossorigin>
 
   <link rel="stylesheet" href="/eleven-sale.css?v=20261109-six">
   <script src="/eleven-sale.js?v=20261109-campaign" defer></script>
   <script>document.documentElement.classList.toggle('home-refresh', /^\/(?:index\.html)?$/.test(location.pathname) && !/[?&](?:q|category|image)=|[?&](?:filter=saved|sale=11\.11)(?:&|$)/.test(location.search));</script>
-  <link rel="stylesheet" href="/warehouse-preference.css?v=20261115-2">
-  <script src="/warehouse-preference.js?v=20261115-1" defer></script>
-  <link rel="stylesheet" href="/home-refresh.css?v=20261128-new-year-selection">
-  <script src="/home-refresh.js?v=20261128-new-year-deals" defer></script>
+  <link rel="stylesheet" href="/warehouse-preference.css?v=20261128-compact">
+  <script src="/warehouse-preference.js?v=20261128-compact" defer></script>
+  <link rel="stylesheet" href="/home-refresh.css?v=20261128-compact">
+  <script src="/home-refresh.js?v=20261128-compact" defer></script>
 <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/favicon.svg?v=3f52d6dbda"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=1d2aae82ae"></head>
 <body>
   <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1649469149899328&amp;ev=PageView&amp;noscript=1"></noscript>
@@ -160,6 +160,7 @@
     <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
     <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 7h14l1 14H4L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></symbol>
     <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm-9 5 9 5 9-5M12 12v10M7.5 4.5l9 5V14"/></symbol>
+    <symbol id="i-pickup-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 3 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0" transform="translate(1 0)"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
     <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2 4h12v13H2V4Zm12 5h4l4 4v4h-8"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/></symbol>
@@ -180,6 +181,7 @@
       <button class="category-trigger" id="category-trigger" type="button" aria-label="Ангилал" aria-haspopup="dialog" aria-controls="category-menu" aria-expanded="false"><svg class="icon"><use href="#i-grid"/></svg><span>Ангилал</span></button><a class="header-browse" href="/products">Бараанууд</a>
       <form id="search-form" class="search-form" role="search"><span class="search-provider" aria-label="GOStore дэлгүүр">GOStore</span><svg class="icon"><use href="#i-search"/></svg><label class="sr-only" for="search">Бараа хайх</label><input id="search" type="search" enterkeyhint="search" placeholder="Бүтээгдэхүүний нэрээр хайх…" autocomplete="off"><button type="button" class="image-search-button" data-image-search hidden aria-label="Зургаар хайх" title="Зургаар хайх"><svg class="icon"><use href="#i-camera"/></svg></button><button type="submit">Хайх <svg class="icon"><use href="#i-arrow"/></svg></button></form>
       <div class="header-actions">
+        <button type="button" class="header-pickup" data-warehouse-open hidden><svg class="icon" aria-hidden="true"><use href="#i-pickup-pin"/></svg><span data-header-pickup>Салбар сонгох</span></button>
         <button type="button" class="header-action theme-toggle" data-theme-toggle aria-label="Dark Mode" aria-pressed="false" title="Бараан горимд шилжих"><svg class="icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
         <a href="/account/notifications" class="header-action mobile-notifications" data-notifications aria-label="Мэдэгдэл"><span class="icon-wrap"><svg class="icon"><use href="#i-bell"/></svg><span data-notification-count></span></span></a>
         <button class="header-action" data-action="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button>
@@ -193,7 +195,6 @@
   </header>
   <dialog id="category-menu" aria-labelledby="category-menu-title"><div class="category-menu-heading"><h2 id="category-menu-title">Барааны ангилал</h2><button class="icon-button" id="close-category-menu" aria-label="Ангиллын цэс хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><label class="category-search"><span class="sr-only">Ангилал хайх</span><input id="category-search" type="search" placeholder="Ангилал хайх · хувцас, гутал, гал тогоо…" autocomplete="off"></label><div class="category-menu-layout"><nav id="category-departments" aria-label="Барааны ангиллууд"></nav><section id="category-suggestions" aria-live="polite"></section></div></dialog>
   <main id="main">
-    <div id="self-cargo-entry" class="container sc-entry home-forward-entry"><a href="/self-cargo.html" class="sc-entry-link"><span class="sc-entry-icon" aria-hidden="true">↗</span><span class="sc-entry-copy"><strong>Өөрөө захиал, бид хүргэе</strong><small>Taobao · 1688 · Pinduoduo</small><span>Хаягаа ав → Захиал → Ачаагаа бүртгэ</span></span><span class="sc-entry-cta">Өөрөө захиалах →</span></a></div>
     <section class="container home-hub" id="home-hub" aria-label="Дэлгүүрийн нүүр">
       <nav class="hub-cats" id="hub-cats" aria-label="Барааны ангилал"></nav>
       <div class="hub-flyout" id="hub-flyout" hidden></div>
@@ -202,7 +203,7 @@
         <nav class="hub-hot" id="hub-hot" aria-label="Түгээмэл хайлт"></nav>
         <div class="hero-banner"><div class="hero-copy"><span class="eyebrow"><span></span> ТАНЫ ӨДӨР ТУТМЫН ДЭЛГҮҮР</span><h1>Сонголт их.<br><em>Захиалах амар.</em></h1><p>Бараагаа сонго. QPay-ээр төл.<br>Явцыг нь нэг дор хяна.</p><div class="hero-actions"><a class="button yellow" href="/products">Сонголтоо нээх <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="hero-help" href="/help">Хэрхэн захиалах вэ? ↗</a></div><div class="hero-signoff"><span>Taobao · Tmall</span><span>Монгол хэл · Төгрөгөөр</span></div></div><div class="hero-collection" aria-hidden="true"><span class="collection-circle"></span><span class="hero-orbit"></span><img class="collection-chair" src="/assets/hero-chair.webp?v=ddfc525a2a" alt="" width="520" height="781" loading="lazy"><img class="collection-headphones" src="/assets/hero-headphones.webp?v=5a89ac5775" alt="" width="330" height="220" loading="lazy"><img class="collection-bag" src="/assets/hero-bag.webp?v=1d3094dc10" alt="" width="300" height="450" loading="lazy"><span class="collection-stamp">Өдөр бүрийн<br><strong>шинэ сонголт.</strong></span></div></div>
         <div class="hero-banner new-year-hero">
-          <img class="new-year-hero__art" src="/assets/new-year-gifts.webp?v=42b7b45773" alt="" width="1200" height="800" loading="lazy" decoding="async">
+          <img class="new-year-hero__art" src="/assets/new-year-gifts.webp?v=42b7b45773" alt="" width="1200" height="800" decoding="async">
           <div class="new-year-hero__snow" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <div class="new-year-hero__ribbon" aria-hidden="true"></div>
           <div class="new-year-hero__copy">
@@ -211,6 +212,10 @@
           </div>
         </div>
       </div>
+      <aside class="home-cargo-card" id="self-cargo-entry">
+        <img src="/assets/cargo-packaging.webp?v=2e5b891dba" alt="" width="720" height="480" decoding="async">
+        <div><h2>Өөрөө захиалах карго</h2><a href="/self-cargo.html">Эрээний хаяг авах <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+      </aside>
       <aside class="hub-user" aria-label="Миний GOStore">
         <div class="hub-user-head"><span class="hub-avatar" aria-hidden="true"><svg class="icon"><use href="#i-user"/></svg></span><div><small>Сайн байна уу</small><strong data-account-label>Нэвтрэх</strong></div></div>
         <div class="hub-user-guest"><button class="button blue" data-action="account">Нэвтрэх</button><button type="button" class="button outline" data-hub-register>Бүртгүүлэх</button></div>
@@ -221,8 +226,8 @@
     </section>
     <section id="new-year-deals" class="container new-year-deals" aria-labelledby="new-year-deals-title" hidden>
       <div class="section-heading">
-        <h2 id="new-year-deals-title">Шинэ жилийн хямдрал</h2>
-        <a class="text-button" href="#catalog">Бусад хямдралыг үзэх →</a>
+        <h2 id="new-year-deals-title">Баярын хямдрал</h2>
+        <a class="text-button" href="#catalog">Бусад хямдрал →</a>
       </div>
       <div class="product-grid" id="new-year-deals-grid"></div>
       <button class="text-button new-year-deals-more" type="button" aria-controls="new-year-deals-grid" aria-expanded="false" hidden>Баярын бараа нэмж үзэх</button>
@@ -291,11 +296,11 @@
     </div>
     <div class="container footer-bottom"><span>© <span id="year"></span> GOStore. Сонголт нэг дор.</span><span>Монгол хэл <span aria-hidden="true">·</span> MNT ₮</span></div>
   </footer>
-  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="/" data-mobile-tab="home" aria-current="page"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><button type="button" data-open-categories data-mobile-tab="categories"><svg class="icon"><use href="#i-grid"/></svg>Ангилал</button><a href="/account/orders" data-mobile-tab="orders"><svg class="icon"><use href="#i-box"/></svg>Миний ачаа</a><a href="/cart" data-action="cart" data-mobile-tab="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b id="mobile-cart-count" class="count" hidden>0</b></span>Сагс</a><button data-action="account" data-mobile-tab="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button></nav>
+  <nav class="mobile-nav" aria-label="Гар утасны цэс"><a href="/" data-mobile-tab="home" aria-current="page"><svg class="icon"><use href="#i-home"/></svg>Нүүр</a><button type="button" data-open-categories data-mobile-tab="categories"><svg class="icon"><use href="#i-grid"/></svg>Ангилал</button><a href="/account/orders" data-mobile-tab="orders"><svg class="icon"><use href="#i-box"/></svg>Миний ачаа</a><a href="/self-cargo.html" data-mobile-tab="cargo"><svg class="icon"><use href="#i-box"/></svg>Карго</a><a href="/cart" data-action="cart" data-mobile-tab="cart" aria-label="Сагс нээх"><span class="icon-wrap"><svg class="icon"><use href="#i-bag"/></svg><b id="mobile-cart-count" class="count" hidden>0</b></span>Сагс</a><button data-action="account" data-mobile-tab="account"><svg class="icon"><use href="#i-user"/></svg><span data-account-label>Нэвтрэх</span></button></nav>
   <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button class="icon-button" id="close-modal" aria-label="Цонх хаах"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="modal-body"></div></dialog>
   <input type="file" id="image-search-input" accept="image/jpeg,image/png,image/webp" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/firebase-web.js?v=20261107-1" defer></script>
-<script src="/self-cargo.js?v=6" defer></script>
+<script src="/self-cargo.js?v=20261128-compact" defer></script>
 </body>
 </html>
