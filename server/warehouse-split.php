@@ -34,7 +34,7 @@ function shipment_customer_status(array $parts): string {
     usort($parts,fn($a,$b)=>($rank[$a['status']]??-1)<=>($rank[$b['status']]??-1));
     return $parts[0]['status'];
 }
-function warehouse_split_order(array $b,string $location): array {
+function warehouse_split_order(array $b,string $location,?array $actor=null): array {
     if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
     if(($b['checked']??false)!==true)fail('Салгах бараа болон үлдэгдлийг тулгаж батална уу.');
     $id=str_field($b,'id',50);$mode=str_field($b,'mode',10);$reason=str_field($b,'reason',500);
@@ -43,7 +43,8 @@ function warehouse_split_order(array $b,string $location): array {
     $request=hash('sha256','warehouse-split:'.$location.':'.$id.':'.$token);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
-        warehouse_required();$o=order_row($id)['order'];
+        if($actor===null)warehouse_required();
+        $o=order_row($id)['order'];
         if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         $q=$db->prepare('SELECT data FROM orders WHERE request_key=?');$q->execute([$request]);
         if($existing=$q->fetchColumn()){$db->exec('COMMIT');return ['order'=>$o,'part'=>json_decode($existing,true)];}
@@ -78,13 +79,13 @@ function warehouse_split_order(array $b,string $location): array {
         $child=array_intersect_key($o,array_flip(['customer','phone','cargo_id','route','warehouse_locations','fulfillment_request','demo']));
         $child+=['id'=>$childId,'type'=>'forwarding','title'=>$id.' · Хэсэг / 分件 '.(count($o['shipment_split']['parts']??[])+1),'status'=>'confirmed','created'=>$now,'amount'=>0,'paid'=>false,'demo'=>false,
             'shipment_parent'=>$id,'shipment_unit'=>$mode==='parcels'?'parcel':'item','items'=>$selected,'inbound'=>['numbers'=>[]],
-            'history'=>[['status'=>'confirmed']+warehouse_event('split_created')]];
+            'history'=>[['status'=>'confirmed']+warehouse_event('split_created',$actor)]];
         $child['warehouse']=$o['warehouse']??[];$child['warehouse']['order_code']=$childId;
         $child['delivery_address']=warehouse_delivery_address($o);
         if($rates=settlement_service_rates($o))$child['service_rates']=array_merge($rates,['service_fee_mnt'=>0]);
         // Do not copy the original payment, provider purchase, pricing, refund, pickup code or photos.
         $child['logistics']=['version'=>1,'photos'=>[],'issues'=>[],'shelf'=>'','parcels'=>[],
-            'audit'=>[warehouse_event('split_created')+['parent_id'=>$id,'mode'=>$mode,'reason'=>$reason,'numbers'=>$numbers]]];
+            'audit'=>[warehouse_event('split_created',$actor)+['parent_id'=>$id,'mode'=>$mode,'reason'=>$reason,'numbers'=>$numbers]]];
         if($mode==='parcels'){
             $child['inbound']['numbers']=array_values(array_filter(shipment_numbers($o),fn($n)=>in_array(strtoupper($n['no']),$numbers,true)));
             foreach($numbers as $n)$child['logistics']['parcels'][$n]=$l['parcels'][$n];
@@ -94,13 +95,13 @@ function warehouse_split_order(array $b,string $location): array {
         $o['shipment_split']=$split;
         if($mode==='items')$o['shipping_items']=$remaining;
         // Keep the original receipts in the audit; require a fresh photo/measurement for each new portion.
-        $l['audit'][]=warehouse_event('split')+['part_id'=>$childId,'mode'=>$mode,'reason'=>$reason,'numbers'=>$numbers,
+        $l['audit'][]=warehouse_event('split',$actor)+['part_id'=>$childId,'mode'=>$mode,'reason'=>$reason,'numbers'=>$numbers,
             'selected_items'=>$selected,'previous_status'=>$o['status'],'previous_measurement'=>$l['measurement']??null,'previous_transport'=>$l['transport']??null,'previous_photos'=>$l['photos']];
         unset($l['measurement'],$l['transport']);$l['photos']=[];$l['shelf']='';$l['version']++;
         foreach($numbers as $n)unset($l['parcels'][$n]);
         foreach($l['issues'] as &$issue)if($issue['state']==='open'&&($issue['auto']??'')==='receipt'){$issue['state']='resolved';$issue['resolution']='Хэсэгчлэн илгээхээр салгасан / 已拆分发货';$issue['resolved_at']=$now;}
         unset($issue);$o['logistics']=$l;
-        if($o['status']==='erenhot'){$o['status']='shipping';$o['history'][]=['status'=>'shipping']+warehouse_event('split_remainder');}
+        if($o['status']==='erenhot'){$o['status']='shipping';$o['history'][]=['status'=>'shipping']+warehouse_event('split_remainder',$actor);}
         $db->prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)')->execute([$childId,hash('sha256',random_bytes(32)),$request,json_encode($child,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$now,$now]);
         $db->prepare('INSERT INTO customer_orders (order_id,customer_id,created) SELECT ?,customer_id,? FROM customer_orders WHERE order_id=?')->execute([$childId,$now,$id]);
         save_order($o);warehouse_notice_record($child,null);

@@ -155,12 +155,12 @@ function warehouse_admin_batch_status(array $b,bool $write): array {
         return ['id'=>$batch['id'],'version'=>$batch['version'],'order_count'=>count($members),'next_status'=>$next,'destination'=>$destination];
     }catch(Throwable $e){if($write)$db->exec('ROLLBACK');throw $e;}
 }
-function warehouse_batch_post(string $action,array $b,string $location): never {
+function warehouse_batch_post(string $action,array $b,string $location,?array $actor=null): never {
     $allowed=warehouse_role($location)==='erenhot'?['warehouse-batch-unpack','warehouse-batch-create','warehouse-batch-add','warehouse-batch-remove','warehouse-batch-ready','warehouse-batch-reopen','warehouse-batch-dispatch','warehouse-batch-ship','warehouse-batch-cancel','warehouse-batch-scan']:['warehouse-batch-receive','warehouse-batch-scan'];
     if(!in_array($action,$allowed,true))fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $db=db();$db->exec('BEGIN IMMEDIATE');$created=false;
     try{
-        warehouse_required();
+        if($actor===null)warehouse_required();
         if($action==='warehouse-batch-create'){
             $token=str_field($b,'token',64);if(!preg_match('/^[a-f0-9]{64}$/D',$token))fail('Хүсэлтийн түлхүүр буруу.');
             $ids=warehouse_batch_ids($b);sort($ids);$note=str_field($b,'note',500,false);$destination=$b['destination']??'ulaanbaatar';$defs=warehouse_definitions();if(!is_string($destination)||!isset($defs[$destination])||$defs[$destination]['role']!=='ulaanbaatar'||!$defs[$destination]['active'])fail('Хүлээн авах агуулах буруу.');$fingerprint=hash('sha256',json_encode([$ids,$note,$location,$destination],JSON_THROW_ON_ERROR));
@@ -170,8 +170,12 @@ function warehouse_batch_post(string $action,array $b,string $location): never {
                 $s=$db->prepare('SELECT 1 FROM shipment_batches WHERE id=?');
                 for($attempt=0;$attempt<20;$attempt++){$id='GB-'.strtoupper(bin2hex(random_bytes(3)));$s->execute([$id]);$taken=$s->fetchColumn();$s->closeCursor();if(!$taken)break;}
                 if($taken)fail('Багцын код үүсгэж чадсангүй.',503);
-                $batch=['id'=>$id,'source'=>$location,'destination'=>$destination,'status'=>'draft','version'=>1,'created'=>gmdate('c'),'note'=>$note,'fingerprint'=>$fingerprint,'history'=>[warehouse_event('created')]];
+                $batch=['id'=>$id,'source'=>$location,'destination'=>$destination,'status'=>'draft','version'=>1,'created'=>gmdate('c'),'note'=>$note,'fingerprint'=>$fingerprint,'history'=>[warehouse_event('created',$actor)]];
                 $db->prepare('INSERT INTO shipment_batches VALUES (?,?,?,?)')->execute([$id,hash('sha256',$token),json_encode($batch,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$batch['created']]);
+                if($actor!==null){
+                    foreach($ids as $orderId)if(warehouse_parcels(order_row($orderId)['order'])['missing'])
+                        fail('Ирээгүй илгээмж байна. Ирсэн хэсгийг эхлээд салгана уу.',409);
+                }
                 warehouse_batch_add($batch,$ids);$created=true;
             }
         }else{

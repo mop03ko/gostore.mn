@@ -49,13 +49,14 @@ function warehouse_expected_pieces(array $o): int {
     return (int)array_sum(array_column(function_exists('shipment_items')?shipment_items($o):(isset($o['supplier'])?[$o['supplier']]:($o['items']??[])),'qty'));
 }
 // Scanning or tapping a courier parcel records its arrival; the last one clears the automatic shortfall.
-function warehouse_parcel_arrive(array $b,string $location): array {
+function warehouse_parcel_arrive(array $b,string $location,?array $actor=null): array {
     if(warehouse_role($location)!=='erenhot')fail('Энэ үйлдлийг хийх эрхгүй.',403);
     $number=strtoupper(str_field($b,'number',40));
     if(!preg_match('/^[A-Z0-9-]{6,40}$/D',$number))fail('Tracking дугаар буруу.');
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
-        warehouse_required();$o=order_row(str_field($b,'id',50))['order'];
+        if($actor===null)warehouse_required();
+        $o=order_row(str_field($b,'id',50))['order'];
         if(!warehouse_order_operable($o,$location))fail('Захиалга олдсонгүй.',404);
         if(!in_array($o['status'],['confirmed','shipping','erenhot'],true))fail('Энэ захиалгад илгээмж бүртгэх боломжгүй.',409);
         if(!in_array($number,array_column(warehouse_parcels($o)['list'],'no'),true))fail('Энэ tracking дугаар захиалгад бүртгэлгүй.',409);
@@ -66,7 +67,7 @@ function warehouse_parcel_arrive(array $b,string $location): array {
                 foreach($l['issues'] as &$issue)if(($issue['auto']??'')==='receipt'&&$issue['state']==='open'&&($issue['parcels']??[])){$issue['state']='resolved';$issue['resolution']='全部包裹已到 · Бүх илгээмж ирсэн';$issue['resolved_at']=gmdate('c');$issue['resolved_location']=$location;}
                 unset($issue);
             }
-            $o['logistics']=$l;logistics_touch($o,'parcel_arrived');
+            $o['logistics']=$l;logistics_touch($o,'parcel_arrived',$actor);
         }
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}

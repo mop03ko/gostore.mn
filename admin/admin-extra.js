@@ -180,7 +180,7 @@ window.AdminExtra=(()=>{
   }
 
   // Navigation by role, header identity, page hooks.
-  const HIDDEN={operator:['admins'],viewer:['admins','customers','messages']};
+  const HIDDEN={operator:['admins'],viewer:['admins','customers','messages','work']};
   function afterRender(p){
     const hidden=HIDDEN[role()]||[];
     const restricted=data.admin?.security?.restricted;

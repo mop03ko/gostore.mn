@@ -22,9 +22,9 @@ function logistics_ready(array $o): void {
     $s=settlement_summary($o);
     if(!$s['finalized']||$s['due']>0||$s['refund_due']>0)fail('Эцсийн тооцоо, төлбөр эсвэл буцаалтын зөрүүг шийдвэрлэнэ үү.',409);
 }
-function logistics_touch(array &$o,string $event): void {
+function logistics_touch(array &$o,string $event,?array $actor=null): void {
     $o['logistics']=logistics_state($o);$o['logistics']['version']++;
-    $o['logistics']['audit'][]=warehouse_event($event);save_order($o);
+    $o['logistics']['audit'][]=warehouse_event($event,$actor);save_order($o);
 }
 function logistics_notify(array $o,?array $old): void {
     if(!$old)return;

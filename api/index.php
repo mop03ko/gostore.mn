@@ -94,6 +94,10 @@ try {
         if (str_starts_with($action,'customer-')) customer_get($action);
         if ($action==='session') json_out(['authenticated'=>admin_authenticated(),'csrf'=>$_SESSION['csrf'],'configured'=>admin_password_hash()!=='','admin'=>admin_current_public()]);
         admin_required();
+        if($action==='admin-workspace'){
+            require_once __DIR__.'/../server/admin-workspace.php';
+            json_out(workspace_query($_GET));
+        }
         if($action==='admin-users')json_out(admin_users_list());
         if($action==='admin-audit')json_out(admin_audit_list($_GET));
         if($action==='admin-report')json_out(admin_report($_GET));
@@ -114,6 +118,7 @@ try {
         if($action==='admin-order-batch-status')json_out(['batch'=>warehouse_admin_batch_status($_GET,false)]);
         if($action==='admin-order'){
             $o=order_row(str_field($_GET,'id',50))['order'];
+            $o['billing']=settlement_summary($o);
             $o['shipment_parts']=shipment_summary($o);
             $o['warehouse_names']=['erenhot'=>warehouse_profile(warehouse_order_location($o,'erenhot'))['name'],'ulaanbaatar'=>warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name']];
             json_out(['order'=>$o]);
@@ -255,8 +260,20 @@ try {
         json_out(['order'=>public_order($action==='invoice'?qpay_invoice($r['id']):order_row($r['id'])['order'])]);
     }
     admin_required();
+    if(str_starts_with($action,'admin-workspace-')){
+        require_once __DIR__.'/../server/admin-workspace.php';
+        if($action==='admin-workspace-assign')json_out(workspace_assign($b));
+        if($action==='admin-workspace-qpay'){
+            $id=str_field($b,'id',50);
+            $f=order_row($id)['order']['freight']??[];
+            if(empty($f['callback_token']))fail('Тээврийн QPay нэхэмжлэл үүсээгүй байна.',409);
+            freight_callback($id,$f['callback_token']);
+            json_out(workspace_detail($id));
+        }
+        if(in_array($action,['admin-workspace-arrive','admin-workspace-split','admin-workspace-batch'],true))workspace_logistics($action,$b);
+    }
     if($action==='admin-order-freight-receipt'){
-        $o=freight_record_receipt(str_field($b,'id',50),int_field($b,'amount',1,100000000));
+        $o=freight_record_receipt(str_field($b,'id',50),int_field($b,'amount',1,100000000),isset($b['reference'])?str_field($b,'reference',64):null);
         $o['billing']=settlement_summary($o);$o['shipment_parts']=shipment_summary($o);
         json_out(['order'=>$o],201);
     }

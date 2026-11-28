@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Record money the operator has already received. Do not create or modify a QPay payment.
-function freight_record_receipt(string $id,int $amount): array {
+function freight_record_receipt(string $id,int $amount,?string $reference=null): array {
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $o=order_row($id)['order'];$bill=settlement_summary($o);
@@ -14,7 +14,17 @@ function freight_record_receipt(string $id,int $amount): array {
         $freight=$o['freight']??[];
         if(isset($freight['invoice'])&&(int)($freight['paid_amount']??0)<(int)($freight['amount']??PHP_INT_MAX))
             fail('Тээврийн QPay нэхэмжлэл нээлттэй байна. Төлбөр давхардахгүйн тулд эхлээд нэхэмжлэлээ тулгана уу.',409);
-        $o['freight_receipts'][]=['amount'=>$amount,'recorded_at'=>gmdate('c')];
+        $receipt=['amount'=>$amount,'recorded_at'=>gmdate('c')];
+        if($reference!==null){
+            $reference=strtoupper(trim($reference));
+            if(!preg_match('/^[A-Z0-9-]{4,64}$/D',$reference))fail('Гүйлгээний лавлагааг латин үсэг, тоо, зураасаар бичнэ үү.');
+            $db->exec('CREATE TABLE IF NOT EXISTS freight_receipt_refs (reference TEXT PRIMARY KEY, order_id TEXT NOT NULL)');
+            $s=$db->prepare('INSERT OR IGNORE INTO freight_receipt_refs (reference,order_id) VALUES (?,?)');
+            $s->execute([$reference,$id]);
+            if($s->rowCount()!==1)fail('Энэ гүйлгээний лавлагааг өмнө бүртгэсэн байна.',409);
+            $receipt['reference']=$reference;
+        }
+        $o['freight_receipts'][]=$receipt;
         save_order($o);$db->exec('COMMIT');
         return $o;
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}

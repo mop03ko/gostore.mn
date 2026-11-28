@@ -14,6 +14,7 @@ if($path==='/admin/customer-security.js')return false;
 if($path==='/admin/reviews.css')return false;
 if(in_array($path,['/admin/sms-usage.js','/admin/sms-usage.css'],true))return false;
 if(in_array($path,['/admin/finance-reports.js','/admin/finance-reports.css'],true))return false;
+if(in_array($path,['/admin/workspace-loader.js','/admin/workspace/workspace.js','/admin/workspace/workspace.css'],true))return false;
 if(in_array($path,['/warehouse/ub-dashboard.js','/warehouse/ub-dashboard.css'],true))return false;
 if(in_array($path,['/warehouse/workspace.js','/warehouse/workspace.css'],true))return false;
 if(in_array($path,['/warehouse/split-ui.js','/warehouse/split-ui.css','/warehouse/unpack-ui.js'],true))return false;

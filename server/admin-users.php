@@ -52,12 +52,12 @@ function admin_action_role(string $action,string $method): string {
     if($method==='GET'){
         if(in_array($action,['admin-users','admin-audit'],true))return 'owner';
         if($action==='admin-export')return ($_GET['kind']??'')==='customers'?'owner':'operator';
-        if(in_array($action,['admin-customers','admin-customer','admin-order-batch-status'],true))return 'operator';
+        if(in_array($action,['admin-customers','admin-customer','admin-order-batch-status','admin-workspace'],true))return 'operator';
         return 'viewer';
     }
     if(in_array($action,['shipping-save','taoworld-settings','taoworld-pay','taoworld-budget','warehouse-create','warehouse-profile-save','warehouse-account-save','admin-user-save','admin-quota-save'],true)
         ||str_starts_with($action,'taobao-buyer-')||str_starts_with($action,'ot-operator-'))return 'owner';
-    if(in_array($action,['order-update','order-refund','admin-order-freight-receipt','admin-order-status-save','admin-order-batch-status','admin-order-transport-sms','product-save','product-delete','image-upload','review-moderate','admin-customer-save','admin-promo-popup-save','shipping-calculate','warehouse-assign-order','catalog-controls-save','catalog-stores-save','catalog-store-test'],true)
+    if(in_array($action,['order-update','order-refund','admin-order-freight-receipt','admin-order-status-save','admin-order-batch-status','admin-order-transport-sms','admin-workspace-assign','admin-workspace-qpay','admin-workspace-arrive','admin-workspace-split','admin-workspace-batch','product-save','product-delete','image-upload','review-moderate','admin-customer-save','admin-promo-popup-save','shipping-calculate','warehouse-assign-order','catalog-controls-save','catalog-stores-save','catalog-store-test'],true)
         ||str_starts_with($action,'admin-message')||str_starts_with($action,'taoworld-')||str_starts_with($action,'taobao-purchase-'))return 'operator';
     return 'owner';
 }
