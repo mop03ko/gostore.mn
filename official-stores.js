@@ -9,7 +9,7 @@
     const stores=data.stores;
     host.innerHTML=(data.incomplete?'<p role="status">Зарим дэлгүүрийн мэдээлэл түр ирсэнгүй. <button class="text-button" data-stores-retry>Дахин шалгах</button></p>':'')+
       (stores.length?stores.map((s,i)=>`<article class="official-store-row"><div class="official-store-heading"><img src="${esc(s.logo)}" alt="" width="56" height="56" loading="lazy"><div><h3>${esc(s.display_name)}</h3><p>${esc(s.name)}</p><a class="text-button" href="/official-stores?shop=${encodeURIComponent(s.id)}#catalog">Дэлгүүрийн бараа →</a></div></div><div class="official-store-products product-grid" id="official-store-products-${i}"></div></article>`).join(''):'<p class="empty-state">Одоогоор баталгаажсан дэлгүүрүүдээс бараа ирээгүй байна.</p>')+
-      '<p class="official-stores-note">Баталгаажсан жагсаалтын API-аар боломжтой дэлгүүрүүд. Tmall-ийн бүх дэлгүүрийг хамарсан жагсаалт биш.</p>';
+      '<p class="official-stores-note">Манай сайтаас барааг нь захиалж болох баталгаажсан дэлгүүрүүд. Tmall-ийн бүх дэлгүүрийг хамарсан жагсаалт биш.</p>';
     stores.forEach((s,i)=>renderSupplierCards(s.products,false,host.querySelector('#official-store-products-'+i)));
   }
   async function load(){host.setAttribute('aria-busy','true');try{data=await supplierApi('supplier-official-stores',{});paint();}catch{host.innerHTML='<p>Дэлгүүрүүдийг ачаалж чадсангүй.</p><button class="button outline" data-stores-retry>Дахин оролдох</button>';}finally{host.removeAttribute('aria-busy');}}

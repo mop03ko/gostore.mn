@@ -17,7 +17,7 @@ class SupplierBusy extends ApiError {
 function supplier_acquire_lock(array $paths,float $deadline) {
     $handles=[];
     try{
-        foreach($paths as $path){$h=fopen($path,'c');if(!$h)fail('Барааны мэдээлэл түр авах боломжгүй байна.',503);$handles[]=$h;}
+        foreach($paths as $path){$h=fopen($path,'c');if(!$h)fail('Барааны мэдээллийг түр авч чадахгүй байна.',503);$handles[]=$h;}
         do{
             foreach($handles as $i=>$h)if(flock($h,LOCK_EX|LOCK_NB)){unset($handles[$i]);clearstatcache();return $h;}
             if(microtime(true)>=$deadline)return null;
@@ -93,7 +93,7 @@ function supplier_response(string $path,bool $ok,int $status,string $raw): array
     if($ok&&$status===404&&($response['error']??null)==='not_found'&&preg_match('#^/v1/(?:taobao|alibaba1688)/product/\d+$#D',$path)){
         fail('Нийлүүлэгчээс энэ барааны мэдээлэл олдсонгүй. Каталогоос өөр бараа сонгоно уу.',404);
     }
-    if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээлэл одоогоор авах боломжгүй. API эрх эсвэл лимитийг админ шалгана уу.',503);
+    if(!$ok||$status!==200||!is_array($response)||($response['ErrorCode']??'')!=='Ok'||!is_array($response['Result']??null))fail('Нийлүүлэгчийн мэдээллийг одоогоор авч чадсангүй. Админ нийлүүлэгчийн холболтын эрх, хязгаарыг шалгана уу.',503);
     return $response['Result'];
 }
 // Per-IP caps on uncached supplier reads. Mongolian mobile carriers put many shoppers behind one IP
@@ -116,7 +116,7 @@ function supplier_limits(bool $warming,bool $purchase=false): void {
         if($e->getCode()!==429)throw $e;
         // Shopper requests refused by the limit (background refreshes are not counted).
         if(!$warming)try{supplier_budget_record('rejected');}catch(Throwable){/* Usage history is informational. */}
-        fail('Сайтын шинэ мэдээлэл авах өдрийн API лимит дууссан байна. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
+        fail('Сайтын шинэ мэдээлэл авах өдрийн хязгаар дууссан байна. Хадгалсан мэдээлэлтэй барааг үргэлжлүүлэн үзэж болно.',429);
     }
 }
 function supplier_request(string $path,array $query,bool $display=false,bool $force=false,bool $warming=false,?int $refreshAge=null,bool $purchase=false): array {
@@ -389,15 +389,15 @@ function supplier_image_search_upload(): array {
     $f=$_FILES['image']??null;if(!$f||$f['error']!==UPLOAD_ERR_OK||$f['size']>5*1024*1024)fail('5 MB хүртэл зураг сонгоно уу.');
     $info=@getimagesize($f['tmp_name']);if(!$info||!in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true)||$info[0]*$info[1]>12000000)fail('JPEG, PNG, WebP зураг (12 MP хүртэл) оруулна уу.');
     if(!function_exists('imagecreatefromstring'))fail('Серверт GD өргөтгөл шаардлагатай.',503);
-    $image=@imagecreatefromstring(file_get_contents($f['tmp_name']));if(!$image)fail('Зураг уншигдсангүй.');
+    $image=@imagecreatefromstring(file_get_contents($f['tmp_name']));if(!$image)fail('Зургийг уншиж чадсангүй.');
     $scale=min(1,800/max(imagesx($image),imagesy($image)));$width=max(1,(int)round(imagesx($image)*$scale));$height=max(1,(int)round(imagesy($image)*$scale));
     $canvas=imagecreatetruecolor($width,$height);imagefill($canvas,0,0,imagecolorallocate($canvas,255,255,255));imagecopyresampled($canvas,$image,0,0,0,0,$width,$height,imagesx($image),imagesy($image));
     ob_start();$ok=imagejpeg($canvas,null,85);$jpeg=(string)ob_get_clean();imagedestroy($canvas);imagedestroy($image);
-    if(!$ok||$jpeg==='')fail('Зураг хадгалагдсангүй.',503);
-    $dir=supplier_image_search_dir();if(!is_dir($dir)&&!mkdir($dir,0755,true))fail('Зураг хадгалагдсангүй.',503);
+    if(!$ok||$jpeg==='')fail('Зургийг хадгалж чадсангүй.',503);
+    $dir=supplier_image_search_dir();if(!is_dir($dir)&&!mkdir($dir,0755,true))fail('Зургийг хадгалж чадсангүй.',503);
     foreach(array_slice(glob($dir.'/*.jpg')?:[],0,500) as $old)if(filemtime($old)<time()-604800)@unlink($old);
     $hash=substr(hash('sha256',$jpeg),0,32);$path=$dir.'/'.$hash.'.jpg';
-    if(!is_file($path)){$tmp=tempnam($dir,'write-');if($tmp===false||file_put_contents($tmp,$jpeg,LOCK_EX)===false||!chmod($tmp,0644)||!rename($tmp,$path)){if($tmp&&is_file($tmp))unlink($tmp);fail('Зураг хадгалагдсангүй.',503);}}
+    if(!is_file($path)){$tmp=tempnam($dir,'write-');if($tmp===false||file_put_contents($tmp,$jpeg,LOCK_EX)===false||!chmod($tmp,0644)||!rename($tmp,$path)){if($tmp&&is_file($tmp))unlink($tmp);fail('Зургийг хадгалж чадсангүй.',503);}}
     else touch($path);
     return ['image'=>$hash];
 }

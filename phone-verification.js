@@ -40,7 +40,7 @@
     (async()=>{
       try{
         const config=await shopApi('phone-verification-config'); // Obtain this session's CSRF token.
-        if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр боломжгүй.');
+        if(!config.enabled)throw Error('Утас баталгаажуулах үйлчилгээ түр ажиллахгүй байна.');
         if(done)return;
         const r=await shopApi('phone-verification-start',{phone,purpose,delivery:'otp'});
         if(done)return;
@@ -49,7 +49,7 @@
         dialog.querySelector('[data-instruction]').textContent=r.displayInstruction;
         dialog.querySelector('[data-phone]').textContent='Утас: '+r.phone;
         otpForm.hidden=false;otpForm.elements.code.focus();
-        status.textContent=r.deliveryUncertain?'Илгээлтийн хариу хүлээгдэж байна. Код ирвэл оруулна уу.':'Таны утсанд ирэх кодыг оруулна уу. Утасны дугаарыг SendSMS.mn-д дамжуулна.';
+        status.textContent=r.deliveryUncertain?'Илгээлтийн хариуг хүлээж байна. Код ирвэл оруулна уу.':'Таны утсанд ирэх кодыг оруулна уу. Утасны дугаарыг SendSMS.mn-д дамжуулна.';
       }catch(e){if(!done){window.toast?.(e.message||'Баталгаажуулалт эхэлсэнгүй.');end(false);}}
     })();
     return promise;

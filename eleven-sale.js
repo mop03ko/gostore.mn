@@ -42,7 +42,7 @@
   section.className = 'eleven-sale page-width';
   section.setAttribute('aria-labelledby', 'eleven-sale-title');
   const heading = collection ? 'h1' : 'h2';
-  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдралтай бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/11-11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
+  section.innerHTML = (collection ? '<a class="eleven-sale-back" href="/">← Нүүр хуудас</a>' : '') + '<div class="eleven-sale-heading"><span class="eleven-sale-mark" aria-hidden="true">11.11</span><div><p class="eleven-sale-eyebrow">11.11-ИЙН СОНГОЛТ</p><' + heading + ' id="eleven-sale-title">Хямдралтай бараа</' + heading + '><p>Таалагдсан барааныхаа саналыг шалгаарай.</p></div>' + (collection ? '' : '<a class="eleven-sale-link" href="/11-11">Бүх сонголтыг үзэх →</a>') + '</div><p class="eleven-sale-note">Сүүлийн 24 цагт шалгасан, бодит үнэ нь буурсан бараа. Эцсийн үнэ, хүргэлтийг захиалах үед шалгана.</p><div id="eleven-sale-products" aria-busy="true"></div><p class="eleven-sale-status" role="status">Хямдралын мэдээлэл ачаалж байна…</p><button type="button" class="eleven-sale-retry" hidden>Дараагийн бараанууд</button>';
   if (!section.isConnected) hub.after(section);
   const target = section.querySelector('#eleven-sale-products');
   const status = section.querySelector('.eleven-sale-status');
@@ -73,7 +73,7 @@
     target.setAttribute('aria-busy', 'false');
     target.innerHTML = items.length ? '<div class="eleven-sale-grid">' + items.map(product => '<a class="eleven-sale-card" href="/v/' + encodeURIComponent(product.id) + '">' + supplierDiscountBadge(product, product.mnt || product.approx_mnt) + (product.image ? '<img src="' + esc(product.image) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '<div class="eleven-sale-placeholder" aria-hidden="true">GOStore</div>') + '<div class="eleven-sale-card-body"><h3>' + esc(product.name) + '</h3><strong>' + (product.mnt ? '' : '≈ ') + money(product.mnt || product.approx_mnt) + '</strong>' + supplierPromotionHtml(product, product.mnt || product.approx_mnt) + '<small class="eleven-sale-details">Үнэ, нөхцөл харах →</small></div></a>').join('') + '</div>' : '<p class="eleven-sale-empty">Одоогоор хүчинтэй хямдралын мэдээлэл олдсонгүй. <a href="/products">Бүх барааг үзэх →</a></p>';
     status.textContent = collection && items.length ? items.length + ' бараа харагдаж байна' : '';
-    if (stale && !items.length) target.innerHTML = '<p class="eleven-sale-empty">Хямдралын шинэ мэдээлэл түр хязгаарлагдсан байна. Дараа дахин ачаална уу.</p>';
+    if (stale && !items.length) target.innerHTML = '<p class="eleven-sale-empty">Хямдралын шинэ мэдээллийг одоогоор авч чадсангүй. Дараа дахин ачаална уу.</p>';
     next.hidden = !collection || !more;
     next.textContent = 'Дараагийн бараанууд';
     const end = override === true && /^\d{4}-\d{2}-\d{2}$/.test(until) ? Date.parse(until + 'T23:59:59+08:00') + 1000 : Date.parse(new Date().getFullYear() + '-11-12T00:00:00+08:00');
@@ -104,7 +104,7 @@
     } catch {
       section.classList.add('eleven-loaded');
       target.setAttribute('aria-busy', 'false');
-      status.textContent = 'Хямдралын мэдээлэл түр боломжгүй байна.';
+      status.textContent = 'Хямдралын мэдээллийг одоогоор авч чадсангүй.';
       next.hidden = false;
       next.textContent = 'Дахин ачаалах';
     } finally { clearTimeout(timeout); busy = false; next.disabled = false; }

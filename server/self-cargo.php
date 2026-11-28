@@ -35,7 +35,7 @@ function self_cargo_address(array $o): array {
 }
 function self_cargo_waybill(array &$o,array $b): void {
     $number=strtoupper(str_field($b,'number',40));$company=str_field($b,'company',80,false);
-    if(!preg_match('/^[A-Z0-9-]{6,40}$/D',$number))fail('Хүргэлтийн дугаар 6–40 үсэг, тоо, зураас байна.');
+    if(!preg_match('/^[A-Z0-9-]{6,40}$/D',$number))fail('Хүргэлтийн дугаар 6–40 үсэг, тоо, зураасаас бүрдэх ёстой.');
     // The write transaction serializes competing customer registrations.
     $q=db()->prepare('SELECT id,data FROM orders WHERE id<>? AND data LIKE ?');$q->execute([$o['id'],'%'.$number.'%']);
     foreach($q as $row){$other=json_decode($row['data'],true);foreach($other['inbound']['numbers']??[] as $n)if(strtoupper($n['no'])===$number)fail('Энэ хүргэлтийн дугаар бүртгэлтэй байна. Агуулахтай холбогдоно уу.',409);}

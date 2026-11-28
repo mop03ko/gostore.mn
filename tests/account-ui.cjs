@@ -11,7 +11,7 @@ fs.writeFileSync(path.join(cache,crypto.createHash('sha256').update('/v1/taobao/
  await page.route('https://img.alicdn.com/**',r=>r.fulfill({path:'assets/backpack.jpg',contentType:'image/jpeg'}));
  await page.route('**/api/index.php?action=supplier-search*',r=>r.fulfill({json:{products:[],page:1,more:false,total:0,pages:1,fetched:new Date().toISOString(),stale:false,cache_ttl:0,shipping:{cny_rate:550}}}));
  // Guests see a sign-in prompt instead of private data.
- await page.goto(base+'/account');await page.locator('#account-page .account-empty').waitFor();assert.ok((await page.locator('#account-page').innerText()).includes('Нэвтэрч орно уу'));
+ await page.goto(base+'/account');await page.locator('#account-page .account-empty').waitFor();assert.ok((await page.locator('#account-page').innerText()).includes('Нэвтэрнэ үү'));
  const customer=await require('./customer-ui-helper.cjs')(page,base);
  // One real checkout order for the orders and products sections.
  const session=await (await page.request.get(base+'/api/index.php?action=catalog')).json(),headers={'X-CSRF-Token':session.csrf};

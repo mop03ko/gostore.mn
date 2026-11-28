@@ -89,7 +89,7 @@ function customer_state_get(array $c,?int $protocol=null): array {
     return customer_state_row($c)+['pending'=>customer_state_pending($c)];
 }
 function customer_state_save(array $c,array $b,?int $protocol=null): array {
-    if(($protocol??customer_state_protocol())!==2)fail('Хуудсаа дахин ачаалсны дараа сагс, хадгалсан бараа синк хийгдэнэ.',426);
+    if(($protocol??customer_state_protocol())!==2)fail('Хуудсаа дахин ачаалсны дараа сагс, хадгалсан барааг тань шинэчилнэ.',426);
     limit_attempts('customer-state:'.$c['id'],240,3600);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{

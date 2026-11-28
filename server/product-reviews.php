@@ -38,11 +38,11 @@ function review_images(): array {
     if(!is_array($f['error']??null)||count($f['error'])>3)fail('3 хүртэл зураг оруулна уу.');$out=[];
     foreach($f['error'] as $i=>$error){
         if($error===UPLOAD_ERR_NO_FILE)continue;
-        if($error!==UPLOAD_ERR_OK||($f['size'][$i]??0)>5*1024*1024)fail('Зураг бүр 5 MB-аас бага байна.');
+        if($error!==UPLOAD_ERR_OK||($f['size'][$i]??0)>5*1024*1024)fail('Зураг бүр 5 MB-аас бага байх ёстой.');
         $path=$f['tmp_name'][$i];$info=@getimagesize($path);
         if(!$info||!in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true)||$info[0]*$info[1]>20000000)fail('JPEG, PNG эсвэл WebP зураг сонгоно уу (20 MP хүртэл).');
         if(!function_exists('imagecreatefromstring'))fail('Зураг боловсруулах үйлчилгээ түр боломжгүй.',503);
-        $src=@imagecreatefromstring(file_get_contents($path));if(!$src)fail('Зураг уншигдсангүй.');
+        $src=@imagecreatefromstring(file_get_contents($path));if(!$src)fail('Зургийг уншиж чадсангүй.');
         $scale=min(1,1200/max(imagesx($src),imagesy($src)));$dst=imagecreatetruecolor(max(1,(int)round(imagesx($src)*$scale)),max(1,(int)round(imagesy($src)*$scale)));
         imagefill($dst,0,0,imagecolorallocate($dst,255,255,255));imagecopyresampled($dst,$src,0,0,0,0,imagesx($dst),imagesy($dst),imagesx($src),imagesy($src));
         ob_start();imagejpeg($dst,null,82);$bytes=ob_get_clean();imagedestroy($src);imagedestroy($dst);

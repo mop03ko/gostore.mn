@@ -68,7 +68,7 @@
      const sectionLink=inSeasonalShelf
       ?'<a class="discovery-more" href="#new-year-deals">Баярын хямдралаас үзэх →</a>'
       :'<a class="discovery-more" href="#catalog">Хямдралын жагсаалтаас үзэх →</a>';
-     target.innerHTML=unique.length?products(unique):items.length?sectionLink:`<p class="discovery-empty">${free?d.status==='available'?'Одоогоор 0¥ хүргэлттэй бараа олдсонгүй.':'Үнэгүй хүргэлттэй барааны мэдээлэл түр боломжгүй байна.':'Бараа олдсонгүй.'}</p>`;
+     target.innerHTML=unique.length?products(unique):items.length?sectionLink:`<p class="discovery-empty">${free?d.status==='available'?'Одоогоор 0¥ хүргэлттэй бараа олдсонгүй.':'Үнэгүй хүргэлттэй барааны мэдээллийг одоогоор авч чадсангүй.':'Бараа олдсонгүй.'}</p>`;
     };
     refreshProducts();
    }).catch(()=>{if(!own.signal.aborted){target.innerHTML='<button type="button" class="discovery-more">Ачаалж чадсангүй. Дахин оролдох</button>';target.querySelector('button').onclick=run;}});

@@ -87,7 +87,7 @@ function limit_attempts(string $key, int $max, int $seconds): void {
     $db->prepare('INSERT OR IGNORE INTO limits VALUES (?,0,?)')->execute([$key,$now+$seconds]);
     $db->prepare('UPDATE limits SET hits=hits+1 WHERE key=?')->execute([$key]);
     $s=$db->prepare('SELECT hits FROM limits WHERE key=?'); $s->execute([$key]);
-    if ((int)$s->fetchColumn()>$max) fail('Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу.',429);
+    if ((int)$s->fetchColumn()>$max) fail('Хэт олон удаа оролдлоо. Түр хүлээгээд дахин оролдоно уу.',429);
 }
 // Shoppers stay signed in while they keep coming back: 30 days on the website and 90 days in the app
 // (each visit extends it). Staff devices remain signed in during regular use. Logout and
@@ -100,7 +100,7 @@ const ADMIN_SESSION_TTL = 365 * 86400;
 // session directory removes files after its short php.ini lifetime. server/daily-worker.php prunes them.
 function session_private_dir(string $name,int $ttl): void {
     $dir=config()['data_dir'].'/'.$name;
-    if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Нэвтрэх үйлчилгээ түр боломжгүй.',503);
+    if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Нэвтрэх үйлчилгээ түр ажиллахгүй байна.',503);
     session_save_path($dir);ini_set('session.gc_maxlifetime',(string)$ttl);
 }
 function session_boot(string $realm = 'admin'): void {
@@ -158,7 +158,7 @@ function admin_password_change(array $b): array {
     admin_required();limit_attempts('admin-password:'.($_SERVER['REMOTE_ADDR']??'cli'),8,900);
     if(($_SESSION['admin_user']??'owner')!=='owner')fail('Таны эрх энэ үйлдэлд хүрэлцэхгүй.',403);
     $current=$b['current_password']??null;$next=$b['new_password']??null;$confirm=$b['password_confirm']??null;
-    if(!is_string($current)||strlen($current)>1000||!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгт, 72 байтаас хэтрэхгүй байна.');
+    if(!is_string($current)||strlen($current)>1000||!is_string($next)||str_contains($next,"\0")||mb_strlen($next)<12||strlen($next)>72)fail('Шинэ нууц үг 12-оос доошгүй тэмдэгттэй, 72 байтаас хэтрэхгүй байх ёстой.');
     if(!is_string($confirm)||!hash_equals($next,$confirm))fail('Шинэ нууц үгийн давталт таарахгүй байна.');
     admin_password_rules($next,$confirm);
     $db=db();$db->exec('BEGIN IMMEDIATE');

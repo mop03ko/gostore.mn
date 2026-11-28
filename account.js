@@ -6,7 +6,7 @@ customerAccount.setUser=user=>{
   document.documentElement.classList.toggle('customer-signed-in',!!user);
   window.syncMobileNav?.();
   if(!user&&(document.querySelector('#modal').open&&document.querySelector('#modal #cargo-search,#modal .cargo-detail,#modal .cargo-notice,#supplier-order-form,#server-cart-form,#taobao-checkout-form')||authMode==='link'))accountForm();
-  document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?(String(user.name||'').trim().split(/\s+/)[0].slice(0,14)||'Профайл'):'Нэвтрэх');
+  document.querySelectorAll('[data-account-label]').forEach(el=>el.textContent=user?(String(user.name||'').trim().split(/\s+/)[0].slice(0,14)||'Бүртгэл'):'Нэвтрэх');
 };
 customerAccount.require=()=>{if(customerAccount.user)return true;customerAccount.open();return false;};
 function notifyAccountChange(){try{localStorage.setItem('gostore-account-changed-v1',String(Date.now())+Math.random());}catch{}}
@@ -22,7 +22,7 @@ const accountError='<p class="form-error" data-account-error role="alert"></p>';
 // Registration (register), forgotten PIN (reset) and adding a phone to an e-mail account (link): the
 // phone is verified by SMS first, then the PIN fields appear.
 function pinSetupForm(purpose,phone=''){
-  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаараа SMS-ээр баталгаажуулаад нэвтрэх 4 оронтой PIN үүсгэнэ. Баталгаажуулах код болон PIN-ээ бусдад бүү дамжуулаарай.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
+  return `<form id="customer-pin-setup-form" class="account-form" data-purpose="${purpose}">${purpose==='register'?accountField('Таны нэр','name','','autocomplete="name" maxlength="100" required'):''}${phoneField(phone)}<div data-pin-step hidden>${pinField('4 оронтой PIN','pin','new-password',false)}${pinField('PIN давтах','pin_confirm','new-password',false)}</div><p class="account-hint" data-pin-hint>Утасны дугаараа SMS-ээр баталгаажуулаад нэвтрэх 4 оронтой PIN үүсгэнэ. Баталгаажуулах код болон PIN-ээ бусдад бүү дамжуулаарай.</p>${purpose==='register'?'<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол тэр бүртгэлээрээ нэвтэрч, «Миний бүртгэл» хэсгээс утсаа холбоорой. Үргэлжлүүлснээр үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</p>':''}${accountError}<button class="button blue" type="submit">SMS-ээр баталгаажуулах</button></form>`;
 }
 // Sign-in, registration, PIN reset, e-mail sign-in and phone linking are pages (/login, /register,
 // /login/reset, /login/email, /login/link) drawn in place over the current page, so the page underneath
@@ -58,7 +58,7 @@ function finishAuthView(){
 }
 function accountForm(mode='login',intro=''){
   const register=mode==='register',links=(...items)=>`<div class="account-links">${items.map(([m,label])=>`<button type="button" class="text-button" data-account-mode="${m}">${label}</button>`).join('')}</div>`;
-  const body=mode==='email'?`<form id="customer-login-form" class="account-form">${accountField('Имэйл хаяг','email','','type="email" autocomplete="username" maxlength="200" required')}${passwordField('Нууц үг','password','current-password')}<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол. Нэвтэрсний дараа профайлаасаа утас, PIN холбоорой.</p>${accountError}<button class="button blue" type="submit">Нэвтрэх</button></form>${links(['login','Утас + PIN-ээр нэвтрэх'])}`
+  const body=mode==='email'?`<form id="customer-login-form" class="account-form">${accountField('Имэйл хаяг','email','','type="email" autocomplete="username" maxlength="200" required')}${passwordField('Нууц үг','password','current-password')}<p class="account-hint">Өмнө нь имэйлээр бүртгүүлсэн бол нэвтэрснийхээ дараа «Миний бүртгэл» хэсгээс утас, PIN-ээ холбоорой.</p>${accountError}<button class="button blue" type="submit">Нэвтрэх</button></form>${links(['login','Утас + PIN-ээр нэвтрэх'])}`
     :mode==='register'||mode==='reset'?pinSetupForm(mode)+(mode==='reset'?links(['login','Утас + PIN-ээр нэвтрэх']):'')
     :`<form id="customer-pin-login-form" class="account-form">${phoneField()}${pinField('4 оронтой PIN','pin','current-password')}<p class="account-hint">Нэвтэрсэн хэвээр үлдэнэ. Нийтийн компьютер дээр ажилласны дараа бүртгэлээс гарна уу.</p>${accountError}<button class="button blue" type="submit">PIN-ээр нэвтрэх</button></form>${links(['reset','PIN мартсан'],['email','Өмнөх имэйлээр нэвтрэх'])}`;
   const tabs=mode==='reset'||mode==='email'?'':`<div class="account-tabs"><button class="button ${register?'outline':'blue'}" data-account-mode="login" aria-pressed="${!register}">Нэвтрэх</button><button class="button ${register?'blue':'outline'}" data-account-mode="register" aria-pressed="${register}">Бүртгүүлэх</button></div>`;
@@ -69,13 +69,13 @@ customerAccount.forCheckout=async resume=>{
   checkoutResume=resume;
   try{await customerAccount.refresh();}catch(e){checkoutResume=null;toast(e.message);return;}
   if(customerAccount.user){const next=checkoutResume;checkoutResume=null;await next?.();return;}
-  const pending=checkoutResume;accountForm('login','Захиалгаа үргэлжлүүлэхийн тулд нэвтэрнэ үү. Таны сонголт хадгалагдана; нэвтэрсний дараа захиалгын мэдээлэл рүү буцна.');checkoutResume=pending;
+  const pending=checkoutResume;accountForm('login','Захиалгаа үргэлжлүүлэхийн тулд нэвтэрнэ үү. Таны сонголт хэвээр үлдэнэ; нэвтэрсний дараа захиалгын мэдээлэл рүү буцна.');checkoutResume=pending;
 };
 // Signed-in customers manage their details on the account page (/account/profile); only adding a phone
 // and PIN to an older e-mail account is its own page, because it needs SMS verification first.
 function profileForm(mode='profile'){
   const user=customerAccount.user;if(!user)return accountForm();
-  if(mode==='link'&&!user.pin_enabled){authView('link','Утас, PIN холбох','Утсаа SMS-ээр баталгаажуулаад 4 оронтой PIN үүсгэвэл апп, вэбд утас + PIN-ээр нэвтэрнэ.',pinSetupForm('link',user.phone||''));return;}
+  if(mode==='link'&&!user.pin_enabled){authView('link','Утас, PIN холбох','Утсаа SMS-ээр баталгаажуулаад 4 оронтой PIN үүсгэвэл апп болон вэб сайтад утас + PIN-ээр нэвтэрнэ.',pinSetupForm('link',user.phone||''));return;}
   closeAuthView(false);window.accountPage?accountPage.go('profile'):location.assign('/account/profile');
 }
 customerAccount.open=async(mode)=>{

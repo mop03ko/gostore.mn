@@ -43,10 +43,10 @@ try {
     if ($action==='freight-callback' && in_array($method,['GET','POST'],true)) json_out(freight_callback((string)($_GET['id']??''),(string)($_GET['key']??'')));
     // Public product reads never open or expose a customer/admin session.
     if($method==='GET'&&in_array($action,['supplier-search','supplier-deals','supplier-product','supplier-recommend','supplier-free-shipping','supplier-official-stores','supplier-logistics'],true)){
-        if($action==='supplier-deals'){if(!tw_catalog_enabled())fail('Хямдралын мэдээлэл түр боломжгүй.',503);supplier_public_json(tw_catalog_deals($_GET));}
+        if($action==='supplier-deals'){if(!tw_catalog_enabled())fail('Хямдралын мэдээллийг түр үзүүлэх боломжгүй байна.',503);supplier_public_json(tw_catalog_deals($_GET));}
         if($action==='supplier-logistics'){require_once __DIR__.'/../server/taoworld-domestic.php';supplier_public_json(tw_product_logistics(str_field($_GET,'id',50)));}
-        if($action==='supplier-official-stores'){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_stores_directory());}
-        if($action==='supplier-product'&&!empty($_GET['shop'])){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр боломжгүй.',503);supplier_public_json(official_store_detail(str_field($_GET,'id',50),str_field($_GET,'shop',20)));}
+        if($action==='supplier-official-stores'){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр ажиллахгүй байна.',503);supplier_public_json(official_stores_directory());}
+        if($action==='supplier-product'&&!empty($_GET['shop'])){if(!tw_catalog_enabled())fail('Дэлгүүрийн каталог түр ажиллахгүй байна.',503);supplier_public_json(official_store_detail(str_field($_GET,'id',50),str_field($_GET,'shop',20)));}
         if($action==='supplier-free-shipping'){require_once __DIR__.'/../server/discovery.php';supplier_public_json(discovery_free_shipping());}
         if($action==='supplier-recommend'){
             $page=filter_var($_GET['page']??1,FILTER_VALIDATE_INT);
@@ -136,12 +136,12 @@ try {
         $info=@getimagesize($file['tmp_name']);
         if (!$info || !in_array($info[2],[IMAGETYPE_JPEG,IMAGETYPE_PNG,IMAGETYPE_WEBP],true) || $info[0]*$info[1]>12000000) fail('JPEG, PNG, WebP зураг (12 MP хүртэл) оруулна уу.');
         if (!function_exists('imagecreatefromstring')) fail('Серверт GD өргөтгөл шаардлагатай.',503);
-        $image=@imagecreatefromstring(file_get_contents($file['tmp_name'])); if (!$image) fail('Зураг уншигдсангүй.');
+        $image=@imagecreatefromstring(file_get_contents($file['tmp_name'])); if (!$image) fail('Зургийг уншиж чадсангүй.');
         $width=min(1600,imagesx($image));$height=max(1,(int)round(imagesy($image)*$width/imagesx($image)));
         $canvas=imagecreatetruecolor($width,$height);imagefill($canvas,0,0,imagecolorallocate($canvas,255,255,255));
         imagecopyresampled($canvas,$image,0,0,0,0,$width,$height,imagesx($image),imagesy($image));
         $name='uploads/'.bin2hex(random_bytes(16));$path=__DIR__.'/../assets/'.$name.'.jpg';
-        if (!imagejpeg($canvas,$path,87)) fail('Зураг хадгалагдсангүй.',503);
+        if (!imagejpeg($canvas,$path,87)) fail('Зургийг хадгалж чадсангүй.',503);
         imagedestroy($canvas);imagedestroy($image);json_out(['image'=>$name]);
     }
     $b=body();

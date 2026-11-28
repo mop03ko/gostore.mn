@@ -7,16 +7,20 @@ window.commerceUI = (() => {
     const domestic = Number(s.domestic_default_cny) > 0;
     return `Одоо: барааны үнэ, үйлчилгээний хураамж${domestic ? ', Хятад доторх хүргэлтийн урьдчилсан дүн' : ''}. Дараа: ${domestic ? '' : 'Хятад доторх хүргэлт, '}олон улсын карго, сонгосон бол УБ хүргэлт. Дараах төлбөрийг Улаанбаатарт ирэхэд бодит дүнгээр тооцно.`;
   };
-  const timingText = () => 'Ирэх өдөр одоогоор баталгаажаагүй. Нийлүүлэгчийн илгээлт, хил, тээврээс хамаарна. Явцыг Миний захиалгууд хэсгээс хянана.';
+  const timingText = () => 'Ирэх өдөр одоогоор баталгаажаагүй. Нийлүүлэгчийн илгээлт, хил, тээврээс хамаарна. Явцыг Миний захиалга хэсгээс хянана.';
   // A SKU may be one piece, a pair or a pack. Do not infer a pack size from a title.
   const unit = 'ш';
-  const unitHelp = 'Тоо нь сонгосон хувилбарын ширхэг. Багцын бүрдлийг сонголтын нэр, үзүүлэлтээс шалгана уу.';
+  const unitHelp = 'Тоо нь сонгосон хувилбарын ширхэг. Багцын бүрдлийг хувилбарын нэр, үзүүлэлтээс шалгана уу.';
   const number = n => Number(n).toLocaleString('en-US',{maximumFractionDigits:4});
   // Customer prices only: supplier cost, account identifiers and purchase proofs are never used here.
   // Checkout calls the upfront amount «Одоо төлөх» like the cart; order history names it as the first payment.
   function calculationHtml(q, items = [], title = 'Тооцооны дэлгэрэнгүй', totalLabel = 'Одоо төлөх') {
     const b=q?.breakdown,inputs=q?.inputs||q,r=q?.rates||q;
     if(!b||!r)return '';
+    // An old quote that lacks one of the amounts shown below would print «NaN»; show no breakdown instead.
+    const shown=[b.goods_mnt,b.service_mnt,q.total,r.service_percent,r.service_fee_mnt];
+    if(!q.domestic_later||r.service_basis==='non_cargo')shown.push(b.domestic_mnt);
+    if(!shown.every(n=>n!==null&&n!==undefined&&n!==''&&Number.isFinite(Number(n))))return '';
     const row=(label,formula,amount)=>`<div class="calculation-row"><div><span>${label}</span>${formula?`<small>${formula}</small>`:''}</div><strong>${amount}</strong></div>`;
     const lines=items.filter(i=>Number(i.qty)>0).map(i=>`<li><span>${esc(i.name||i.id)}<small>${esc(i.variant||'')}</small></span><strong>${number(i.qty)} ш</strong></li>`).join('');
     return `<section class="customer-calculation"><h3>${esc(title)}</h3>${lines?`<ul class="calculation-items">${lines}</ul>`:''}${row('Барааны нийт үнэ','',money(b.goods_mnt))}${row(`Хятад доторх хүргэлт${inputs.vendors?` · ${number(inputs.vendors)} дэлгүүр`:''}`,q.domestic_later?'Эрээн агуулах хүртэлх бодит дүнг дараа тооцно':'Эрээн агуулах хүртэл',q.domestic_later?'Дараа тооцно':money(b.domestic_mnt))}${row('Үйлчилгээний хураамж',`${money(b.goods_mnt+(r.service_basis==='non_cargo'?b.domestic_mnt:0))} × ${number(r.service_percent)}% + ${money(r.service_fee_mnt)}`,money(b.service_mnt))}${row(esc(totalLabel),'Бараа + одоо тооцсон Хятад хүргэлт + үйлчилгээ',money(q.total))}<div class="commerce-later"><strong>Дараа төлөх зардал</strong><p>${q.domestic_later?'Хятад доторх хүргэлт. ':''}Олон улсын карго: агуулахын бодит жин эсвэл эзлэхүүн, тарифаар тооцно. УБ хүргэлт сонговол төлбөрийг тусад нь нэмнэ. Эдгээр дүн эхний төлбөрт ороогүй.${r.service_basis==='non_cargo'&&Number(r.service_percent)>0?` ${q.domestic_later?'Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн':'УБ хүргэлт сонговол хүргэлтийн'} дүнд ${number(r.service_percent)}% үйлчилгээний хураамж нэмэгдэнэ. Эрээн–Улаанбаатарын каргод хураамж бодохгүй.`:''}</p><a href="/help#delivery">Каргоны тариф, тооцоолуур →</a></div></section>`;
@@ -84,7 +88,7 @@ window.commerceUI = (() => {
     box.querySelector('[data-calculated-volume]').textContent=volume>0&&volume<=1000?'Нийт эзлэхүүн · '+volume.toLocaleString('en-US',{maximumFractionDigits:9})+' м³':'';
     const output=box.querySelector('[data-cargo-estimate]');
     output.querySelector('strong').textContent=q?money(q.amount):'— ₮';
-    output.querySelector('small').textContent=q?q.formula:'Нийт жин болон эзлэхүүнээ зөв оруулна уу. Савлагааны тоо бүхэл байна.';
+    output.querySelector('small').textContent=q?q.formula:'Нийт жин болон эзлэхүүнээ зөв оруулна уу. Савлагааны тоо бүхэл тоо байх ёстой.';
   }
   document.addEventListener('input',updateCalculator);document.addEventListener('change',updateCalculator);
   const calculationTitle='Захиалах үеийн тооцоо';

@@ -7,7 +7,7 @@ const products=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday
  await page.route('**/api/index.php?action=supplier-free-shipping*',r=>r.fulfill({json:{products:free==='available'?products.slice(0,2):[],status:free,scope:'china_to_erenhot'}}));
  await page.goto(base+'/');await page.locator('.discovery-home').waitFor();
  for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+width);}
- await page.setViewportSize({width:390,height:844});await page.locator('.discovery-free-banner').click();await page.getByText('Үнэгүй хүргэлттэй барааны мэдээлэл түр боломжгүй байна.',{exact:true}).waitFor();
+ await page.setViewportSize({width:390,height:844});await page.locator('.discovery-free-banner').click();await page.getByText('Үнэгүй хүргэлттэй барааны мэдээллийг одоогоор авч чадсангүй.',{exact:true}).waitFor();
  assert.equal(await page.locator('.discovery-home .discovery-product').count(),0,'No invented free shipping cards');assert.match(await page.locator('.discovery-note').innerText(),/Монгол хүртэлх тээвэр тусдаа/);
  await page.locator('[role=tab][data-discovery-tab=explore]').click();free='available';await page.locator('.discovery-free-banner').click();await page.locator('.discovery-home .discovery-product').first().waitFor();assert.equal(await page.locator('.discovery-home .discovery-product').count(),2);
  await page.locator('[role=tab][data-discovery-tab=fashion]').click();await page.locator('.discovery-home .discovery-product').first().waitFor();assert.equal(await page.locator('.discovery-home .discovery-product').count(),8);

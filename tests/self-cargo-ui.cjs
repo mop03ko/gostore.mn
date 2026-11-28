@@ -32,7 +32,7 @@ const base=process.env.TEST_BASE;assert.match(base,/^http:\/\/127\.0\.0\.1:\d+$/
   assert.match(await card.locator('pre').innerText(),new RegExp(profile.cargo_id));assert.equal(await page.evaluate(()=>window.BAD),undefined);
   await card.getByText('Хүргэлтийн дугаар нэмэх',{exact:true}).click();
   await card.getByLabel('Хятадын хүргэлтийн дугаар').fill('YT1234567890000');await card.getByLabel('Хүргэлтийн компани').fill('圆通');
-  await card.getByRole('button',{name:'Дугаар хадгалах'}).click();await card.getByText('Эрээн рүү хүргэгдэж байна',{exact:true}).waitFor();
+  await card.getByRole('button',{name:'Дугаар хадгалах'}).click();await card.getByText('Эрээн рүү хүргэж байна',{exact:true}).waitFor();
   await card.getByText(/Бүртгэсэн хүргэлт:.*YT1234567890000/).waitFor();
   for(const width of [360,390,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal overflow at '+width);}
   fs.mkdirSync('tmp/self-cargo-work',{recursive:true});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'tmp/self-cargo-work/mobile.png',fullPage:true});

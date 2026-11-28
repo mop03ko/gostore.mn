@@ -111,7 +111,7 @@ function shipping_public(): array {
 }
 function warehouse_destination(array $order,array $input): array {
     $family=str_field($input,'family_name',100);$given=str_field($input,'customer',100);
-    foreach([$family,$given] as $name)if(preg_match('/[\x00-\x1F\x7F]/u',$name))fail('Овог, нэр нэг мөрөнд байна.');
+    foreach([$family,$given] as $name)if(preg_match('/[\x00-\x1F\x7F]/u',$name))fail('Овог, нэр нэг мөрөнд байх ёстой.');
     $s=shipping_settings();if(trim($s['warehouse_address'])===''||trim($s['warehouse_phone'])==='')fail('Эрээн агуулахын мэдээллийг админ тохируулах шаардлагатай.',503);
     $recipient=$family.' '.$given.' / '.$order['id'];
     return ['family_name'=>$family,'given_name'=>$given,'recipient'=>$recipient,'order_code'=>$order['id'],'address'=>$s['warehouse_address'],'phone'=>$s['warehouse_phone'],'contact_phone'=>$s['warehouse_contact_phone'],

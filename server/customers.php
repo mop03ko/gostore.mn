@@ -32,7 +32,7 @@ function customer_email(array $b): string {
 }
 function customer_password(array $b,string $field='password',bool $new=false): string {
     $password=$b[$field]??null;
-    if(!is_string($password)||$password===''||str_contains($password,"\0")||strlen($password)>72||($new&&mb_strlen($password)<10))fail('Нууц үг 10-аас доошгүй тэмдэгттэй байна. Хэт урт нууц үг оруулахгүй байна уу.');
+    if(!is_string($password)||$password===''||str_contains($password,"\0")||strlen($password)>72||($new&&mb_strlen($password)<10))fail('Нууц үг 10-аас доошгүй тэмдэгттэй байх ёстой. Хэт урт нууц үг бүү оруулаарай.');
     return $password;
 }
 function customer_phone(array $b): string {

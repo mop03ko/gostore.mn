@@ -3,7 +3,7 @@
 window.productCompare=(()=>{
   const KEY='gostore-compare-v1',MAX=4;
   const read=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v.filter(p=>p&&/^(?:tb|abb)-[0-9]{5,20}$/.test(p.id)&&!window.productPolicyBlocked(p)).slice(0,MAX):[];}catch{return [];}};
-  const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Хөтөч харьцуулах жагсаалт хадгалах боломжгүй байна.');return false;}sync();return true;};
+  const write=items=>{try{localStorage.setItem(KEY,JSON.stringify(items));}catch{toast('Таны хөтөч харьцуулах жагсаалтыг хадгалж чадсангүй.');return false;}sync();return true;};
   const has=id=>read().some(p=>p.id===id);
   function sync(){
     const items=read(),button=document.querySelector('[data-compare-open]');

@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Instant Taobao checkout: goods, China domestic delivery and service are paid upfront;
 // cargo and Ulaanbaatar delivery are collected later through the final settlement.
 function checkout_items(array $b,?int &$verifiedUntil=null): array {
-    $items=$b['items']??null;if(!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>30)fail('Сагсанд 1-30 бараа байна.');
+    $items=$b['items']??null;if(!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>30)fail('Сагсанд 1-30 бараа байх ёстой.');
     $rate=shipping_settings()['cny_rate'];$lines=[];$seen=[];$verifiedUntil=PHP_INT_MAX;
     foreach($items as $item){
         if(!is_array($item))fail('Сагсны барааны мэдээлэл буруу байна.');

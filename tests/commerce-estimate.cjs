@@ -20,8 +20,8 @@ assert.ok(!ui.paymentText({...s,catalog_provider:'taoworld',domestic_default_cny
 assert.ok(!ui.unit.includes('ширхэг'),'SKU quantity must not pretend to be individual pieces');
 const snapshot={inputs:{goods_cny:32.5,domestic_cny:10,vendors:1},rates:s,breakdown:{goods_mnt:17875,domestic_mnt:5500,service_mnt:1894},total:25269};
 let html=ui.calculationHtml(snapshot,[{name:'<img onerror=alert(1)>',variant:'<b>test</b>',unit_cny:10,qty:2,goods_cny:20}]);
-assert.match(html,/17875 × 5% \+ 1000/);assert.match(html,/¥32.5 × 550/);assert.match(html,/1894/);assert.ok(!html.includes('<img')&&html.includes('&lt;img'),'Customer item names must remain text');
-ctx.window.storeServer={shipping:{...s,cny_rate:999}};assert.match(ui.calculationHtml(snapshot),/¥32.5 × 550/,'Orders show the saved rate');
+assert.match(html,/17875 × 5% \+ 1000/);assert.doesNotMatch(html,/ханш|CNY|¥/i,'Customers see the charged MNT amounts, not the exchange rate');assert.match(html,/1894/);assert.ok(!html.includes('<img')&&html.includes('&lt;img'),'Customer item names must remain text');
+ctx.window.storeServer={shipping:{...s,cny_rate:999}};html=ui.calculationHtml(snapshot);assert.match(html,/17875/,'Orders show the saved amounts');assert.doesNotMatch(html,/999/,'A later rate does not change a saved order');
 assert.match(ui.calculationHtml({...snapshot,domestic_later:true}),/Дараа тооцно/);
 // Later costs: the note names what the fee applies to only for quotes priced on the non-cargo basis.
 assert.ok(!ui.calculationHtml(snapshot).includes('каргод хураамж бодохгүй'),'Old quotes keep the old note');

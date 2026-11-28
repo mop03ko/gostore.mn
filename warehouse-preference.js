@@ -8,7 +8,7 @@
  const locations=()=>shipping?.pickup_locations??(shipping?.pickup?[{...shipping.pickup,location:'ulaanbaatar',city:'Улаанбаатар'}]:[]);
  const selected=()=>locations().find(p=>p.location===read())||null;
  const currentUser=()=>window.customerAccount?window.customerAccount.user:user;
- function save(id){if(!locations().some(p=>p.location===id))throw Error('Энэ агуулахыг сонгох боломжгүй байна.');localStorage.setItem(key,JSON.stringify({version:1,location:id}));renderSummary();dispatchEvent(new Event('gostore-warehouse-changed'));}
+ function save(id){if(!locations().some(p=>p.location===id))throw Error('Энэ салбарыг сонгох боломжгүй байна.');localStorage.setItem(key,JSON.stringify({version:1,location:id}));renderSummary();dispatchEvent(new Event('gostore-warehouse-changed'));}
  const api=async action=>{const r=await fetch('/api/index.php?action='+action,{credentials:'same-origin',cache:'no-store'});const data=await r.json();if(!r.ok)throw Error(data.error||'Мэдээлэл авч чадсангүй.');return data;};
  const ready=window.catalogReady?Promise.resolve(window.catalogReady).then(()=>{shipping=window.storeServer?.shipping;user=currentUser();}):api('catalog').then(r=>{shipping=r.shipping;user=r.customer;}).catch(()=>{});
  const home=()=>/^\/(?:index\.html)?$/.test(location.pathname)&&!location.search&&!document.documentElement.matches('.listing-view,.product-view,.account-view,.auth-view-open');
@@ -17,11 +17,11 @@
   if(header){
    header.hidden=!locations().length;
    header.querySelector('[data-header-pickup]').textContent=p?.city||p?.name||'Салбар сонгох';
-   header.setAttribute('aria-label',p?'Авах агуулах солих · '+p.name:'Авах агуулах сонгох');
+   header.setAttribute('aria-label',p?'Авах салбар солих · '+p.name:'Авах салбар сонгох');
   }
   let host=document.getElementById('warehouse-choice-summary');
   if(!host){const entry=document.getElementById('branch-promo');if(!entry)return;host=document.createElement('section');host.id='warehouse-choice-summary';host.className='container wp-summary';entry.before(host);}
-  host.innerHTML='<div><span class="wp-eyebrow">ТАНЫ АВАХ АГУУЛАХ</span><strong>'+esc(p?.name||'Агуулахаа сонгоорой')+'</strong>'+(p?'<small>'+esc(p.address)+'</small>':'')+'</div><div class="wp-actions"><button type="button" data-warehouse-open>'+(p?'Агуулах солих':'Агуулах сонгох')+'</button>'+(currentUser()?'<button type="button" data-erenhot-open>Эрээн агуулахын хаяг харах</button>':'')+'</div>';
+  host.innerHTML='<div><span class="wp-eyebrow">ТАНЫ АВАХ САЛБАР</span><strong>'+esc(p?.name||'Салбараа сонгоорой')+'</strong>'+(p?'<small>'+esc(p.address)+'</small>':'')+'</div><div class="wp-actions"><button type="button" data-warehouse-open>'+(p?'Салбар солих':'Салбар сонгох')+'</button>'+(currentUser()?'<button type="button" data-erenhot-open>Эрээн агуулахын хаяг харах</button>':'')+'</div>';
  }
  function createDialog(title){
   const d=document.createElement('dialog');d.className='wp-dialog';d.setAttribute('aria-labelledby','wp-title');
@@ -38,17 +38,17 @@
  }
  async function open(){
   await ready;if(document.querySelector('dialog[open]'))return;
-  const d=createDialog('Авах агуулахаа сонгоорой'),p=selected(),options=locations();
-  d.querySelector('[data-wp-content]').innerHTML='<p>Хүлээн авах боломжтой агуулахуудаас сонгоорой. Дараа нь сольж болно.</p><button type="button" data-wp-locate>Ойр агуулах санал болгох</button><small>Байршлыг хадгалахгүй. Зөвшөөрөл өгөхгүйгээр гараар сонгож болно.</small><p data-wp-status role="status" aria-live="polite"></p><fieldset class="wp-options"><legend class="wp-sr-only">Авах агуулах</legend>'+options.map(x=>'<label class="wp-option"><input type="radio" name="warehouse" value="'+esc(x.location)+'" '+(x.location===p?.location?'checked':'')+'><span><strong>'+esc(x.city||x.name)+'</strong><em data-wp-recommend="'+esc(x.location)+'" hidden>Байршлаар санал болгож байна</em><span>'+esc(x.address)+'</span><small>'+esc(x.phone)+'</small></span></label>').join('')+'</fieldset>'+(options.length?'':'<p>Агуулахын мэдээлэл ирээгүй байна. Түр хаагаад дахин оролдоорой.</p>');
-  d.querySelector('.wp-footer').innerHTML='<button type="button" class="wp-primary" data-wp-save '+(!p?'disabled':'')+'>Сонголтоо хадгалах</button><button type="button" data-wp-close>'+(p?'Өмнөх сонголтоор үргэлжлүүлэх':'Дараа сонгох')+'</button><small>Зөвхөн шинэ захиалгын авах газрыг сонгоно.</small>';
+  const d=createDialog('Авах салбараа сонгоорой'),p=selected(),options=locations();
+  d.querySelector('[data-wp-content]').innerHTML='<p>Бараагаа авах салбараа сонгоорой. Дараа нь сольж болно.</p><button type="button" data-wp-locate>Ойр салбар санал болгох</button><small>Байршлыг хадгалахгүй. Зөвшөөрөл өгөхгүйгээр гараар сонгож болно.</small><p data-wp-status role="status" aria-live="polite"></p><fieldset class="wp-options"><legend class="wp-sr-only">Авах салбар</legend>'+options.map(x=>'<label class="wp-option"><input type="radio" name="warehouse" value="'+esc(x.location)+'" '+(x.location===p?.location?'checked':'')+'><span><strong>'+esc(x.city||x.name)+'</strong><em data-wp-recommend="'+esc(x.location)+'" hidden>Байршлаар санал болгож байна</em><span>'+esc(x.address)+'</span><small>'+esc(x.phone)+'</small></span></label>').join('')+'</fieldset>'+(options.length?'':'<p>Агуулахын мэдээлэл ирээгүй байна. Түр хаагаад дахин оролдоорой.</p>');
+  d.querySelector('.wp-footer').innerHTML='<button type="button" class="wp-primary" data-wp-save '+(!p?'disabled':'')+'>Сонголтоо хадгалах</button><button type="button" data-wp-close>'+(p?'Өмнөх сонголтоор үргэлжлүүлэх':'Дараа сонгох')+'</button><small>Зөвхөн шинэ захиалгын авах салбарыг сонгоно.</small>';
   const status=d.querySelector('[data-wp-status]'),locate=d.querySelector('[data-wp-locate]');
   d.addEventListener('change',()=>{generation++;locate.disabled=false;status.textContent='';d.querySelector('[data-wp-save]').disabled=!d.querySelector('input:checked');});
   locate.onclick=()=>{
-   if(!navigator.geolocation){status.textContent='Энэ хөтөч байршил унших боломжгүй. Гараар сонгоорой.';return;}
+   if(!navigator.geolocation){status.textContent='Энэ хөтөч байршил тодорхойлж чадахгүй. Гараар сонгоорой.';return;}
    const request=++generation;locate.disabled=true;status.textContent='Байршил тодорхойлж байна…';d.querySelectorAll('[data-wp-recommend]').forEach(e=>e.hidden=true);
-   let timer;const finish=(pos,error)=>{if(request!==generation||!d.open)return;clearTimeout(timer);generation++;locate.disabled=false;const rec=pos&&recommend(options,pos);if(rec){d.querySelector('[data-wp-recommend="'+CSS.escape(rec.location)+'"]').hidden=false;status.textContent='Хотын байршлаар ойролцоолсон санал. Авах газраа өөрөө сонгож батална.';}else status.textContent=error||'Ойр хотын агуулахыг найдвартай санал болгож чадсангүй. Гараар сонгоорой.';};
+   let timer;const finish=(pos,error)=>{if(request!==generation||!d.open)return;clearTimeout(timer);generation++;locate.disabled=false;const rec=pos&&recommend(options,pos);if(rec){d.querySelector('[data-wp-recommend="'+CSS.escape(rec.location)+'"]').hidden=false;status.textContent='Хотын байршлаар ойролцоолсон санал. Авах салбараа өөрөө сонгож батална.';}else status.textContent=error||'Ойр хотын салбарыг найдвартай санал болгож чадсангүй. Гараар сонгоорой.';};
    timer=setTimeout(()=>finish(null,'Байршил тодорхойлох хугацаа дууслаа. Гараар сонгоорой.'),20000);
-   navigator.geolocation.getCurrentPosition(pos=>finish(pos),e=>finish(null,e.code===1?'Байршлын зөвшөөрөл өгөөгүй байна. Гараар сонгох эсвэл хөтөчийн тохиргооноос зөвшөөрнө үү.':'Байршлыг авч чадсангүй. Гараар сонгоорой.'),{enableHighAccuracy:false,timeout:20000,maximumAge:60000});
+   navigator.geolocation.getCurrentPosition(pos=>finish(pos),e=>finish(null,e.code===1?'Байршлын зөвшөөрөл өгөөгүй байна. Гараар сонгоорой, эсвэл хөтөчийн тохиргооноос зөвшөөрнө үү.':'Байршлыг авч чадсангүй. Гараар сонгоорой.'),{enableHighAccuracy:false,timeout:20000,maximumAge:60000});
    d.addEventListener('close',()=>clearTimeout(timer),{once:true});
   };
   d.querySelector('[data-wp-save]').onclick=()=>{try{save(d.querySelector('input:checked')?.value);d.close();}catch{status.textContent='Сонголтыг хадгалж чадсангүй. Хөтөчийн хадгалалтыг зөвшөөрөөд дахин оролдоорой.';}};
@@ -60,9 +60,9 @@
   const d=createDialog('Эрээн агуулахын хаяг'),body=d.querySelector('[data-wp-content]');body.innerHTML='<p role="status">Ачаалж байна…</p>';d.querySelector('.wp-footer').innerHTML='<a href="/self-cargo.html#sc-address">Өөрөө захиалах, ачаа бүртгэх →</a><button type="button" data-wp-close>Хаах</button>';d.querySelector('[data-wp-close]').onclick=()=>d.close();d.showModal();
   const request=++generation;
   try{
-   const me=await api('customer-me');if(!me.customer)throw Error('Нэвтэрч орсны дараа агуулахын хаягаа харна уу.');
+   const me=await api('customer-me');if(!me.customer)throw Error('Нэвтэрсний дараа агуулахын хаягаа харна уу.');
    const owner=me.customer.id,r=await api('customer-self-cargo');if(!d.open||generation!==request||(window.customerAccount&&currentUser()?.id!==owner))return;
-   const address=r.delivery;if(!address)throw Error('Агуулахын хаяг одоогоор боломжгүй байна.');
+   const address=r.delivery;if(!address)throw Error('Агуулахын хаягийг одоогоор харуулах боломжгүй байна.');
    body.innerHTML='<p>Худалдагчид өгөх хаяг. Хүлээн авагч, хаяг дахь өөрийн карго ID-г хэвээр үлдээгээрэй.</p><dl>'+[['cargo_id','Таны карго ID'],['recipient','Хүлээн авагч · 收货人'],['phone','Утас · 手机号码'],['address','Хаяг · 详细地址']].map(([k,label])=>'<dt>'+label+'</dt><dd>'+esc(address[k])+'</dd>').join('')+'</dl><button type="button" data-wp-copy>Хаягийг бүхэлд нь хуулах</button><p role="status" data-wp-copy-status></p>';
    body.querySelector('[data-wp-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(address.label);if(d.open)body.querySelector('[data-wp-copy-status]').textContent='Хууллаа ✓';}catch{if(d.open)body.querySelector('[data-wp-copy-status]').textContent='Текстийг сонгож хуулна уу.';}};
   }catch(e){if(d.open&&generation===request)body.innerHTML='<p role="alert">'+esc(e.message)+'</p><a href="/login?next=%2Fself-cargo.html">Нэвтрэх →</a>';}

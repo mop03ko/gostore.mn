@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Dedicated session files and bearer transport: browser/admin cookies are never accepted.
 function mobile_session_boot(): void {
     $dir=config()['data_dir'].'/mobile-sessions';
-    if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Нэвтрэх үйлчилгээ түр боломжгүй.',503);
+    if(!is_dir($dir)&&!mkdir($dir,0700,true)&&!is_dir($dir))fail('Нэвтрэх үйлчилгээ түр ажиллахгүй байна.',503);
     $token=$_SERVER['HTTP_X_GOSTORE_MOBILE_TOKEN']??'';
     if(!is_string($token)||($token!==''&&!preg_match('/^[a-zA-Z0-9,-]{26,128}$/D',$token)))fail('Дахин нэвтэрнэ үү.',401);
     ini_set('session.use_cookies','0');ini_set('session.use_only_cookies','1');ini_set('session.use_strict_mode','1');ini_set('session.gc_maxlifetime',(string)MOBILE_SESSION_TTL);

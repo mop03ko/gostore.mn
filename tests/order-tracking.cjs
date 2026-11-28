@@ -12,7 +12,7 @@ const inbound={status:'TaoWorld: shipped',checked_at:later};assert.equal(t.state
 for(const status of ['erenhot','erenhot_ready','erenhot_dispatched','ulaanbaatar','completed','cancelled'])assert.equal(t.state({...make(status),inbound}).supplier,false,'Supplier data cannot rewind warehouse movement');
 assert.equal(t.state({status:'erenhot',updated:later}).at,null);assert.equal(t.state({status:'unknown'}).stage,null);assert.equal(t.progress({status:'cancelled'}),'');assert.equal(t.progress({status:'unknown'}),'');
 assert.equal((t.progress({status:'ulaanbaatar',history:[]}).match(/class="done"/g)||[]).length,0,'Missing events must not be fabricated');
-assert.equal(t.date(at),'2026-11-01 08:00');assert.ok(t.date('invalid').includes('бүртгэгдээгүй'));
+assert.equal(t.date(at),'2026-11-01 08:00');assert.ok(t.date('invalid').includes('бүртгээгүй'));
 const chinese=t.html({status:'erenhot_ready',warehouse_names:{erenhot:'Эрээн агуулах',ulaanbaatar:'Улаанбаатар агуулах'}} ,{lang:'zh'});assert.ok(chinese.includes('二连仓库'));assert.ok(!/[\u0400-\u04ff]/.test(chinese));
 const output=t.html({...make('erenhot'),warehouse_names:{erenhot:'<img src=x onerror=alert(1)>'},batch_id:'GB-PRIVATE',internal_note:'PRIVATE NOTE',inbound:{raw:'PRIVATE RAW'}});
 assert.ok(output.includes('&lt;img'));assert.ok(!output.includes('<img'));assert.ok(!output.includes('PRIVATE'));assert.ok(!t.html(make('erenhot'),{history:false}).includes('tracking-history'));

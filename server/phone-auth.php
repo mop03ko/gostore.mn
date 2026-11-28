@@ -3,11 +3,11 @@ declare(strict_types=1);
 function pin_auth_secret(): string {
     $key=getenv('GOSTORE_PIN_PEPPER');
     if($key===false){$path=__DIR__.'/pin-auth.env';if(is_file($path)&&filesize($path)<=1024&&preg_match('/^GOSTORE_PIN_PEPPER=([a-f0-9]{64})$/D',trim((string)file_get_contents($path)),$m))$key=$m[1];}
-    if(!is_string($key)||!preg_match('/^[a-f0-9]{64}$/D',$key))fail('PIN нэвтрэлт түр боломжгүй байна.',503);
+    if(!is_string($key)||!preg_match('/^[a-f0-9]{64}$/D',$key))fail('PIN-ээр нэвтрэх үйлчилгээ түр ажиллахгүй байна.',503);
     return $key;
 }
 function pin_auth_value(array $b,string $field='pin'): string {
-    $value=$b[$field]??null;if(!is_string($value)||!preg_match('/^[0-9]{4}$/D',$value))fail('PIN код 4 оронтой тоо байна.');return $value;
+    $value=$b[$field]??null;if(!is_string($value)||!preg_match('/^[0-9]{4}$/D',$value))fail('PIN код 4 оронтой тоо байх ёстой.');return $value;
 }
 function pin_auth_digest(string $pin): string {return hash_hmac('sha256',$pin,pin_auth_secret());}
 function pin_auth_record(string $customer): ?array {$q=db()->prepare('SELECT * FROM customer_phone_auth WHERE customer_id=?');$q->execute([$customer]);return $q->fetch()?:null;}
