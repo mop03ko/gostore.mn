@@ -31,7 +31,7 @@ function ReviewEditor({ productId, mine, close, saved }: { productId: string; mi
     lock.current = true; setBusy(true); setError("");
     try {
       if (photos.length >= 3) throw Error("3 хүртэл зураг оруулна уу.");
-      if (camera && !(await ImagePicker.requestCameraPermissionsAsync()).granted) throw Error("Камерын зөвшөөрөл өгөх эсвэл сангаас зураг сонгоно уу.");
+      if (camera && !(await ImagePicker.requestCameraPermissionsAsync()).granted) throw Error("Камерын зөвшөөрөл өгнө үү, эсвэл сангаас зураг сонгоно уу.");
       const result = camera ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.9 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 3 - photos.length, quality: 0.9 });
       if (result.canceled) return;
       if (result.assets.length + photos.length > 3) throw Error("3 хүртэл зураг сонгоно уу.");
@@ -62,7 +62,7 @@ function ReviewEditor({ productId, mine, close, saved }: { productId: string; mi
   }
   const previous = !removePhotos && !photos.length ? mine?.photos || [] : [];
   return <ReviewModal title={mine ? "Миний үнэлгээг засах" : "Үнэлгээ өгөх"} close={close} busy={busy}>
-    {mine?.status === "hidden" && <Copy>Энэ сэтгэгдлийг админ нуусан байна. Засах нь дахин нийтлэхгүй.</Copy>}
+    {mine?.status === "hidden" && <Copy>Энэ сэтгэгдлийг админ нуусан байна. Зассан ч дахин нийтлэхгүй.</Copy>}
     <Text style={{ color: colors.ink, fontWeight: "600" }}>Таны үнэлгээ</Text>
     <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 6 }}>{[1, 2, 3, 4, 5].map(n => <Pressable key={n} accessibilityRole="radio" accessibilityLabel={`${n} од`} accessibilityState={{ selected: rating === n, disabled: busy }} disabled={busy} onPress={() => setRating(n)} testID={`review-star-${n}`} style={{ minHeight: 52, flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: rating >= n ? colors.accentSurface : colors.subtle }}><Text style={{ fontSize: 26, color: rating >= n ? colors.accentText : colors.muted }}>★</Text></Pressable>)}</View>
     <Field label="Сэтгэгдэл" testID="review-comment" value={comment} onChangeText={setComment} multiline maxLength={2000} editable={!busy} placeholder="Барааны чанар, хэмжээ, хэрэглээ…" style={{ minHeight: 120, textAlignVertical: "top" }} />
@@ -71,7 +71,7 @@ function ReviewEditor({ productId, mine, close, saved }: { productId: string; mi
     <Copy>3 хүртэл зураг. Шинэ зураг сонговол өмнөх зургуудыг солино.</Copy>
     <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>{photos.map((uri, i) => <View key={uri} style={{ width: 90, gap: 4 }}><Image source={{ uri }} style={{ width: 90, height: 90, borderRadius: 10 }} contentFit="cover" /><Button title="Хасах" secondary disabled={busy} onPress={() => setPhotos(p => p.filter((_, at) => at !== i))} /></View>)}{previous.map(uri => <Image key={uri} source={{ uri: reviewPhotoUrl(uri) }} style={{ width: 90, height: 90, borderRadius: 10 }} contentFit="cover" />)}</View>
     {!!mine?.photos.length && !photos.length && <Button title={removePhotos ? "Өмнөх зургуудыг үлдээх" : "Өмнөх зургуудыг арилгах"} secondary disabled={busy} onPress={() => setRemovePhotos(v => !v)} />}
-    <Copy>Өөрийн авсан зураг, бараанд хамаарах сэтгэгдэл оруулна уу. Хувийн мэдээлэл, доромжлол, хууль бус болон ил задгай агуулга нийтлэхгүй.</Copy>
+    <Copy>Өөрийн авсан зураг, бараанд хамаарах сэтгэгдэл оруулна уу. Хувийн мэдээлэл, доромжлол, хууль бус болон ил задгай агуулга бүү нийтлээрэй.</Copy>
     <ErrorBox message={error} /><Button title={busy ? "Боловсруулж байна…" : "Үнэлгээг хадгалах"} disabled={busy} onPress={() => { void submit(); }} testID="review-save" />
   </ReviewModal>;
 }

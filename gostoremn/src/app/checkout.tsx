@@ -103,7 +103,7 @@ function Checkout() {
   }
   async function submit(retry = false) {
     if (locked.current || !customer) return;
-    if (!retry && method === "pickup" && (!pickupLoaded || !pickup)) { setError("Авах агуулахаа сонгоно уу."); return; }
+    if (!retry && method === "pickup" && (!pickupLoaded || !pickup)) { setError("Авах салбараа сонгоно уу."); return; }
     if (
       !retry &&
       (!preview ||
@@ -197,7 +197,7 @@ function Checkout() {
         <Card>
           <Title>Өмнөх хүсэлтийг шалгах</Title>
           <Copy>
-            Захиалга хадгалагдсан эсэхийг ижил хүсэлтийн дугаараар шалгана.
+            Захиалга үүссэн эсэхийг ижил хүсэлтийн дугаараар шалгана.
             Давхар захиалга үүсгэхгүй.
           </Copy>
           <Row
@@ -210,7 +210,7 @@ function Checkout() {
             onPress={() => void submit(true)}
           />
           <Button
-            title="Миний захиалгууд"
+            title="Миний захиалга"
             secondary
             onPress={() => router.push("/orders")}
           />
@@ -317,8 +317,8 @@ function Checkout() {
                     {preview.quote.domestic_later
                       ? "Дараа тооцох Хятад доторх хүргэлт болон УБ хүргэлтийн"
                       : "УБ хүргэлт сонговол хүргэлтийн"}{" "}
-                    дүнд {preview.quote.service_percent}% үйлчилгээний төлбөр нэмэгдэнэ.
-                    Эрээн–Улаанбаатарын каргод үйлчилгээний төлбөр бодохгүй.
+                    дүнд {preview.quote.service_percent}% үйлчилгээний хураамж нэмэгдэнэ.
+                    Эрээн–Улаанбаатарын каргод үйлчилгээний хураамж бодохгүй.
                   </Copy>
                 )}
                 {preview.quote.domestic_later && (
@@ -329,7 +329,7 @@ function Checkout() {
                 )}
                 <Row label="Одоо төлөх" value={money(preview.quote.total)} />
                 <Copy>
-                  Карго тээврийг агуулахын бодит жин, эзэлхүүнээр дараа тооцно.
+                  Карго тээврийг агуулахын бодит жин, эзлэхүүнээр дараа тооцно.
                   Энэ нь үнэгүй хүргэлт гэсэн үг биш.
                 </Copy>
                 <Copy>

@@ -26,7 +26,7 @@ function CargoScreen({ owner, initialPhone, view }: { owner: string; initialPhon
   const [number, setNumber] = useState(""), [company, setCompany] = useState("");
   const lock = useRef(false), requestKey = useRef("");
   async function create() {
-    if (!pickup) { setError("Авах агуулахаа сонгоно уу."); return; }
+    if (!pickup) { setError("Авах салбараа сонгоно уу."); return; }
     if (lock.current) return; lock.current = true; setBusy(true); setError("");
     try {
       const me = await api<{ customer: { id: string } | null }>("customer-me");
@@ -48,7 +48,7 @@ function CargoScreen({ owner, initialPhone, view }: { owner: string; initialPhon
       <Field label="Холбоо барих утас" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} editable={!busy} />
       <Field label="Хятадын хүргэлтийн дугаар (байгаа бол)" value={number} onChangeText={setNumber} autoCapitalize="characters" autoCorrect={false} maxLength={40} editable={!busy} placeholder="YT1234567890123" />
       <Copy>Худалдагч хараахан илгээгээгүй бол дараа нэмээрэй. Дэлгүүрийн захиалгын дугаараас ялгаатай.</Copy>
-      <Field label="Хүргэлтийн компани (сонголтоор)" value={company} onChangeText={setCompany} maxLength={80} editable={!busy} />
+      <Field label="Хүргэлтийн компани (заавал биш)" value={company} onChangeText={setCompany} maxLength={80} editable={!busy} />
       <Field label="Тайлбар / өнгө / хэмжээ" value={note} onChangeText={setNote} maxLength={500} multiline editable={!busy} />
       <ErrorBox message={error} /><Button title={busy ? "Бүртгэж байна…" : "Ачаа бүртгэх"} disabled={busy || !pickup || !title.trim() || !phone.trim() || !/^\d+$/.test(qty) || Number(qty) < 1 || Number(qty) > 10000 || (!!number.trim() && !/^[A-Z0-9-]{6,40}$/i.test(number.trim()))} onPress={() => void create()} />
     </Card>
@@ -79,13 +79,13 @@ function CargoCard({ order: o, owner, update }: { order: SelfCargoOrder; owner: 
     } catch (e) { setError((e as Error).message); }
     finally { lock.current = false; setBusy(false); }
   }
-  return <Card><Title>{o.id} · {o.title}</Title><Copy>{o.status === "confirmed" ? "Бүртгэгдсэн · хүргэлтийн дугаар хүлээж байна" : statusName(o.status)}</Copy>
-    {!!o.warehouse_names?.ulaanbaatar && <Copy>Авах агуулах: {o.warehouse_names.ulaanbaatar}</Copy>}
+  return <Card><Title>{o.id} · {o.title}</Title><Copy>{o.status === "confirmed" ? "Бүртгэсэн · хүргэлтийн дугаар хүлээж байна" : statusName(o.status)}</Copy>
+    {!!o.warehouse_names?.ulaanbaatar && <Copy>Авах салбар: {o.warehouse_names.ulaanbaatar}</Copy>}
     <Copy>{o.cargo_id ? "Карго ID: " + o.cargo_id : "Өмнө бүртгэсэн ачааны хаяг"}</Copy><Copy>Доорх хаягийг удаан дарж хуулна уу. Хаягт байгаа кодыг хэвээр үлдээнэ.</Copy><Copy>{o.warehouse.label}</Copy>
     <Copy>Хүргэлт: {o.inbound?.numbers?.map(n => n.no + " " + n.company).join(" · ") || "Дугаар хараахан нэмээгүй"}</Copy>
     {["confirmed", "shipping"].includes(o.status) && <>
       <Field label="Хятадын хүргэлтийн дугаар" value={number} onChangeText={setNumber} autoCapitalize="characters" autoCorrect={false} maxLength={40} editable={!busy} />
-      <Field label="Хүргэлтийн компани (сонголтоор)" value={company} onChangeText={setCompany} maxLength={80} editable={!busy} />
+      <Field label="Хүргэлтийн компани (заавал биш)" value={company} onChangeText={setCompany} maxLength={80} editable={!busy} />
       <ErrorBox message={error} /><Button title="Дугаар нэмэх" secondary disabled={busy || !/^[A-Z0-9-]{6,40}$/i.test(number.trim())} onPress={() => void add()} />
     </>}
     <Copy>Тээврийн үнийг агуулахад хэмжиж баталгаажуулна.</Copy>

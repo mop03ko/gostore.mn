@@ -22,7 +22,7 @@ export function OfficialStores({ compact = false }: { compact?: boolean }) {
   }, [retry]);
   return <View testID="official-stores" style={{ gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 12 }}>
     <Text style={{ fontSize: 20, fontWeight: "700", color: colors.ink }}>Албан ёсны дэлгүүрүүд</Text>
-    <Copy>API-аар бараа ирж буй баталгаажсан дэлгүүрүүд.</Copy>
+    <Copy>Манай аппаас барааг нь захиалж болох баталгаажсан дэлгүүрүүд.</Copy>
     <ErrorBox message={error} retry={() => setRetry(n => n + 1)} />
     {!data && !error && <Busy />}
     {data?.incomplete && <><Copy>Зарим дэлгүүрийн мэдээлэл түр ирсэнгүй.</Copy><Button secondary title="Дахин шалгах" onPress={() => setRetry(n => n + 1)} /></>}

@@ -136,7 +136,7 @@ async function request<T>(
         csrf = "";
       }
       throw new ApiError(
-        data.error || "Хүсэлт амжилтгүй. Дахин оролдоно уу.",
+        data.error || "Хүсэлт амжилтгүй боллоо. Дахин оролдоно уу.",
         response.status,
       );
     }

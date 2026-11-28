@@ -89,7 +89,7 @@ function OrderScreen() {
     } catch {
       bankOpened.current = false;
       setError(
-        "Банкны апп нээгдсэнгүй. Тухайн апп суусан эсэхийг шалгах эсвэл QR ашиглана уу.",
+        "Банкны апп нээгдсэнгүй. Тухайн апп суусан эсэхийг шалгана уу, эсвэл QR ашиглана уу.",
       );
     }
   }
@@ -126,9 +126,9 @@ function OrderScreen() {
             <Row label="Төлөв" value={statusName(order.status)} />
             <Row
               label="Эхний төлбөр"
-              value={order.shipment_parent ? "Үндсэн захиалгад бүртгэгдсэн" : order.type === "forwarding" ? "Барааг өөрөө худалдан авсан" : order.paid ? "Төлөгдсөн" : "Төлөгдөөгүй"}
+              value={order.shipment_parent ? "Үндсэн захиалгад бүртгэсэн" : order.type === "forwarding" ? "Барааг өөрөө худалдан авсан" : order.paid ? "Төлсөн" : "Төлөөгүй"}
             />
-            {order.shipment_parent ? <Copy>{order.shipment_parent} захиалгын тусдаа илгээж буй хэсэг. Барааны төлбөр давхар тооцогдохгүй.</Copy> : order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
+            {order.shipment_parent ? <Copy>{order.shipment_parent} захиалгын тусдаа илгээж буй хэсэг. Барааны төлбөрийг давхар тооцохгүй.</Copy> : order.type === "forwarding" ? <Copy>Өөрөө худалдан авсан бараа. Зөвхөн тээврийн төлбөрийг GOStore-д төлнө.</Copy> : <Row label="Захиалгын дүн" value={money(order.amount)} />}
             <Copy>{dateText(order.created)}</Copy>
             {!!order.payment_due && !order.paid && order.status === "quoted" && (
               <Copy>Төлөх хугацаа: {dateText(order.payment_due)}</Copy>
@@ -143,7 +143,7 @@ function OrderScreen() {
           {!!order.shipment_parts?.length && (
             <Card>
               <Title>Захиалгын хэсгүүд</Title>
-              <Copy>Барааны төлбөр үндсэн захиалгад нэг удаа, тээврийн төлбөр хэсэг бүрд тусдаа тооцогдоно. Хэсгээ нээж явц, зураг, төлбөрөө харна уу.</Copy>
+              <Copy>Барааны төлбөрийг үндсэн захиалгад нэг удаа, тээврийн төлбөрийг хэсэг бүрд тусад нь тооцно. Хэсгээ нээж явц, зураг, төлбөрөө харна уу.</Copy>
               {order.shipment_parts.map((part) => (
                 <Card key={part.id}>
                   <Copy>{part.id}{part.remainder ? " · Үлдсэн хэсэг" : ""}</Copy>
@@ -157,7 +157,7 @@ function OrderScreen() {
             </Card>
           )}
           {timedPayment && <Copy>{expired
-            ? "Төлөх хугацаа дууссан. Төлбөрийн төлөвийг тулгаж байна."
+            ? "Төлөх хугацаа дууссан. Төлбөрийн төлөвийг шалгаж байна."
             : `Төлөх хугацаа: ${Math.floor(Math.max(0, Math.ceil((deadline-now)/1000))/60)}:${String(Math.max(0, Math.ceil((deadline-now)/1000))%60).padStart(2,"0")} · Хугацаандаа төлөөгүй захиалга автоматаар цуцлагдана.`}</Copy>}
           {order.cancel_reason === "payment_timeout" && <Copy>Төлбөрийн хугацаа дууссан тул захиалга цуцлагдсан. Сагсаа дахин шалгаж захиална уу.</Copy>}
           {order.items?.map((i) => (
@@ -173,7 +173,7 @@ function OrderScreen() {
           {initialDue && <Button title="QPay-аар төлөх" disabled={busy || (!qpay && !order.invoice)} onPress={() => startPayment("initial")} />}
           {order.paid && (
             <Copy>
-              Хэрэглэгчийн төлбөр баталгаажсан. Нийлүүлэгчийн худалдан авалт,
+              Таны төлбөр баталгаажсан. Нийлүүлэгчийн худалдан авалт,
               тээвэрлэлтийн явц захиалгын төлөвөөр шинэчлэгдэнэ.
             </Copy>
           )}
@@ -193,7 +193,7 @@ function OrderScreen() {
               )}
               {!bill.finalized && (
                 <Copy>
-                  Бодит жин, эзэлхүүнээр карго болон хүргэлтийн эцсийн төлбөр
+                  Бодит жин, эзлэхүүнээр карго болон хүргэлтийн эцсийн төлбөр
                   нэмэгдэнэ.
                 </Copy>
               )}
@@ -206,7 +206,7 @@ function OrderScreen() {
                 value={order.cargo.measurement.weight_kg + " кг"}
               />
               <Row
-                label="Эзэлхүүн"
+                label="Эзлэхүүн"
                 value={order.cargo.measurement.volume_m3 + " м³"}
               />
             </Card>

@@ -70,7 +70,7 @@ function Account() {
         <Pressable key={a.title} accessibilityRole="button" onPress={a.action} style={styles.shortcut}><Icon name={a.icon} color={colors.navy} size={26} /><Text style={styles.shortcutLabel}>{a.title}</Text></Pressable>)}
     </View>
     <Card style={{ borderWidth: 0, padding: compact ? 10 : 16 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Бүх захиалга харах" onPress={() => protectedRoute("/orders")} style={{ flexDirection: "row", alignItems: "center", minHeight: 44, justifyContent: "space-between" }}><Text style={{ color: colors.navy, fontWeight: "800", fontSize: compact ? 17 : 20 }}>Миний захиалгууд</Text><Icon name="chevron" color={colors.muted} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Бүх захиалга харах" onPress={() => protectedRoute("/orders")} style={{ flexDirection: "row", alignItems: "center", minHeight: 44, justifyContent: "space-between" }}><Text style={{ color: colors.navy, fontWeight: "800", fontSize: compact ? 17 : 20 }}>Миний захиалга</Text><Icon name="chevron" color={colors.muted} /></Pressable>
       <View style={{ flexDirection: "row", gap: 4 }}>
         {([{ key: "unpaid", icon: "wallet", title: "Төлбөр хүлээж буй" }, { key: "active", icon: "truck", title: "Явцад байгаа" }, { key: "completed", icon: "check", title: "Дууссан" }, { key: "cancelled", icon: "box", title: "Цуцлагдсан" }] as const).map(f =>
           <Pressable key={f.key} accessibilityRole="button" accessibilityLabel={f.title + " захиалга"} onPress={() => router.push({ pathname: "/orders", params: { filter: f.key } })} style={styles.shortcut}><Icon name={f.icon} size={28} color={colors.navy} /><Text style={[styles.shortcutLabel, { textAlign: "center" }]}>{f.title}</Text></Pressable>)}
@@ -80,7 +80,7 @@ function Account() {
     <Card style={{ gap: 0, paddingVertical: 4 }}>
       <MenuRow icon="truck" title="Өөрөө захиалах · Эрээн карго" subtitle="Агуулахын хаяг авах, ачаагаа бүртгэх" onPress={() => router.navigate("/cargo")} />
       <View style={styles.divider} />
-      <MenuRow icon="box" title="Миний захиалгууд" subtitle="Төлбөр, тээврийн явцаа хянах" onPress={() => protectedRoute("/orders")} />
+      <MenuRow icon="box" title="Миний захиалга" subtitle="Төлбөр, тээврийн явцаа хянах" onPress={() => protectedRoute("/orders")} />
       <View style={styles.divider} />
       <MenuRow icon="pin" title="Хүргэлтийн хаяг" subtitle="Хүлээн авагч, хадгалсан хаягууд" onPress={() => protectedRoute("/addresses")} />
       <View style={styles.divider} />
@@ -107,7 +107,7 @@ function Account() {
             <Field label="Шинэ PIN" value={password} onChangeText={v=>setPassword(v.replace(/[^0-9]/g,"").slice(0,4))} secureTextEntry keyboardType="number-pad" maxLength={4}/>
             <Field label="PIN давтах" value={confirm} onChangeText={v=>setConfirm(v.replace(/[^0-9]/g,"").slice(0,4))} secureTextEntry keyboardType="number-pad" maxLength={4}/>
             <Button title="PIN шинэчлэх" disabled={busy || old.length!==4 || password.length!==4 || password!==confirm} onPress={()=>void save("customer-pin-change",{current_pin:old,pin:password,pin_confirm:confirm})}/>
-            <Button title="PIN мартсан — SMS-ээр сэргээх" secondary onPress={()=>router.push({pathname:"/login",params:{mode:"reset",phone:customer.login_phone,next:"/account"}})}/>
+            <Button title="PIN-ээ мартсан бол SMS-ээр сэргээх" secondary onPress={()=>router.push({pathname:"/login",params:{mode:"reset",phone:customer.login_phone,next:"/account"}})}/>
           </View>}
         </>}
         {!customer.pin_enabled && <><MenuRow icon="shield" title="Нууц үг ба аюулгүй байдал" subtitle="Нэвтрэх нууц үгээ солих" expanded={panel === "password"} onPress={() => toggle("password")} />

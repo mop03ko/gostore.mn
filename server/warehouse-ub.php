@@ -49,8 +49,8 @@ function warehouse_early_settlement(array &$o): bool {
 function warehouse_bill_message(array $o): string {
     $s=settlement_summary($o);$due=number_format($s['due']).'₮';$ub=warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name'];
     return match($o['status']){
-        'ready_pickup'=>$ub.' · авахад бэлэн. '.($s['due']>0?'Үлдэгдэл '.$due.' төлөөд авах кодоо аваарай.':'Авах код «Миний ачаа» хэсэгт.'),
-        'ready_delivery'=>$ub.' · хүргэлтэд бэлэн. '.($s['due']>0?'Үлдэгдэл '.$due.' төлөгдмөгц хүргэнэ.':'Удахгүй хүргэнэ.'),
+        'ready_pickup'=>$ub.' · авахад бэлэн. '.($s['due']>0?'Үлдэгдэл '.$due.' төлөөд авах кодоо аваарай.':'Авах код «Миний захиалга» хэсэгт.'),
+        'ready_delivery'=>$ub.' · хүргэлтэд бэлэн. '.($s['due']>0?'Үлдэгдэл '.$due.' төлмөгц хүргэнэ.':'Удахгүй хүргэнэ.'),
         default=>'Замын-Үүд рүү явж байна. Тээврийн үлдэгдэл '.$due.'-ийг одоо төлбөл Улаанбаатарт ирэнгүүт авах боломжтой.',
     };
 }
@@ -244,7 +244,7 @@ function warehouse_pickup_reminders(?int $now=null): int {
             if(!$stage||in_array($stage,$done,true)||!in_array($o['status'],['ready_pickup','ready_delivery'],true)||($o['status']==='ready_delivery'&&$s['due']<1)){$db->exec('COMMIT');continue;}
             $o['reminders']=array_values(array_unique(array_merge($done,array_filter(WAREHOUSE_REMINDER_DAYS,fn($d)=>$d<=$stage))));save_order($o);
             $ub=warehouse_profile(warehouse_order_location($o,'ulaanbaatar'))['name'];$due=$s['due']>0?'Үлдэгдэл '.number_format($s['due']).'₮ төлөөд ':'';
-            $message=$o['status']==='ready_pickup'?$ub.'-д таны бараа '.$days.' хоног хүлээж байна. '.$due.'авах кодоороо ирж аваарай.':'Хүргэлтийн үлдэгдэл '.number_format($s['due']).'₮ төлөгдмөгц бараагаа хүргүүлнэ.';
+            $message=$o['status']==='ready_pickup'?$ub.'-д таны бараа '.$days.' хоног хүлээж байна. '.$due.'авах кодоороо ирж аваарай.':'Хүргэлтийн үлдэгдэл '.number_format($s['due']).'₮ төлмөгц бараагаа хүргүүлнэ.';
             $db->prepare('INSERT INTO order_notifications (order_id,kind,message,created,read_at) VALUES (?,?,?,?,NULL)')->execute([$o['id'],'reminder',$message,gmdate('c',$now)]);
             $db->exec('COMMIT');$sent++;
         }catch(Throwable $e){$db->exec('ROLLBACK');error_log('GOStore pickup reminder skipped: '.$e->getMessage());}

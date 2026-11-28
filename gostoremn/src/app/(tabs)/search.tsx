@@ -89,7 +89,7 @@ export default function Search() {
       {enabled && <Button title="Камераар болон зургаар хайх" onPress={() => changeMode("photo")} />}
       <Text style={{ fontSize: 18, fontWeight: "700", color: colors.navy }}>Хайж эхлэх санаанууд</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>{categories.slice(0, 12).map(c => <Pressable accessibilityRole="button" key={c.id} onPress={() => router.navigate({ pathname: "/", params: { q: c.query, image: "" } })} style={{ backgroundColor: colors.subtle, borderRadius: 24, paddingHorizontal: 16, minHeight: 44, justifyContent: "center" }}><Text style={{ color: colors.ink }}>{c.name}</Text></Pressable>)}</View>
-      {!enabled && <Text style={{ color: colors.muted }}>Зурагт хайлт одоогоор идэвхгүй байна. Барааны нэрээр хайх боломжтой.</Text>}
+      {!enabled && <Text style={{ color: colors.muted }}>Зургаар хайх үйлчилгээ одоогоор идэвхгүй байна. Барааны нэрээр хайх боломжтой.</Text>}
     </ScrollView>}
     {enabled && <View style={{ flexDirection: "row", justifyContent: "center", gap: compact ? 18 : 24, paddingVertical: compact ? 3 : 12 }}>{(["photo", "text"] as const).map(m => <Pressable key={m} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} onPress={() => { if (m !== mode) changeMode(m); }} style={{ minHeight: 44, justifyContent: "center", borderBottomWidth: 3, borderBottomColor: mode === m ? colors.orange : "transparent" }}><Text style={{ color: photographic ? "white" : colors.ink, fontWeight: mode === m ? "800" : "400" }}>{m === "photo" ? "ЗУРГААР" : "НЭРЭЭР"}</Text></Pressable>)}</View>}
   </View>;

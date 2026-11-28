@@ -44,7 +44,7 @@ function paid_amount(array $result): int {
     return $total;
 }
 function qpay_invoice(string $id): array {
-    if (!qpay_ready()) fail('QPay merchant тохиргоо хүлээгдэж байна.',503);
+    if (!qpay_ready()) fail('QPay төлбөрийн тохиргоо хараахан бэлэн болоогүй байна.',503);
     $validated=order_row($id)['order'];$verifiedUntil=PHP_INT_MAX;
     product_policy_order_assert($validated);
     if(($validated['type']??'')==='checkout'&&!isset($validated['invoice']))$verifiedUntil=checkout_validate_payment($validated);

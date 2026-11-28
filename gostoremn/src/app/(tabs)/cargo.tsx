@@ -66,7 +66,7 @@ export default function CargoTab() {
       <View style={{ backgroundColor: "#262261", borderRadius: 19, padding: 12, gap: 10, flexDirection: "row" }}>
         <View style={{ flex: 1, padding: 3, justifyContent: "center", gap: 7 }}>
           <Text accessibilityRole="header" style={{ color: "#fff", fontSize: 23, lineHeight: 27, fontWeight: "800" }}>
-            Өөрөө захиал.{"\n"}Бид хүргэе.
+            Өөрөө захиалаарай.{"\n"}Бид хүргэе.
           </Text>
           <Text style={{ color: "#e9e4ff", fontSize: 13, lineHeight: 18 }}>
             Хятадын дэлгүүрээс Эрээн хаягаар захиалж, сонгосон салбараасаа аваарай.

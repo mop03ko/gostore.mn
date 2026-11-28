@@ -346,7 +346,7 @@ $('#year').textContent=new Date().getFullYear();renderCategories();renderProduct
   if(!q)return '';
   if(q.method!=='auto'&&!q.rates?.cargo_tariff)return (q.method==='volume'?'m³':'kg')+' · '+n(q.measure);
   const p=q.rates.cargo_tariff,kind=q.category==='large'?(zh?'大货':'Том ачаа'):(zh?'小包裹':'Жижиг илгээмж');
-  const summary=(q.method==='auto'?kind:q.method==='volume'?(zh?'按体积':'Эзэлхүүнээр'):(zh?'按重量':'Жингээр'))+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³';
+  const summary=(q.method==='auto'?kind:q.method==='volume'?(zh?'按体积':'Эзлэхүүнээр'):(zh?'按重量':'Жингээр'))+' · '+n(q.weight_kg)+' kg · '+n(q.volume_m3)+' m³';
   if(q.category==='large'&&!showExchange)return summary;
   const formula=q.category==='large'?(q.method==='volume'?n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny):q.method==='weight'?n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000':'max('+n(q.weight_kg)+' kg × '+n(p.large_per_tonne_cny)+'/1000, '+n(q.volume_m3)+' m³ × '+n(p.large_per_m3_cny)+')')+' = ¥'+n(q.amount_cny)+' × '+n(q.rates.cny_rate)+' ₮'
    :p.version===3?n(q.steps)+' × '+n(p.small_step_kg)+' kg × '+n(p.small_step_mnt)+' ₮'

@@ -20,9 +20,9 @@ export function addLine(
   if (variant.stock === null || total > Math.min(variant.stock, 9999))
     throw Error("Үлдэгдэл хүрэлцэхгүй эсвэл баталгаажаагүй байна.");
   if ((total - product.min_qty) % product.step !== 0)
-    throw Error("Нийт тоо багцын алхамтай таарахгүй байна.");
+    throw Error("Нийт тоо ширхэг багцын хэмжээнд таарахгүй байна.");
   if (!old && cart.length >= 30)
-    throw Error("Сагсанд 30 хүртэл хувилбар нэмнэ.");
+    throw Error("Сагсанд 30 хүртэл хувилбар нэмж болно.");
   const line: CartLine = {
     id: product.id,
     sku: variant.id,

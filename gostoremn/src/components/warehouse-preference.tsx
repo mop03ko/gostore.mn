@@ -31,7 +31,7 @@ export function WarehousePreferenceProvider({ children }: { children: ReactNode 
       if (saved.legacy) await AsyncStorage.setItem(warehousePreferenceKey, JSON.stringify(saved.selection));
       if (active) setSelection(saved.selection);
     })
-      .catch(() => { if (active) setStorageError("Өмнөх сонголтыг уншиж чадсангүй. Агуулахаа дахин сонгоорой."); })
+      .catch(() => { if (active) setStorageError("Өмнөх сонголтыг уншиж чадсангүй. Салбараа дахин сонгоорой."); })
       .finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };
   }, []);
@@ -57,7 +57,7 @@ export function WarehousePreferenceProvider({ children }: { children: ReactNode 
   const visible = manual || (needsReminder && home && loaded && ready);
   const close = () => { setManual(false); if (!selected) setAcknowledged(true); };
   const save = async (location: string) => {
-    if (!locations.some((p) => p.location === location)) throw Error("Энэ агуулах идэвхгүй болсон. Өөр агуулах сонгоно уу.");
+    if (!locations.some((p) => p.location === location)) throw Error("Энэ салбар идэвхгүй болсон. Өөр салбар сонгоно уу.");
     const next: WarehouseSelection = { version: 1, location, selectedAt: Date.now() };
     await AsyncStorage.setItem(warehousePreferenceKey, JSON.stringify(next));
     setSelection(next);
@@ -67,7 +67,7 @@ export function WarehousePreferenceProvider({ children }: { children: ReactNode 
   };
   return <Context value={{ selected, loaded, open: () => setManual(true), blocksPromo: visible || !loaded || !ready || needsReminder }}>
     {children}
-    {visible && <WarehouseSheet locations={locations} selected={selected} warning={storageError || (selection && !selected ? "Өмнөх агуулах одоогоор сонгох боломжгүй байна." : "")} save={save} close={close} />}
+    {visible && <WarehouseSheet locations={locations} selected={selected} warning={storageError || (selection && !selected ? "Өмнөх салбарыг одоогоор сонгох боломжгүй байна." : "")} save={save} close={close} />}
   </Context>;
 }
 
@@ -85,10 +85,10 @@ function WarehouseSheet({ locations, selected, warning, save, close }: { locatio
       if (!alive.current || generation.current !== request) return;
       const suggestion = recommendWarehouse(locations, position);
       if (suggestion) setRecommended(suggestion.location);
-      else setError("Ойр хотын агуулахыг найдвартай санал болгож чадсангүй. Доороос сонгоорой.");
+      else setError("Ойр хотын салбарыг найдвартай санал болгож чадсангүй. Доороос сонгоорой.");
     } catch (e) {
       if (alive.current && generation.current === request) {
-        setError(e instanceof WarehouseLocationError ? e.message : "Байршлыг авч чадсангүй. Агуулахаа гараар сонгоорой.");
+        setError(e instanceof WarehouseLocationError ? e.message : "Байршлыг авч чадсангүй. Салбараа гараар сонгоорой.");
         setSettings(e instanceof WarehouseLocationError && e.settings);
       }
     } finally { if (alive.current && generation.current === request) setLocating(false); }
@@ -104,9 +104,9 @@ function WarehouseSheet({ locations, selected, warning, save, close }: { locatio
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20, backgroundColor: "rgba(15,20,40,0.65)" }}>
       <View accessibilityViewIsModal testID="warehouse-picker" style={{ width: "100%", maxWidth: 520, maxHeight: "90%", borderRadius: 22, backgroundColor: c.surface, overflow: "hidden" }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
-          <Text accessibilityRole="header" style={{ color: c.navy, fontSize: 22, fontWeight: "800" }}>Авах агуулахаа сонгоорой</Text>
-          <Copy>{selected ? "Өмнөх сонголтоо хадгалах эсвэл өөр агуулах сонгож болно." : "Эрээнээс аль салбарт хүргүүлэхээ сонгоорой. Дараа нь сольж болно."}</Copy>
-          <Button title={locating ? "Байршил тодорхойлж байна…" : "Ойр агуулах санал болгох"} secondary disabled={locating || saving} onPress={() => void locate()} testID="warehouse-locate" />
+          <Text accessibilityRole="header" style={{ color: c.navy, fontSize: 22, fontWeight: "800" }}>Авах салбараа сонгоорой</Text>
+          <Copy>{selected ? "Өмнөх сонголтоо хэвээр үлдээж, эсвэл өөр салбар сонгож болно." : "Эрээнээс аль салбарт хүргүүлэхээ сонгоорой. Дараа нь сольж болно."}</Copy>
+          <Button title={locating ? "Байршил тодорхойлж байна…" : "Ойр салбар санал болгох"} secondary disabled={locating || saving} onPress={() => void locate()} testID="warehouse-locate" />
           <Copy>Байршлыг хадгалахгүй. Зөвшөөрөл өгөхгүйгээр гараар сонгож болно.</Copy>
           <ErrorBox message={error} />
           {settings && <Button title="Утасны тохиргоо нээх" secondary onPress={() => { void Linking.openSettings().catch(() => setError("Утасныхаа тохиргооноос байршлын зөвшөөрлийг өөрчилж болно.")); }} />}
@@ -116,8 +116,8 @@ function WarehouseSheet({ locations, selected, warning, save, close }: { locatio
             <Text style={{ color: c.ink, fontSize: 13, lineHeight: 19 }}>{p.address}</Text>
             {!!p.phone && <Text style={{ color: c.muted, fontSize: 13 }}>{p.phone}</Text>}
           </Pressable>)}
-          {!!recommended && <Copy>Хотын байршлаар ойролцоолсон санал. Агуулахын яг зай, замын урт биш; авах газраа өөрөө сонгож батална.</Copy>}
-          {!locations.length && <Copy>Агуулахын мэдээлэл одоогоор ирээгүй байна. Түр хаагаад дахин оролдоно уу.</Copy>}
+          {!!recommended && <Copy>Хотын байршлаар ойролцоолсон санал. Салбарын яг зай, замын урт биш; авах салбараа өөрөө сонгож батална.</Copy>}
+          {!locations.length && <Copy>Салбарын мэдээлэл одоогоор ирээгүй байна. Түр хаагаад дахин оролдоно уу.</Copy>}
         </ScrollView>
         <View style={{ padding: 16, gap: 8, borderTopWidth: 1, borderColor: c.line }}>
           <Button title={saving ? "Хадгалж байна…" : "Сонголтоо хадгалах"} disabled={saving || !locations.some(p => p.location === draft)} onPress={() => void confirm()} testID="warehouse-confirm" />
@@ -131,10 +131,10 @@ function WarehouseSheet({ locations, selected, warning, save, close }: { locatio
 
 export function WarehousePreferenceCard({ disabled = false }: { disabled?: boolean }) {
   const { selected, loaded, open } = useWarehousePreference(), c = usePalette();
-  return <Pressable testID="warehouse-preference" accessibilityRole="button" accessibilityLabel={"Авах агуулах: " + (selected?.name ?? "Сонгоогүй") + ". Солих"} disabled={disabled || !loaded} onPress={open} style={{ padding: 14, borderRadius: 14, borderWidth: 1, borderColor: c.line, backgroundColor: c.accentSurface, gap: 5, opacity: disabled ? 0.6 : 1 }}>
-    <Text style={{ color: c.muted, fontSize: 12 }}>ТАНЫ АВАХ АГУУЛАХ</Text>
-    <Title>{selected?.name ?? "Агуулахаа сонгох"}</Title>
+  return <Pressable testID="warehouse-preference" accessibilityRole="button" accessibilityLabel={"Авах салбар: " + (selected?.name ?? "Сонгоогүй") + ". Солих"} disabled={disabled || !loaded} onPress={open} style={{ padding: 14, borderRadius: 14, borderWidth: 1, borderColor: c.line, backgroundColor: c.accentSurface, gap: 5, opacity: disabled ? 0.6 : 1 }}>
+    <Text style={{ color: c.muted, fontSize: 12 }}>ТАНЫ АВАХ САЛБАР</Text>
+    <Title>{selected?.name ?? "Салбараа сонгох"}</Title>
     {selected && <Text style={{ color: c.ink, fontSize: 12, lineHeight: 18 }}>{selected.address}</Text>}
-    <Text style={{ color: c.accentText, fontWeight: "700" }}>{selected ? "Агуулах солих →" : "Сонгох →"}</Text>
+    <Text style={{ color: c.accentText, fontWeight: "700" }}>{selected ? "Салбар солих →" : "Сонгох →"}</Text>
   </Pressable>;
 }

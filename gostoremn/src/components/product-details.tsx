@@ -78,7 +78,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
   const facts = [
     { name: "Брэнд", value: product.brand || find(/^(brand|品牌|брэнд)$/i) },
     { name: "Материал", value: find(/material|fabric|材质|面料|материал/i) },
-    { name: "Сонголт", value: product.variants.length ? `${product.variants.length} хувилбар` : undefined },
+    { name: "Хувилбар", value: product.variants.length ? `${product.variants.length} хувилбар` : undefined },
     { name: "Илгээх газар", value: product.ship_from },
   ].filter(a => a.value);
   const summary = facts.length ? facts : attributes.slice(0, 4);
@@ -109,7 +109,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
         {!!recommendations.error && <ErrorBox message={recommendations.error} retry={() => { void recommendations.load(true); }} />}
         {!recommendations.loading && !recommendations.error && recommendations.more && <Button title="Дараагийн бараа" secondary onPress={() => { void recommendations.load(); }} />}
         {!recommendations.loading && !recommendations.error && !recommendations.more && <Copy>{recommendations.items.length ? "Бүх санал болгох барааг үзлээ." : "Санал болгох бараа одоогоор алга байна."}</Copy>}
-        <Text style={styles.muted}>Үнэ, үлдэгдэл захиалга үүсгэхэд дахин шалгагдана.</Text>
+        <Text style={styles.muted}>Үнэ, үлдэгдлийг захиалга үүсгэхэд дахин шалгана.</Text>
       </View>} scrollEventThrottle={80} contentInsetAdjustmentBehavior="never"
       onScroll={e => {
         const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
@@ -134,7 +134,7 @@ export function ProductDetails({ product, variant, rate, onChoose }: { product: 
             <Text numberOfLines={fullName ? undefined : 2} style={{ fontSize: compact ? 15 : 17, lineHeight: compact ? 21 : 24, fontWeight: "600", color: colors.ink }}>{product.name}</Text>
             <Text style={styles.more}>{fullName ? "Хураах" : "Бүтэн нэрийг харах"}</Text>
           </Pressable>
-          <Text style={styles.muted}>Барааны үнэ · Хүргэлт тусдаа тооцогдоно</Text>
+          <Text style={styles.muted}>Барааны үнэ · Хүргэлтийг тусад нь тооцно</Text>
         </View>
         <View style={styles.inset}><Card>
           <Pressable accessibilityRole="button" accessibilityLabel="Хувилбар сонгох" onPress={onChoose} style={styles.row}>

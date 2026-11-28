@@ -18,7 +18,7 @@ export async function disablePush() {
   await SecureStore.deleteItemAsync(savedToken);
 }
 export async function enablePush(requestPermission = true, stillCurrent: () => boolean = () => true) {
-  if (!pushAvailable) throw Error("Утасны мэдэгдлийг шинэ build суулгасан бодит утсан дээр идэвхжүүлнэ.");
+  if (!pushAvailable) throw Error("Утасны мэдэгдлийг аппын шинэ хувилбар суулгасан бодит утсан дээр идэвхжүүлнэ.");
   const config = await api<PushConfig>("customer-push-config");
   if (!pushConfigured(config, Platform.OS)) throw Error("Утасны мэдэгдлийн тохиргоо удахгүй бэлэн болно.");
   if (Platform.OS === "android") await Notifications.setNotificationChannelAsync("orders", { name: "Захиалгын мэдэгдэл", importance: AndroidImportance.DEFAULT });

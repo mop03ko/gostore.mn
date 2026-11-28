@@ -52,6 +52,6 @@ export function CargoCalculator({ shipping }: { shipping: Shipping | null }) {
         {tariff.small_weight_limit_kg} кг-аас бага, {tariff.small_volume_limit_m3} м³ хүртэл бол эхэлсэн {tariff.small_step_kg} кг тутамд {money(tariff.small_step_mnt)}. Том ачаанд {tariff.large_per_m3_cny} ¥/м³ ба {tariff.large_per_tonne_cny.toLocaleString("en-US")} ¥/тонноор бодсон дүнгийн ихийг авна.
       </Text>}
       <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19 }}>Эцсийн дүнг агуулахад жин, хэмжээг тулгаж баталгаажуулна.</Text>
-    </> : <Copy>Тарифын мэдээлэл одоогоор ачаалагдсангүй.</Copy>}
+    </> : <Copy>Тарифын мэдээллийг одоогоор ачаалж чадсангүй.</Copy>}
   </Card>;
 }

@@ -13,7 +13,7 @@ const products=Array.from({length:8},(_,i)=>({id:'tb-'+(810000+i),name:'Everyday
  await page.getByRole('tab',{name:'Электроник',exact:true}).tap();await page.getByTestId('category-products').getByText('Everyday category product 0',{exact:true}).waitFor();
  fs.mkdirSync('output/discovery',{recursive:true});await page.screenshot({path:'output/discovery/app-categories.png'});
  await page.getByRole('button',{name:'Зургаар хайх',exact:true}).tap();await page.getByText('Таалагдсан барааныхаа зургийг сонгоорой.',{exact:true}).waitFor();await page.getByRole('button',{name:'Хаах',exact:true}).tap();
- await page.getByRole('button',{name:'Үнэгүй хүргэлттэй бараа харах',exact:true}).tap();await page.getByText('Үнэгүй хүргэлттэй барааны мэдээлэл түр боломжгүй байна.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Үнэгүй хүргэлттэй бараа харах',exact:true}).tap();await page.getByText('Үнэгүй хүргэлттэй барааны мэдээллийг одоогоор авч чадсангүй.',{exact:true}).waitFor();
  assert.match(await page.getByTestId('free-shipping-shelf').innerText(),/Монгол хүртэлх тээвэр тусдаа/);assert.equal(await page.getByTestId('free-shipping-shelf').getByRole('button').count(),0);
  await page.getByRole('tab',{name:'Танд зориулсан',exact:true}).tap();free='available';await page.getByRole('button',{name:'Үнэгүй хүргэлттэй бараа харах',exact:true}).tap();await page.getByTestId('free-shipping-shelf').getByRole('button').first().waitFor();assert.equal(await page.getByTestId('free-shipping-shelf').getByRole('button').count(),2);
  await page.getByRole('tab',{name:'Танд зориулсан',exact:true}).tap();await page.screenshot({path:'output/discovery/app-home.png'});

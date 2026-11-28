@@ -28,7 +28,7 @@ if(!/^http:\/\/127\.0\.0\.1:\d+$/.test(base||''))throw Error('Isolated backend r
  await page.screenshot({path:'output/mobile/checkout.png',fullPage:true});
  assert.equal(calls.includes('invoice'),false,'No invoice before explicit user action');
  await page.getByRole('button',{name:/Захиалга үүсгэх/}).click();
- await page.getByText('Төлөгдөөгүй',{exact:true}).first().waitFor({timeout:60000});
+ await page.getByText('Төлөөгүй',{exact:true}).first().waitFor({timeout:60000});
  assert.equal(calls.filter(x=>x==='order-create').length,1);
  await page.screenshot({path:'output/mobile/order.png',fullPage:true});
  assert.equal(await page.getByRole('button',{name:'QPay нэхэмжлэл авах'}).isDisabled(),true,'Test QPay disabled');

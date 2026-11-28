@@ -39,7 +39,7 @@ export const partName = (s: string) =>
   ({
     goods_mnt: "Барааны үнэ",
     domestic_mnt: "Хятад доторх хүргэлт",
-    service_mnt: "Үйлчилгээний төлбөр",
+    service_mnt: "Үйлчилгээний хураамж",
     cargo_mnt: "Карго тээвэр",
     delivery_mnt: "Улаанбаатар хүргэлт",
     discount_mnt: "Хөнгөлөлт",

@@ -294,7 +294,7 @@ function Shop({ initialQuery, initialImage = "" }: { initialQuery: string; initi
             </View>}
             {!!image && (
               <Button
-                title="Зурагт хайлтыг цэвэрлэх"
+                title="Зургаар хайлтыг цэвэрлэх"
                 secondary
                 onPress={() => search("")}
               />

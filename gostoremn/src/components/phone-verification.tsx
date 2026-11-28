@@ -16,7 +16,7 @@ export function PhoneVerification({session,onVerified,onCancel}:{session:PhoneSe
   return <Card><Copy>{session.displayInstruction}</Copy><Copy>Утас: {session.phone}</Copy>
     <Field label="6 оронтой SMS код" value={code} onChangeText={v=>setCode(v.replace(/[^0-9]/g,"").slice(0,6))} keyboardType="number-pad" maxLength={6} autoComplete="sms-otp" textContentType="oneTimeCode" editable={!busy&&!locked&&remaining>0}/>
     <Copy>{remaining>0?`Кодын хүчинтэй хугацаа: ${remaining} сек`:"Кодын хугацаа дууссан"}</Copy>
-    {session.deliveryUncertain&&<Copy>Илгээлтийн хариу хүлээгдэж байна. Код ирвэл оруулна уу.</Copy>}
+    {session.deliveryUncertain&&<Copy>Илгээлтийн хариуг хүлээж байна. Код ирвэл оруулна уу.</Copy>}
     <Copy>Утасны дугаарыг SendSMS.mn-д дамжуулна. Кодоо бусдад бүү дамжуулаарай.</Copy>
     <ErrorBox message={error}/><Button title="Код баталгаажуулах" disabled={busy||locked||remaining<=0||code.length!==6} onPress={()=>void confirm()}/>
     <Button title={locked||remaining<=0?"Дахин эхлүүлэх":"Болих"} secondary disabled={busy} onPress={onCancel}/>

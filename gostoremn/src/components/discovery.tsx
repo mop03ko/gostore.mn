@@ -47,7 +47,7 @@ export function DiscoveryShelf({ query, free = false }: { query?: string; free?:
     <Text style={s.heading}>{free ? "Хятад дотор үнэгүй хүргэлт" : "Танд санал болгох"}</Text>
     {free && <Text style={s.note}>Эрээн агуулах хүртэлх лавлах үнэ 0¥. Монгол хүртэлх тээвэр тусдаа; сонгосон хувилбар, тоо ширхэгийн эцсийн хүргэлтийг сагсанд шалгана.</Text>}
     {!data && !error && <Busy />}
-    {error ? <Pressable accessibilityRole="button" onPress={() => setRetry(x => x + 1)} style={s.empty}><Text style={{ color: colors.ink }}>Ачаалж чадсангүй. Дахин оролдох</Text></Pressable> : data && !data.products.length ? <View style={s.empty}><Text style={s.note}>{free ? data.status === "available" ? "Одоогоор 0¥ хүргэлттэй бараа олдсонгүй." : "Үнэгүй хүргэлттэй барааны мэдээлэл түр боломжгүй байна." : "Энэ ангилалд бараа олдсонгүй."}</Text></View> : null}
+    {error ? <Pressable accessibilityRole="button" onPress={() => setRetry(x => x + 1)} style={s.empty}><Text style={{ color: colors.ink }}>Ачаалж чадсангүй. Дахин оролдох</Text></Pressable> : data && !data.products.length ? <View style={s.empty}><Text style={s.note}>{free ? data.status === "available" ? "Одоогоор 0¥ хүргэлттэй бараа олдсонгүй." : "Үнэгүй хүргэлттэй барааны мэдээллийг одоогоор авч чадсангүй." : "Энэ ангилалд бараа олдсонгүй."}</Text></View> : null}
     <View style={s.grid}>{data?.products.slice(0, free ? 8 : 6).map(p => <View key={p.id} style={{ width: "48%" }}><DiscoveryCard product={p} /></View>)}</View>
   </View>;
 }
@@ -93,7 +93,7 @@ function ElevenSale() {
         <Text accessibilityRole="header" style={{ color: colors.ink, fontSize: 19, fontWeight: "800" }}>Хямдралтай бараа</Text>
       </View>
     </View>
-    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Сүүлийн 24 цагт шалгагдсан бодит хямдрал · Эцсийн үнийг захиалах үед шалгана.</Text>
+    <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18 }}>Сүүлийн 24 цагт шалгасан бодит хямдрал · Эцсийн үнийг захиалах үед шалгана.</Text>
     {!data && !error && <View accessibilityLabel="11.11 хямдрал ачаалж байна"><Busy /></View>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="eleven-sale-grid" contentContainerStyle={{ gap: 10 }}>
       {products.map(p => <View key={p.id} testID="eleven-sale-item" style={{ width: 152 }}><DiscoveryCard product={p} /></View>)}
@@ -114,7 +114,7 @@ function DealsShelf() {
   }, [page, retry]);
   return <View style={{ gap: 10 }}>
     <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>Хямдрал</Text>
-    <Text style={{ color: colors.muted, fontSize: 12 }}>Сүүлийн 24 цагт шалгагдсан, бодит үнэ нь буурсан бараа. Эцсийн үнийг захиалах үед дахин шалгана.</Text>
+    <Text style={{ color: colors.muted, fontSize: 12 }}>Сүүлийн 24 цагт шалгасан, бодит үнэ нь буурсан бараа. Эцсийн үнийг захиалах үед дахин шалгана.</Text>
     {!data && !error && <Busy />}
     {error && <Pressable accessibilityRole="button" onPress={() => { setError(false); setRetry(x => x + 1); }}><Text style={{ color: colors.accentText }}>Дахин оролдох</Text></Pressable>}
     {data && !data.products.length && <Text style={{ color: colors.muted }}>Одоогоор баталгаатай хямдралтай бараа алга.</Text>}

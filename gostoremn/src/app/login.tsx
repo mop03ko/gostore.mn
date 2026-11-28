@@ -43,7 +43,7 @@ export default function Login(){
       {step==="pin"&&<Button title="SMS баталгаажуулалтыг дахин эхлүүлэх" secondary disabled={busy} onPress={()=>switchMode(mode)}/>}
     </Card>}
     {step==="form"&&mode==="login"&&<><Button title="Шинээр утсаар бүртгүүлэх" secondary disabled={busy} onPress={()=>switchMode("register")}/><Button title="PIN мартсан" secondary disabled={busy} onPress={()=>switchMode("reset")}/><Button title="Өмнөх имэйлээр нэвтрэх" secondary disabled={busy} onPress={()=>router.push({pathname:"/email-login",params:{next:next||"/account"}})}/></>}
-    {step==="form"&&mode==="register"&&<Copy>Өмнө нь имэйлээр бүртгэлтэй бол тэр бүртгэлээрээ нэвтэрч, профайлаасаа утсаа холбоорой. Шинэ бүртгэлд хуучин захиалга автоматаар шилжихгүй. Үргэлжлүүлэхдээ үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</Copy>}
+    {step==="form"&&mode==="register"&&<Copy>Өмнө нь имэйлээр бүртгэлтэй бол тэр бүртгэлээрээ нэвтэрч, «Бүртгэлийн тохиргоо» хэсгээс утсаа холбоорой. Шинэ бүртгэлд хуучин захиалга автоматаар шилжихгүй. Үргэлжлүүлэхдээ үйлчилгээний нөхцөл, нууцлалын бодлогыг зөвшөөрнө.</Copy>}
     {step==="form"&&mode!=="login"&&<Button title="Утас + PIN-ээр нэвтрэх" secondary disabled={busy} onPress={()=>switchMode("login")}/>}
     <Button title="Тусламж, үйлчилгээний нөхцөл" secondary onPress={()=>router.push("/help")}/>
   </Page>;

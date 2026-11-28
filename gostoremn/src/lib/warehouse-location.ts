@@ -9,13 +9,13 @@ export async function locateForWarehouse(load: () => Promise<LocationApi> = () =
   const location = await load();
   let permission = await location.getForegroundPermissionsAsync();
   if (!permission.granted && permission.canAskAgain) permission = await location.requestForegroundPermissionsAsync();
-  if (!permission.granted) throw new WarehouseLocationError("Байршлын зөвшөөрөлгүй байна. Агуулахаа гараар сонгож болно.", !permission.canAskAgain);
-  if (!await location.hasServicesEnabledAsync()) throw new WarehouseLocationError("Утасны байршил тогтоох үйлчилгээ унтраалттай байна. Агуулахаа гараар сонгоорой.", true);
+  if (!permission.granted) throw new WarehouseLocationError("Байршлын зөвшөөрөлгүй байна. Салбараа гараар сонгож болно.", !permission.canAskAgain);
+  if (!await location.hasServicesEnabledAsync()) throw new WarehouseLocationError("Утасны байршил тогтоох үйлчилгээ унтраалттай байна. Салбараа гараар сонгоорой.", true);
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       location.getCurrentPositionAsync({ accuracy: location.Accuracy.Balanced, mayShowUserSettingsDialog: false }),
-      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new WarehouseLocationError("Байршил тодорхойлох хугацаа дууслаа. Дахин оролдох эсвэл гараар сонгоно уу.")), 20000); }),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new WarehouseLocationError("Байршил тодорхойлох хугацаа дууслаа. Дахин оролдоно уу, эсвэл гараар сонгоно уу.")), 20000); }),
     ]);
   } finally { clearTimeout(timer); }
 }

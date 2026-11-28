@@ -48,7 +48,7 @@ const key='gostore-pickup-warehouse-v1',line={id:'tb-123456789',sku:'blue',name:
  await picker.waitFor();
  assert.equal(await picker.getByRole('radio',{checked:true}).count(),0,'An expired choice is not preselected');
  await page.goto(base+'/checkout');
- await page.getByTestId('warehouse-preference').filter({hasText:'Агуулахаа сонгох'}).waitFor();
+ await page.getByTestId('warehouse-preference').filter({hasText:'Салбараа сонгох'}).waitFor();
  assert.equal(await picker.count(),0,'An expired preference does not interrupt a checkout link');
  await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({version:1,location:'wh-898220f69688'})),key);
  await page.goto(base);

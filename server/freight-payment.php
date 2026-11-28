@@ -32,7 +32,7 @@ function freight_record_receipt(string $id,int $amount,?string $reference=null):
 
 // The original purchase invoice remains immutable. This invoice only collects the final balance.
 function freight_invoice(string $id): array {
-    if(!qpay_ready())fail('QPay merchant тохиргоо хүлээгдэж байна.',503);
+    if(!qpay_ready())fail('QPay төлбөрийн тохиргоо хараахан бэлэн болоогүй байна.',503);
     $db=db();$db->exec('BEGIN IMMEDIATE');
     try{
         $o=order_row($id)['order'];$summary=settlement_summary($o);

@@ -57,7 +57,7 @@ export function CargoAddressCard({ address }: { address: CargoAddress }) {
     </View>)}
 
     <Text accessibilityLiveRegion="polite" style={{ color: c.muted, fontSize: 12 }}>
-      {message || "Карго ID таны бүх ачаанд ашиглагдана."}
+      {message || "Карго ID-г таны бүх ачаанд ашиглана."}
     </Text>
   </Card>;
 }
