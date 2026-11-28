@@ -925,6 +925,7 @@ html:is(.product-view,.brand-page-view,.account-view,.store-page-view) .discover
 .header .brand .brand-dark{display:none}
 :root[data-theme="dark"] .header .brand img{display:none}
 :root[data-theme="dark"] .header .brand .brand-dark{display:inline}
+:root[data-theme="dark"] .supplier-photo img{mix-blend-mode:normal}
 /* Keep dark lettering on orange actions; do not invert photos or brand artwork. */
 :root[data-theme="dark"] :is(.yellow,.skip-link,.count,.icon-tile,.account-avatar,.collection-stamp,.pd-source,.search-form button[type="submit"],.cargo-progress .current>span,.account-menu button b,.mobile-notifications [data-notification-count]:not(:empty),.mobile-nav #mobile-cart-count){color:#171717}
 :root[data-theme="dark"] :where(button,a,input,select,textarea):focus-visible{outline-color:#ffae85}
